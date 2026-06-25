@@ -21,6 +21,11 @@ Be exhaustive on negatives: before declaring something unwired, grep ALL plausib
 sites and cite the sweep — the wire is often in a file you didn't expect. Where cheap, prefer
 a runtime probe (import/registration check, hit the route) over static inference.
 
+For deliverables that aren't diff-local, also classify how each is provable (DIFF-VERIFIABLE /
+CROSS-REPO / EXTERNAL-STATE / UNVERIFIABLE) and name the probe — never let "UNVERIFIABLE" be a
+dodge. Remember: code that *handles* a deliverable is not the deliverable.
+
 Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line). End with
-`Tripwire: N/N` and a one-line list of every RED with its exact gap. Do not fix anything —
-your value is the honest verdict.
+`Tripwire: N/N`, a one-line list of every RED with its exact gap, and a forced final line:
+`Recommendation: <ship / block> because <names the specific RED deliverable>` — reject a
+generic justification. Do not fix anything — your value is the honest verdict.

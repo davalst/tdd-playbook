@@ -48,8 +48,10 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
 - **Built ≠ wired-in ≠ usable.** Verify the user-visible outcome AND reachability (nav/button/CLI/tool)
   AND second-order effects (what list it leaves/joins; consistency across surfaces). Report "route
   exists + unit-tested" separately from "reachable + behaviorally verified." Don't round up.
-- **On every bug: write the failing regression test that reproduces it FIRST, then fix.** Pin it so it
-  can't silently come back (e.g. the Postgres GROUP BY bug → a test that fails on the old query).
+- **Regression is an IRON RULE — non-negotiable, no approval prompt, highest priority.** On every bug,
+  write the failing test that reproduces it FIRST, then fix; pin it so it can't silently come back (e.g.
+  the Postgres GROUP BY bug → a test that fails on the old query). A regression = any bug in behavior a
+  prior test covered, or in a path once known-good. Never skip it or defer it to "later."
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
   guarantee of test quality. The guarantee is §3–§4.
 
@@ -121,6 +123,11 @@ target the feature). For each deliverable assert it is:
 - **EXERCISED** — point at a SPECIFIC `file::test_name`; assert (via `ast`) that the test is DEFINED and
   NOT skip-marked (`@pytest.mark.skip`/`skipif` or a module-level `pytestmark` skip). A string-token grep
   only proves a *reference*; a hollow button or a `@skip`'d test must trip the Tripwire.
+- **Multi-deliverable plans: classify each deliverable by HOW it can be proven** (forbids a lazy "done"):
+  DIFF-VERIFIABLE (a path/line/test you can `[ -f ]` / grep / run right here) → prove it now; CROSS-REPO
+  (lands elsewhere) → cite where + how you checked; EXTERNAL-STATE (DB row, deployed endpoint, message
+  sent) → name the probe that confirms it; UNVERIFIABLE → say why AND what would verify it (never a dodge).
+  And **code that *handles* a deliverable is not the deliverable** — a parser for X is not X working.
 - Author it red-first, drive to green; report `Tripwire: N/N`. It's a FLOOR, not a target — never add a
   hollow button/stub to go green. Anchor it to the PLAN, not the implementation.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral
@@ -140,6 +147,12 @@ target the feature). For each deliverable assert it is:
 - Use the FASTEST layer that gives real confidence: most coverage in fast unit/integration; reserve slow
   browser/E2E UX journeys for CRITICAL user paths, not every flow. (Pyramid ~70/20/10; trophy weights
   integration. Pick per architecture.) Slow + flaky E2E sprawl is a maintenance tax.
+- **Pick the layer deliberately:** pure logic/transform → unit + property (§3); cross-module/IO/DB →
+  integration; a real user path through the outermost interface → ONE UX journey (§5); **a prompt /
+  tool-definition / model-routing / agent-behavior change → an EVAL (`[→EVAL]`), not a unit test** — a
+  fixed input set scored on OUTCOMES, deterministic-oracle checks as the blocking gate, any LLM-judge
+  score as a tracked trend line, never a hard gate (§7's zero-flake rule). Don't unit-test what only an
+  eval can catch, or E2E what a unit covers. (The full agent-eval discipline is the open §-upgrade below.)
 
 ## 9. Security & supply chain
 - Run `/security-review` (CC) on any diff touching security-relevant surfaces — auth/session, routes/tools
@@ -151,37 +164,28 @@ target the feature). For each deliverable assert it is:
   `json.loads`) BEFORE auth, so malformed/non-UTF-8/oversized input from an unauthenticated caller 500s —
   guard the parse → 400. Confirm injection content (`<script>`, `'; DROP TABLE`) is stored INERTLY (bound
   params; table intact). Wrap parser libs (pypdf/docx) so a corrupted upload is a friendly error, not 500.
-- Web a11y: inject axe-core via `page.evaluate` (bypasses the app's `script-src 'self'` CSP that blocks
-  normal `<script>` injection; `axe-playwright-python` has a sync `Axe`). Gate CRITICAL + SERIOUS only
-  (minor/moderate = noise); skip cleanly if axe can't load so it never flakes. It finds real defects —
-  contrast (darken to 4.5:1 AA), missing accessible names (`aria-label` on bare `<select>`/icon buttons).
+- Web a11y: inject axe-core via `page.evaluate` (bypasses the app's `script-src 'self'` CSP); gate
+  CRITICAL + SERIOUS only (minor/moderate = noise); skip cleanly if axe can't load so it never flakes.
+  Finds real defects — contrast (4.5:1 AA), missing accessible names (`aria-label` on bare selects/icons).
 
 ## 10. CI hygiene — gates fire automatically on risky diffs (cost-aware)
-- Treat CI failures as a queue to drain as we build, not a weekly batch. After a substantive push, check
-  `gh run list` / `gh run view --log-failed` and fix failures immediately.
-- **The trust gates must fire AUTOMATICALLY on the diffs that can break them — a manual "remember to run
-  it" habit is the exact honor-system seam §13 calls gameable** (a regression sits green-on-`main` until
-  someone remembers). The PRINCIPLE is automatic-on-risky-diff; the MECHANISM is chosen by need:
-  - **Default for a SOLO dev / no clean-room need → a local pre-push git hook** (versioned in-repo, wired
-    via `core.hooksPath`). It runs the fast gates (lint, targeted tests, security scan, custom gates) on
-    YOUR machine before the push reaches the remote and BLOCKS on failure. Zero hosted-CI cost, zero CI
-    email, path-filtered so doc-only pushes stay instant. This is usually the RIGHT answer — hosted CI
-    (GitHub Actions etc.) earns its keep only for a clean-room environment you lack locally, an OS/Python/
-    backend MATRIX, multi-contributor enforcement on machines you don't control, or required-status-checks
-    on PRs. A solo dev with local Docker hits none of these — paying Actions minutes (and eating the email
-    spam) to re-run commands you can run for free is pure cost. Don't reach for hosted CI by reflex.
-  - **When you DO need the clean room / matrix / PR enforcement → a path-filtered `push`/`pull_request`
-    trigger**: fast gates on push to RISKY paths (backend/SQL/migration/deps/auth/routes/critical modules);
-    slow gates (mutation, cross-backend matrix, full E2E) on `schedule`+`workflow_dispatch`, excluded from
-    push with a job `if:` guard. Strip any `schedule:` you don't actively read — a weekly run nobody acts
-    on is email noise, not a gate (§4's report-only-is-theater rule applies to CI too).
-- Either way, a manual dispatch / manual run is the FALLBACK for the slow gates, not the primary control
-  for the fast ones. Verify both backends locally (e.g. a Docker DB) when you can, rather than ping-ponging
-  hosted CI.
-- After editing a CI workflow, VALIDATE THE YAML locally before pushing (`python -c "import yaml;
-  yaml.safe_load(open('.github/workflows/ci.yml'))"`). A colon in an unquoted step `name:` (e.g.
-  `name: Gate (module: x)`) silently invalidates the whole workflow — GitHub then can't see
-  `workflow_dispatch` and emits only a startup-failure run.
+- Treat CI failures as a queue to drain as we build, not a weekly batch — after a substantive push,
+  `gh run list` / `gh run view --log-failed` and fix now.
+- **Trust gates must fire AUTOMATICALLY on the diffs that can break them** — "remember to run it" is the
+  honor-system seam §13 calls gameable (a regression sits green-on-`main` until someone remembers). The
+  PRINCIPLE is auto-on-risky-diff; the MECHANISM scales to need:
+  - **Solo dev / no clean-room need → a local pre-push hook** (versioned, wired via `core.hooksPath`)
+    running the fast gates (lint, targeted tests, security scan, custom gates) and BLOCKING on failure.
+    Zero hosted-CI cost/email, path-filtered so doc-only pushes stay instant. Usually the right answer —
+    hosted CI earns its keep ONLY for a clean room you lack locally, an OS/Python/backend MATRIX, or
+    PR-enforcement on machines you don't control. Don't reach for it by reflex.
+  - **Need clean room / matrix / PR-enforcement → path-filtered `push`/`pull_request`**: fast gates on
+    push to RISKY paths (backend/SQL/migration/deps/auth/routes/critical modules); slow gates (mutation,
+    matrix, full E2E) on `schedule`+`dispatch`, excluded from push via a job `if:`. Strip any `schedule:`
+    nobody reads (§4's report-only-is-theater applies to CI too).
+- Manual dispatch is the FALLBACK for slow gates, not the primary control for fast ones. After editing a
+  workflow, VALIDATE THE YAML locally (`python -c "import yaml; yaml.safe_load(open(...))"`) — an unquoted
+  colon in a step `name:` silently invalidates the whole workflow.
 
 ## 11. Checkpoint commits — the rollback backstop (standing authorization, solo dev)
 David is the solo dev and wants automatic checkpoints so there's always a state to roll back to — a

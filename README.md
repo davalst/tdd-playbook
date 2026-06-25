@@ -10,7 +10,7 @@ packaged as a plugin so it loads identically on local, web, and mobile. It ships
   (mutation score), not a ritual.
 - **Enforcement hooks** (warn-first) — guard against weakened tests, non-deterministic tests,
   and shipping source with no test.
-- **Scaffolding commands** — `/tdd-plan` `/tripwire` `/edge` `/mutate` `/claims` `/grade`.
+- **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/edge` `/mutate` `/claims` `/grade`.
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
   `edge-case-adversary`.
@@ -18,6 +18,20 @@ packaged as a plugin so it loads identically on local, web, and mobile. It ships
 It is the universal **floor**: each repo's own stack-specific testing (a different test
 runner, extra gates, security rules) layers on top, discovered from that repo's
 `CLAUDE.md`/`AGENTS.md`, a `.claude/skills` testing addendum, or `docs/TESTING*`.
+
+### Which command when
+| Situation | Reach for |
+|---|---|
+| Starting new functionality | `/tdd-plan` — reviewable plan before code |
+| A bug / failing behavior | `/debug` — reproduction loop first, then a pinned regression test |
+| Hardening one function/endpoint | `/edge` — walk the edge-case checklist |
+| Before merging critical logic | `/mutate` — mutation score, the real anti-gaming metric |
+| Finishing a multi-deliverable plan | `/tripwire` — every deliverable BUILT + WIRED + EXERCISED |
+| An audit / review / diagnosis | `/claims` — cite-or-refuse, mechanically verified citations |
+| After a sprint / batch of commits | `/grade` — learning-loop retro from telemetry |
+
+The agents are dispatched for independent second opinions (e.g. `red-first-verifier` to prove
+a test fails without the fix; `claims-verifier` for a fresh-context refute pass).
 
 ## Install (local — applies to every repo on the machine)
 ```bash

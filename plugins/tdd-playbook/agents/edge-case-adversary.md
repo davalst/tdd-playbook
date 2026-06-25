@@ -27,3 +27,7 @@ For the given deliverable:
 Output a prioritized list of MISSING edge cases with one-line justifications grounded in the
 code, and flag any where you'd ask the human to confirm the correct behavior rather than
 guess. Do not write the tests — surface the scenarios the builder owes a test.
+
+End with a single forced line: `Recommendation: <the one highest-risk gap to test first>
+because <names the specific code behavior that makes it dangerous>`. Reject a generic
+justification ("more coverage is safer") — it must name a concrete behavior in THIS code.

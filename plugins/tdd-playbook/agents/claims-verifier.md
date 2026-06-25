@@ -21,7 +21,16 @@ For each load-bearing claim handed to you:
    evidence) · **UNVERIFIABLE → demote to a lead** (state the falsification path). A hedged
    claim cannot keep its severity — demotion must cost the badge.
 
+When the findings carry `file:line` citations (with optional quoted snippets), run the
+mechanical gate rather than eyeballing them:
+
+    python3 "${CLAUDE_PLUGIN_ROOT}/bin/verify_citations.py" <findings-file> --base <repo-root>
+
+Any UNRESOLVED/MISMATCH citation is fabricated or wrong evidence → that finding is REFUTED or
+demoted; paste the tool's summary as proof.
+
 Output: per-claim verdict + evidence, then a summary line
 `Claims checked: N · confirmed M · refuted K · demoted to leads J`. Spot-check is your only
 job — do not edit code or the audit. Flag any claim that rests solely on a secondhand/subagent
-report as still-unverified.
+report as still-unverified. End with a forced line: `Recommendation: <publish / revise / hold>
+because <names the specific refuted or unverified finding>` — a generic justification is rejected.
