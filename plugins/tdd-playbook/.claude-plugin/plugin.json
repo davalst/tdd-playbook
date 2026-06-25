@@ -1,0 +1,10 @@
+{
+  "name": "tdd-playbook",
+  "description": "David's universal TDD/QA Playbook — the standing way to build, test, fix, and audit in every repo. Ships the doctrine as an auto-firing skill, plus enforcement hooks (test-weakening/Tripwire/flaky guards), scaffolding commands, and independent verification agents. Composes with each repo's own stack-specific testing conventions.",
+  "version": "1.0.0",
+  "author": {
+    "name": "David Alston"
+  },
+  "homepage": "https://github.com/davalst/dotfiles",
+  "license": "UNLICENSED"
+}
