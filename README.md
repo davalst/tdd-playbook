@@ -33,24 +33,29 @@ runner, extra gates, security rules) layers on top, discovered from that repo's
 The agents are dispatched for independent second opinions (e.g. `red-first-verifier` to prove
 a test fails without the fix; `claims-verifier` for a fresh-context refute pass).
 
-## Install (local — applies to every repo on the machine)
+## Install — local (every repo on the machine)
+A user-scope install makes the Playbook available in every **local** repo:
 ```bash
 claude plugin marketplace add davalst/tdd-playbook
 claude plugin install tdd-playbook@david-tools
 ```
 
-## Use in the cloud (claude.ai/code) for a repo
-Cloud sandboxes auto-load a plugin only if the **repo opts in**. Commit to that repo's
-`.claude/settings.json`:
-```json
-{
-  "extraKnownMarketplaces": {
-    "david-tools": { "source": { "source": "github", "repo": "davalst/tdd-playbook" } }
-  },
-  "enabledPlugins": { "tdd-playbook@david-tools": true }
-}
+## Install — cloud (per repo, all surfaces: web / mobile / desktop)
+Cloud Claude Code sandboxes only load config that's **part of the repo clone** — they do *not*
+reliably install an external marketplace, and never read your `~/.claude`. So the user-scope
+install above does **not** reach cloud, and there is **no account-wide cloud sync**: each repo you
+want in cloud must carry the Playbook in its own `.claude/`. One command does that (run it from a
+clone of THIS repo, pointing at the target repo):
+```bash
+python3 scripts/install_into_repo.py /path/to/your/repo
+cd /path/to/your/repo && git add .claude && git commit -m "chore: vendor TDD Playbook for cloud" && git push
 ```
-This repo is public, so the cloud sandbox loads it with no extra auth.
+That vendors the skill + commands + agents + hooks (and `verify_citations`) into the repo's
+`.claude/`, rewriting `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude` and merging the hooks
+into `.claude/settings.json` (existing hooks preserved; the unreliable marketplace block removed).
+Open a cloud session and it loads — guaranteed, no marketplace fetch. **Re-run after this repo
+updates** to refresh a vendored repo (idempotent). Having both the user-scope plugin and the
+vendored copy is harmless — Claude Code de-dupes by name.
 
 ## Hook controls
 Enforcement hooks are **warn-first**. Override per hook with env vars:
