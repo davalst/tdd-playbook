@@ -30,6 +30,19 @@ file:line citations — see `docs/evaluations/ux-probe-engine-evaluation-2026-07
   why page-agent was rejected for probe duty (SPA-only, synthetic `isTrusted:false` events,
   no replay) and why the harness attaches over CDP rather than driving through Playwright
   (both blessed engines left Playwright for their own CDP stacks).
+- **`/probe` command** — the §5a runbook at the same altitude as `/mutate`: guardrails first
+  (staging-only, critical journeys only, keys harness-side, caps set), driver selection from
+  the §5a table by repo detection, goal-phrased intents sourced from the §0 plan (UI hints
+  rejected — they defeat the probe), N≥3 runs, the oracle split applied verbatim, lying-UI
+  detection flagged loudly, failed-goal transcripts filed as UX bugs, and first-run-in-repo
+  setup (marker registration, testing-addendum note, calibration recommendation).
+- **`ux-probe-calibrator` agent** — `planted-error-probe` one layer up: plants ONE
+  user-meaningful UX defect the probe's perception channel can see (mislabel / lost
+  accessible name / hidden required field / dead-ended CTA / lying success message), runs
+  the probe 3×, verdicts `PROBE VERIFIED` (≥2/3 detections) or `BLOCKING GAP` classified as
+  PERCEPTION / ORACLE / INTENT with the smallest fix, then reverts to a clean tree. Plant
+  types rotate; the lying-success plant is periodically mandatory (it exercises the oracle
+  split). Forced-recommendation discipline applies.
 - `backups/SKILL.md.2026-07-04.pre-ux-probe.md` — pre-change snapshot (requested backstop).
 
 ### Changed
