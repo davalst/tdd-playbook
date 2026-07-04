@@ -1,6 +1,6 @@
 ---
 name: tdd-playbook
-description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), the Tripwire wiring check, determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook"; named pieces are the Tripwire, UX journeys, edge-case rigor, the TDD plan, the claims discipline, the learning loop.
+description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check, determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook"; named pieces are the Tripwire, UX journeys, UX probes, edge-case rigor, the TDD plan, the claims discipline, the learning loop.
 ---
 
 # The TDD Playbook
@@ -114,6 +114,51 @@ effect. Written from the UX request. The category is constant; the DRIVER swaps 
   automated. Never use it to dodge automatable interfaces (Telegram/TUI/MCP are all automatable).
 - Playwright determinism: role/text/user-facing locators; web-first auto-waiting assertions; verify a POST
   via `expect_response`, NOT `networkidle` (streaming/SSE pages never go idle). See §7.
+
+## 5a. UX probes — intent-only agent probes (`ux_probe` — trend line, NEVER a gate)
+A §5 journey proves the SCRIPTED path still works — its author already knows where the button is, so it
+can never detect that a real user couldn't find it. A UX probe closes that gap: a FRESH LLM agent gets
+only the user's INTENT ("sign up for the meeting") and must accomplish it through the real interface —
+the UX analog of §13's fresh-context verifier: an unbiased actor DOING the thing, not confirming it.
+Probes are probabilistic, so §7's zero-flake rule and §8's EVAL rule govern them:
+- **Oracle split (the load-bearing rule):** the agent's self-reported success is telemetry, NEVER a
+  gate. BLOCKING assertions are deterministic and HARNESS-owned: persisted effect (DB row), no-5xx
+  (from the harness's own network/HAR capture), console-error budget, no forbidden hosts. TREND LINE
+  (non-blocking, tracked per run): success rate over N runs, steps-to-done vs baseline, tokens/cost,
+  friction events. A transcript of a FAILED goal is a deliverable — file it as a UX bug
+  ("couldn't find how to cancel"), not a flaky test.
+- **Engine contract (engine-agnostic):** any driver qualifies if it provides OBSERVE (interface state
+  serialized for the LLM), ACT (an enumerated action space), EVIDENCE (per-step transcript/snapshots) —
+  and leaves the ORACLE to the harness. The DRIVER swaps per interface, exactly like §5:
+  - **Web** → harness owns the browser; the engine attaches over CDP. Blessed engines: **Stagehand**
+    (TS/Node repos; its committed act-cache = probabilistic discovery → deterministic replay, so UI
+    drift surfaces as a cache-file diff in the PR) · **browser-use** (Python repos; attach via
+    `cdp_url`, HAR recorder feeds the no-5xx oracle, custom `report_ux_friction` action; set
+    telemetry, cloud-sync, and the default LLM judge OFF). Both self-report success — oracle split applies.
+  - **Telegram mini-app** → it's a webview: same browser engines + a `Telegram.WebApp` shim (signed
+    test `initData`; MainButton/BackButton stubbed INTO the probe's action space — native chrome the
+    DOM doesn't contain is still UX surface the probe must perceive).
+  - **TUI** → tmux/PTY loop: `capture-pane` = perception (the screen is ALREADY text — no heavyweight
+    engine needed), `send-keys` = action, asciinema cast + per-step buffer snapshots = evidence;
+    oracles on files/DB/exit code/final screen. (Textual `Pilot` stays the deterministic §5 layer;
+    `textual serve`/ttyd bridges a TUI into the browser engines when browser-grade evidence is worth it.)
+  - **Telegram bot** → the reply + `reply_markup` JSON IS the serialized state; drive the dispatcher
+    harness (or a user-client against the test DC for outermost fidelity).
+  - **MCP server** → the probe is an agent-SDK client given only the tool list (converges with the
+    pending agent-eval upgrade below).
+- **Calibrate with planted UX defects** (§13's rule, same teeth): periodically mislabel the submit
+  button / hide a required field / dead-end a flow, and require the probe to flag it. A probe that
+  never fails a plant is theater.
+- **Cost & cadence:** probes are slow and metered — SCHEDULED (nightly/weekly) on CRITICAL journeys
+  only, with per-probe step/token caps; never per-commit. (Exception: Stagehand's cached replay is
+  cheap enough for a per-commit warn lane — alert on cache-miss/self-heal.) Require N≥3 runs before
+  trusting a success-rate delta.
+- **Hygiene (non-negotiable):** staging + controlled fixtures ONLY — page/screen content is a
+  prompt-injection surface, never point a probe at live user data; LLM keys stay harness-side, never
+  in-page; pin engine versions; exclude dangerous actions (raw JS eval, web search) from the action space.
+- **The free win regardless of engine:** what makes an interface agent-legible (semantic roles, real
+  labels, accessible names) is exactly what §5's role/text locators and §9's axe gate already demand —
+  enforce it at dev time and journeys, probes, and accessibility all strengthen together.
 
 ## 6. The Tripwire — `@pytest.mark.tripwire` (runs LAST)
 A plan-coverage catch-all tied to THE CURRENT plan's deliverables (re-anchored each plan, like TDD tests
@@ -257,11 +302,13 @@ The Playbook itself evolves. One upgrade is **pending discussion, not yet doctri
 "drive the REAL agent in an isolated package and assert on outcomes" harness (cheliped's `localeval`) into
 a first-class **agent-eval** discipline — likely a new §5b. The load-bearing rule to debate: **deterministic-
 oracle evals are blocking CI gates; LLM-judge evals are tracked trend lines, never hard gates** (§7 zero-flake
-forbids gating on a probabilistic judge; a judge < ~65% human agreement is noise). **Proactively raise this
+forbids gating on a probabilistic judge; a judge < ~65% human agreement is noise). §5a (UX probes) is the
+mirror image — agents testing UXs vs evals testing agents — and already applies that oracle-split rule. **Proactively raise this
 with David** when agent/LLM-eval work comes up — it's a standing investment in our deterministic-testing
 tension, to be revisited as new agent surfaces ship, not a one-off. (Tracking detail: cheliped
 `docs/POST_BUILD_FOLLOWUPS.md` F5.)
 
 ## Markers (register in pytest.ini / equivalent)
-`edge` · `ux` · `tripwire` · `flaky` (quarantine). Audit with `pytest -m <marker>`. Markers aid navigation
+`edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `tripwire` · `flaky` (quarantine). Audit with
+`pytest -m <marker>`. Markers aid navigation
 and audit; a marker COUNT is never a quality metric — §4 (mutation) is.

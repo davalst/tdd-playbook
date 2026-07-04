@@ -5,7 +5,8 @@ packaged as a plugin so it loads identically on local, web, and mobile. It ships
 
 - **The doctrine** — an auto-firing `tdd-playbook` skill: reviewable TDD plan → red-first
   behavioral tests → edge-case rigor → property-based + mutation testing → interface-agnostic
-  UX journeys → the Tripwire wiring check → determinism/flaky policy → security tests →
+  UX journeys → intent-only UX probes (agent-driven, oracle-split, never a gate) → the Tripwire
+  wiring check → determinism/flaky policy → security tests →
   a claims discipline for audits → a learning loop. The anti-gaming defense is an OUTCOME
   (mutation score), not a ritual.
 - **Enforcement hooks** (warn-first) — guard against weakened tests, non-deterministic tests,
