@@ -3,6 +3,26 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.2.1 — 2026-07-07
+
+Two doctrine additions adapted from the Karpathy-inspired CLAUDE.md guidelines
+(Think Before Coding / Surgical Changes) — the two that guard seams the Playbook
+didn't: the integrity of the plan the tests are derived from, and the integrity
+of the diff against that plan.
+
+### Added
+- **SKILL.md §0 — spec integrity** (once per plan, before the deliverables): assumptions
+  stated explicitly; competing readings of the request presented, never picked silently;
+  a materially simpler approach surfaced if one exists; genuine confusion raised as a
+  question at plan review instead of planned around. Rationale: §§1–6 verify what the
+  PLAN says — a wrong reading of the request passes every downstream gate. `/tdd-plan`
+  now opens with this block.
+- **SKILL.md §6 — the reverse check (diff → plan):** the Tripwire proves every deliverable
+  is in the diff; the inverse is now also checked — every changed line traces to a plan
+  deliverable. Non-tracing lines are scope creep / drive-by refactors / orphaned helpers:
+  orphans the change created get removed; unrelated cleanup and dead code get mentioned,
+  not done ("dead" is a negative claim — §12's exhaustive-sweep rule applies before acting).
+
 ## 1.2.0 — 2026-07-04
 
 New doctrine: **UX probes** — intent-only agent probes that close the gap scripted journeys

@@ -39,6 +39,14 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
 - one-line plain-English description + happy-path behavior;
 - **Edge cases:** bullet list of real-world scenarios (no jargon, e.g. "sign the same meeting twice → no duplicate");
 - **UX tests:** bullet list (what the user does → what they should see).
+And ONCE per plan, BEFORE the deliverables — **spec integrity**. Everything downstream (§§1–6)
+rigorously verifies what the PLAN says; a wrong reading of the request here passes every gate. So:
+- **Assumptions stated explicitly.** If the request supports multiple readings, present them and say
+  which one the plan follows — never pick silently.
+- **If a materially simpler approach would satisfy the request, say so** and let the review choose —
+  don't build the bigger one by default.
+- **If something is genuinely unclear, name the confusion as a question for David** — don't plan
+  around it. Plan review is the cheap place to be wrong; §4 is the expensive place.
 This reviewed plan is the SINGLE upstream spec for the unit/edge/property tests, UX journeys, and the
 Tripwire. Default to a one-liner for small work; don't make David review ceremony he didn't ask for.
 
@@ -173,6 +181,11 @@ target the feature). For each deliverable assert it is:
   (lands elsewhere) → cite where + how you checked; EXTERNAL-STATE (DB row, deployed endpoint, message
   sent) → name the probe that confirms it; UNVERIFIABLE → say why AND what would verify it (never a dodge).
   And **code that *handles* a deliverable is not the deliverable** — a parser for X is not X working.
+- **Reverse check (diff → plan):** the Tripwire proves every deliverable is in the diff; before reporting
+  it, also check the inverse — every changed line traces to a plan deliverable. What doesn't trace is
+  scope creep, a drive-by refactor, or an orphaned helper: remove orphans YOUR change created; unrelated
+  cleanup/dead code gets MENTIONED, not done ("dead" is a negative claim — §12 requires the exhaustive
+  sweep before acting on it).
 - Author it red-first, drive to green; report `Tripwire: N/N`. It's a FLOOR, not a target — never add a
   hollow button/stub to go green. Anchor it to the PLAN, not the implementation.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral

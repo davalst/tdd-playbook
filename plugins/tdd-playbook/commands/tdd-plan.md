@@ -10,7 +10,14 @@ Follow the TDD Playbook §0. FIRST, discover this repo's own testing conventions
 `docs/TESTING*`, the test config + markers) and state which you'll layer on top of the
 universal floor — or "none found".
 
-Then output a terse, SCANNABLE plan (plain chat, not a file). Per deliverable:
+Then output a terse, SCANNABLE plan (plain chat, not a file).
+
+Open with **Spec integrity** (once per plan, before the deliverables — §0): assumptions stated
+explicitly; if the request supports multiple readings, present them and say which one the plan
+follows (never pick silently); if a materially simpler approach would satisfy the request, say
+so; anything genuinely unclear becomes a question for review, not something planned around.
+
+Per deliverable:
 - **What** — one line of plain-English behavior (happy path).
 - **Edge cases** — bullets of real-world scenarios from §2's checklist that genuinely
   apply (boundaries, empty/null, malformed, auth-negative, idempotency/double-submit,
