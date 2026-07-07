@@ -205,6 +205,10 @@ target the feature). For each deliverable assert it is:
   as a final pass before merging a feature. Skip purely cosmetic/test-only diffs (noise).
 - Beyond review, WRITE security tests: negative authz (denied → 403/refused), input fuzzing/injection on
   untrusted surfaces, rate-limit. Keep dependency/SAST scanning in CI (supply chain).
+- **LLM-app repos: layer adversarial red-teaming on top of the floor** (e.g. [DeepTeam](https://github.com/confident-ai/deepteam) —
+  simulated prompt injection, jailbreaks, PII/prompt leakage, excessive agency). Same oracle-split as
+  §5a/§7: deterministic guardrail tests are the blocking gate; LLM-judged verdicts are a tracked trend
+  line, never a gate.
 - **Untrusted endpoints must DEGRADE to 4xx, never 500.** Webhooks often parse the body (decode +
   `json.loads`) BEFORE auth, so malformed/non-UTF-8/oversized input from an unauthenticated caller 500s —
   guard the parse → 400. Confirm injection content (`<script>`, `'; DROP TABLE`) is stored INERTLY (bound
