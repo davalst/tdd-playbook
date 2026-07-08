@@ -353,6 +353,11 @@ visible — never "trust the agent more."
   WIRED and engaged (config drift, aux-model swaps, intent rerouting; built ≠ wired applies to the
   loop itself). A planted error surviving to publication is a BLOCKING failure; the floor only
   rises. A verification loop that never fails a planted error is theater.
+- **Verifier-strength policy (co-evolution made mechanical):** calibration measures verifier
+  recall against the CURRENT doer model; new plants are authored by an adversary on ≥ the
+  doer's model tier (`calibration/author_plants.py` — human-reviewed, corpus only grows, each
+  plant records its authoring model); a doer-model upgrade REQUIRES a calibration run before
+  its work is trusted. Never let the thing generating code outrun the thing checking it.
 - **Retro proposes the SMALLEST tweak** (one config knob / prompt line / threshold), human-reviewed.
   A healthy loop's proposals shrink toward noise over time; report-only grades nobody must act on
   are theater (§4's rule, same teeth).

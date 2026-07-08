@@ -7,6 +7,7 @@ must FAIL the scenario (the harness can fail), a stub that outputs the right ver
 PASS (the harness can succeed), and --dry-run must validate the shipped scenarios.
 Self-contained, no pytest. Run: python3 calibration/test_harness.py
 """
+import json
 import os
 import stat
 import subprocess
@@ -81,8 +82,66 @@ def main():
         check("missing claude binary -> fatal exit 2", p.returncode == 2 and "not found" in p.stdout,
               (p.returncode, p.stdout))
 
+    test_author_plants()
+
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
+
+
+def test_author_plants():
+    """Planted calibration of the corpus pipeline: mechanical validation must reject bad
+    plants, accept good ones, and the approve flow must be review-gated."""
+    print("\n[author_plants corpus pipeline]")
+    import author_plants as ap
+
+    good = {
+        "id": "corpus-test-good", "agent": "claims-verifier",
+        "plant": "claim that export_csv lacks a header",
+        "edits": [],
+        "task": "Verify: 'export_csv emits no header row.'",
+        "must_match": ["REFUTED"], "must_not_match": ["CONFIRMED"],
+    }
+    bad_agent = dict(good, id="corpus-test-badagent", agent="nonexistent-agent")
+    bad_edit = dict(good, id="corpus-test-badedit",
+                    edits=[{"file": "calc.py", "old": "NOT IN FILE", "new": "x"}])
+    bad_regex = dict(good, id="corpus-test-badregex", must_match=["([unclosed"])
+
+    check("valid plant validates", ap.validate(good) == [], ap.validate(good))
+    check("unknown agent rejected", any("unknown agent" in p for p in ap.validate(bad_agent)))
+    check("stale edit anchor rejected", any("do not apply" in p for p in ap.validate(bad_edit)))
+    check("bad oracle regex rejected", any("bad regex" in p for p in ap.validate(bad_regex)))
+    check("duplicate id rejected",
+          any("duplicate id" in p for p in ap.validate(dict(good, id="false-negative-claim"))))
+
+    # extract_json_array: model chatter around the array is tolerated; garbage is not
+    arr = ap.extract_json_array("Here you go:\n[{\"id\": \"x\"}]\nGood luck!")
+    check("json array extracted from chatter", arr == [{"id": "x"}], arr)
+    check("no array -> None", ap.extract_json_array("no json here") is None)
+
+    with tempfile.TemporaryDirectory() as d:
+        # isolate the corpus dirs
+        ap.PROPOSED = os.path.join(d, "proposed")
+        ap.APPROVED = os.path.join(d, "approved")
+
+        # end-to-end author with a stub adversary emitting one good + one bad plant
+        stub_out = json.dumps([good, bad_agent])
+        stub = make_stub(d, stub_out.replace("\\", "\\\\"))
+        rc = ap.main(["--model", "stub-model", "--claude-bin", stub])
+        proposed = os.listdir(ap.PROPOSED)
+        check("author: good plant proposed, bad rejected",
+              rc == 0 and proposed == ["corpus-test-good.json"], (rc, proposed))
+        with open(os.path.join(ap.PROPOSED, "corpus-test-good.json")) as fh:
+            meta = json.load(fh)["_meta"]
+        check("author: model + date metadata recorded",
+              meta["authored_by_model"] == "stub-model" and meta["status"] == "proposed", meta)
+
+        # approve is review-gated (moves, re-validates)
+        rc = ap.main(["--approve", "corpus-test-good"])
+        check("approve moves to approved/", rc == 0
+              and os.listdir(ap.APPROVED) == ["corpus-test-good.json"]
+              and not os.listdir(ap.PROPOSED), rc)
+        rc = ap.main(["--approve", "corpus-test-good"])
+        check("re-approving a moved plant refuses", rc == 1, rc)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,42 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.4.0 — 2026-07-08
+
+**The co-evolution release** — Workstreams 3–4 of the implementation plan: the answer to
+the Verification Horizon problem ("no fixed gate stays effective as model capability
+grows") is now mechanical, and §13's "grade from telemetry" has a real seam.
+
+### Added
+- **Generative plant corpus (`calibration/corpus/` + `calibration/author_plants.py`)** —
+  each cycle an ADVERSARY agent (>= the doer's model tier) authors NEW planted-defect
+  scenarios; mechanical validation (schema, edits-apply, oracle regexes) gates acceptance;
+  human review moves proposed → approved; `run_calibration` includes approved plants and
+  reports corpus size. **The corpus only grows** — plants record their authoring model so
+  recall trends stay attributable. Pipeline planted-calibrated in `calibration/test_harness.py`.
+- **Decay principle (§13 preamble)** — every gate is a decaying asset; the calibration
+  schedule IS the product. `run_calibration` now prints a DECAY WARNING when
+  `docs/HACK_CATALOG.md`'s refresh log is >100 days old (the quarterly ritual's mechanical
+  reminder).
+- **Verifier-strength policy (§13)** — calibration measures against the CURRENT doer model;
+  plants authored at >= the doer's tier; a doer-model upgrade requires recalibration before
+  its work is trusted.
+- **`bin/grade_from_otel.py` + `docs/telemetry.md`** — /grade's telemetry seam: parses
+  Claude Code OTel exports (lenient: flat-attribute JSONL AND OTLP/JSON; gen_ai.*
+  conventions still unstable so no hard schema binding) into the §13 metrics — turns,
+  tokens net of cache, file reads, greps, edits, tests-vs-source touched, cost. No
+  recognizable records → exit 1 and /grade must label itself "narration-grade (telemetry
+  unavailable)" — an estimate never wears a telemetry badge. `/grade` also now reads the
+  TEST-LOCK journal (frequent/suspect unlock reasons cap the grade, H2).
+- **Mutation v2 (§4, /mutate, mutation-runner)** — diff-scoped runs on PRs (Stryker
+  `--incremental`/`--since`, pitest history, mutmut changed-files; repo-wide score is NOT a
+  KPI), ACH-style targeted-mutant mode (mutation as test GENERATOR for the change's
+  concern), and context hygiene: mutants stay OUT of the implementing agent's context — a
+  visible verifier is a gameable verifier.
+- **Doctrine wins** — §3: Schemathesis at the API boundary when a schema exists; §7:
+  quarantine entries carry OWNER + EXPIRY (expired quarantine fails the suite); §10:
+  affected-tests inner loop with the full suite at checkpoints/merge.
+
 ## 1.3.0 — 2026-07-08
 
 **The integrity release** — Workstreams 0–2 of the implementation plan

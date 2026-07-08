@@ -43,6 +43,34 @@ def load_scenarios():
         return json.load(fh)["scenarios"]
 
 
+def load_corpus():
+    """Approved adversary-authored plants (calibration/corpus/approved/). Only grows."""
+    d = os.path.join(HERE, "corpus", "approved")
+    out = []
+    if os.path.isdir(d):
+        for fn in sorted(os.listdir(d)):
+            if fn.endswith(".json"):
+                with open(os.path.join(d, fn)) as fh:
+                    out.append(json.load(fh))
+    return out
+
+
+def catalog_staleness():
+    """Days since the newest HACK_CATALOG refresh-log entry, or None if unparseable.
+    The decay principle (§13): a stale catalog is itself a finding."""
+    path = os.path.join(REPO, "docs", "HACK_CATALOG.md")
+    try:
+        with open(path) as fh:
+            dates = re.findall(r"\|\s*(\d{4})-(\d{2})\s*\|", fh.read())
+    except OSError:
+        return None
+    if not dates:
+        return None
+    y, m = max((int(a), int(b)) for a, b in dates)
+    newest = datetime.date(y, m, 1)
+    return (datetime.date.today() - newest).days
+
+
 def agent_body(agent):
     path = os.path.join(AGENTS_DIR, agent + ".md")
     with open(path) as fh:
@@ -72,7 +100,8 @@ def apply_edits(root, edits):
 def stage(scenario):
     """Copy the fixture, apply the plant, git-init it. Returns the temp root."""
     root = tempfile.mkdtemp(prefix="tdd-cal-")
-    shutil.copytree(FIXTURE, root, dirs_exist_ok=True)
+    shutil.copytree(FIXTURE, root, dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     apply_edits(root, scenario.get("edits", []))
     def git(*a):
         subprocess.run(["git", *a], cwd=root, capture_output=True, text=True, timeout=30)
@@ -164,7 +193,12 @@ def main(argv=None):
                     help='history file to append ("" to suppress)')
     args = ap.parse_args(argv)
 
-    scenarios = load_scenarios()
+    corpus = load_corpus()
+    scenarios = load_scenarios() + corpus
+    stale = catalog_staleness()
+    if stale is not None and stale > 100:
+        print("DECAY WARNING: docs/HACK_CATALOG.md last refreshed ~{} days ago — the "
+              "quarterly ritual is due (a stale catalog is a decaying gate, §13).".format(stale))
     if args.agent:
         scenarios = [s for s in scenarios if s["agent"] == args.agent]
     if args.scenario:
@@ -200,7 +234,8 @@ def main(argv=None):
                 print("  - " + pr)
             print("--- agent output (tail) ---\n" + out[-1500:])
     append_history(args.history, args.model, results)
-    print("\nCalibration: {}/{} caught".format(len(results) - failed, len(results)))
+    print("\nCalibration: {}/{} caught · corpus size {} (only grows)".format(
+        len(results) - failed, len(results), len(corpus)))
     return 1 if failed else 0
 
 
