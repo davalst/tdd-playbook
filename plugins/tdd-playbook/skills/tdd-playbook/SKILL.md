@@ -92,6 +92,10 @@ a generator finds the boundaries I'd never list (research: ~35–50% higher edge
   correct property rather than guessing a plausible-but-wrong one.
 - **Self-reflect:** ask "is this test finding a real bug or passing trivially?" Don't wrap a test in
   error-handling that masks a real failure. Keep example-based tests for end-to-end flows.
+- **A repo with an OpenAPI/GraphQL schema gets Schemathesis at the API boundary** — the
+  schema IS a property source (1.4–4.5× more defects than other API fuzzers in independent
+  evaluation, near-zero authoring cost), and it feeds §9's "untrusted endpoints degrade to
+  4xx, never 500" rule for free.
 - **Verify the invariant is actually TRUE before asserting it.** Idempotence, symmetry, round-trips
   are COMMONLY FALSE (e.g. a `%`→`%%` translation isn't idempotent; prefix-matching breaks similarity
   symmetry; `\w+` tokens include `_` so they aren't `isalnum`). When Hypothesis finds a counterexample,
@@ -116,8 +120,20 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
 - **Gate it (close the loop):** a small script parses the tool's machine-readable stats, prints
   `Mutation: N%`, and FAILS under a no-regression FLOOR — BLOCKING in CI. Raise the floor as genuine
   survivors are killed; never lower it. Report-only mutation that nobody must act on is theater.
-- Frame the anti-gaming story around mutation score, not the red-first ritual. Run it at feature
-  completion / before merging important logic, not on every tiny change (it's slow).
+- **Diff-scoped on PRs; full pass at feature completion.** The full critical-module pass stays at
+  feature completion, but substantive changes to critical modules get a DIFF-SCOPED run in review
+  (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a handful of
+  survivors surfaced on the changed lines, Google-style. A repo-wide score is NOT a KPI (noise,
+  arid code); per-module floors on critical code are the gate.
+- **Targeted-mutant mode — mutation as test GENERATOR (Meta ACH pattern):** for the CONCERN of the
+  change (auth bypass, money rounding, permission drop, lifecycle skip), generate 3–5 plausible
+  concern-specific mutants and require a test that kills each, BEFORE trusting the suite. Inverts
+  the workflow: instead of only grading tests after the fact, mutants state what the tests must
+  catch. (Validated at 10k-class scale, 73% engineer acceptance.)
+- **Mutants stay OUT of the implementing agent's context.** A visible verifier is a gameable
+  verifier (METR: models introspect graders when they can see them). Dispatch `mutation-runner`
+  fresh; the implementer sees killed/survived VERDICTS, never the mutant list it could special-case.
+- Frame the anti-gaming story around mutation score, not the red-first ritual.
 
 ## 5. UX journeys — `@pytest.mark.ux` — interface-agnostic
 A UX journey drives the REAL interface a user touches and asserts the user-visible outcome + the persisted
@@ -209,6 +225,9 @@ target the feature). For each deliverable assert it is:
 - A flaky test is a bug. **Quarantine** it (a marker that runs but doesn't block) and FIX it — never paper
   over with blind retries (`--repeat-each` is for DETECTING flakiness, not hiding it). Retry-into-green
   hides real bugs, the exact failure mode this Playbook exists to prevent.
+- **Quarantine entries carry an OWNER and an EXPIRY** (e.g. `@pytest.mark.flaky(expires="2026-08-01")`
+  or a dated comment the suite checks): an expired quarantine FAILS the suite. Quarantine-without-
+  deadline is how flake graveyards form — the marker is a loan, not a landfill.
 - **Hunt order-dependence with `pytest-randomly`** (shuffles collection order + seeds randomness each run,
   prints the seed to reproduce). A suite green across seeds is provably order-independent. Combine with
   `--count=N` (`pytest-repeat`) in a BLOCKING `flake-detect` job to surface both repeat- and order-flakiness.
@@ -245,6 +264,11 @@ target the feature). For each deliverable assert it is:
 ## 10. CI hygiene — gates fire automatically on risky diffs (cost-aware)
 - Treat CI failures as a queue to drain as we build, not a weekly batch — after a substantive push,
   `gh run list` / `gh run view --log-failed` and fix now.
+- **The inner loop runs AFFECTED tests; the checkpoint runs the suite.** An agent runs tests ~50×
+  per task — feedback latency is a first-order quality lever. Give the inner loop a first-class
+  "tests affected by my diff" command (the repo's graph/coverage tool, or the cheap floor:
+  `pytest <changed test files + tests importing changed modules>`); the FULL suite still gates
+  every checkpoint commit (§11) and merge. Selection speeds the loop; it never replaces the net.
 - **Trust gates must fire AUTOMATICALLY on the diffs that can break them** — "remember to run it" is the
   honor-system seam §13 calls gameable (a regression sits green-on-`main` until someone remembers). The
   PRINCIPLE is auto-on-risky-diff; the MECHANISM scales to need:
@@ -306,6 +330,13 @@ unverified NEGATIVE about a file it never read.)
   self-reported N/N is narration with a colon in it.
 
 ## 13. The learning loop — grade the process, calibrate with planted errors
+**The decay principle (why this section exists):** every gate is a DECAYING asset —
+verification must co-evolve with the generator, because no fixed check stays effective as
+model capability grows (Verification Horizon, arXiv 2606.26300; METR's capability-vs-hacking
+trend). The calibration schedule below is not maintenance; it IS the product. Corollaries:
+the plant corpus only GROWS (a frozen plant library is itself a static gate); the guards'
+hack catalog (`docs/HACK_CATALOG.md`) is refreshed quarterly; a doer-model upgrade requires a
+calibration run before its work is trusted (verifier-strength policy, below).
 After substantive work, grade the CYCLE (spend → evidence → claims → outcome) against a NAMED
 benchmark (e.g. "Claude Code on the same task"), so the system improves instead of re-learning.
 The design rule for every check below: make the honest path the cheap path and the dishonest path

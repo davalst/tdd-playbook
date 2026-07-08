@@ -10,6 +10,12 @@ nothing). Steps:
 1. Pick the right tool for this repo's stack (`mutmut`/`cosmic-ray` for Python,
    `Stryker` for JS/TS, etc.). Scope to the named critical modules only — never the whole
    repo (mutant explosion). Critical = auth, money, permissions, lifecycle, core algorithms.
+   **Reviewing a diff rather than finishing a feature? Run DIFF-SCOPED** (Stryker
+   `--incremental`/`--since origin/main`, pitest history, mutmut on the changed files) and
+   surface survivors on the changed lines only. **For a concern-critical change** (auth,
+   money, permissions), also run **targeted-mutant mode**: write 3–5 plausible
+   concern-specific mutants (drop the permission check, flip the rounding, skip the state
+   guard) and require a test that kills each — mutation as test generator, not just grader.
 2. Run it; collect surviving mutants from the machine-readable stats.
 3. **Triage survivors:** for each, decide real-vs-equivalent. Equivalent mutants (e.g. SQL
    keyword case that SQLite treats identically, string-subscript case) are UN-KILLABLE —
@@ -21,6 +27,10 @@ nothing). Steps:
 
 Report-only mutation nobody acts on is theater — the deliverable is killed survivors + the
 score, not just a number.
+
+**Context hygiene:** dispatch `mutation-runner` as a FRESH agent and keep the mutant list
+out of the implementing context — a visible verifier is a gameable verifier; the implementer
+sees verdicts, never the mutants it could special-case.
 
 **Close the loop (not optional):** the score proves tests kill GENERATED mutants; it does
 not prove the suite catches a REAL planted defect end-to-end. After the pass, DISPATCH the

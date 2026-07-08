@@ -17,8 +17,17 @@ and re-verify). Prefer running the pass in a `git worktree` when the tool allows
 
 1. Identify the stack's tool (`mutmut`/`cosmic-ray` Python, `Stryker` JS/TS, etc.) and the
    CRITICAL modules in scope (auth, money, permissions, lifecycle, core algorithms). Never
-   mutate the whole repo — scope tightly to avoid mutant explosion.
-2. Run the pass; collect surviving mutants from the machine-readable output.
+   mutate the whole repo — scope tightly to avoid mutant explosion. When the caller names a
+   DIFF rather than a module, run diff-scoped (Stryker `--incremental`/`--since`, pitest
+   history, mutmut on changed files) and report survivors on changed lines only.
+2. Run the pass; collect surviving mutants from the machine-readable output. In
+   **targeted-mutant mode** (caller names a concern — auth/money/permissions/lifecycle),
+   ALSO author 3–5 plausible concern-specific mutants by hand (drop the check, flip the
+   rounding, skip the guard) and verify a test kills each; a concern-mutant that survives
+   is reported as its own line item with the killing test to add.
+   **Context hygiene:** your mutant list is for THIS report only — return verdicts and the
+   tests to add, never hand the raw mutant list back into an implementing context (a
+   visible verifier is a gameable verifier).
 3. **Triage each survivor real-vs-equivalent.** Equivalent mutants are real and UN-KILLABLE:
    e.g. SQL keyword case that SQLite treats identically, dict/Row subscript-key case. Exclude
    them with a CONSERVATIVE filter (changed line differs by CASE ONLY *and* sits in a SQL
