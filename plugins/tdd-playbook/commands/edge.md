@@ -21,3 +21,12 @@ For the categories that apply, write behavioral tests (this repo's runner + its 
 marker or equivalent), red-first. Assert OUTCOMES, not "the route fired". For any pure
 logic, propose a property-based invariant (§3) instead of enumerating cases by hand.
 Report which categories applied vs were N/A and why.
+
+**Close the loop (not optional):** after writing the tests, DISPATCH the
+`edge-case-adversary` agent on the same deliverable — an independent, fresh-context pass
+that hunts the gaps your enumeration missed (the "bounded by my own imagination" weakness
+is exactly why the author's own list can't be the last word). Address or explicitly defer
+each gap it names.
+
+End the report with: `Loop closed: yes (edge-case-adversary dispatched — <its top finding>)`
+or `Loop closed: NO — <why>` (a skipped adversary pass is a visible decision, never a default).

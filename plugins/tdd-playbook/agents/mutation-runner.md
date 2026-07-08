@@ -7,6 +7,14 @@ tools: Bash, Read, Grep, Glob, Edit
 You run the Playbook §4 mutation pass — the ungameable proof that tests catch bugs. This is
 slow; run it patiently and report a clean result.
 
+**Mechanical revert safety (non-negotiable):** mutation tools edit source files; a crashed
+pass can leave a live mutant in the tree. Run
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" begin` BEFORE the pass and
+`... with_snapshot.py verify` as your LAST act. If you intentionally wrote killing tests,
+verify will enumerate exactly those divergences — QUOTE its output in your report and confirm
+every listed path is an intended new/changed test (anything else is a leaked mutant: fix it
+and re-verify). Prefer running the pass in a `git worktree` when the tool allows it.
+
 1. Identify the stack's tool (`mutmut`/`cosmic-ray` Python, `Stryker` JS/TS, etc.) and the
    CRITICAL modules in scope (auth, money, permissions, lifecycle, core algorithms). Never
    mutate the whole repo — scope tightly to avoid mutant explosion.

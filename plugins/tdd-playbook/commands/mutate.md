@@ -21,3 +21,12 @@ nothing). Steps:
 
 Report-only mutation nobody acts on is theater — the deliverable is killed survivors + the
 score, not just a number.
+
+**Close the loop (not optional):** the score proves tests kill GENERATED mutants; it does
+not prove the suite catches a REAL planted defect end-to-end. After the pass, DISPATCH the
+`planted-error-probe` agent on one critical module in scope — one meaningful planted bug,
+suite must go red, mechanically verified revert. Survivor triage is half the loop; the
+plant is the other half.
+
+End the report with: `Loop closed: yes (planted-error-probe — <verdict>)` or
+`Loop closed: NO — <why>` (a skipped plant is a visible decision, never a default).

@@ -60,17 +60,17 @@ def test_weakening():
     s = "test_weakening_guard.py"
     tf = "tests/test_pay.py"
 
-    # PLANTED: assertion removed -> must warn (exit 1)
+    # PLANTED: assertion removed -> must BLOCK (integrity hook defaults to block; H2)
     rc, _o, e = run(s, edit(tf, "assert total == 5\nassert ok", "assert ok"))
-    check("weaken: dropped assertion is caught", rc == 1 and "assertions dropped" in e, (rc, e))
+    check("weaken: dropped assertion BLOCKS by default", rc == 2 and "assertions dropped" in e, (rc, e))
 
-    # PLANTED: skip marker added -> must warn
+    # PLANTED: skip marker added -> must block
     rc, _o, e = run(s, edit(tf, "def test_pay():", "@pytest.mark.skip\ndef test_pay():"))
-    check("weaken: added skip is caught", rc == 1 and "skip" in e.lower(), (rc, e))
+    check("weaken: added skip is caught", rc == 2 and "skip" in e.lower(), (rc, e))
 
-    # PLANTED: assertion neutered to tautology -> must warn
+    # PLANTED: assertion neutered to tautology -> must block
     rc, _o, e = run(s, edit(tf, "assert charge() == 10", "assert True  # TODO"))
-    check("weaken: tautology is caught", rc == 1 and "tautology" in e.lower(), (rc, e))
+    check("weaken: tautology is caught", rc == 2 and "tautology" in e.lower(), (rc, e))
 
     # CLEAN: strengthening (added assertion) -> silent (exit 0)
     rc, _o, e = run(s, edit(tf, "assert ok", "assert ok\nassert total == 5"))
@@ -80,10 +80,15 @@ def test_weakening():
     rc, _o, _e = run(s, edit("src/pay.py", "assert total == 5\nx", "x"))
     check("weaken: non-test file ignored", rc == 0, rc)
 
-    # MODE: block promotes to exit 2
+    # MODE: explicit warn demotes to exit 1
     rc, _o, _e = run(s, edit(tf, "assert a\nassert b", "assert a"),
-                     {"TDD_PLAYBOOK_HOOK_TESTWEAKEN": "block"})
-    check("weaken: block mode -> exit 2", rc == 2, rc)
+                     {"TDD_PLAYBOOK_HOOK_TESTWEAKEN": "warn"})
+    check("weaken: warn mode -> exit 1", rc == 1, rc)
+
+    # MODE: global env can demote too (per-hook default yields to explicit global)
+    rc, _o, _e = run(s, edit(tf, "assert a\nassert b", "assert a"),
+                     {"TDD_PLAYBOOK_HOOK_MODE": "warn"})
+    check("weaken: global warn -> exit 1", rc == 1, rc)
 
     # MODE: off silences
     rc, _o, e = run(s, edit(tf, "assert a\nassert b", "assert a"),
@@ -94,7 +99,7 @@ def test_weakening():
     me = {"tool_name": "MultiEdit", "tool_input": {"file_path": tf,
           "edits": [{"old_string": "assert a\nassert b", "new_string": "assert a"}]}}
     rc, _o, e = run(s, me)
-    check("weaken: MultiEdit shape handled", rc == 1 and "assertions dropped" in e, (rc, e))
+    check("weaken: MultiEdit shape handled", rc == 2 and "assertions dropped" in e, (rc, e))
 
 
 # ----------------------------------------------------------------------- flaky_guard
