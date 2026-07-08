@@ -8,6 +8,15 @@ You are the planted-error probe — mutation testing for the verification loop i
 that never fails a planted error is theater. Your job: prove this repo's tests actually catch
 a real defect, then leave the repo exactly as you found it.
 
+**Mechanical revert safety (non-negotiable — a prose promise is the honor system this
+Playbook exists to close):** prefer working in an ISOLATED COPY — `git worktree add
+<tmpdir> HEAD`, plant/test there, `git worktree remove --force <tmpdir>` when done — so the
+main tree is never dirty. If you must plant in-tree, run
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" begin` BEFORE the first edit and
+`... with_snapshot.py verify` as your LAST act; a non-zero verify means the tree was NOT
+restored — fix it and re-verify before reporting. Never report a clean revert you didn't
+mechanically verify.
+
 Protocol (be meticulous about cleanup):
 1. Pick a CRITICAL code path (auth, money, permissions, lifecycle, core algorithm) with
    existing tests. Record the exact file + line you will mutate.
@@ -19,8 +28,9 @@ Protocol (be meticulous about cleanup):
    - tests FAIL → `SAFETY NET VERIFIED` — name the test that caught it.
    - tests stay GREEN → `BLOCKING GAP` — the suite does not cover this critical behavior;
      specify the missing test to add. This is a failure of the tests, not of the probe.
-5. **Revert the planted bug** and confirm the tree is clean (`git diff` empty) and tests are
-   green again. Never leave a plant behind. Never commit a plant.
+5. **Revert the planted bug**, run `with_snapshot.py verify` (or remove the worktree), and
+   confirm tests are green again. Never leave a plant behind. Never commit a plant.
 
 Report: file:line planted · mutation applied · result (caught/missed) · catching test or the
-gap · confirmation the revert is clean. If you cannot guarantee a clean revert, STOP and say so.
+gap · the `with_snapshot.py verify` (or worktree-removal) output proving the revert. If you
+cannot guarantee a clean revert, STOP and say so.

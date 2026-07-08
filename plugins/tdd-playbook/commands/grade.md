@@ -6,9 +6,16 @@ argument-hint: [scope — e.g. last sprint / N commits / this session]
 Run the **learning-loop retro** (Playbook §13) over: $ARGUMENTS
 
 Grade the CYCLE (spend → evidence → claims → outcome), not the narration. Rules:
-- **Grade from TELEMETRY:** files actually read, greps actually run, tokens in/out net of
-  cache, turn count, tests added vs source changed — tool logs and git history, NOT the
-  model's account of its own diligence.
+- **Grade from TELEMETRY — the seam emits the count:** if an OTel export exists (see
+  `docs/telemetry.md`), run
+  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/grade_from_otel.py" <export>` and PASTE its block —
+  files actually read, greps actually run, tokens net of cache, turns, tests-vs-source
+  touched, all measured. If it exits 1 (no telemetry), the card is labeled
+  **"narration-grade (telemetry unavailable)"** — never dress an estimate as a measurement.
+  Git history supplements either way (tests added vs source changed per commit).
+- **Read the TEST-LOCK journal** (`.claude/tdd-lock-journal.jsonl`, if present): frequent
+  unlocks, or reasons pattern-matching "adjusted test to match output", are honor-system
+  breaches (H2) — they cap the grade.
 - **Score claim-evidence LINKAGE, not volume:** more files read must not raise the grade
   unless claims cite them. Count-pumping is marker theater.
 - **Benchmark it** against a NAMED reference (e.g. "Claude Code on the same task"), so the

@@ -72,21 +72,35 @@ def check(cite, base):
     if cite["start"] < 1 or cite["end"] > len(lines) or cite["start"] > cite["end"]:
         return "UNRESOLVED", "line out of range (file has {} lines)".format(len(lines))
     if cite["quote"]:
+        q = _norm(cite["quote"])
         span = _norm("\n".join(lines[cite["start"] - 1:cite["end"]]))
-        if _norm(cite["quote"]) not in span:
+        if q not in span:
             return "MISMATCH", 'quoted text not on cited line(s)'
+        # quality notes (do not flip the gate, but a weak quote is weak evidence):
+        notes = []
+        if len(q) < 10:
+            notes.append("weak quote (<10 chars — a fragment this short proves little; "
+                         "cite a longer span)")
+        else:
+            hits = sum(1 for ln in lines if q in _norm(ln))
+            if hits > 1:
+                notes.append("weak quote (matches {} lines in the file — not uniquely "
+                             "identifying)".format(hits))
+        return "VERIFIED", "; ".join(notes)
     return "VERIFIED", ""
 
 
 def run(text, base, quiet=False):
     cites = list(find_citations(text))
     counts = {"VERIFIED": 0, "UNRESOLVED": 0, "MISMATCH": 0}
-    bad = []
+    bad, weak = [], 0
     for c in cites:
         status, detail = check(c, base)
         counts[status] += 1
         if status != "VERIFIED":
             bad.append((c, status, detail))
+        elif "weak quote" in detail:
+            weak += 1
         if not quiet:
             mark = {"VERIFIED": "✓", "UNRESOLVED": "✗", "MISMATCH": "≠"}[status]
             line = "  {} {}{}".format(mark, c["raw"], (" — " + detail) if detail else "")
@@ -95,8 +109,9 @@ def run(text, base, quiet=False):
         sys.stdout.write("Citations: 0 — no `file:line` citations found to verify.\n")
         return 0
     sys.stdout.write(
-        "Citations: {} · verified {} · unresolved {} · mismatch {}\n".format(
-            len(cites), counts["VERIFIED"], counts["UNRESOLVED"], counts["MISMATCH"])
+        "Citations: {} · verified {} · unresolved {} · mismatch {}{}\n".format(
+            len(cites), counts["VERIFIED"], counts["UNRESOLVED"], counts["MISMATCH"],
+            " · weak-quote {}".format(weak) if weak else "")
     )
     if bad:
         sys.stdout.write(

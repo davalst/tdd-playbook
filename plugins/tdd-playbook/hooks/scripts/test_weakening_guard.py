@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """PostToolUse(Edit|MultiEdit|Write) — flag edits that WEAKEN a test.
 
-Enforces Playbook §1 "never weaken/delete a test to pass" — the honor-system seam.
-Warn-first. Detects, on a test file only:
-  - assertions removed (fewer assert/expect after the edit);
-  - a skip / xfail / focus marker introduced (hides tests from the run);
-  - an assertion neutered into a tautology (assert True, expect(true).toBe(true), ...).
-Heuristic by design: false positives are acceptable as warnings, missed weakenings
-are the real cost. Never blocks unless explicitly promoted to block mode.
+Enforces Playbook §1 "never weaken/delete a test to pass" (HACK_CATALOG H2/H5) — the
+honor-system seam. INTEGRITY hook: defaults to BLOCK. Detects, on a test file:
+  - assertions removed (fewer assert/expect after the edit) (H2);
+  - a skip / xfail / focus marker introduced (hides tests from the run) (H2);
+  - an assertion neutered into a tautology (assert True, ...) (H2);
+  - an exit call added — sys.exit(0)/os._exit in a test or conftest fakes a passing
+    suite; observed in production RL (H5). Also checked on conftest.py (verifier surface).
+Heuristic by design: demote to warn with TDD_PLAYBOOK_HOOK_TESTWEAKEN=warn if it bites.
 """
 import os
 import re
@@ -31,6 +32,7 @@ _TAUTOLOGY_RE = re.compile(
     r"assert\s+True\b|assert\s+1\b(?!\d)|expect\s*\(\s*true\s*\)\s*\.toBe\s*\(\s*true\s*\)"
     r"|assertTrue\s*\(\s*True\s*\)|assert\s+not\s+False\b"
 )
+_EXIT_RE = re.compile(r"\bsys\.exit\s*\(|\bos\._exit\s*\(|\bprocess\.exit\s*\(")
 
 
 def _count(rx, text):
@@ -44,19 +46,28 @@ def analyze(old, new):
     if a_new < a_old:
         findings.append(
             "assertions dropped {}→{} — confirm you didn't weaken coverage "
-            "to go green".format(a_old, a_new)
+            "to go green (H2)".format(a_old, a_new)
         )
     if _count(_SKIP_RE, new) > _count(_SKIP_RE, old):
-        findings.append("a skip/xfail/focus marker was added — the test now hides from the run")
+        findings.append("a skip/xfail/focus marker was added — the test now hides from the run (H2)")
     if _count(_TAUTOLOGY_RE, new) > _count(_TAUTOLOGY_RE, old):
-        findings.append("an assertion was neutered into a tautology (asserts nothing real)")
+        findings.append("an assertion was neutered into a tautology (asserts nothing real) (H2)")
+    if _count(_EXIT_RE, new) > _count(_EXIT_RE, old):
+        findings.append(
+            "an exit call (sys.exit/os._exit/process.exit) was added to test/verifier code — "
+            "exiting early fakes a passing suite (H5)"
+        )
     return findings
+
+
+def _is_verifier_surface(path):
+    return os.path.basename(path or "").lower() == "conftest.py"
 
 
 def main():
     event = read_event()
     path = file_path_of(event)
-    if not is_test_file(path):
+    if not (is_test_file(path) or _is_verifier_surface(path)):
         emit(NAME, [])
     findings = []
     for old, new in edit_pairs(event):

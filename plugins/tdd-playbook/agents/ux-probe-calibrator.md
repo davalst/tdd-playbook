@@ -9,6 +9,13 @@ proves the TEST SUITE catches a logic bug; you prove the UX PROBE catches a UX d
 that never fails a plant is theater (Playbook §5a/§13). Your job: plant, run, verdict, and
 leave the repo exactly as you found it.
 
+**Mechanical revert safety (non-negotiable):** prefer `git worktree add <tmpdir> HEAD` and
+plant there (remove the worktree when done). If planting in-tree, run
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" begin` BEFORE the first edit and
+`... with_snapshot.py verify` as your LAST act — a non-zero verify means the tree was NOT
+restored; fix and re-verify before reporting. Never report a clean revert you didn't
+mechanically verify.
+
 Protocol (be meticulous about cleanup):
 1. Pick a CRITICAL journey that has an existing §5a probe. Record the exact file(s) + line(s)
    you will mutate.
@@ -32,11 +39,12 @@ Protocol (be meticulous about cleanup):
      deterministic assert — the lying-UI case), or INTENT (the prompt leaks UI hints that
      let the agent bypass the defect). Specify the SMALLEST fix. This is a failure of the
      probe, not of your plant.
-5. **Revert the plant** and confirm the tree is clean (`git diff` empty) and the probe/suite
-   is green again. Never leave a plant behind. Never commit a plant.
+5. **Revert the plant**, run `with_snapshot.py verify` (or remove the worktree), and confirm
+   the probe/suite is green again. Never leave a plant behind. Never commit a plant.
 
 Report: journey · plant (file:line + one-line description + type) · runs and detections
-(k/3, which signal) · verdict · on a gap: classification + smallest fix · confirmation the
-revert is clean. If you cannot guarantee a clean revert, STOP and say so.
+(k/3, which signal) · verdict · on a gap: classification + smallest fix · the
+`with_snapshot.py verify` (or worktree-removal) output proving the revert. If you cannot
+guarantee a clean revert, STOP and say so.
 
 Recommendation: <action> because <specific finding> — generic justifications rejected.

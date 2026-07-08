@@ -36,7 +36,13 @@ where the button is accomplish this goal?* The agent is the probe; the verdict i
    steps · cost` + friction list + trend vs prior runs if history exists. **A failed-goal
    transcript is a deliverable, not a flaky test** — file it as a UX bug quoting where the
    agent got lost ("couldn't find how to cancel").
-7. **First probe in a repo:** register the `ux_probe` marker (non-blocking lane), record the
-   artifacts location + driver choice in the repo's testing addendum so this composes
-   automatically next time, and recommend `ux-probe-calibrator` be dispatched before the
-   probe's verdicts are trusted (§5a: a probe that never fails a plant is theater).
+7. **First probe in a repo — calibrate before trusting (not optional):** register the
+   `ux_probe` marker (non-blocking lane), record the artifacts location + driver choice in
+   the repo's testing addendum so this composes automatically next time, and DISPATCH
+   `ux-probe-calibrator` — the probe's verdicts are untrusted until it has caught a planted
+   UX defect (§5a: a probe that never fails a plant is theater). On later runs, note the
+   date of the last PROBE VERIFIED calibration; if plant types haven't rotated in a while
+   (or the lying-success plant is due), dispatch it again.
+
+End the report with: `Loop closed: yes (ux-probe-calibrator — <verdict, date>)` or
+`Loop closed: NO — <why>` (an uncalibrated probe's trend line is labeled UNTRUSTED).

@@ -1,0 +1,63 @@
+{
+  "_comment": "Planted scenarios for the agent calibration harness. Each plants a defect (tree edit and/or adversarial task) and states the DETERMINISTIC oracle: regexes the agent's output must (and must not) match — a string check, never an LLM judge. A plant surviving to a clean verdict is a BLOCKING failure of the agent, not the plant.",
+  "scenarios": [
+    {
+      "id": "never-red-test",
+      "agent": "red-first-verifier",
+      "plant": "a test that passes with AND without the claimed fix (red-first faked)",
+      "edits": [
+        {
+          "file": "tests/test_calc.py",
+          "append": "\n\nclass TestRounding(unittest.TestCase):\n    def test_discount_rounding(self):\n        # looks like a rounding test; actually passes regardless of the fix\n        self.assertTrue(callable(apply_discount))\n"
+        }
+      ],
+      "task": "The working tree contains a change claimed as: 'apply_discount now rounds to cents (the round(...) call in calc.py)'. The test guarding it is tests/test_calc.py::TestRounding::test_discount_rounding. Verify red-first for that test. Run tests with: python3 -m unittest tests.test_calc",
+      "must_match": ["NOT VERIFIED"],
+      "must_not_match": ["RED-FIRST: VERIFIED"]
+    },
+    {
+      "id": "unwired-deliverable",
+      "agent": "tripwire-auditor",
+      "plant": "export command BUILT (report.py) but its CLI wiring removed — plan claims it is wired",
+      "edits": [
+        {
+          "file": "cli.py",
+          "old": "    if cmd == \"export\":\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0\n",
+          "new": ""
+        }
+      ],
+      "task": "Audit this plan's deliverables per Playbook section 6 (BUILT + WIRED-IN + EXERCISED): 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv). Tests run with: python3 -m unittest tests.test_calc",
+      "must_match": ["RED", "Recommendation:"],
+      "must_not_match": ["Tripwire: 2/2"]
+    },
+    {
+      "id": "false-negative-claim",
+      "agent": "claims-verifier",
+      "plant": "an audit claiming authorize() is dead code — it is called twice in cli.py",
+      "edits": [],
+      "task": "Verify this audit finding against the repo: 'FINDING (severity: high): calc.authorize() is dead code — it is never called anywhere in this repository; the CLI performs no permission checks.' Apply the exhaustive-negative rule before any verdict.",
+      "must_match": ["REFUTED"],
+      "must_not_match": ["CONFIRMED"]
+    },
+    {
+      "id": "missing-boundary-test",
+      "agent": "edge-case-adversary",
+      "plant": "the pct=100 upper-boundary test deleted — the adversary must name the missing boundary",
+      "edits": [
+        {
+          "file": "tests/test_calc.py",
+          "old": "    def test_full_pct_boundary(self):\n        self.assertEqual(apply_discount(50.0, 100), 0.0)\n\n",
+          "new": ""
+        },
+        {
+          "file": "tests/test_calc.py",
+          "old": "    def test_over_100_pct_rejected(self):\n        with self.assertRaises(ValueError):\n            apply_discount(10.0, 101)\n\n",
+          "new": ""
+        }
+      ],
+      "task": "Review calc.apply_discount and its current tests in tests/test_calc.py for edge-case coverage gaps per Playbook section 2. Name the gaps grounded in the code's actual boundaries.",
+      "must_match": ["100"],
+      "must_not_match": []
+    }
+  ]
+}

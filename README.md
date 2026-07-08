@@ -24,6 +24,7 @@ runner, extra gates, security rules) layers on top, discovered from that repo's
 | Situation | Reach for |
 |---|---|
 | Starting new functionality | `/tdd-plan` — reviewable plan before code |
+| Red tests committed, implementing to green | `/tdd-lock` — tests mechanically read-only (unlock is journaled: `/tdd-unlock`) |
 | A bug / failing behavior | `/debug` — reproduction loop first, then a pinned regression test |
 | Hardening one function/endpoint | `/edge` — walk the edge-case checklist |
 | Before merging critical logic | `/mutate` — mutation score, the real anti-gaming metric |
@@ -61,16 +62,28 @@ updates** to refresh a vendored repo (idempotent). Having both the user-scope pl
 vendored copy is harmless — Claude Code de-dupes by name.
 
 ## Hook controls
-Enforcement hooks are **warn-first**. Override per hook with env vars:
-`TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_FLAKY`, `_TRIPWIRE` = `warn` (default) | `block` | `off`;
-`TDD_PLAYBOOK_HOOK_MODE` sets the global default; `TDD_PLAYBOOK_NUDGE=off` disables the
-build-intent reminder.
+Two tiers. **Integrity hooks default to `block`** — they defend the documented agent attack
+vectors (see `docs/HACK_CATALOG.md`; the research is unambiguous that warnings don't stop
+test-gaming): `TDD_PLAYBOOK_HOOK_TESTWEAKEN` (and, once locked, `_TESTLOCK`, `_SNAPSHOTGUARD`).
+**Advisory hooks default to `warn`**: `_FLAKY`, `_TRIPWIRE`. Override per hook with
+`warn` | `block` | `off`; `TDD_PLAYBOOK_HOOK_MODE` sets the global default (an explicit global
+overrides per-hook defaults); `TDD_PLAYBOOK_NUDGE=off` disables the build-intent reminder.
 
-## Tests
-The hooks are real logic, calibrated with planted inputs (a planted weakening/flaky pattern
-that slips past a guard is a failure):
+## Tests & calibration
+Everything mechanical is calibrated with planted inputs (a planted violation that slips past
+a check is a failure — §13 applied to ourselves):
 ```bash
-python3 plugins/tdd-playbook/tests/test_hooks.py
+python3 plugins/tdd-playbook/tests/test_hooks.py          # hook guards
+python3 plugins/tdd-playbook/tests/test_with_snapshot.py  # mechanical revert safety
+python3 plugins/tdd-playbook/tests/test_agents.py         # agent/command structural contracts
+python3 plugins/tdd-playbook/tests/test_verify_citations.py
+python3 calibration/test_harness.py                       # the calibration harness itself
+```
+The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must
+catch (`calibration/`, results in `docs/calibration/`):
+```bash
+python3 calibration/run_calibration.py --dry-run   # free validation (CI)
+python3 calibration/run_calibration.py             # weekly, cheap model, hard caps
 ```
 
 ## Layout

@@ -6,9 +6,14 @@ When a turn ends, if the working tree has SOURCE changes but NO test changes, su
 reminder to add the behavioral/regression test and report Tripwire N/N. Warn-first.
 
 Cheap + language-agnostic: uses `git status --porcelain`, classifies paths as test vs
-source, and only fires when source moved alone. Silent when: not a git repo, the Stop is
-already a re-entry (avoid loops), or git is unavailable.
+source, and only fires when source moved alone. When the Stop event carries a
+transcript_path, the check narrows to THE SESSION'S OWN edits (Edit/Write/MultiEdit paths
+mined from the transcript) — so a pre-existing test change elsewhere in the tree no longer
+silences a source-only session. Falls back to whole-tree when no transcript is readable.
+Silent when: not a git repo, the Stop is already a re-entry (avoid loops), or git is
+unavailable.
 """
+import json
 import os
 import subprocess
 import sys
@@ -61,6 +66,39 @@ def classify(paths):
     return src, tests
 
 
+def session_edited_paths(event):
+    """Paths this session actually edited, mined from the transcript. None = unavailable."""
+    tp = event.get("transcript_path")
+    if not tp or not os.path.isfile(tp):
+        return None
+    paths = set()
+    try:
+        with open(tp, errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or '"tool_use"' not in line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except ValueError:
+                    continue
+                stack = [obj]
+                while stack:
+                    cur = stack.pop()
+                    if isinstance(cur, dict):
+                        if (cur.get("type") == "tool_use"
+                                and cur.get("name") in ("Edit", "Write", "MultiEdit")):
+                            fp = (cur.get("input") or {}).get("file_path")
+                            if fp:
+                                paths.add(os.path.abspath(fp))
+                        stack.extend(cur.values())
+                    elif isinstance(cur, list):
+                        stack.extend(cur)
+    except OSError:
+        return None
+    return paths or None
+
+
 def main():
     event = read_event()
     if event.get("stop_hook_active"):  # re-entry guard — never loop
@@ -68,6 +106,12 @@ def main():
     paths = changed_paths()
     if not paths:
         emit(NAME, [])
+    session = session_edited_paths(event)
+    if session is not None:
+        # narrow to what THIS session touched (still gated on the tree actually being dirty)
+        paths = [p for p in paths if os.path.abspath(p) in session]
+        if not paths:
+            emit(NAME, [])
     src, tests = classify(paths)
     if src and not tests:
         sample = ", ".join(os.path.basename(p) for p in src[:4])
