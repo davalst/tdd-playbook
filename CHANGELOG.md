@@ -3,6 +3,67 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.3.0 — 2026-07-08
+
+**The integrity release** — Workstreams 0–2 of the implementation plan
+(`docs/plans/implementation-plan-2026-07.md`): the Playbook now mechanically practices its
+own doctrine, and the two top documented agent attack vectors (edit-the-test, over-mock)
+are constrained by mechanism, not warning.
+
+### Added
+- **`docs/HACK_CATALOG.md`** — the versioned threat model (H1–H6: hardcode outputs ·
+  edit/delete tests · over-mock · assertion-free coverage · harness exploitation ·
+  architectural fakery), seeded from the 2026 research corpus. Guards cite entry IDs;
+  the guard↔entry map makes open gaps diffable; quarterly refresh ritual included.
+- **TEST-LOCK (§1, H2/H5)** — `bin/tdd_lock.py` (lock/unlock/status; unlock REFUSED
+  without a ≥10-char reason; append-only journal read by `/grade`),
+  `test_lock_guard.py` PreToolUse hook (BLOCKS edits to locked tests AND the verifier
+  surface — conftest.py, pytest/jest/vitest configs — while a lock is active), and
+  `/tdd-lock` + `/tdd-unlock` commands. The strongest validated anti-gaming defense
+  (Beck; TDFlow/TDAD) made mechanical.
+- **`bin/with_snapshot.py`** — mechanical revert safety (begin/verify/status; catches
+  un-reverted plants, stray files, content drift, stray stashes). The four tree-touching
+  agents (planted-error-probe, ux-probe-calibrator, mutation-runner, red-first-verifier)
+  now REQUIRE worktree isolation or a begin/verify pair — a clean revert is proven, not
+  narrated.
+- **`overmock_guard.py` (H3, warn)** — flags net-new mocks in test edits (agents over-mock
+  36% vs 26% for humans, MSR 2026); pairs with the new §1 rule: every new mock carries a
+  one-line justification.
+- **`snapshot_guard.py` (H5, block)** — blocks snapshot auto-update invocations
+  (`jest -u`, `--update-snapshots`, `--snapshot-update`, env forms) and direct edits to
+  `.snap`/`__snapshots__` files: snapshot diffs are human review artifacts.
+- **Exit-call detection in the weakening guard (H5)** — `sys.exit`/`os._exit`/
+  `process.exit` added to a test or `conftest.py` (verifier surface now in scope) is
+  caught: exiting early fakes a passing suite (observed in production RL).
+- **Agent calibration harness (`calibration/`)** — a fixture package + 4 planted scenarios
+  (never-red test, unwired deliverable, false negative claim, missing boundary tests)
+  driven headlessly against the real agents with DETERMINISTIC string oracles (no LLM
+  judge); `--dry-run` validates free in CI; results append to `docs/calibration/history.md`.
+  The harness itself is planted-calibrated with a stub binary (it can provably fail).
+- **`tests/test_agents.py`** — structural contracts for all agents/commands (tool
+  sanctions, forced verdict lines, revert-safety blocks, loop-closure lines).
+- **LICENSE: Apache-2.0** (was UNLICENSED) — a universal floor needs a real license.
+
+### Changed
+- **Integrity hooks now default to BLOCK** (`test_weakening_guard`, `test_lock_guard`,
+  `snapshot_guard`); advisory hooks stay warn. Demote per hook
+  (`TDD_PLAYBOOK_HOOK_<NAME>=warn|off`) or globally (`TDD_PLAYBOOK_HOOK_MODE=warn`).
+  Rationale: the 2025–2026 evidence is unambiguous that warnings do not stop test-gaming.
+- **`/edge` `/mutate` `/probe` now close their loops** — each DISPATCHES its adversary
+  agent (edge-case-adversary / planted-error-probe / ux-probe-calibrator) and ends with a
+  mandatory `Loop closed: yes/no — why` line.
+- **`flaky_guard` suppression tightened** — per-category suppressors: a `@pytest.fixture`
+  or unrelated `monkeypatch` in the block no longer silences a wall-clock warning; only
+  real clock control (freeze_time/fake timers/clock monkeypatch) does.
+- **`verify_citations` quote quality** — short (<10 chars) or non-unique quotes are
+  flagged `weak-quote` in the summary (gate unchanged; weak evidence is now visible).
+- **`install_into_repo.py` reconciles instead of appending** — plugin-namespace hook
+  groups are pruned and re-added from the current hooks.json, so removed/renamed hooks no
+  longer accumulate downstream; user hooks outside `.claude/hooks/scripts/` untouched.
+- **Stop-hook reminder is session-aware** — with a readable transcript it narrows to the
+  session's own edits, so a pre-existing test change elsewhere no longer silences a
+  source-only session; falls back to whole-tree.
+
 ## 1.2.1 — 2026-07-07
 
 Two doctrine additions adapted from the Karpathy-inspired CLAUDE.md guidelines

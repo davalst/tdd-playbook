@@ -24,6 +24,7 @@ runner, extra gates, security rules) layers on top, discovered from that repo's
 | Situation | Reach for |
 |---|---|
 | Starting new functionality | `/tdd-plan` — reviewable plan before code |
+| Red tests committed, implementing to green | `/tdd-lock` — tests mechanically read-only (unlock is journaled: `/tdd-unlock`) |
 | A bug / failing behavior | `/debug` — reproduction loop first, then a pinned regression test |
 | Hardening one function/endpoint | `/edge` — walk the edge-case checklist |
 | Before merging critical logic | `/mutate` — mutation score, the real anti-gaming metric |

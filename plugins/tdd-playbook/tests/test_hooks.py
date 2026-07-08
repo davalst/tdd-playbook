@@ -102,6 +102,80 @@ def test_weakening():
     check("weaken: MultiEdit shape handled", rc == 2 and "assertions dropped" in e, (rc, e))
 
 
+def test_weakening_h5_exit_calls():
+    s = "test_weakening_guard.py"
+    tf = "tests/test_pay.py"
+
+    # PLANTED (H5): sys.exit(0) added to a test -> block (fakes a passing suite)
+    rc, _o, e = run(s, edit(tf, "assert ok", "sys.exit(0)\nassert ok"))
+    check("H5: sys.exit added to test is caught", rc == 2 and "exit call" in e.lower(), (rc, e))
+
+    # PLANTED (H5): os._exit added to conftest.py (verifier surface) -> block
+    rc, _o, e = run(s, edit("conftest.py", "pass", "os._exit(0)"))
+    check("H5: os._exit added to conftest is caught", rc == 2 and "exit call" in e.lower(), (rc, e))
+
+    # CLEAN: pre-existing exit call untouched by the edit -> silent
+    rc, _o, e = run(s, edit(tf, "sys.exit(0)\nassert a", "sys.exit(0)\nassert a\nassert b"))
+    check("H5: pre-existing exit call not re-flagged", rc == 0, (rc, e))
+
+
+# ---------------------------------------------------------------------- overmock_guard
+def test_overmock():
+    s = "overmock_guard.py"
+    tf = "tests/test_api.py"
+
+    # PLANTED (H3): net-new mock in a test edit -> warn (advisory tier)
+    rc, _o, e = run(s, edit(tf, "resp = client.get('/x')",
+                            "with mock.patch('api.client.get') as m:\n    resp = m()"))
+    check("H3: net-new mock is flagged (warn)", rc == 1 and "net-new mock" in e, (rc, e))
+
+    # PLANTED (H3): jest.mock in a Write of a new test file -> warn
+    rc, _o, e = run(s, write("src/__tests__/api.test.ts",
+                             "jest.mock('../client');\ntest('x', () => {});"))
+    check("H3: jest.mock in new test file flagged", rc == 1 and "net-new mock" in e, (rc, e))
+
+    # CLEAN: mock count unchanged (refactor around an existing mock) -> silent
+    rc, _o, e = run(s, edit(tf, "m = mock.patch('a')", "m = mock.patch('a')  # moved"))
+    check("H3: unchanged mock count silent", rc == 0, (rc, e))
+
+    # CLEAN: mock REMOVED -> silent (strengthening)
+    rc, _o, e = run(s, edit(tf, "m = mock.patch('a')\nx", "x"))
+    check("H3: removed mock silent", rc == 0, (rc, e))
+
+    # NEGATIVE: non-test file with mocks (a test helper lib) -> ignored
+    rc, _o, _e = run(s, edit("src/factory.py", "x", "m = mock.patch('a')"))
+    check("H3: non-test file ignored", rc == 0, rc)
+
+
+# ---------------------------------------------------------------------- snapshot_guard
+def test_snapshot():
+    s = "snapshot_guard.py"
+
+    def bash(cmd):
+        return {"tool_name": "Bash", "tool_input": {"command": cmd}}
+
+    # PLANTED (H5): snapshot auto-update invocations -> BLOCK
+    for cmd in ("npx jest -u", "vitest run --update-snapshots", "jest --updateSnapshot",
+                "pytest --snapshot-update", "UPDATE_SNAPSHOTS=1 npm test"):
+        rc, _o, e = run(s, bash(cmd))
+        check("H5: '{}' blocked".format(cmd), rc == 2 and "snapshot" in e.lower(), (rc, e))
+
+    # CLEAN: plain test runs untouched
+    for cmd in ("npx jest", "pytest -q", "npm test -- --coverage", "git status -u"):
+        rc, _o, e = run(s, bash(cmd))
+        check("clean: '{}' passes".format(cmd), rc == 0, (rc, e))
+
+    # PLANTED (H5): direct edit of a .snap / __snapshots__ file -> BLOCK
+    rc, _o, e = run(s, edit("src/__snapshots__/App.test.js.snap", "old", "new"))
+    check("H5: __snapshots__ edit blocked", rc == 2 and "re-approval" in e, (rc, e))
+    rc, _o, e = run(s, write("tests/output.snap", "expected"))
+    check("H5: .snap write blocked", rc == 2, (rc, e))
+
+    # CLEAN: ordinary file edit passes
+    rc, _o, e = run(s, edit("src/app.py", "a", "b"))
+    check("clean: ordinary edit passes", rc == 0, (rc, e))
+
+
 # ----------------------------------------------------------------------- flaky_guard
 def test_flaky():
     s = "flaky_guard.py"
@@ -116,6 +190,25 @@ def test_flaky():
     # seeded in the same block -> not flagged
     rc, _o, _e = run(s, edit(tf, "x = 1", "random.seed(0)\nv = random.randint(0, 9)"))
     check("flaky: seeded randomness NOT flagged", rc == 0, _e)
+
+    # REGRESSION (old bug): a mere @pytest.fixture in the block must NOT suppress a
+    # wall-clock warning — a fixture proves nothing about time control
+    rc, _o, e = run(s, edit(tf, "x = 1",
+                            "@pytest.fixture\ndef now_fixture():\n    return datetime.now()"))
+    check("flaky: fixture does not suppress wall-clock", rc == 1 and "wall-clock" in e, (rc, e))
+
+    # a REAL clock control in the same block still suppresses
+    rc, _o, _e = run(s, edit(tf, "x = 1",
+                             "@freeze_time('2026-01-01')\ndef test_t():\n    d = datetime.now()"))
+    check("flaky: freeze_time suppresses wall-clock", rc == 0, _e)
+
+    # monkeypatching the CLOCK suppresses; monkeypatching something else does not
+    rc, _o, _e = run(s, edit(tf, "x = 1",
+                             "monkeypatch.setattr(time, 'time', lambda: 0)\nt = time.time()"))
+    check("flaky: monkeypatched clock suppresses", rc == 0, _e)
+    rc, _o, e = run(s, edit(tf, "x = 1",
+                            "monkeypatch.setattr(api, 'fetch', fake)\nt = time.time()"))
+    check("flaky: unrelated monkeypatch does NOT suppress", rc == 1 and "wall-clock" in e, (rc, e))
 
     rc, _o, e = run(s, edit(tf, "x = 1", "r = requests.get('http://x')"))
     check("flaky: live network is caught", rc == 1 and "network" in e.lower(), (rc, e))
@@ -187,10 +280,43 @@ def test_tripwire_reminder():
         )
         check("tripwire: source+test change silent", p.returncode == 0, (p.returncode, p.stderr))
 
+        # REGRESSION (old bug): tree has BOTH changes, but the TRANSCRIPT shows this
+        # session only edited source — a pre-existing test change elsewhere must no
+        # longer silence the reminder
+        def transcript(paths):
+            tp = os.path.join(d, "transcript.jsonl")
+            with open(tp, "w") as fh:
+                for pth in paths:
+                    fh.write(json.dumps({"type": "assistant", "message": {"content": [
+                        {"type": "tool_use", "name": "Edit",
+                         "input": {"file_path": os.path.join(d, pth)}}]}}) + "\n")
+            return tp
+
+        ev = json.dumps({"transcript_path": transcript(["app.py"])})
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
+                           input=ev, capture_output=True, text=True, cwd=d, env=env, timeout=20)
+        check("tripwire: session-only source edit warns despite unrelated test change",
+              p.returncode == 1 and "no test" in p.stderr.lower(), (p.returncode, p.stderr))
+
+        # transcript shows source+test edited by the session -> silent
+        ev = json.dumps({"transcript_path": transcript(["app.py", "test_app.py"])})
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
+                           input=ev, capture_output=True, text=True, cwd=d, env=env, timeout=20)
+        check("tripwire: session source+test edits silent", p.returncode == 0,
+              (p.returncode, p.stderr))
+
+        # unreadable transcript falls back to whole-tree behavior (silent here: tree has tests)
+        ev = json.dumps({"transcript_path": os.path.join(d, "nope.jsonl")})
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
+                           input=ev, capture_output=True, text=True, cwd=d, env=env, timeout=20)
+        check("tripwire: missing transcript falls back to whole tree", p.returncode == 0,
+              (p.returncode, p.stderr))
+
 
 def main():
     print("TDD Playbook hook calibration")
-    for fn in (test_weakening, test_flaky, test_intent, test_tripwire_reminder):
+    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
+               test_flaky, test_intent, test_tripwire_reminder):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

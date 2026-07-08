@@ -60,8 +60,20 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   write the failing test that reproduces it FIRST, then fix; pin it so it can't silently come back (e.g.
   the Postgres GROUP BY bug → a test that fails on the old query). A regression = any bug in behavior a
   prior test covered, or in a path once known-good. Never skip it or defer it to "later."
+- **TEST-LOCK — make the iron rule mechanical (default for feature/multi-deliverable work):**
+  once the plan's tests are authored, RED for the right reason, and COMMITTED, lock them
+  (`/tdd-lock`) — the `test_lock_guard` hook then BLOCKS edits to the locked tests AND the
+  verifier surface (conftest, test configs) until `/tdd-unlock` with a JOURNALED reason. The
+  strongest validated defense against the documented top agent attack vector (editing the
+  failing test — HACK_CATALOG H2/H5; prompts don't stop it, mechanisms do). Unlock reasons
+  are reviewed by §13's `/grade`; "adjusted test to match output" is the move the lock exists
+  to stop. Snapshots are the same rule (H5): agents NEVER auto-update snapshots
+  (`-u`/`--update-snapshots` is blocked); a snapshot diff is a human review artifact.
+- **Every new mock needs a one-line justification** — what real behavior it stands in for and
+  where that behavior IS tested for real. Over-mocking is the most common agent weakening
+  (H3: agents add mocks ~36% of test commits vs ~26% for humans); the `overmock` guard reminds.
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
-  guarantee of test quality. The guarantee is §3–§4.
+  guarantee of test quality. The guarantee is §3–§4 (+ the TEST-LOCK above).
 
 ## 2. Edge cases — a never-skipped category (`@pytest.mark.edge`)
 Run each deliverable methodically through this checklist; write tests for the ones that genuinely apply:

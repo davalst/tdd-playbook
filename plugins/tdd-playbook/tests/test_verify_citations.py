@@ -88,6 +88,22 @@ def main():
     rc, out = run("We support Python 3.11 and step 3:1 of the plan.", {"src/auth.py": SRC})
     check("non-citation prose not flagged", rc == 0, (rc, out))
 
+    # 11. PLANTED: a tiny fragment quote "verifies" trivially -> flagged weak (gate holds,
+    #     but the weakness is visible; regression: old version printed nothing)
+    rc, out = run('`src/auth.py:3`: "return"', {"src/auth.py": SRC})
+    check("short-fragment quote flagged weak", rc == 0 and "weak-quote 1" in out
+          and "<10 chars" in out, (rc, out))
+
+    # 12. PLANTED: a quote matching many lines is not uniquely identifying -> flagged weak
+    multi = "x = check(u, p)\ny = check(u, p)\nz = check(u, p)\n"
+    rc, out = run('`src/multi.py:2`: "= check(u, p)"', {"src/multi.py": multi})
+    check("non-unique quote flagged weak", rc == 0 and "weak-quote 1" in out
+          and "matches 3 lines" in out, (rc, out))
+
+    # 13. a healthy long unique quote carries no weak flag
+    rc, out = run('`src/auth.py:4`: "return check(u, p)"', {"src/auth.py": SRC})
+    check("long unique quote not flagged", rc == 0 and "weak-quote" not in out, (rc, out))
+
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
 

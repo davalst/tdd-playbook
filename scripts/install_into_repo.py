@@ -71,8 +71,27 @@ def _copy_tree(src: str, dest: str) -> int:
     return n
 
 
+_PLUGIN_NS = "/.claude/hooks/scripts/"  # our vendored namespace — plugin-owned, reconciled
+
+
+def _is_plugin_group(group: dict) -> bool:
+    """A hook group is OURS iff every command in it points into the vendored namespace.
+
+    User hooks that live elsewhere (any other path) are never touched. Anyone vendoring
+    their OWN scripts into .claude/hooks/scripts/ is inside the plugin-owned namespace and
+    will be reconciled — documented behavior; keep custom scripts in another directory.
+    """
+    hooks = group.get("hooks", [])
+    return bool(hooks) and all(_PLUGIN_NS in (h.get("command") or "") for h in hooks)
+
+
 def _merge_hooks(claude_dir: str) -> int:
-    """Merge the plugin's hooks/hooks.json into <repo>/.claude/settings.json (append per event)."""
+    """RECONCILE the plugin's hooks into <repo>/.claude/settings.json.
+
+    Plugin-namespace groups are pruned then re-added from the current hooks.json, so a hook
+    the plugin removed or renamed disappears downstream instead of accumulating as drift.
+    Non-plugin groups are preserved untouched. Idempotent.
+    """
     plugin_hooks_path = os.path.join(PLUGIN, "hooks", "hooks.json")
     if not os.path.isfile(plugin_hooks_path):
         return 0
@@ -86,15 +105,21 @@ def _merge_hooks(claude_dir: str) -> int:
             settings = json.load(fh)
     existing = settings.setdefault("hooks", {})
 
+    # 1) prune every plugin-namespace group from every event bucket (stale or current)
+    for event in list(existing):
+        kept = [g for g in existing[event] if not _is_plugin_group(g)]
+        if kept:
+            existing[event] = kept
+        else:
+            del existing[event]
+
+    # 2) add the CURRENT plugin groups
     added = 0
     for event, groups in plugin_hooks.items():
         bucket = existing.setdefault(event, [])
-        existing_blob = json.dumps(bucket, sort_keys=True)
         for group in groups:
-            # idempotent: don't double-add the same group on re-run
-            if json.dumps(group, sort_keys=True) not in existing_blob:
-                bucket.append(group)
-                added += 1
+            bucket.append(group)
+            added += 1
     # drop the unreliable marketplace path if present — vendored content supersedes it
     settings.pop("extraKnownMarketplaces", None)
     settings.pop("enabledPlugins", None)
