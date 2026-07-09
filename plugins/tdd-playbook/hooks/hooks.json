@@ -1,5 +1,35 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/test_lock_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: test-lock guard"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/snapshot_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: snapshot guard"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/snapshot_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: snapshot guard"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
@@ -15,6 +45,12 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flaky_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: flaky-pattern guard"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/overmock_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: over-mock guard"
           }
         ]
       }

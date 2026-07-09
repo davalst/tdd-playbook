@@ -29,7 +29,14 @@ _PATTERNS = [
     (re.compile(r"\brequests\.\w+\s*\(|\bhttpx\.\w+\s*\(|\burllib\b|\bfetch\s*\(|\baxios\."),
      "live network call in a test — stub the HTTP layer"),
 ]
-_SEED_RE = re.compile(r"seed\s*\(|random_state|@freeze_time|freezegun|monkeypatch|@pytest\.fixture")
+# Per-category suppressors — a suppressor must actually address ITS category. (The old
+# single regex let any `@pytest.fixture`/`monkeypatch` in the block silence a wall-clock
+# warning — a fixture proves nothing about time control.)
+_RAND_SUPPRESS = re.compile(r"seed\s*\(|random_state|\bRandom\s*\(|derandomize")
+_CLOCK_SUPPRESS = re.compile(
+    r"freeze_time|freezegun|FakeClock|fake_clock|frozen_time|mock_time"
+    r"|monkeypatch\.setattr\s*\([^)]*(?:time|datetime|clock)|fakeTimers|useFakeTimers"
+)
 
 
 def analyze(added):
@@ -39,10 +46,11 @@ def analyze(added):
     findings = []
     for rx, msg in _PATTERNS:
         if rx.search(added):
-            # suppress the randomness/clock warning if a seed/freeze appears in the same block
-            if "seed" in msg or "wall-clock" in msg:
-                if _SEED_RE.search(added):
-                    continue
+            # suppress only when the SAME block shows control of that specific category
+            if "randomness" in msg and _RAND_SUPPRESS.search(added):
+                continue
+            if "wall-clock" in msg and _CLOCK_SUPPRESS.search(added):
+                continue
             findings.append(msg)
     return findings
 

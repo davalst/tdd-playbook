@@ -14,10 +14,19 @@ import json
 import os
 import sys
 
-# Global default + per-hook override. All hooks ship as "warn".
+# Global default + per-hook override.
 #   TDD_PLAYBOOK_HOOK_MODE=warn|block         (global default)
 #   TDD_PLAYBOOK_HOOK_<NAME>=warn|block|off   (per-hook, wins over global)
+# Most hooks ship as "warn" (advisory nudges must never wedge a session). INTEGRITY hooks —
+# the ones defending the documented agent attack vectors (HACK_CATALOG H2/H3/H5: weaken the
+# test, lock bypass, snapshot re-approval) — ship as "block": the research is unambiguous
+# that warnings do not stop test-gaming; mechanical constraints do. Demote with the env vars.
 _GLOBAL_ENV = "TDD_PLAYBOOK_HOOK_MODE"
+_DEFAULT_MODES = {
+    "testweaken": "block",
+    "testlock": "block",
+    "snapshotguard": "block",
+}
 
 
 def read_event():
@@ -30,7 +39,11 @@ def read_event():
 
 
 def resolve_mode(name):
-    """Resolve a hook's mode: 'off' | 'warn' | 'block'. Default 'warn'."""
+    """Resolve a hook's mode: 'off' | 'warn' | 'block'.
+
+    Default is per-hook (_DEFAULT_MODES, integrity hooks 'block'), else 'warn'.
+    Precedence: per-hook env > global env > per-hook default > 'warn'.
+    """
     per_hook = os.environ.get("TDD_PLAYBOOK_HOOK_" + name.upper())
     if per_hook:
         val = per_hook.strip().lower()
@@ -39,7 +52,7 @@ def resolve_mode(name):
     glob = os.environ.get(_GLOBAL_ENV, "").strip().lower()
     if glob in ("warn", "block"):
         return glob
-    return "warn"
+    return _DEFAULT_MODES.get(name.lower(), "warn")
 
 
 def emit(name, lines):
@@ -52,8 +65,12 @@ def emit(name, lines):
         sys.exit(0)
     header = "⚠️  TDD Playbook · {}".format(name)
     body = "\n".join("   - " + ln for ln in lines)
-    tail = ("   (warn-only; set TDD_PLAYBOOK_HOOK_{}=off to silence, "
-            "=block to enforce)".format(name.upper()))
+    if mode == "block":
+        tail = ("   (BLOCKING; set TDD_PLAYBOOK_HOOK_{0}=warn to demote or =off to "
+                "silence)".format(name.upper()))
+    else:
+        tail = ("   (warn-only; set TDD_PLAYBOOK_HOOK_{0}=off to silence, "
+                "=block to enforce)".format(name.upper()))
     sys.stderr.write(header + "\n" + body + "\n" + tail + "\n")
     sys.exit(2 if mode == "block" else 1)
 
