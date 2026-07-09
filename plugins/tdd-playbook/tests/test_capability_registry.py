@@ -184,9 +184,27 @@ def test_cli():
               mod.main(["validate", "--base", base]) == 0)
 
 
+def test_own_registry():
+    """Dogfood: THIS repo's own capabilities.json must validate — mechanically, on every
+    suite run, with the REAL current date. A checklist entry saying "run validate before
+    release" is the honor-system seam §10 warns about; this check is the wire. Teeth are
+    intentional: when an integration_debt entry here expires (e.g. the owed first live
+    calibration run), this suite FAILS until the debt is paid, re-dated with a reason, or
+    the capability is parked loudly — same rule as an expired flaky quarantine (§7)."""
+    mod = load_tool()
+    repo_root = os.path.dirname(os.path.dirname(ROOT))
+    path = mod.find_registry(repo_root)
+    check("this repo carries its own capabilities.json", path is not None, repo_root)
+    if path is None:
+        return
+    violations = mod.validate(mod.load_registry(path))  # real today() — expiry has teeth
+    check("own registry validates (expired debt fails this suite BY DESIGN)",
+          violations == [], violations)
+
+
 def main():
     print("capability_registry planted-input calibration")
-    for fn in (test_validate, test_doctor, test_cli):
+    for fn in (test_validate, test_doctor, test_cli, test_own_registry):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))

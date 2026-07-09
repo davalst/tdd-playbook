@@ -110,7 +110,9 @@ Local-machine plugin installs update separately (no prompt needed):
   `calibration/test_harness.py`; scenario sanity: `calibration/run_calibration.py --dry-run`.
 - Release gate before any version bump: all suites green, `hooks.json`/`plugin.json`/
   `marketplace.json` parse, `capability_registry.py validate` passes on this repo's own
-  `capabilities.json` (we eat the §6a dogfood — expired integration debt blocks the release),
+  `capabilities.json` (we eat the §6a dogfood — enforced MECHANICALLY by
+  `test_capability_registry.py::test_own_registry` on every suite run with the real date,
+  so expired integration debt fails the tests, not just the checklist),
   and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
   present, `${CLAUDE_PLUGIN_ROOT}` rewritten).
 - Version bumps update BOTH `plugins/tdd-playbook/.claude-plugin/plugin.json` and
