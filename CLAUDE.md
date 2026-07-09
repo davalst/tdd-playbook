@@ -47,10 +47,11 @@ mechanisms.
    and adds current ones (test_lock_guard, snapshot_guard, overmock_guard). My own
    non-playbook hooks must survive — verify that before committing.
 
-2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, and
-   grade_from_otel.py; confirm .claude/settings.json has the PreToolUse guards; confirm
-   the vendored SKILL.md mentions TEST-LOCK and the decay principle. Then delete the temp
-   clone, commit .claude/ as "chore: refresh vendored TDD Playbook to v<version>", and push.
+2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
+   and capability_registry.py; confirm .claude/settings.json has the PreToolUse guards;
+   confirm the vendored SKILL.md mentions TEST-LOCK, the decay principle, and the ACTIVATED
+   Tripwire leg (§6a wiring liveness). Then delete the temp clone, commit .claude/ as
+   "chore: refresh vendored TDD Playbook to v<version>", and push.
 
 3. ADOPT — these change how you work in this repo from now on:
    - Integrity guards BLOCK by default (test weakening, snapshot auto-updates, exit calls
@@ -58,8 +59,16 @@ mechanisms.
      for a way around it. Demotion is TDD_PLAYBOOK_HOOK_<NAME>=warn, but ask me first.
    - Use /tdd-lock after committing red tests for feature work; unlock only via /tdd-unlock
      with a real journaled reason.
-   - /edge, /mutate, and /probe end by dispatching their adversary agents and must report
-     "Loop closed: yes/no".
+   - /edge, /mutate, /probe — and now /tdd-plan and /integration-audit — end by dispatching
+     their adversary agents and must report "Loop closed: yes/no".
+   - Plans carry an INTEGRATION SURFACE per deliverable (consumes / emits→named consumer /
+     surface parity / reverse sweep / activation) so features never ship as islands; a
+     write-only loop becomes owned, dated integration debt, never a silent deferral.
+   - The Tripwire has FOUR legs now: BUILT + WIRED + ACTIVATED + EXERCISED, with wiring
+     proven through the PRODUCTION composition root (self-assembling fixtures don't count).
+   - Seed capabilities.json (capability_registry.py init) as features land; `validate` joins
+     the release gate and `doctor` prints the dark-feature inventory. When "I built X but
+     never see it running" strikes, run /integration-audit instead of an ad-hoc dig.
    - Every new mock in a test needs a one-line justification.
    - Flaky quarantines need an owner and an expiry date.
 
@@ -77,8 +86,10 @@ Local-machine plugin installs update separately (no prompt needed):
   past a check is a failure). Suites: `plugins/tdd-playbook/tests/test_*.py` +
   `calibration/test_harness.py`; scenario sanity: `calibration/run_calibration.py --dry-run`.
 - Release gate before any version bump: all suites green, `hooks.json`/`plugin.json`/
-  `marketplace.json` parse, and a scratch-repo `install_into_repo.py` run proving cloud
-  parity (new bins + hooks present, `${CLAUDE_PLUGIN_ROOT}` rewritten).
+  `marketplace.json` parse, `capability_registry.py validate` passes on this repo's own
+  `capabilities.json` (we eat the §6a dogfood — expired integration debt blocks the release),
+  and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
+  present, `${CLAUDE_PLUGIN_ROOT}` rewritten).
 - Version bumps update BOTH `plugins/tdd-playbook/.claude-plugin/plugin.json` and
   `.claude-plugin/marketplace.json`, plus CHANGELOG.md.
 - Roadmap context: `docs/plans/implementation-plan-2026-07.md` (WS5 — Stagehand-Python

@@ -3,6 +3,66 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.5.0 — 2026-07-09
+
+**The integration release** — origin: the Cheliped feature-wiring audit (11/11 confirmed
+findings; whole subsystems built well, tested well, and never connected). Root cause, now
+doctrine: *every component shipped tests that wired the component up themselves, and nothing
+continuously asserted the production assembly* — plus the meta-bug that health surfaces
+reporting only on what RAN make dead features invisible by construction. Two principles run
+through everything below: **no wiring claim counts unless proven through the production
+composition root**, and **darkness must be an enumerable state, not an invisible one**.
+(Roadmap note: WS5 was reserved as v1.5.0 in `docs/plans/implementation-plan-2026-07.md`;
+this release was unplanned audit-driven work, so WS5 shifts to v1.6.0.)
+
+### Added
+- **Tripwire ACTIVATED leg (§6, /tripwire)** — deliverables now prove BUILT + WIRED +
+  **ACTIVATED** + EXERCISED. Activated = on in the shipped default config, or off behind a
+  NAMED user-reachable switch; "off with no on-switch" trips RED; a gate depending on another
+  disabled gate must report itself dark, never silently no-op. The largest darkness class in
+  the audit (verify-oracle stack, `missions_enabled`, `target="none"`) passed the old
+  three-leg check.
+- **Production composition root rule (§6, /tripwire)** — the WIRED proof must construct the
+  REAL object graph (actual daemon/app factory, actual per-platform agent build), never a
+  self-assembling test fixture; reachability checks must be SYMMETRIC (registered → reachable
+  AND reachable → registered).
+- **§6a Wiring liveness** — the standing (not per-plan) discipline: the **capability registry**
+  (`capabilities.json`: surfaces, activation default + on-switch, `wired_by` production site,
+  `exercised_by` assembly test, emits → named consumers, integration debt with owner + expiry;
+  the registry only GROWS), the **assembly suite** (`@pytest.mark.assembly`, every CI push),
+  **liveness canaries** (planted event through the production seam, scheduled) + **staleness
+  sweep** (zero runs in N days), and **decide-or-park** (half-built-and-silent is the worst
+  state).
+- **`bin/capability_registry.py`** — stdlib-only mechanical gate for the registry:
+  `validate` (R-DARK dark-with-no-switch · R-WRITE-ONLY emitter-without-consumer · R-DEBT
+  expired/ownerless debt fails · R-DUP · R-SCHEMA, BLOCKING), `doctor` (the dark-feature
+  inventory: built-but-off + on-switch, write-only emitters, debt aging, missing liveness,
+  consumed-but-never-emitted), `init`. Planted-input calibrated in
+  `tests/test_capability_registry.py` (21 checks).
+- **Integration surface in the plan (§0, /tdd-plan)** — per deliverable: *consumes* (stated,
+  never implied) · *emits → named consumer* (write-only loops become owned, dated integration
+  debt) · *surface parity* (divergence stated, not discovered) · *reverse sweep* (existing
+  features that should adopt the new capability) · *activation* (where's the on-switch).
+  Islands are cheapest to catch at plan review.
+- **`integration-adversary` agent** — fresh-context, refute-framed connectedness check of a
+  plan ("assume it builds an island and prove it"): consumes gaps, write-only emitters,
+  surface parity, reverse islands, dark shipping. `/tdd-plan` now closes its loop by
+  dispatching it (`Loop closed:` contract, same teeth as /edge /mutate /probe).
+- **`/integration-audit` command** — the codified "built but is it running?" sweep: enumerate
+  from what SHOULD run (registry, else entry points — a missing registry is Finding #0), hunt
+  the four darkness classes (broken wiring · dark-by-default · surface drift ·
+  old-blind-to-new/write-only loops), §12 claims discipline with runtime probes and a
+  fresh-context `claims-verifier` pass on every trap-category negative, findings ship with
+  OWNER + EXPIRY and a decide-or-park verdict, and each finding names the standing mechanism
+  (registry entry / assembly test / canary) that makes the next audit unnecessary.
+
+### Changed
+- `tests/test_agents.py` — contracts extended: 8 agents, `/tdd-plan` and `/integration-audit`
+  join the loop-closing set, `/tripwire` must carry ACTIVATED + the registry gate + the
+  composition-root rule.
+- SKILL.md frontmatter, README, and the §Markers line (`assembly` added) reflect the new
+  pieces.
+
 ## 1.4.0 — 2026-07-08
 
 **The co-evolution release** — Workstreams 3–4 of the implementation plan: the answer to

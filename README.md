@@ -3,18 +3,20 @@
 A universal test-driven-development / QA workflow for [Claude Code](https://claude.com/claude-code),
 packaged as a plugin so it loads identically on local, web, and mobile. It ships:
 
-- **The doctrine** — an auto-firing `tdd-playbook` skill: reviewable TDD plan → red-first
+- **The doctrine** — an auto-firing `tdd-playbook` skill: reviewable TDD plan (with an
+  integration surface, so features don't ship as islands) → red-first
   behavioral tests → edge-case rigor → property-based + mutation testing → interface-agnostic
   UX journeys → intent-only UX probes (agent-driven, oracle-split, never a gate) → the Tripwire
-  wiring check → determinism/flaky policy → security tests →
+  wiring check (BUILT + WIRED + ACTIVATED + EXERCISED) → wiring liveness (capability registry,
+  assembly suite, darkness doctor) → determinism/flaky policy → security tests →
   a claims discipline for audits → a learning loop. The anti-gaming defense is an OUTCOME
   (mutation score), not a ritual.
 - **Enforcement hooks** (warn-first) — guard against weakened tests, non-deterministic tests,
   and shipping source with no test.
-- **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/edge` `/mutate` `/probe` `/claims` `/grade`.
+- **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade`.
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
-  `edge-case-adversary`, `ux-probe-calibrator`.
+  `edge-case-adversary`, `integration-adversary`, `ux-probe-calibrator`.
 
 It is the universal **floor**: each repo's own stack-specific testing (a different test
 runner, extra gates, security rules) layers on top, discovered from that repo's
@@ -29,7 +31,8 @@ runner, extra gates, security rules) layers on top, discovered from that repo's
 | Hardening one function/endpoint | `/edge` — walk the edge-case checklist |
 | Before merging critical logic | `/mutate` — mutation score, the real anti-gaming metric |
 | Can a first-time user actually do it? | `/probe` — intent-only agent probe; deterministic oracles block, agent signals trend |
-| Finishing a multi-deliverable plan | `/tripwire` — every deliverable BUILT + WIRED + EXERCISED |
+| Finishing a multi-deliverable plan | `/tripwire` — every deliverable BUILT + WIRED + ACTIVATED + EXERCISED |
+| "I built it but never see it running" | `/integration-audit` — sweep for the four darkness classes, adversarially verified |
 | An audit / review / diagnosis | `/claims` — cite-or-refuse, mechanically verified citations |
 | After a sprint / batch of commits | `/grade` — learning-loop retro from telemetry |
 
@@ -77,6 +80,7 @@ python3 plugins/tdd-playbook/tests/test_hooks.py          # hook guards
 python3 plugins/tdd-playbook/tests/test_with_snapshot.py  # mechanical revert safety
 python3 plugins/tdd-playbook/tests/test_agents.py         # agent/command structural contracts
 python3 plugins/tdd-playbook/tests/test_verify_citations.py
+python3 plugins/tdd-playbook/tests/test_capability_registry.py  # wiring-liveness registry (§6a)
 python3 calibration/test_harness.py                       # the calibration harness itself
 ```
 The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must

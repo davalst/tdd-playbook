@@ -1,6 +1,6 @@
 ---
 name: tdd-playbook
-description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED), the integration surface + capability registry + wiring-liveness discipline (assembly suite, darkness doctor, integration audits), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook"; named pieces are the Tripwire, UX journeys, UX probes, edge-case rigor, the TDD plan, the integration surface, the capability registry, the claims discipline, the learning loop.
+description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check, determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook"; named pieces are the Tripwire, UX journeys, UX probes, edge-case rigor, the TDD plan, the claims discipline, the learning loop.
 ---
 
 # The TDD Playbook
@@ -38,21 +38,7 @@ this Playbook keeps composing with it automatically.
 Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not a file). Per deliverable:
 - one-line plain-English description + happy-path behavior;
 - **Edge cases:** bullet list of real-world scenarios (no jargon, e.g. "sign the same meeting twice → no duplicate");
-- **UX tests:** bullet list (what the user does → what they should see);
-- **Integration surface** — islands are cheapest to catch HERE (origin: the Cheliped feature-wiring
-  audit — whole subsystems built well, tested well, and never connected). Four mandatory answers:
-  - *Consumes:* which EXISTING subsystems this plugs into (event bus, memory, config UI, telemetry,
-    hooks). "None" must be stated, never implied.
-  - *Emits → named consumer:* everything this produces names WHO reads it. A write-only loop is not
-    a design; "nobody yet" becomes an integration-debt entry with an OWNER and an EXPIRY (§7's
-    quarantine rules — a loan, not a landfill).
-  - *Surface parity:* which interfaces (web/Telegram/TUI/MCP/CLI) get this behavior. Divergence is
-    STATED at plan time, not discovered by a user later.
-  - *Reverse sweep:* which EXISTING features should now use this new capability. Each hit becomes a
-    deliverable in this plan or a dated debt entry — silent deferral is how old features go blind
-    to new capabilities.
-  Close the plan by dispatching the `integration-adversary` (fresh context, refute-framed: "name
-  what this plan should touch but doesn't"); a confirming reviewer rubber-stamps islands.
+- **UX tests:** bullet list (what the user does → what they should see).
 And ONCE per plan, BEFORE the deliverables — **spec integrity**. Everything downstream (§§1–6)
 rigorously verifies what the PLAN says; a wrong reading of the request here passes every gate. So:
 - **Assumptions stated explicitly.** If the request supports multiple readings, present them and say
@@ -215,23 +201,9 @@ A plan-coverage catch-all tied to THE CURRENT plan's deliverables (re-anchored e
 target the feature). For each deliverable assert it is:
 - **BUILT** — its route/entry/tool is registered; AND
 - **WIRED IN** — a real user entry point references it (UI button / CLI command / MCP tool); AND
-- **ACTIVATED** — its state in the SHIPPED default config: on, or off behind a NAMED, user-reachable
-  switch (UI toggle / wizard step / documented command). "Off with no on-switch" trips RED — built +
-  wired + tested + dark is the largest documented darkness class (Cheliped: the verify-oracle stack,
-  `missions_enabled`, heartbeat `target="none"`). A feature whose gate depends on another DISABLED
-  gate must REPORT itself dark, never silently no-op. Repos with a capability registry (§6a): the
-  deliverable's entry is part of this proof — `capability_registry.py validate` must pass; AND
 - **EXERCISED** — point at a SPECIFIC `file::test_name`; assert (via `ast`) that the test is DEFINED and
   NOT skip-marked (`@pytest.mark.skip`/`skipif` or a module-level `pytestmark` skip). A string-token grep
   only proves a *reference*; a hollow button or a `@skip`'d test must trip the Tripwire.
-- **Prove wiring through the PRODUCTION composition root, not a self-assembling fixture.** The
-  documented root cause of whole-subsystem darkness: every component ships tests that wire the
-  component up THEMSELVES, so it works in a fixture that never exists in production (the handler on
-  a private bus while emitters publish to the global one; adapters nothing starts; an agent
-  advertised a tool its build never attaches). The WIRED proof must construct the REAL object graph
-  — the actual daemon/app factory, the actual per-platform agent build — and reachability checks
-  must be SYMMETRIC: everything registered is reachable in the real build AND everything reachable
-  is registered (a one-direction check passes the inverse bug class forever).
 - **Multi-deliverable plans: classify each deliverable by HOW it can be proven** (forbids a lazy "done"):
   DIFF-VERIFIABLE (a path/line/test you can `[ -f ]` / grep / run right here) → prove it now; CROSS-REPO
   (lands elsewhere) → cite where + how you checked; EXTERNAL-STATE (DB row, deployed endpoint, message
@@ -246,33 +218,6 @@ target the feature). For each deliverable assert it is:
   hollow button/stub to go green. Anchor it to the PLAN, not the implementation.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral
   tests + a one-line wiring check suffice.
-
-## 6a. Wiring liveness — darkness must be enumerable (standing, not per-plan)
-The Tripwire (§6) is a snapshot at build time; wiring ROTS as later work moves seams — §13's decay
-principle applies to wiring itself. And the meta-bug that lets rot hide: health surfaces that report
-only on what RAN make a dead feature indistinguishable from a quiet one ("healthy, no runs recorded
-yet"). Darkness is invisible by construction unless you enumerate from what SHOULD run:
-- **The capability registry (`capabilities.json`)** — small, machine-readable, per repo: each
-  capability's surfaces, activation default + named on-switch, production wiring site (`wired_by`),
-  assembly-level test (`exercised_by`), emitted topics with NAMED consumers, and integration debt
-  (owner + expiry, expired debt FAILS). Corpus rules apply: **it only grows**; registering there is
-  part of a deliverable's WIRED proof. Mechanical gate:
-  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate` (BLOCKING in the release
-  gate) · `… doctor` prints the dark-feature inventory — every built-but-off capability WITH its
-  on-switch, write-only emitters, debt aging. The doctor makes the next archaeology audit unnecessary.
-- **The ASSEMBLY suite (`@pytest.mark.assembly`)** — the standing antidote to self-wired fixtures:
-  build the real production object graph per platform (real daemon factory, real agent build) and
-  assert every ENABLED registry capability is reachable in it, both directions (§6's symmetric rule).
-  Fast and deterministic → runs every CI push, not on a schedule.
-- **Liveness canaries + staleness sweep** — §13's planted-error rule applied to wiring, two layers:
-  ACTIVE — on a schedule, plant a synthetic event through the PRODUCTION seam and assert the consumer
-  processed it (a subscriber-count probe would have caught the dead-bus orchestrator months early);
-  PASSIVE — "registered but zero runs in N days" from telemetry (`liveness.max_quiet_days`). Weekly
-  Routine, like the calibration scoreboard: a diffable line, not an annual dig.
-- **Half-built-and-silent is the WORST state — decide-or-park.** A dormant package, an unactioned
-  review finding, a "we'll wire it later": each gets an owner + expiry (debt entry) or gets parked
-  LOUDLY (removed from the registry with a stated reason). Findings without owners rot; the registry
-  makes the rot expire instead of accumulate.
 
 ## 7. Determinism & flaky tests (zero tolerance)
 - Deterministic by construction: no `sleep`/hard waits (use auto-waiting/polling assertions); full test
@@ -429,7 +374,6 @@ tension, to be revisited as new agent surfaces ship, not a one-off. (Tracking de
 `docs/POST_BUILD_FOLLOWUPS.md` F5.)
 
 ## Markers (register in pytest.ini / equivalent)
-`edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `tripwire` · `assembly` (standing wiring
-suite, §6a) · `flaky` (quarantine). Audit with
+`edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `tripwire` · `flaky` (quarantine). Audit with
 `pytest -m <marker>`. Markers aid navigation
 and audit; a marker COUNT is never a quality metric — §4 (mutation) is.

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "capabilities": [
+    {
+      "id": "integrity-guards",
+      "summary": "PreToolUse hooks that BLOCK test weakening, snapshot auto-updates, and locked-test edits (H2/H3/H5).",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "on"},
+      "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "scripts/install_into_repo.py::_merge_hooks"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_hooks.py", "plugins/tdd-playbook/tests/test_installer.py"],
+      "emits": [{"topic": "hook.block_events", "consumers": ["learning-loop (unlock journal via /grade)"]}],
+      "liveness": {"max_quiet_days": 90, "probe": "calibration/run_calibration.py exercises guards through the real seam"}
+    },
+    {
+      "id": "test-lock",
+      "summary": "Mechanical red-test lock: /tdd-lock makes committed red tests read-only until a journaled /tdd-unlock.",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "off", "switch": "/tdd-lock after committing red tests (doctrine default for feature work)"},
+      "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "plugins/tdd-playbook/commands/tdd-lock.md"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_tdd_lock.py"],
+      "emits": [{"topic": "tdd_lock.journal", "consumers": ["learning-loop (/grade reads unlock reasons)"]}]
+    },
+    {
+      "id": "citation-gate",
+      "summary": "verify_citations.py — mechanical check that findings' file:line citations resolve and quotes match.",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "on"},
+      "wired_by": ["plugins/tdd-playbook/commands/claims.md", "plugins/tdd-playbook/commands/integration-audit.md", "plugins/tdd-playbook/agents/claims-verifier.md"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_verify_citations.py"]
+    },
+    {
+      "id": "capability-registry",
+      "summary": "capability_registry.py — validate/doctor/init over capabilities.json; makes darkness enumerable (§6a).",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "on"},
+      "wired_by": ["plugins/tdd-playbook/commands/tripwire.md", "plugins/tdd-playbook/commands/integration-audit.md", "plugins/tdd-playbook/agents/integration-adversary.md"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_capability_registry.py"]
+    },
+    {
+      "id": "telemetry-grading",
+      "summary": "grade_from_otel.py — /grade's telemetry seam; grades the cycle from tool logs, never self-narration.",
+      "surfaces": ["local"],
+      "activation": {"default": "off", "switch": "enable Claude Code OTel export, then /grade (docs/telemetry.md)"},
+      "wired_by": ["plugins/tdd-playbook/commands/grade.md"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_grade_from_otel.py"]
+    },
+    {
+      "id": "calibration-loop",
+      "summary": "Planted-error calibration of the verification agents on a live model (§13); scoreboard in docs/calibration/.",
+      "surfaces": ["local"],
+      "activation": {"default": "off", "switch": "python3 calibration/run_calibration.py (weekly, David-run or scheduled; --dry-run is CI-only validation)"},
+      "wired_by": ["calibration/run_calibration.py", "calibration/author_plants.py"],
+      "exercised_by": ["calibration/test_harness.py"],
+      "emits": [{"topic": "docs/calibration/history.md", "consumers": ["public scoreboard (WS5)", "v2.0 release gate"]}],
+      "liveness": {"max_quiet_days": 14, "probe": "history.md staleness — CLAUDE.md standing requirement"},
+      "integration_debt": [
+        {
+          "what": "calibration history has never been seeded — first live run still owed; v2.0 is gated on >=1 month of live cadence",
+          "owner": "david",
+          "expires": "2026-07-31"
+        }
+      ]
+    }
+  ]
+}
