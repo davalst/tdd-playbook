@@ -24,9 +24,28 @@ Per deliverable:
   concurrency, failure/rollback, scale, second-order). One-line justification each; no padding.
 - **UX tests** — bullets: what the user does → what they should see, driven through the
   REAL interface (web/Telegram/TUI/MCP/CLI per this repo).
+- **Integration surface** (§0 — islands are cheapest to catch here). Four answers, each grounded
+  in this repo (consult `capabilities.json` if the repo has one):
+  - *Consumes:* which existing subsystems this plugs into — "none" stated, never implied.
+  - *Emits → named consumer:* who READS everything this produces; "nobody yet" becomes an
+    integration-debt entry with an owner + expiry, never a silent write-only loop.
+  - *Surface parity:* which interfaces get the behavior; divergence stated, not discovered.
+  - *Reverse sweep:* which existing features should now use this capability — each hit is a
+    deliverable here or a dated debt entry.
+  - *Activation:* on by default, or off behind a NAMED user-reachable switch (a plan that ships
+    a feature dark with no switch is planning the next audit finding).
 - **Property tests** — name any pure/transform/parse logic worth a Hypothesis-style invariant.
 - **Repo-local extras** — any stack-specific tests this repo requires on top.
 
 End with the proposed **Tripwire deliverable list** (one row per deliverable to verify
-BUILT + WIRED + EXERCISED). This plan is the single upstream spec — stop and let me review
+BUILT + WIRED + ACTIVATED + EXERCISED).
+
+**Close the loop (not optional):** DISPATCH the `integration-adversary` agent on the drafted
+plan — a fresh-context, refute-framed pass that assumes the plan builds an island and tries to
+prove it (the author's integration list is bounded by the same imagination that wrote the plan).
+Fold each gap it names into the plan as a deliverable or an owned debt entry, or explicitly
+reject it with a reason.
+
+Report `Loop closed: yes (integration-adversary dispatched — <its top gap>)` or
+`Loop closed: NO — <why>`. Then stop — this plan is the single upstream spec; let me review
 before writing code.

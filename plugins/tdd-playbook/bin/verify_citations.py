@@ -8,7 +8,7 @@ the finding quotes the line) checks the quote actually matches. Findings whose c
 UNRESOLVED or MISMATCH must be demoted to leads — they cannot carry a severity.
 
 It is language-agnostic and standalone (no dependency on any host repo). It is a fresh
-implementation of the citation-checking idea, not an import of cheliped's citation_doctor.
+implementation of the citation-checking idea, not an import of any repo's private tooling.
 
 CITATION FORMAT it recognizes in the findings doc:
     path/to/file.ext:LINE                      → resolve file + line exists

@@ -65,13 +65,14 @@ AGENT_CONTRACTS = {
     "tripwire-auditor": (False, [r"Recommendation:"]),
     "claims-verifier": (False, [r"Recommendation:"]),
     "edge-case-adversary": (False, [r"Recommendation:"]),
+    "integration-adversary": (False, [r"Recommendation:"]),
     "mutation-runner": (True, []),
     "planted-error-probe": (True, [r"SAFETY NET VERIFIED", r"BLOCKING GAP"]),
     "ux-probe-calibrator": (True, [r"PROBE VERIFIED", r"BLOCKING GAP", r"Recommendation:"]),
 }
 TREE_TOUCHING = {"red-first-verifier", "mutation-runner", "planted-error-probe",
                  "ux-probe-calibrator"}
-LOOP_CLOSING_COMMANDS = {"edge", "mutate", "probe"}
+LOOP_CLOSING_COMMANDS = {"edge", "mutate", "probe", "tdd-plan", "integration-audit"}
 
 
 def test_agents():
@@ -83,7 +84,7 @@ def test_agents():
         with open(os.path.join(AGENTS, fn)) as fh:
             found[name] = fh.read()
 
-    check("all 7 contracted agents exist", set(AGENT_CONTRACTS) == set(found),
+    check("all 8 contracted agents exist", set(AGENT_CONTRACTS) == set(found),
           sorted(set(AGENT_CONTRACTS) ^ set(found)))
 
     for name, text in sorted(found.items()):
@@ -122,6 +123,25 @@ def test_commands():
                   "Loop closed:" in text)
     with open(os.path.join(COMMANDS, "claims.md")) as fh:
         check("/claims: cites the mechanical gate", "verify_citations.py" in fh.read())
+    with open(os.path.join(COMMANDS, "tripwire.md")) as fh:
+        text = fh.read()
+        check("/tripwire: carries the ACTIVATED leg", "ACTIVATED" in text)
+        check("/tripwire: cites the registry gate", "capability_registry.py" in text)
+        check("/tripwire: demands the production composition root",
+              "composition root" in text)
+    with open(os.path.join(COMMANDS, "tdd-plan.md")) as fh:
+        text = fh.read()
+        check("/tdd-plan: carries the Integration surface", "Integration surface" in text)
+        check("/tdd-plan: dispatches the integration-adversary",
+              "integration-adversary" in text)
+    with open(os.path.join(COMMANDS, "integration-audit.md")) as fh:
+        text = fh.read()
+        check("/integration-audit: cites the mechanical citation gate",
+              "verify_citations.py" in text)
+        check("/integration-audit: dispatches the claims-verifier",
+              "claims-verifier" in text)
+        check("/integration-audit: findings carry owner + expiry",
+              "OWNER" in text and "EXPIRY" in text)
 
 
 def test_planted_fixtures():
