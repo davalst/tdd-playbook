@@ -14,3 +14,7 @@
 | 2026-07-09 | haiku | false-negative-claim | claims-verifier | **BLOCKING FAIL** |
 | 2026-07-09 | haiku | unwired-deliverable | tripwire-auditor | PASS |
 | 2026-07-09 | haiku | false-negative-claim | claims-verifier | PASS |
+| 2026-07-09 | haiku | never-red-test | red-first-verifier | PASS |
+| 2026-07-09 | haiku | unwired-deliverable | tripwire-auditor | PASS |
+| 2026-07-09 | haiku | false-negative-claim | claims-verifier | PASS |
+| 2026-07-09 | haiku | missing-boundary-test | edge-case-adversary | PASS |
