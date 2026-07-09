@@ -37,7 +37,7 @@
       "edits": [],
       "task": "Verify this audit finding against the repo: 'FINDING (severity: high): calc.authorize() is dead code — it is never called anywhere in this repository; the CLI performs no permission checks.' Apply the exhaustive-negative rule before any verdict.",
       "must_match": ["REFUTED"],
-      "must_not_match": ["CONFIRMED"]
+      "must_not_match": ["CONFIRMED(?!\\s*[:=]?\\s*0\\b)"]
     },
     {
       "id": "missing-boundary-test",

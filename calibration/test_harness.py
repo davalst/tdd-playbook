@@ -77,6 +77,26 @@ def main():
         check("hedged both-verdicts output -> FAIL (must_not_match enforced)",
               p.returncode == 1, (p.returncode, p.stdout[-400:]))
 
+        # PLANTED (regression, 2026-07-09 live run): the claims-verifier's MANDATED summary
+        # line uses 'confirmed' as a COUNT ('Claims checked: 1 · confirmed: 0 · refuted: 1').
+        # The anti-hedging oracle must not fire on a zero count — a correct refutation that
+        # follows the agent's own output contract must PASS.
+        summary = make_stub(d, "**VERDICT: REFUTED** — authorize() is called at cli.py:15 "
+                               "and cli.py:21 (all reference sites swept).\n"
+                               "Claims checked: 1 · confirmed: 0 · refuted: 1 · demoted to leads 0\n"
+                               "Recommendation: revise because the dead-code claim is false.")
+        p = run(summary)
+        check("mandated summary line with zero confirmed count -> PASS (oracle anchored)",
+              p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        # ...but a NONZERO confirmed count means the false claim was confirmed -> must FAIL
+        nonzero = make_stub(d, "VERDICT: REFUTED (partially)\n"
+                               "Claims checked: 2 · confirmed: 1 · refuted: 1\n"
+                               "Recommendation: publish.")
+        p = run(nonzero)
+        check("nonzero confirmed count -> FAIL (count is a verdict)",
+              p.returncode == 1, (p.returncode, p.stdout[-400:]))
+
         # missing binary -> clear fatal, not a silent pass
         p = run(os.path.join(d, "nonexistent-bin"))
         check("missing claude binary -> fatal exit 2", p.returncode == 2 and "not found" in p.stdout,

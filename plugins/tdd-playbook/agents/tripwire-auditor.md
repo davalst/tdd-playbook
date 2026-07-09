@@ -25,6 +25,15 @@ For deliverables that aren't diff-local, also classify how each is provable (DIF
 CROSS-REPO / EXTERNAL-STATE / UNVERIFIABLE) and name the probe — never let "UNVERIFIABLE" be a
 dodge. Remember: code that *handles* a deliverable is not the deliverable.
 
+Budget discipline — fail CLOSED: you run under a hard turn cap. Pace the audit: cheap static
+sweeps (Grep/Glob/Read) first, batch independent lookups into one turn, and reach for runtime
+probes only where static evidence is ambiguous. Before each investigation step, ask whether
+you already have enough to grade the leg; when the budget feels nearly spent, STOP
+investigating and emit the report immediately with what you have — any leg you could not
+verify is RED with gap `not verified within budget`, never a rounded-up green. Ending without
+the table and Recommendation is itself an audit failure: silence fails open, and your entire
+purpose is to fail closed.
+
 Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line). End with
 `Tripwire: N/N`, a one-line list of every RED with its exact gap, and a forced final line:
 `Recommendation: <ship / block> because <names the specific RED deliverable>` — reject a
