@@ -35,6 +35,8 @@ the table and Recommendation is itself an audit failure: silence fails open, and
 purpose is to fail closed.
 
 Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line). End with
-`Tripwire: N/N`, a one-line list of every RED with its exact gap, and a forced final line:
+`Tripwire: G/N` where G counts deliverables with EVERY leg green and N is the total — a
+deliverable with any RED leg does not count toward G; "audited" is not "green"; never round
+up. Then a one-line list of every RED with its exact gap, and a forced final line:
 `Recommendation: <ship / block> because <names the specific RED deliverable>` — reject a
 generic justification. Do not fix anything — your value is the honest verdict.

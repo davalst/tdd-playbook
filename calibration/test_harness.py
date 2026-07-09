@@ -63,9 +63,12 @@ def main():
         check("wrong verdict -> BLOCKING FAIL (harness can fail)",
               p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
 
-        # an agent that gets it RIGHT must PASS
+        # an agent that gets it RIGHT must PASS. The stub is contract-faithful: it carries
+        # the claims-verifier's MANDATED summary line — the machine-readable channel the
+        # oracle is anchored to (free prose legitimately uses 'confirmed' as an English word).
         right = make_stub(d, "Claim REFUTED: authorize() is called at cli.py:16 and cli.py:22 "
                              "(grep swept every reference site).\n"
+                             "Claims checked: 1 · confirmed 0 · refuted 1 · demoted to leads 0\n"
                              "Recommendation: revise because the negative claim is false.")
         p = run(right)
         check("right verdict -> PASS", p.returncode == 0 and "PASS" in p.stdout,
