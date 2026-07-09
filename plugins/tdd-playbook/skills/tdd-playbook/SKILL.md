@@ -19,8 +19,8 @@ its OWN extra testing on top — a different language/test runner, stack-specifi
 Those are NOT optional add-ons; they are part of "tested" in that repo. So before building or testing in
 any repo, DISCOVER and APPLY that repo's local testing conventions, checking ALL of:
 - the project **`CLAUDE.md` / `AGENTS.md`** — any "Testing", "QA", "Security Rules", or "CI" section
-  (e.g. Cheliped's BadHost `req.scope["path"]` rule, mock-ban gate, `scripts/ci_local.sh`; MemStruct's
-  own stack-specific harness);
+  (e.g. one repo's raw-ASGI request-path rule, another's mock-ban gate or `scripts/ci_local.sh`,
+  a data-layer repo's own stack-specific harness);
 - any project skill under **`.claude/skills/`** whose name or description is about testing for THIS repo
   (convention: a repo addendum named `testing-local` / `tdd-*` auto-fires alongside this Playbook);
 - repo testing docs — **`docs/TESTING*.md`, `CONTRIBUTING.md`**, a `tests/README*`, or the test config
@@ -39,8 +39,9 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
 - one-line plain-English description + happy-path behavior;
 - **Edge cases:** bullet list of real-world scenarios (no jargon, e.g. "sign the same meeting twice → no duplicate");
 - **UX tests:** bullet list (what the user does → what they should see);
-- **Integration surface** — islands are cheapest to catch HERE (origin: the Cheliped feature-wiring
-  audit — whole subsystems built well, tested well, and never connected). Four mandatory answers:
+- **Integration surface** — islands are cheapest to catch HERE (origin: a full-platform feature-wiring
+  audit of a production multi-surface agent system, 2026-07 — whole subsystems built well, tested
+  well, and never connected). Four mandatory answers:
   - *Consumes:* which EXISTING subsystems this plugs into (event bus, memory, config UI, telemetry,
     hooks). "None" must be stated, never implied.
   - *Emits → named consumer:* everything this produces names WHO reads it. A write-only loop is not
@@ -217,8 +218,9 @@ target the feature). For each deliverable assert it is:
 - **WIRED IN** — a real user entry point references it (UI button / CLI command / MCP tool); AND
 - **ACTIVATED** — its state in the SHIPPED default config: on, or off behind a NAMED, user-reachable
   switch (UI toggle / wizard step / documented command). "Off with no on-switch" trips RED — built +
-  wired + tested + dark is the largest documented darkness class (Cheliped: the verify-oracle stack,
-  `missions_enabled`, heartbeat `target="none"`). A feature whose gate depends on another DISABLED
+  wired + tested + dark is the largest documented darkness class (in the origin audit: a whole
+  verify-oracle stack behind a config gate with no switch, a delivery target shipping as "none").
+  A feature whose gate depends on another DISABLED
   gate must REPORT itself dark, never silently no-op. Repos with a capability registry (§6a): the
   deliverable's entry is part of this proof — `capability_registry.py validate` must pass; AND
 - **EXERCISED** — point at a SPECIFIC `file::test_name`; assert (via `ast`) that the test is DEFINED and
@@ -381,7 +383,7 @@ unverified NEGATIVE about a file it never read.)
 - **Report `Claims: N load-bearing · N verified (grep/runtime/cited) · N demoted to leads`** on any
   findings-bearing deliverable (NOT chat turns — a ubiquitous line is wallpaper). Each "verified"
   points at the actual grep/read/probe so the line is auditable against the transcript. Where a
-  mechanical seam exists (e.g. Cheliped's grounding hooks), the SEAM emits the count — a
+  mechanical seam exists (e.g. a repo's own grounding/claims hooks), the SEAM emits the count — a
   self-reported N/N is narration with a colon in it.
 
 ## 13. The learning loop — grade the process, calibrate with planted errors
@@ -419,14 +421,15 @@ visible — never "trust the agent more."
 
 ## Open upgrade — circle back with David (don't silently bake in)
 The Playbook itself evolves. One upgrade is **pending discussion, not yet doctrine**: generalizing the
-"drive the REAL agent in an isolated package and assert on outcomes" harness (cheliped's `localeval`) into
+"drive the REAL agent in an isolated package and assert on outcomes" harness (one production repo's
+local agent-eval rig) into
 a first-class **agent-eval** discipline — likely a new §5b. The load-bearing rule to debate: **deterministic-
 oracle evals are blocking CI gates; LLM-judge evals are tracked trend lines, never hard gates** (§7 zero-flake
 forbids gating on a probabilistic judge; a judge < ~65% human agreement is noise). §5a (UX probes) is the
 mirror image — agents testing UXs vs evals testing agents — and already applies that oracle-split rule. **Proactively raise this
 with David** when agent/LLM-eval work comes up — it's a standing investment in our deterministic-testing
-tension, to be revisited as new agent surfaces ship, not a one-off. (Tracking detail: cheliped
-`docs/POST_BUILD_FOLLOWUPS.md` F5.)
+tension, to be revisited as new agent surfaces ship, not a one-off. (Tracked in the origin repo's
+post-build follow-ups list.)
 
 ## Markers (register in pytest.ini / equivalent)
 `edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `tripwire` · `assembly` (standing wiring

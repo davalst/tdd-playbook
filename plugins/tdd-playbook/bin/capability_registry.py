@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Capability registry — make darkness enumerable (Playbook §6a).
 
-The meta-bug this tool exists for (origin: the Cheliped feature-wiring audit, 2026-07):
+The meta-bug this tool exists for (origin: a full-platform feature-wiring audit of a
+production multi-surface agent system, 2026-07):
 every health surface reported only on things that RAN, so a feature that was built but
 never wired — or wired but gated off — read as "healthy, no runs recorded yet". Dead and
 quiet were indistinguishable. The fix is structural: keep a small machine-readable registry

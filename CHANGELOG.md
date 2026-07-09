@@ -5,9 +5,9 @@ All notable changes to the TDD Playbook plugin. Versions are the plugin `version
 
 ## 1.5.0 — 2026-07-09
 
-**The integration release** — origin: the Cheliped feature-wiring audit (11/11 confirmed
-findings; whole subsystems built well, tested well, and never connected). Root cause, now
-doctrine: *every component shipped tests that wired the component up themselves, and nothing
+**The integration release** — origin: a full-platform feature-wiring audit of a production
+multi-surface agent system (11/11 confirmed findings; whole subsystems built well, tested
+well, and never connected). Root cause, now doctrine: *every component shipped tests that wired the component up themselves, and nothing
 continuously asserted the production assembly* — plus the meta-bug that health surfaces
 reporting only on what RAN make dead features invisible by construction. Two principles run
 through everything below: **no wiring claim counts unless proven through the production
@@ -20,8 +20,8 @@ this release was unplanned audit-driven work, so WS5 shifts to v1.6.0.)
   **ACTIVATED** + EXERCISED. Activated = on in the shipped default config, or off behind a
   NAMED user-reachable switch; "off with no on-switch" trips RED; a gate depending on another
   disabled gate must report itself dark, never silently no-op. The largest darkness class in
-  the audit (verify-oracle stack, `missions_enabled`, `target="none"`) passed the old
-  three-leg check.
+  the origin audit (a whole verify-oracle stack behind a switchless config gate, a delivery
+  target shipping as "none") passed the old three-leg check.
 - **Production composition root rule (§6, /tripwire)** — the WIRED proof must construct the
   REAL object graph (actual daemon/app factory, actual per-platform agent build), never a
   self-assembling test fixture; reachability checks must be SYMMETRIC (registered → reachable

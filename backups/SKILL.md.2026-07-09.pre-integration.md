@@ -19,8 +19,8 @@ its OWN extra testing on top — a different language/test runner, stack-specifi
 Those are NOT optional add-ons; they are part of "tested" in that repo. So before building or testing in
 any repo, DISCOVER and APPLY that repo's local testing conventions, checking ALL of:
 - the project **`CLAUDE.md` / `AGENTS.md`** — any "Testing", "QA", "Security Rules", or "CI" section
-  (e.g. Cheliped's BadHost `req.scope["path"]` rule, mock-ban gate, `scripts/ci_local.sh`; MemStruct's
-  own stack-specific harness);
+  (e.g. one repo's raw-ASGI request-path rule, another's mock-ban gate or `scripts/ci_local.sh`,
+  a data-layer repo's own stack-specific harness);
 - any project skill under **`.claude/skills/`** whose name or description is about testing for THIS repo
   (convention: a repo addendum named `testing-local` / `tdd-*` auto-fires alongside this Playbook);
 - repo testing docs — **`docs/TESTING*.md`, `CONTRIBUTING.md`**, a `tests/README*`, or the test config
@@ -326,7 +326,7 @@ unverified NEGATIVE about a file it never read.)
 - **Report `Claims: N load-bearing · N verified (grep/runtime/cited) · N demoted to leads`** on any
   findings-bearing deliverable (NOT chat turns — a ubiquitous line is wallpaper). Each "verified"
   points at the actual grep/read/probe so the line is auditable against the transcript. Where a
-  mechanical seam exists (e.g. Cheliped's grounding hooks), the SEAM emits the count — a
+  mechanical seam exists (e.g. a repo's own grounding/claims hooks), the SEAM emits the count — a
   self-reported N/N is narration with a colon in it.
 
 ## 13. The learning loop — grade the process, calibrate with planted errors
@@ -364,14 +364,15 @@ visible — never "trust the agent more."
 
 ## Open upgrade — circle back with David (don't silently bake in)
 The Playbook itself evolves. One upgrade is **pending discussion, not yet doctrine**: generalizing the
-"drive the REAL agent in an isolated package and assert on outcomes" harness (cheliped's `localeval`) into
+"drive the REAL agent in an isolated package and assert on outcomes" harness (one production repo's
+local agent-eval rig) into
 a first-class **agent-eval** discipline — likely a new §5b. The load-bearing rule to debate: **deterministic-
 oracle evals are blocking CI gates; LLM-judge evals are tracked trend lines, never hard gates** (§7 zero-flake
 forbids gating on a probabilistic judge; a judge < ~65% human agreement is noise). §5a (UX probes) is the
 mirror image — agents testing UXs vs evals testing agents — and already applies that oracle-split rule. **Proactively raise this
 with David** when agent/LLM-eval work comes up — it's a standing investment in our deterministic-testing
-tension, to be revisited as new agent surfaces ship, not a one-off. (Tracking detail: cheliped
-`docs/POST_BUILD_FOLLOWUPS.md` F5.)
+tension, to be revisited as new agent surfaces ship, not a one-off. (Tracked in the origin repo's
+post-build follow-ups list.)
 
 ## Markers (register in pytest.ini / equivalent)
 `edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `tripwire` · `flaky` (quarantine). Audit with

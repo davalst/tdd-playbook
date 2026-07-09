@@ -22,7 +22,7 @@ gap in THIS repo's real code — cite `file:line`; never invent an abstract "sho
    itself as a gap.
 2. **Hunt the five island patterns** against that inventory:
    - **Consumes gaps** — existing seams (event bus, memory, telemetry, config UI, hooks,
-     one-mouth-style gateways) this feature should plug into but the plan never mentions.
+     single-outbound-delivery gateways) this feature should plug into but the plan never mentions.
    - **Write-only emitters** — anything the plan produces whose CONSUMER is unnamed. "Captured
      from seven places, read by nothing" is the documented growth-loop failure.
    - **Surface parity** — which interfaces (web/Telegram/TUI/MCP/CLI) get the behavior; a

@@ -2,7 +2,7 @@
 """Planted-input calibration for bin/capability_registry.py (Playbook §6a).
 
 Per the release discipline: every mechanical check ships with planted violations that must
-FAIL it. Planted here — each maps to a darkness class from the Cheliped feature-wiring
+FAIL it. Planted here — each maps to a darkness class from the full-platform feature-wiring
 audit that motivated the tool:
   - default=off with no on-switch (dark by construction)          -> R-DARK
   - an emitter with no named consumer (write-only growth loop)    -> R-WRITE-ONLY
@@ -53,21 +53,21 @@ CLEAN = {
             "activation": {"default": "on"},
             "wired_by": ["src/daemon.py::build_daemon"],
             "exercised_by": ["tests/test_assembly.py::test_orchestrator_receives_events"],
-            "emits": [{"topic": "events.intent", "consumers": ["one-mouth"]}],
+            "emits": [{"topic": "events.intent", "consumers": ["delivery-gateway"]}],
             "consumes": ["events.task_done"],
             "liveness": {"max_quiet_days": 30, "probe": "planted-event canary"},
             "integration_debt": [],
         },
         {
-            "id": "one-mouth",
+            "id": "delivery-gateway",
             "summary": "Single outbound delivery gate.",
             "surfaces": ["telegram"],
             "activation": {"default": "off", "switch": "/delivery on (wizard step 3)"},
             "wired_by": ["src/daemon.py::build_daemon"],
-            "exercised_by": ["tests/test_assembly.py::test_one_mouth_reachable"],
+            "exercised_by": ["tests/test_assembly.py::test_delivery_gateway_reachable"],
             "emits": [{"topic": "events.task_done", "consumers": ["orchestrator"]}],
             "integration_debt": [
-                {"what": "route heartbeat escalations through one-mouth",
+                {"what": "route heartbeat escalations through the delivery gateway",
                  "owner": "david", "expires": "2026-09-01"}
             ],
         },
@@ -130,7 +130,7 @@ def test_doctor():
     mod = load_tool()
     report = mod.doctor(CLEAN, today=TODAY)
     check("doctor enumerates the dark feature with its switch",
-          "one-mouth" in report and "/delivery on" in report, report)
+          "delivery-gateway" in report and "/delivery on" in report, report)
     check("doctor lists open debt with owner",
           "route heartbeat escalations" in report and "david" in report, report)
 

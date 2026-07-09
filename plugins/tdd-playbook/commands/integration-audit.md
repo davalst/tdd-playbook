@@ -5,9 +5,9 @@ argument-hint: [scope — default: the whole repo]
 
 Run the **integration audit** on: $ARGUMENTS (default: the whole repo).
 
-This is the codified "built but is it running?" sweep (origin: the Cheliped feature-wiring
-audit — 11/11 confirmed findings, several whole subsystems dark). The deliverable is CLAIMS,
-so §12 governs every line of it.
+This is the codified "built but is it running?" sweep (origin: a full-platform wiring audit
+of a production multi-surface agent system — 11/11 confirmed findings, several whole
+subsystems dark). The deliverable is CLAIMS, so §12 governs every line of it.
 
 **1. Enumerate what SHOULD run — never audit from runtime traces alone** (dead and quiet look
 identical from the run side). Sources, in order: the capability registry
