@@ -20,7 +20,19 @@ and re-verify). Prefer running the pass in a `git worktree` when the tool allows
    mutate the whole repo — scope tightly to avoid mutant explosion. When the caller names a
    DIFF rather than a module, run diff-scoped (Stryker `--incremental`/`--since`, pitest
    history, mutmut on changed files) and report survivors on changed lines only.
-2. Run the pass; collect surviving mutants from the machine-readable output. In
+   **Roster admission check:** if a rostered module lacks a "a survivor here costs ___"
+   justification, or is rendering/presentation code, flag it for PRUNING in your report —
+   critical-only is a rule with teeth, not a vibe.
+   **Vacuity guard (scoped runs):** if the requested scope generates ZERO mutants (typo'd
+   function name, module missing from the tool config), report "refusing a vacuous pass" and
+   stop — never report a green gate over an empty scope. Count the denominator from GENERATED
+   mutants, not the survivors report (a fully-killed scope looks empty there).
+   **Killing-suite visibility:** if the tool uses a dedicated mutation suite (mutmut's
+   `tests_mutation/`), confirm it actually COLLECTS the kill tests you're counting on
+   (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
+2. Run the pass; collect surviving mutants from the machine-readable output, and BATCH the
+   survivor-diff extraction (one pass over the tool's results/cache, not a per-mutant
+   `show` subprocess — per-mutant extraction has taken longer than the mutation run itself). In
    **targeted-mutant mode** (caller names a concern — auth/money/permissions/lifecycle),
    ALSO author 3–5 plausible concern-specific mutants by hand (drop the check, flip the
    rounding, skip the guard) and verify a test kills each; a concern-mutant that survives
@@ -33,6 +45,16 @@ and re-verify). Prefer running the pass in a `git worktree` when the tool allows
    them with a CONSERVATIVE filter (changed line differs by CASE ONLY *and* sits in a SQL
    statement or string-subscript — never exclude a free-text/user-facing string mutation).
    Do NOT chase equivalents — that is performative gaming.
+   An equivalent the filter can't classify goes in the repo's audited **equivalence ledger**:
+   a WRITTEN proof per entry, exact-substitution matching (the changed line must be exactly
+   the documented before→after, so the entry can't swallow a neighboring real mutant), and a
+   can't-overmatch test per entry. Ledger matches by line TEXT, not location — check the line
+   doesn't recur elsewhere in scope first. A growing ledger is a smell: prefer making the
+   code killable.
+   **String survivors are classed by ROLE:** DATA strings (SQL, keys, hash inputs, persisted
+   audit/forensic content) are REAL — kill them. Operator-facing display prose is
+   informational — report it, but NEVER write a verbatim prose-pin test just to kill it
+   (catches no bug, breaks on every wording tweak).
 4. For REAL survivors on critical paths, identify (and if asked, write) the test that kills
    each.
 5. Report **raw %**, **effective % = killed / non-equivalent**, and the **count excluded**,

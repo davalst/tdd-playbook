@@ -9,8 +9,14 @@ The standing way I build and test in every repo. Goal: ship features that are co
 and provably tested — with defenses against the documented AI failure mode of happy-path / weak /
 "corrected-to-pass" tests. The anti-gaming defense is an OUTCOME (mutation score), not a ritual.
 
-Scale ceremony to the work. Trivial/cosmetic change → just do it well (a one-line test note). Feature
-/ multi-deliverable / risky / ambiguous / bug-with-blast-radius → run the full flow below.
+Scale ceremony to the work — in NUMBERS, not vibes (the hooks nudge toward the same table; ceremony
+on sub-threshold turns is a tax, not diligence). Here path-criticality beats line count, both ways:
+- **Trivial / cosmetic / docs-only** → just do it well (a one-line test note).
+- **< ~20 changed lines on non-roster, non-security paths + green targeted tests** → no independent
+  verifier pass, no full Tripwire (§6's one-line wiring check still applies).
+- **Feature / multi-deliverable / risky / ambiguous / bug-with-blast-radius / ANY diff on mutation-
+  roster or security paths** → the full flow below. A 3-line auth change gets full ceremony;
+  salami-slicing a big change into small diffs doesn't dodge it.
 
 ## Repo-specific testing extensions — ALWAYS layer these on top (do this FIRST in each repo)
 This Playbook is the universal FLOOR, not the ceiling. It ships from one canonical plugin so it is
@@ -122,6 +128,13 @@ a generator finds the boundaries I'd never list (research: ~35–50% higher edge
 This is the ungameable check that tests actually catch bugs (100% coverage can assert nothing).
 - Run a mutation pass on CRITICAL modules only (auth, money, permissions, lifecycle, core algorithms) —
   not the whole repo (mutant explosion). Tools: `mutmut`/`cosmic-ray` (Python), `Stryker` (JS/TS).
+- **Roster admission — anti-creep teeth for "critical only":** a module enters the mutation roster
+  ONLY with a one-line justification IN the roster stating "a survivor here costs ___"
+  (an irreversible/security/money/data-integrity/loop-safety consequence). Rendering,
+  presentation, and formatting modules are explicitly OUT — a survivor there is a cosmetic glitch,
+  and the ceremony costs the same as on an audit chain. Re-audit the roster at feature end (origin:
+  doctrine said "critical only" and practice still drifted to 44 rostered modules, 5 of them TUI
+  renderers — the rule is only real when every entry carries its cost line).
 - **Surviving mutants = weak/missing tests.** Triage survivors on critical paths first; add the test that
   kills each. Aim ~80%+ EFFECTIVE mutation score on critical modules.
 - **Equivalent mutants are real and UN-KILLABLE — don't chase them (that's performative gaming).** On
@@ -132,9 +145,40 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   the EFFECTIVE score = killed / non-equivalent; print raw + effective + the count excluded (transparent).
   (Real example: reconcile went 62.8% raw → 67% → 89.7% effective once equivalents were filtered AND
   real `reconcile()` contract tests were added.)
+- **Equivalents the heuristic can't classify go in an audited equivalence ledger**, never into a
+  widened filter. One entry per mutant, with (a) a WRITTEN equivalence proof in the entry itself,
+  (b) EXACT-substitution matching — the changed line must be exactly the documented before→after,
+  so an entry can never swallow a neighboring real mutant — and (c) its own can't-overmatch test
+  asserting a nearby DIFFERENT mutation is still kept. Ledger entries match by line TEXT, not
+  location: before adding one, check the same line doesn't recur elsewhere in scope. Keep the
+  ledger SHORT — a growing ledger is a smell that the code should be made killable instead.
+- **String mutants are classed by ROLE, never chased uniformly:** logic and DATA strings (SQL,
+  dict/subscript keys, hash-domain inputs, PERSISTED audit/forensic content) stay zero-survivor —
+  a mutation there is a real bug. Operator-facing DISPLAY prose (status lines, refusal sentences,
+  log copy) is an informational/floor class, NEVER resolved by pinning the prose verbatim in a
+  test: a verbatim pin kills the mutant, catches no bug, and breaks on every wording tweak —
+  Goodhart pressure the gate design itself generates (origin: a zero-survivor gate downstream
+  forced exact-copy-text assertions; the fix is the class, not the pin).
 - **Gate it (close the loop):** a small script parses the tool's machine-readable stats, prints
   `Mutation: N%`, and FAILS under a no-regression FLOOR — BLOCKING in CI. Raise the floor as genuine
   survivors are killed; never lower it. Report-only mutation that nobody must act on is theater.
+- **When a critical file mixes eras, scope the gate by FUNCTION (two-tier policy):** new/core work
+  gates at ZERO real survivors on its NAMED functions (nothing to lower); pre-Playbook debt paths in
+  the same file are named as tracked debt next to the roster entry, with an instruction not to widen
+  the gated list until their survivors die. A whole-file floor either flatters the debt or lets the
+  debt dilute the new floor — function-scoped gating keeps the strong floor undiluted and the debt
+  visible.
+- **Every scoped gate needs a VACUITY GUARD:** a scope pattern matching ZERO generated mutants
+  (typo'd function name, module dropped from the tool config) must FAIL LOUDLY ("refusing a
+  vacuous pass"), never read as green — a gate that can pass by testing nothing is the one gaming
+  vector scope-based gating opens. Count the denominator from mutants the tool GENERATED, not from
+  its survivors/problems report: a fully-killed scope looks empty there, and a naive guard would
+  fail a perfect run.
+- **Verify the gate's KILLING SUITE actually collects your kill tests.** Tools with a dedicated
+  mutation suite (e.g. mutmut's `tests_mutation/`) never see kill tests written in the normal
+  suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
+  the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
+  shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
 - **Diff-scoped on PRs; full pass at feature completion.** The full critical-module pass stays at
   feature completion, but substantive changes to critical modules get a DIFF-SCOPED run in review
   (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a handful of
@@ -359,6 +403,13 @@ manual policy means he could forget and lose the backstop. So, proactively and w
 - Optional belt-and-suspenders: a Stop hook in `settings.json` can make a local WIP checkpoint commit
   when a turn ends with uncommitted changes (forget-proof local backstop; squash later). Offer it; the
   semantic "phase boundary" itself can't be hook-detected, so the habit above is the primary mechanism.
+- **Auto-checkpoints must be CONCURRENCY-AWARE** (origin: an auto-checkpoint twice swept a mutation
+  runner's transient `pyproject` edit into unrelated wip commits, costing untangle-and-squash work):
+  skip the checkpoint when another session or a subagent holds the tree mid-operation; exclude tool
+  transients (mutation-tool source copies, generated `mutants/` dirs, lockfile churn); tag wip
+  commits with a session id so concurrent sessions stop absorbing each other's work. Better still,
+  run slow tree-mutating passes (mutation testing) in an isolated worktree so their transients never
+  touch the main tree at all.
 
 ## 12. Analysis & audit discipline — claims are code
 For audit / review / diagnosis / "investigate X" work the deliverable is CLAIMS, and the same

@@ -10,6 +10,10 @@ nothing). Steps:
 1. Pick the right tool for this repo's stack (`mutmut`/`cosmic-ray` for Python,
    `Stryker` for JS/TS, etc.). Scope to the named critical modules only — never the whole
    repo (mutant explosion). Critical = auth, money, permissions, lifecycle, core algorithms.
+   **Roster admission:** every rostered module needs its one-line "a survivor here costs ___"
+   justification; rendering/presentation modules are out — flag unjustified entries for
+   pruning instead of paying ceremony on them. **Scoped runs need the vacuity guard:** a
+   scope matching zero generated mutants fails loudly ("refusing a vacuous pass"), never green.
    **Reviewing a diff rather than finishing a feature? Run DIFF-SCOPED** (Stryker
    `--incremental`/`--since origin/main`, pitest history, mutmut on the changed files) and
    surface survivors on the changed lines only. **For a concern-critical change** (auth,
@@ -20,7 +24,11 @@ nothing). Steps:
 3. **Triage survivors:** for each, decide real-vs-equivalent. Equivalent mutants (e.g. SQL
    keyword case that SQLite treats identically, string-subscript case) are UN-KILLABLE —
    exclude them with a conservative case-only-in-SQL/subscript filter; do NOT chase them
-   (that's gaming). For REAL survivors, write the test that kills each.
+   (that's gaming). Equivalents the filter can't classify → the audited equivalence ledger
+   (written proof + exact-substitution match + can't-overmatch test per entry; keep it short).
+   **Class string survivors by role:** DATA strings (SQL/keys/hash inputs/persisted content)
+   are real — kill them; operator-facing display prose is informational — never resolve it by
+   pinning the prose verbatim in a test. For REAL survivors, write the test that kills each.
 4. Report **raw %**, **effective % (killed / non-equivalent)**, and the count excluded —
    transparently. Aim ~80%+ effective on critical modules. If this repo has a mutation
    floor/gate, ensure it still passes and never lower it.

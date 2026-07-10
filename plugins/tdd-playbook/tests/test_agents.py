@@ -170,9 +170,50 @@ def test_planted_fixtures():
           and frontmatter(good) is not None)
 
 
+def test_v16_doctrine():
+    """v1.6 anti-tax + gate-quality doctrine must stay present (SKILL, agent, command).
+
+    Origin: downstream ROI telemetry (cheliped) — roster creep to 44 modules, prose-pinning
+    forced by zero-survivor gates, duplicate hook firing. These pins keep the counter-rules
+    from silently regressing out of the doctrine."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §4: roster admission rule (survivor-cost line)", "a survivor here costs"),
+        ("SKILL §4: rendering/presentation excluded from roster", "explicitly OUT"),
+        ("SKILL §4: string mutants classed by role", "classed by ROLE"),
+        ("SKILL §4: prose-pinning named as anti-pattern", "pinning the prose"),
+        ("SKILL §4: function-scoped two-tier gating", "function-scoped"),
+        ("SKILL §4: vacuity guard on scoped gates", "vacuous pass"),
+        ("SKILL §4: audited equivalence ledger", "equivalence ledger"),
+        ("SKILL §4: killing-suite visibility check", "killing suite"),
+        ("SKILL §0: numeric ceremony thresholds", "path-criticality"),
+        ("SKILL §11: checkpoint transient exclusions", "transient"),
+        ("SKILL §11: subagent/session-aware checkpoints", "holds the tree"),
+        ("SKILL §11: mutation runs isolated from the tree", "isolated worktree"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        agent = fh.read()
+    check("mutation-runner: refuses vacuous scoped pass", "vacuous" in agent)
+    check("mutation-runner: audited equivalence ledger path", "equivalence ledger" in agent)
+    check("mutation-runner: exact-substitution ledger matching",
+          "exact-substitution" in agent)
+    check("mutation-runner: batched survivor extraction", "batch" in agent.lower())
+
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        cmd = fh.read()
+    check("/mutate: vacuity guard demanded", "vacuous" in cmd)
+    check("/mutate: ledger with written proof", "ledger" in cmd)
+    check("/mutate: roster admission enforced", "a survivor here costs" in cmd)
+    check("/mutate: string-role classes carried", "prose" in cmd)
+
+
 def main():
     print("Agent/command structural calibration")
-    for fn in (test_agents, test_commands, test_planted_fixtures):
+    for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
