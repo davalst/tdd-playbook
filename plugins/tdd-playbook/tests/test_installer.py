@@ -88,8 +88,62 @@ def main():
         check("re-run is idempotent (no duplicates)", before == after,
               (len(before), len(after)))
 
+    test_doctor()
+
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
+
+
+def test_doctor():
+    """--doctor: version-skew between canonical plugin, vendored copy, and plugin cache
+    must be LOUD (origin: a live setup silently ran v1.1.0 plugin hooks alongside v1.5-era
+    vendored hooks — duplicate, version-skewed enforcement for weeks)."""
+    print("\n[doctor version-skew]")
+    mod = load_installer()
+    with open(os.path.join(REPO, "plugins", "tdd-playbook", ".claude-plugin",
+                           "plugin.json")) as fh:
+        canonical = json.load(fh)["version"]
+
+    with tempfile.TemporaryDirectory() as target, tempfile.TemporaryDirectory() as cache:
+        os.environ["TDD_PLAYBOOK_PLUGIN_CACHE"] = cache
+        try:
+            # vendor writes the version stamp
+            mod.main([target])
+            stamp = os.path.join(target, ".claude", ".tdd-playbook-version")
+            check("vendor writes version stamp", os.path.isfile(stamp), stamp)
+            with open(stamp) as fh:
+                check("stamp carries the canonical version",
+                      fh.read().strip() == canonical, canonical)
+
+            # matching cache + fresh vendor -> clean bill
+            vdir = os.path.join(cache, "some-marketplace", "tdd-playbook", canonical)
+            os.makedirs(vdir)
+            check("doctor clean -> exit 0", mod.main(["--doctor", target]) == 0)
+
+            # PLANTED: stale vendored stamp -> doctor fails loudly
+            with open(stamp, "w") as fh:
+                fh.write("0.0.1\n")
+            check("doctor catches VENDORED skew (exit 1)",
+                  mod.main(["--doctor", target]) == 1)
+            with open(stamp, "w") as fh:
+                fh.write(canonical + "\n")
+
+            # PLANTED: stale plugin cache (canonical version absent) -> doctor fails loudly
+            os.rename(vdir, os.path.join(cache, "some-marketplace", "tdd-playbook", "0.9.0"))
+            check("doctor catches PLUGIN CACHE skew (exit 1)",
+                  mod.main(["--doctor", target]) == 1)
+
+            # no cache at all (cloud sandbox) -> informational, not a failure
+            os.environ["TDD_PLAYBOOK_PLUGIN_CACHE"] = os.path.join(cache, "empty-nope")
+            check("doctor with no plugin cache -> exit 0 (vendored-only surface)",
+                  mod.main(["--doctor", target]) == 0)
+
+            # non-vendored repo -> informational, not a failure
+            with tempfile.TemporaryDirectory() as bare:
+                check("doctor on non-vendored repo -> exit 0",
+                      mod.main(["--doctor", bare]) == 0)
+        finally:
+            os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
 
 
 if __name__ == "__main__":

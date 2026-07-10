@@ -55,11 +55,27 @@
       "liveness": {"max_quiet_days": 14, "probe": "history.md staleness — CLAUDE.md standing requirement"},
       "integration_debt": [
         {
-          "what": "calibration history has never been seeded — first live run still owed; v2.0 is gated on >=1 month of live cadence",
+          "what": "first live run landed 2026-07-10 (4/4 after two fix rounds); v2.0 remains gated on >=1 month of sustained live cadence",
           "owner": "david",
-          "expires": "2026-07-31"
+          "expires": "2026-08-10"
         }
       ]
+    },
+    {
+      "id": "nudge-anti-tax",
+      "summary": "intent_nudge sentinel dedupe + per-session damping + meta-question exclusion — one reminder per working stretch on any install topology, never two per message.",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "on"},
+      "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "scripts/install_into_repo.py::_merge_hooks"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_hooks.py"]
+    },
+    {
+      "id": "install-doctor",
+      "summary": "install_into_repo.py --doctor — loud version-skew check across canonical plugin, vendored copy, and plugin cache (stale-hook outages become visible).",
+      "surfaces": ["local"],
+      "activation": {"default": "off", "switch": "python3 scripts/install_into_repo.py --doctor <repo> (run after any plugin release; vendor stamps are written automatically)"},
+      "wired_by": ["scripts/install_into_repo.py::doctor"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_installer.py"]
     }
   ]
 }

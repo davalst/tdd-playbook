@@ -105,6 +105,27 @@ def main():
         check("missing claude binary -> fatal exit 2", p.returncode == 2 and "not found" in p.stdout,
               (p.returncode, p.stdout))
 
+        # ---- planted vacuity (v1.6): a scoped gate over an EMPTY scope must never read green
+        def run_vac(claude_bin):
+            return subprocess.run(
+                [sys.executable, RUNNER, "--scenario", "vacuous-mutation-scope",
+                 "--claude-bin", claude_bin, "--history", ""],
+                capture_output=True, text=True, timeout=300,
+            )
+
+        vac_wrong = make_stub(d, "Module gate calc:apply_discuont — 0 real survivors, "
+                                 "0 equivalent excluded. Gate passes.")
+        p = run_vac(vac_wrong)
+        check("vacuous scope reported green -> BLOCKING FAIL",
+              p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        vac_right = make_stub(d, "Scope generated ZERO mutants: `apply_discuont` does not exist "
+                                 "in calc.py (typo of apply_discount). Refusing a vacuous pass.\n"
+                                 "Recommendation: fix the roster spec, then re-run the gate.")
+        p = run_vac(vac_right)
+        check("vacuity refusal -> PASS", p.returncode == 0 and "PASS" in p.stdout,
+              (p.returncode, p.stdout[-400:]))
+
     test_author_plants()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

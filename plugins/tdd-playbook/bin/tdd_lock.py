@@ -25,7 +25,9 @@ import sys
 
 
 def project_root():
-    return os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    # realpath: getcwd() resolves symlinks while CLAUDE_PROJECT_DIR may not
+    # (macOS /var -> /private/var), and mismatched roots produce garbage relpath keys
+    return os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
 
 
 def lock_path(root):
@@ -57,7 +59,7 @@ def cmd_lock(args):
     root = project_root()
     files = {}
     for f in args.files:
-        ap = os.path.abspath(f)
+        ap = os.path.realpath(os.path.abspath(f))
         if not os.path.isfile(ap):
             sys.stderr.write("tdd_lock: no such file: {}\n".format(f))
             return 2

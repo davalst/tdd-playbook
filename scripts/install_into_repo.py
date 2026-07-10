@@ -10,10 +10,18 @@ repo's .claude/settings.json without clobbering existing hooks.
 
 Usage:
     python3 scripts/install_into_repo.py [TARGET_REPO]   # default: current directory
+    python3 scripts/install_into_repo.py --doctor [TARGET_REPO]   # version-skew check
 Then:  git -C TARGET_REPO add .claude && git commit && git push   # → loads in cloud
 
 Re-run any time to refresh a repo after the canonical plugin updates (it overwrites the vendored
 copies; your repo-specific hooks in settings.json are preserved).
+
+--doctor compares three versions that silently drift apart: the CANONICAL plugin (this checkout),
+the repo's VENDORED copy (stamped at vendor time in .claude/.tdd-playbook-version), and the locally
+INSTALLED plugin cache (~/.claude/plugins/cache). Origin: a live setup ran v1.1.0 plugin hooks
+alongside v1.5-era vendored hooks for weeks — duplicate, version-skewed enforcement nobody could
+see. Skew exits 1 with the fix to run; missing surfaces (no cache in a cloud sandbox, repo not
+vendored) are informational, not failures.
 """
 from __future__ import annotations
 
@@ -130,8 +138,68 @@ def _merge_hooks(claude_dir: str) -> int:
     return added
 
 
+_STAMP_REL = os.path.join(".claude", ".tdd-playbook-version")
+
+
+def _canonical_version() -> str:
+    with open(os.path.join(PLUGIN, ".claude-plugin", "plugin.json")) as fh:
+        return json.load(fh)["version"]
+
+
+def _cache_versions() -> list[str] | None:
+    """Installed plugin-cache versions of tdd-playbook, or None when no cache exists
+    (e.g. a cloud sandbox — vendored-only surface, nothing to compare)."""
+    root = os.environ.get("TDD_PLAYBOOK_PLUGIN_CACHE") or os.path.expanduser(
+        "~/.claude/plugins/cache")
+    if not os.path.isdir(root):
+        return None
+    versions = []
+    for marketplace in os.listdir(root):
+        vdir = os.path.join(root, marketplace, "tdd-playbook")
+        if os.path.isdir(vdir):
+            versions.extend(v for v in os.listdir(vdir)
+                            if os.path.isdir(os.path.join(vdir, v)))
+    return versions or None
+
+
+def doctor(target: str) -> int:
+    """Version-skew check across canonical / vendored / plugin cache. 1 = skew found."""
+    canonical = _canonical_version()
+    rc = 0
+    print(f"canonical plugin version: {canonical}")
+
+    stamp = os.path.join(target, _STAMP_REL)
+    if not os.path.isfile(stamp):
+        print(f"vendored copy: none in {target} (fine if this repo is plugin-only; "
+              "run install_into_repo.py to vendor for cloud)")
+    else:
+        with open(stamp) as fh:
+            vendored = fh.read().strip()
+        if vendored == canonical:
+            print(f"vendored copy: {vendored} — in sync")
+        else:
+            print(f"VENDORED SKEW: repo has {vendored}, canonical is {canonical} — "
+                  f"re-run: python3 scripts/install_into_repo.py {target}")
+            rc = 1
+
+    cache = _cache_versions()
+    if cache is None:
+        print("plugin cache: none found (vendored-only surface — nothing to compare)")
+    elif canonical in cache:
+        print(f"plugin cache: {sorted(cache)} — includes canonical")
+    else:
+        print(f"PLUGIN CACHE SKEW: installed {sorted(cache)}, canonical is {canonical} — "
+              "update the plugin (claude /plugin → update tdd-playbook, or refresh the "
+              "marketplace) so live sessions stop running stale hooks")
+        rc = 1
+    return rc
+
+
 def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
+    if argv and argv[0] == "--doctor":
+        target = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
+        return doctor(target)
     target = os.path.abspath(argv[0]) if argv else os.getcwd()
     if not os.path.isdir(target):
         sys.stderr.write(f"target repo not found: {target}\n")
@@ -148,6 +216,8 @@ def main(argv=None) -> int:
         if os.path.isdir(src):
             total += _copy_tree(src, os.path.join(claude_dir, dest_rel))
     hooks_added = _merge_hooks(claude_dir)
+    with open(os.path.join(target, _STAMP_REL), "w") as fh:
+        fh.write(_canonical_version() + "\n")
 
     print(f"Vendored {total} file(s) into {claude_dir}")
     print(f"Merged {hooks_added} hook group(s) into .claude/settings.json "

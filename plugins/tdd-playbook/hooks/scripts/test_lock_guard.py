@@ -45,8 +45,9 @@ def active_lock(root):
 def findings_for(path, lock, root):
     if not path:
         return []
-    ap = os.path.abspath(path if os.path.isabs(path) else os.path.join(root, path))
-    rel = os.path.relpath(ap, root)
+    # realpath both sides — see tdd_lock.project_root (macOS /var symlink)
+    ap = os.path.realpath(path if os.path.isabs(path) else os.path.join(root, path))
+    rel = os.path.relpath(ap, os.path.realpath(root))
     base = os.path.basename(ap)
     if rel in lock.get("files", {}):
         return [

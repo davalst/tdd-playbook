@@ -3,6 +3,63 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.6.0 — 2026-07-10
+
+**The ROI release** — origin: downstream telemetry from a production repo (cheliped) showed
+the Playbook's own drift modes: the TDD reminder firing TWICE per message (plugin + vendored
+registration, version-skewed for weeks), a mutation roster crept to 44 modules against a
+"critical only" doctrine, zero-survivor gates forcing verbatim prose-pin tests, and
+auto-checkpoints entangling a mutation runner's transients. Same release adopts the
+gate-quality patterns that repo built on its tamper-evident audit chain. Theme: **the honest
+path must also be the cheap path — ceremony that outlives its justification is a tax, and
+scoped gates need anti-vacuity teeth.**
+
+### Added
+- **§4 roster admission rule** — a module enters the mutation roster only with a one-line
+  "a survivor here costs ___" justification (irreversible/security/money/data-integrity/
+  loop-safety); rendering/presentation modules explicitly OUT; re-audit at feature end.
+- **§4 string-mutant role classes** — DATA strings (SQL, keys, hash inputs, persisted
+  audit/forensic content) stay zero-survivor; operator-facing DISPLAY prose is an
+  informational class, never resolved by verbatim prose-pinning (named anti-pattern).
+- **§4 function-scoped two-tier gating** — new/core work gates at zero real survivors on
+  named functions; same-file pre-Playbook debt is tracked visibly, never diluted into or
+  flattered by a whole-file floor.
+- **§4 vacuity guard** — any scoped gate must fail loudly on a scope matching zero
+  GENERATED mutants ("refusing a vacuous pass"); denominator from generated mutants, not
+  the survivors report (a fully-killed scope looks empty there).
+- **§4 audited equivalence ledger** — for equivalents the conservative filter can't
+  classify: written proof per entry, exact-substitution matching, a can't-overmatch test
+  per entry, text-not-location caution, keep-it-short smell rule.
+- **§4 killing-suite visibility** — dedicated-suite tools (mutmut `tests_mutation/`) must
+  provably collect the kill tests (shim/star-import + mechanical collision check).
+- **§0 numeric ceremony thresholds** — path-criticality beats line count both ways;
+  <~20 lines on non-roster/non-security paths + green targeted tests skips the independent
+  verifier and full Tripwire; any roster/security diff gets full ceremony.
+- **§11 concurrency-aware auto-checkpoints** — skip when a subagent holds the tree, exclude
+  tool transients, session-id-tagged wip commits, mutation passes in an isolated worktree.
+- **`intent_nudge` anti-tax rework** — runtime O_EXCL sentinel collapses duplicate
+  registrations (plugin + vendored) to one reminder on any install topology; per-session
+  time damping (default 30 min, `TDD_PLAYBOOK_NUDGE_INTERVAL`, `0`=off); meta-question
+  exclusion ("should we…", "what do you think…"); all state fails OPEN.
+- **`install_into_repo.py --doctor`** — loud version-skew check across canonical plugin,
+  vendored copy (now stamped in `.claude/.tdd-playbook-version`), and the local plugin
+  cache; skew exits 1 with the exact fix to run.
+- **Calibration: `vacuous-mutation-scope` scenario** — a scoped gate whose scope matches
+  nothing must be refused; harness stubs prove both directions deterministically.
+- **20 structural doctrine pins** (`test_agents.py::test_v16_doctrine`) so the anti-tax
+  rules can't silently regress out of SKILL.md / mutation-runner / /mutate.
+
+### Fixed
+- **`build_completion_reminder` macOS path bug** — session-edited-path intersection used
+  `abspath` while macOS tempdirs resolve through `/var → /private/var`, silently emptying
+  the intersection; the planted "source-only session" test slipped past on macOS. Now
+  `realpath` on both sides.
+- **TEST-LOCK dead on macOS symlinked project dirs (same class, worse consequence)** —
+  `tdd_lock.py` keyed locks off `getcwd()` (always real) against a `CLAUDE_PROJECT_DIR`
+  root (possibly symlinked), producing garbage relpath keys the guard could never match:
+  the H2 blocking guard silently never fired. `realpath` on both sides in `tdd_lock.py`
+  and `test_lock_guard.py`; the planted H2 tests (previously red on macOS) now block.
+
 ## 1.5.0 — 2026-07-09
 
 **The integration release** — origin: a full-platform feature-wiring audit of a production
