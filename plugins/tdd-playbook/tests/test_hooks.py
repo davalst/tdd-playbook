@@ -226,19 +226,80 @@ def test_flaky():
 def test_intent():
     s = "intent_nudge.py"
 
-    rc, o, _e = run(s, {"prompt": "fix the off-by-one bug in the pager"})
-    ok = rc == 0 and '"additionalContext"' in o and "TDD Playbook" in o
-    check("intent: build/fix prompt injects reminder", ok, (rc, o))
+    def fired(o):
+        return '"additionalContext"' in o and "TDD Playbook" in o
 
-    rc, o, _e = run(s, {"prompt": "thanks!"})
-    check("intent: trivial prompt -> no injection", rc == 0 and o.strip() == "", (rc, o))
+    with tempfile.TemporaryDirectory() as sd:
+        def go(prompt, sid, extra=None):
+            env = {"TDD_PLAYBOOK_NUDGE_STATE_DIR": sd}
+            env.update(extra or {})
+            ev = {"prompt": prompt}
+            if sid is not None:
+                ev["session_id"] = sid
+            return run(s, ev, env)
 
-    rc, o, _e = run(s, {"prompt": "use the TDD Playbook to build the parser"})
-    check("intent: already-invoked prompt -> no double", rc == 0 and o.strip() == "", (rc, o))
+        rc, o, _e = go("fix the off-by-one bug in the pager", "s1")
+        check("intent: build/fix prompt injects reminder", rc == 0 and fired(o), (rc, o))
 
-    rc, o, _e = run(s, {"prompt": "implement the new billing feature"},
-                    {"TDD_PLAYBOOK_NUDGE": "off"})
-    check("intent: NUDGE=off silences", rc == 0 and o.strip() == "", (rc, o))
+        rc, o, _e = go("thanks!", "s1")
+        check("intent: trivial prompt -> no injection", rc == 0 and o.strip() == "", (rc, o))
+
+        rc, o, _e = go("use the TDD Playbook to build the parser", "s-alone")
+        check("intent: already-invoked prompt -> no double", rc == 0 and o.strip() == "", (rc, o))
+
+        rc, o, _e = go("implement the new billing feature", "s-off",
+                       {"TDD_PLAYBOOK_NUDGE": "off"})
+        check("intent: NUDGE=off silences", rc == 0 and o.strip() == "", (rc, o))
+
+        # PLANTED (duplicate registration): the SAME prompt in the SAME session — a second
+        # invocation (plugin + vendored settings both registered) must stay silent
+        rc, o, _e = go("fix the off-by-one bug in the pager", "s1")
+        check("intent: duplicate registration -> second invocation silent",
+              rc == 0 and o.strip() == "", (rc, o))
+
+        # damping: a DIFFERENT build prompt in the same session within the interval -> silent
+        rc, o, _e = go("implement the new billing feature", "s1")
+        check("intent: within damp interval -> silent", rc == 0 and o.strip() == "", (rc, o))
+
+        # interval=0 disables damping: different prompts each fire...
+        rc, o, _e = go("implement the new billing feature", "s2",
+                       {"TDD_PLAYBOOK_NUDGE_INTERVAL": "0"})
+        check("intent: interval=0 first prompt fires", rc == 0 and fired(o), (rc, o))
+        rc, o, _e = go("refactor the parser module now", "s2",
+                       {"TDD_PLAYBOOK_NUDGE_INTERVAL": "0"})
+        check("intent: interval=0 next prompt fires again", rc == 0 and fired(o), (rc, o))
+        # ...but the SAME prompt is still deduped (duplicate registration protection)
+        rc, o, _e = go("refactor the parser module now", "s2",
+                       {"TDD_PLAYBOOK_NUDGE_INTERVAL": "0"})
+        check("intent: interval=0 same prompt still deduped",
+              rc == 0 and o.strip() == "", (rc, o))
+
+        # meta-discussion exclusion: decision/opinion questions must NOT trigger, even
+        # when they contain intent verbs like "implement" or "review"
+        rc, o, _e = go("should we implement this centrally? any thoughts on improvements?",
+                       "s3")
+        check("intent: 'should we implement' meta-question -> silent",
+              rc == 0 and o.strip() == "", (rc, o))
+        rc, o, _e = go("what do you think about the code review — is the roster too big?",
+                       "s3")
+        check("intent: 'what do you think' meta-question -> silent",
+              rc == 0 and o.strip() == "", (rc, o))
+
+        # session isolation: a different session fires fresh
+        rc, o, _e = go("fix the off-by-one bug in the pager", "s4")
+        check("intent: new session fires fresh", rc == 0 and fired(o), (rc, o))
+
+        # no session_id (older host): still fires via fallback key, never crashes
+        with tempfile.TemporaryDirectory() as sd2:
+            rc, o, _e = run(s, {"prompt": "fix the crash in the auth path"},
+                            {"TDD_PLAYBOOK_NUDGE_STATE_DIR": sd2})
+            check("intent: missing session_id still fires (fallback key)",
+                  rc == 0 and fired(o), (rc, o))
+
+    # unwritable state dir: FAIL OPEN — the nudge must fire rather than crash or block
+    rc, o, _e = run(s, {"prompt": "fix the crash in the auth path", "session_id": "s5"},
+                    {"TDD_PLAYBOOK_NUDGE_STATE_DIR": "/nonexistent/nope/really-not-here"})
+    check("intent: unwritable state dir fails OPEN (fires)", rc == 0 and fired(o), (rc, o))
 
 
 # ------------------------------------------------------------- build_completion_reminder

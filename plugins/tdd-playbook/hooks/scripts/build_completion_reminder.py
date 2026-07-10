@@ -90,7 +90,10 @@ def session_edited_paths(event):
                                 and cur.get("name") in ("Edit", "Write", "MultiEdit")):
                             fp = (cur.get("input") or {}).get("file_path")
                             if fp:
-                                paths.add(os.path.abspath(fp))
+                                # realpath, not abspath: macOS tempdirs are symlinked
+                                # (/var -> /private/var), and a mismatch here silently
+                                # empties the session intersection below
+                                paths.add(os.path.realpath(fp))
                         stack.extend(cur.values())
                     elif isinstance(cur, list):
                         stack.extend(cur)
@@ -109,7 +112,7 @@ def main():
     session = session_edited_paths(event)
     if session is not None:
         # narrow to what THIS session touched (still gated on the tree actually being dirty)
-        paths = [p for p in paths if os.path.abspath(p) in session]
+        paths = [p for p in paths if os.path.realpath(p) in session]
         if not paths:
             emit(NAME, [])
     src, tests = classify(paths)
