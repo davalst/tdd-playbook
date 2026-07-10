@@ -3,6 +3,15 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.6.3 — 2026-07-10
+
+**SKILL description trimmed 1136 → 958 chars** (system-prompt tax, every session, every
+surface) by removing ONLY the trailing "named pieces are…" list — a verbatim duplicate of
+terms already present earlier in the description. Mechanically verified zero vocabulary
+loss, so trigger coverage is unchanged. Live probe checklist for the next few sessions
+(planted-trigger spirit): "run the tripwire", "grade that last cycle", "is X dead code?"
+must each still fire the skill.
+
 ## 1.6.2 — 2026-07-10
 
 **§10 CI integrity/determinism split** (from the "do we need GitHub Actions?" evaluation):
