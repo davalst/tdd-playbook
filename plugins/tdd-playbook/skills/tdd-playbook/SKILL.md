@@ -388,6 +388,15 @@ yet"). Darkness is invisible by construction unless you enumerate from what SHOU
 - Manual dispatch is the FALLBACK for slow gates, not the primary control for fast ones. After editing a
   workflow, VALIDATE THE YAML locally (`python -c "import yaml; yaml.safe_load(open(...))"`) — an unquoted
   colon in a step `name:` silently invalidates the whole workflow.
+- **Determinism comes from pinning, not the vendor:** hosted runner images churn (`ubuntu-latest`
+  updates monthly), so a "clean room" on a floating image isn't one. SHA-pin third-party actions
+  (`uses: owner/action@<full-sha>`, not `@v4`) and run gate jobs in a PINNED container image. What the
+  hosted vendor uniquely provides is THIRD-PARTY INTEGRITY (results the working session can't edit),
+  not determinism — keep the two properties straight when weighing CI alternatives.
+- **Workflow files ARE risky paths.** A diff touching `.github/workflows/` or the pre-push hook itself
+  can silently disable a blocking gate — the quietest possible test-weakening (H2 aimed at the harness
+  instead of the test). Path-filter them INTO the fast local gates (a one-line pre-push check that
+  flags gate-file edits for review) and review such diffs like auth code.
 
 ## 11. Checkpoint commits — the rollback backstop (standing authorization, solo dev)
 David is the solo dev and wants automatic checkpoints so there's always a state to roll back to — a

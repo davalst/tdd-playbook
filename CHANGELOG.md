@@ -3,6 +3,17 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.6.2 — 2026-07-10
+
+**§10 CI integrity/determinism split** (from the "do we need GitHub Actions?" evaluation):
+determinism comes from PINNING (SHA-pinned actions, pinned container images — hosted
+runner images churn monthly), while the hosted vendor's unique contribution is THIRD-PARTY
+INTEGRITY (results the working session can't edit) — weigh CI alternatives on those two
+properties separately. And **workflow files ARE risky paths**: a diff touching
+`.github/workflows/` or the pre-push hook can silently disable a blocking gate (H2 aimed
+at the harness) — path-filter gate-file edits into the fast local gates and review them
+like auth code. Three structural pins.
+
 ## 1.6.1 — 2026-07-10
 
 **Doctrine hardening from downstream implementation** (cheliped's masker, red-first

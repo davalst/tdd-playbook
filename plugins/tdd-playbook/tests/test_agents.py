@@ -193,6 +193,9 @@ def test_v16_doctrine():
         ("SKILL §11: checkpoint transient exclusions", "transient"),
         ("SKILL §11: subagent/session-aware checkpoints", "holds the tree"),
         ("SKILL §11: mutation runs isolated from the tree", "isolated worktree"),
+        ("SKILL §10: SHA-pinned actions + pinned container", "SHA-pin"),
+        ("SKILL §10: determinism from pinning, not the vendor", "not the vendor"),
+        ("SKILL §10: workflow edits are risky paths", "disable a blocking gate"),
     ]:
         check(label, needle in text, "needle {!r} missing".format(needle))
 
