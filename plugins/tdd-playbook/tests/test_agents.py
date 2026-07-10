@@ -184,6 +184,7 @@ def test_v16_doctrine():
         ("SKILL §4: rendering/presentation excluded from roster", "explicitly OUT"),
         ("SKILL §4: string mutants classed by role", "classed by ROLE"),
         ("SKILL §4: prose-pinning named as anti-pattern", "pinning the prose"),
+        ("SKILL §4: informational class is string-internal only", "f-string"),
         ("SKILL §4: function-scoped two-tier gating", "function-scoped"),
         ("SKILL §4: vacuity guard on scoped gates", "vacuous pass"),
         ("SKILL §4: audited equivalence ledger", "equivalence ledger"),
@@ -202,6 +203,7 @@ def test_v16_doctrine():
     check("mutation-runner: exact-substitution ledger matching",
           "exact-substitution" in agent)
     check("mutation-runner: batched survivor extraction", "batch" in agent.lower())
+    check("mutation-runner: f-string expressions stay code", "f-string" in agent)
 
     with open(os.path.join(COMMANDS, "mutate.md")) as fh:
         cmd = fh.read()
@@ -209,6 +211,7 @@ def test_v16_doctrine():
     check("/mutate: ledger with written proof", "ledger" in cmd)
     check("/mutate: roster admission enforced", "a survivor here costs" in cmd)
     check("/mutate: string-role classes carried", "prose" in cmd)
+    check("/mutate: f-string expressions stay code", "f-string" in cmd)
 
 
 def main():

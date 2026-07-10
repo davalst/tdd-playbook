@@ -54,7 +54,9 @@ and re-verify). Prefer running the pass in a `git worktree` when the tool allows
    **String survivors are classed by ROLE:** DATA strings (SQL, keys, hash inputs, persisted
    audit/forensic content) are REAL — kill them. Operator-facing display prose is
    informational — report it, but NEVER write a verbatim prose-pin test just to kill it
-   (catches no bug, breaks on every wording tweak).
+   (catches no bug, breaks on every wording tweak). The informational class covers changes
+   INSIDE the string literal only: a logic mutant on a display line (True→False, and/or
+   flip) or inside an f-string `{expression}` is CODE — class it REAL, blocking.
 4. For REAL survivors on critical paths, identify (and if asked, write) the test that kills
    each.
 5. Report **raw %**, **effective % = killed / non-equivalent**, and the **count excluded**,

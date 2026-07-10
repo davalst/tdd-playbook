@@ -28,7 +28,9 @@ nothing). Steps:
    (written proof + exact-substitution match + can't-overmatch test per entry; keep it short).
    **Class string survivors by role:** DATA strings (SQL/keys/hash inputs/persisted content)
    are real — kill them; operator-facing display prose is informational — never resolve it by
-   pinning the prose verbatim in a test. For REAL survivors, write the test that kills each.
+   pinning the prose verbatim in a test. Informational = changes INSIDE the string literal
+   only: logic mutants on a display line and mutants inside f-string `{expressions}` are CODE,
+   stay real/blocking. For REAL survivors, write the test that kills each.
 4. Report **raw %**, **effective % (killed / non-equivalent)**, and the count excluded —
    transparently. Aim ~80%+ effective on critical modules. If this repo has a mutation
    floor/gate, ensure it still passes and never lower it.

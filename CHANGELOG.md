@@ -3,6 +3,15 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.6.1 — 2026-07-10
+
+**Doctrine hardening from downstream implementation** (cheliped's masker, red-first
+tested there): the §4 informational string class exempts LITERAL STRING CONTENT only —
+a logic mutant on a display line (True→False, and/or flip, dropped guard) and anything
+inside an f-string `{expression}` is CODE and stays real/blocking. Mask the string's
+characters, never the line it sits on. Carried in SKILL §4, mutation-runner, and /mutate,
+with three structural pins.
+
 ## 1.6.0 — 2026-07-10
 
 **The ROI release** — origin: downstream telemetry from a production repo (cheliped) showed

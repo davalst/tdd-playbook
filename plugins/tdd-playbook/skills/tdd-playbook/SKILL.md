@@ -158,7 +158,10 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   log copy) is an informational/floor class, NEVER resolved by pinning the prose verbatim in a
   test: a verbatim pin kills the mutant, catches no bug, and breaks on every wording tweak —
   Goodhart pressure the gate design itself generates (origin: a zero-survivor gate downstream
-  forced exact-copy-text assertions; the fix is the class, not the pin).
+  forced exact-copy-text assertions; the fix is the class, not the pin). The informational
+  exemption covers LITERAL STRING CONTENT only: a logic mutant on a display line (True→False,
+  and/or flip, dropped guard) and anything inside an f-string `{expression}` is CODE and stays
+  real/blocking — mask the string's characters, never the line it sits on.
 - **Gate it (close the loop):** a small script parses the tool's machine-readable stats, prints
   `Mutation: N%`, and FAILS under a no-regression FLOOR — BLOCKING in CI. Raise the floor as genuine
   survivors are killed; never lower it. Report-only mutation that nobody must act on is theater.
