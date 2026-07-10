@@ -208,6 +208,16 @@ def test_v16_doctrine():
     check("mutation-runner: batched survivor extraction", "batch" in agent.lower())
     check("mutation-runner: f-string expressions stay code", "f-string" in agent)
 
+    # David's standing budget (2026-07-10): the skill description is system-prompt tax on
+    # EVERY session/surface — keep it <=1024 chars. If a future doctrine change genuinely
+    # cannot fit, do NOT silently exceed or gut trigger vocabulary: WARN DAVID and let him
+    # decide (the 1.6.3 dedupe trim is the precedent for finding chars first).
+    m = re.search(r"^description: (.*)$", text, re.M)
+    check("SKILL description within David's 1024-char budget",
+          m is not None and len(m.group(1)) <= 1024,
+          "len={} — over budget: warn David, don't silently exceed".format(
+              len(m.group(1)) if m else -1))
+
     with open(os.path.join(COMMANDS, "mutate.md")) as fh:
         cmd = fh.read()
     check("/mutate: vacuity guard demanded", "vacuous" in cmd)
