@@ -1,7 +1,13 @@
 # TDD Playbook — a Claude Code plugin
 
 A universal test-driven-development / QA workflow for [Claude Code](https://claude.com/claude-code),
-packaged as a plugin so it loads identically on local, web, and mobile. It ships:
+packaged as a plugin so it loads identically on local, web, and mobile.
+
+> **New here?** Start with [The TDD Playbook, Explained](docs/TDD_PLAYBOOK_EXPLAINED.md) — a
+> plain-language tour of the whole system, why it's built the way it is, and why the name
+> undersells it.
+
+It ships:
 
 - **The doctrine** — an auto-firing `tdd-playbook` skill: reviewable TDD plan (with an
   integration surface, so features don't ship as islands) → red-first
