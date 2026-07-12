@@ -3,6 +3,17 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.6.4 — 2026-07-12
+
+**§9 SBOM planted-input bullet** (scoped to repos that ship container images): generate the
+SBOM in CI (syft/trivy) and assert known-must-be-present components (base OS entry,
+openssl/ca-certificates/libc, the pinned app framework) — a missing known-present component
+means the scan layer failed, and an incomplete SBOM is worse than none (false confidence
+during CVE response). Extends §10's pinning rule to `FROM` lines (digests, not floating
+tags). Doc-only; deliberately NOT a HACK_CATALOG entry — vendor/tooling SBOM omissions are
+a supplier-trust failure, not an agent test-gaming behavior, and the catalog's scope stays
+agent hacks only.
+
 ## 1.6.3 — 2026-07-10
 
 **SKILL description trimmed 1136 → 958 chars** (system-prompt tax, every session, every

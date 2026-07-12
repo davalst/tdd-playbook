@@ -353,6 +353,11 @@ yet"). Darkness is invisible by construction unless you enumerate from what SHOU
   as a final pass before merging a feature. Skip purely cosmetic/test-only diffs (noise).
 - Beyond review, WRITE security tests: negative authz (denied → 403/refused), input fuzzing/injection on
   untrusted surfaces, rate-limit. Keep dependency/SAST scanning in CI (supply chain).
+- **Repos that ship container images: the SBOM gets a planted-input test too.** Generate the SBOM in CI
+  (syft/trivy), then assert components you KNOW must be present — the base OS entry, openssl /
+  ca-certificates / libc, the app framework at its pinned version. A missing known-present component means
+  the scan layer failed, and an incomplete SBOM is worse than none (false confidence during CVE response).
+  Pin base images by digest, not floating tags — §10's pinning rule applies to `FROM` lines too.
 - **LLM-app repos: layer adversarial red-teaming on top of the floor** (e.g. [DeepTeam](https://github.com/confident-ai/deepteam) —
   simulated prompt injection, jailbreaks, PII/prompt leakage, excessive agency). Same oracle-split as
   §5a/§7: deterministic guardrail tests are the blocking gate; LLM-judged verdicts are a tracked trend
