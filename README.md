@@ -5,7 +5,8 @@ packaged as a plugin so it loads identically on local, web, and mobile.
 
 > **New here?** Start with [The TDD Playbook, Explained](docs/TDD_PLAYBOOK_EXPLAINED.md) — a
 > plain-language tour of the whole system, why it's built the way it is, and why the name
-> undersells it.
+> undersells it. Its companion, [With and Without](docs/TDD_PLAYBOOK_WITH_VS_WITHOUT.md),
+> estimates the expected improvements by category, with the evidence class for each number.
 
 It ships:
 

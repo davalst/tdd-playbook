@@ -3,7 +3,9 @@
 *A plain-language tour of what this system is, why it exists, and how the pieces fit
 together — written for someone meeting it for the first time. The precise, enforceable
 version of everything here lives in the doctrine itself
-(`plugins/tdd-playbook/skills/tdd-playbook/SKILL.md`); this document is the map, not the law.*
+(`plugins/tdd-playbook/skills/tdd-playbook/SKILL.md`); this document is the map, not the law.
+A companion, [With and Without](TDD_PLAYBOOK_WITH_VS_WITHOUT.md), estimates the magnitude of
+what the system buys you, category by category.*
 
 ---
 
