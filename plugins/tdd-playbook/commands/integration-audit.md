@@ -23,7 +23,13 @@ darkness classes:**
   an agent build; handlers whose event categories have no emitter anywhere.
 - **Dark by default** — built + tested but config-gated off with NO named user-reachable
   switch; gates that silently no-op because a parent gate is off; delivery targets shipping
-  as "none".
+  as "none". Also the two-surface test for user-facing toggles: a switch that reads its flag
+  but is absent from the canonical control surface (`/features`/settings) or the health
+  surface (doctor/dark-inventory) is dark even though "the flag works when set". And the
+  darkness HATCH — a user-facing gate silenced out of a coverage/registration test via an
+  exemption / ignore / allow-list entry: one such entry hides the feature from BOTH surfaces
+  at once. Grep the exemption lists and flag any entry that names a user-controllable capability
+  (exemptions are for non-user-facing internals only).
 - **Surface drift** — the same feature/turn not equal across surfaces (full pipeline on one,
   stripped on another; a fast path or auto-continue that exists on two surfaces out of four).
 - **Old-blind-to-new** — existing features never upgraded to consume a newer capability;

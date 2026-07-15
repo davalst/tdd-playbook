@@ -12,7 +12,14 @@ builder claimed is true until you see it in the code/tests. For each deliverable
 - **WIRED-IN** — find a REAL user entry point that reaches it (UI control, CLI command, MCP
   tool, nav link, dispatcher). A definition, export, or comment is NOT a wire — trace the
   call path from the user surface to the deliverable. A hollow button (renders, calls nothing)
-  → RED.
+  → RED. **For a USER-CONTROLLABLE (toggle-gated) deliverable, wiring is a TWO-surface test —
+  code that merely reads the flag is the route-exists trap.** The switch must be (1) reachable
+  through the project's canonical feature-control surface (the `/features`/settings equivalent)
+  AND (2) visible in its health/status surface (the doctor/dark-inventory equivalent). Absent
+  from (1) → dark-to-the-user → RED; absent from (2) → dark-to-the-operator → RED; a flag that
+  works when set but appears in neither surface is the documented failure, not a green. Where a
+  coverage/registration test exempts the capability via an ignore/allow-list entry, treat that
+  exemption as EVIDENCE OF darkness on a user-facing gate, not proof of wiring.
 - **EXERCISED** — locate the specific `file::test_name` (or repo equivalent) and confirm via
   the AST/source that it is DEFINED and NOT skip-marked (`skip`/`skipif`/`xfail`/module-level
   skip / `.only` hiding it). A token grep proving a reference is insufficient. Skipped → RED.

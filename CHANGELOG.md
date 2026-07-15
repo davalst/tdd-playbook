@@ -3,6 +3,47 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.7.0 — 2026-07-15
+
+**The reachability release — closing the "toggle that ships dark" gap** (origin: a vendored
+consumer shipped six user-facing config toggles that were built + wired + tested + registered
+yet not user-reachable — they passed the anti-darkness coverage test through one inappropriate
+exemption entry, which simultaneously kept them out of `/features` and out of the doctor's
+dark-inventory; the human-judgment guard, the integration-adversary, was optional and skipped).
+The Playbook already said "built ≠ wired ≠ usable," but had no mechanical forcing function for
+the config-gated-feature case. Four stack-agnostic doctrine changes (the reachability/health
+surfaces differ per repo, so the CONCEPT is pinned, never a pytest specific):
+
+1. **Tripwire ACTIVATED/WIRED is now a TWO-surface reachability test for user-controllable
+   (toggle-gated) deliverables** (SKILL §6, `/tripwire`, `tripwire-auditor`). Code that merely
+   READS the flag is the route-exists trap; the bar is "a human other than the author can FIND
+   and flip it." Where the repo has the surfaces, ACTIVATED must assert the switch is reachable
+   through the canonical feature-control surface (the `/features`/settings equivalent) AND
+   visible in the health/status surface (the doctor/dark-inventory equivalent) — absent from the
+   first is dark-to-the-user, absent from the second is dark-to-the-operator.
+2. **Exemption-as-darkness-vector named as an anti-pattern** (SKILL §6a, `/integration-audit`).
+   A coverage/registration test's ignore/exempt/allow-list hatch is for NON-USER-FACING
+   internals ONLY. Silencing it for a user-facing feature hides that feature from the very two
+   surfaces (settings + health) the test exists to protect — one entry defeats every automated
+   guard at once. Doctrine now demands a COMPANION test asserting user-facing / measured-rollout
+   gates are registered, never exempted.
+3. **The integration-adversary is MANDATORY, not optional, for any deliverable that adds a
+   config gate or a user-facing capability** (SKILL §0, `integration-adversary`). That is exactly
+   the author's blind spot; its brief now carries the explicit question — does every new
+   gate/capability appear in the user-facing control surface AND the health/status surface, or is
+   it dark-by-default / un-toggleable / health-invisible?
+4. **New §6b "Onboard, don't hide"** — a default-OFF feature ships an onboarding contract or it
+   doesn't ship default-OFF: (a) a named ONLINE metric that populates the moment it's on (not an
+   offline eval someone must remember), (b) a turn-on-at-deploy step, (c) a scheduled keep/flip/
+   kill review, (d) a kill condition, (e) a user-reachable toggle. Forcing rule: if a feature
+   can't be measured online, it ships ON or it doesn't ship default-OFF. "A switch with no
+   scheduled hand on it is a switch that will never be thrown."
+
+Pinned by `test_agents.py::test_v17_doctrine` (+ its planted-fixture calibration) so the four
+counter-rules can't silently regress. SKILL description left unchanged (958 chars, within
+David's 1024 budget — the new concepts ride existing trigger vocab: Tripwire/ACTIVATED,
+integration surface, darkness doctor).
+
 ## 1.6.3 — 2026-07-10
 
 **SKILL description trimmed 1136 → 958 chars** (system-prompt tax, every session, every

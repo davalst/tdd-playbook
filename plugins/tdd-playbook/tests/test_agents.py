@@ -227,9 +227,82 @@ def test_v16_doctrine():
     check("/mutate: f-string expressions stay code", "f-string" in cmd)
 
 
+def test_v17_doctrine():
+    """v1.7 reachability doctrine must stay present (SKILL + both agent briefs + commands).
+
+    Origin: a downstream consumer shipped six user-facing toggles that were built + wired +
+    tested + registered yet UNREACHABLE — hidden from both /features and the doctor by one
+    coverage-test exemption entry, with the (optional) integration-adversary skipped. These
+    pins keep the four counter-rules from silently regressing out of the doctrine:
+      1. Tripwire ACTIVATED/WIRED is a two-surface reachability test for toggle-gated features.
+      2. An exemption/ignore/allow-list entry is for internals, never a user-facing darkness hatch.
+      3. The integration-adversary is MANDATORY for config-gate / user-facing deliverables.
+      4. §6b Onboard-don't-hide: default-OFF needs an online-measurable onboarding contract."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        # (1) two-surface Tripwire reachability
+        ("SKILL §6: toggle wiring is a two-surface test", "TWO-surface test"),
+        ("SKILL §6: route-exists trap named", "route-exists trap"),
+        ("SKILL §6: canonical feature-control surface", "canonical feature-control surface"),
+        ("SKILL §6: dark-to-the-operator (health surface)", "dark-to-the-OPERATOR"),
+        # (2) exemption-as-darkness-vector
+        ("SKILL §6a: exemption is for internals", "Exemption is for internals"),
+        ("SKILL §6a: darkness hatch named", "darkness hatch"),
+        ("SKILL §6a: companion test — user-facing gates never exempted", "never exempted"),
+        # (3) mandatory integration-adversary
+        ("SKILL §0: adversary MANDATORY for gate/user-facing deliverables",
+         "MANDATORY, not optional"),
+        # (4) §6b onboard, don't hide
+        ("SKILL §6b: onboarding contract for default-OFF", "onboarding contract"),
+        ("SKILL §6b: unscheduled switch aphorism", "will never be thrown"),
+        ("SKILL §6b: named ONLINE metric, not offline eval", "named ONLINE metric"),
+        ("SKILL §6b: can't-measure-online forcing rule", "it ships ON"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "integration-adversary.md")) as fh:
+        adv = fh.read()
+    check("integration-adversary: dispatch is MANDATORY", "MANDATORY, not optional" in adv)
+    check("integration-adversary: two-surface dark-shipping question",
+          "route-exists trap" in adv and "health/status surface" in adv)
+    check("integration-adversary: flags the exemption hatch", "darkness HATCH" in adv)
+
+    with open(os.path.join(AGENTS, "tripwire-auditor.md")) as fh:
+        aud = fh.read()
+    check("tripwire-auditor: WIRED is a two-surface test", "TWO-surface test" in aud)
+    check("tripwire-auditor: exemption is evidence of darkness", "EVIDENCE OF darkness" in aud)
+
+    with open(os.path.join(COMMANDS, "tripwire.md")) as fh:
+        tw = fh.read()
+    check("/tripwire: ACTIVATED carries the two-surface test", "TWO-surface" in tw)
+
+    with open(os.path.join(COMMANDS, "integration-audit.md")) as fh:
+        ia = fh.read()
+    check("/integration-audit: hunts the exemption darkness hatch", "darkness HATCH" in ia)
+
+
+def test_v17_planted_fixtures():
+    """The v1.7 pins must be able to FAIL — a doctrine file stripped of a counter-rule needle
+    must be flagged, or the pin is theater (§13 calibrate-the-checker rule)."""
+    stripped = "SKILL with no reachability doctrine at all — just prose about tests.\n"
+    check("planted: missing two-surface needle is detected",
+          "TWO-surface test" not in stripped)
+    check("planted: missing exemption-hatch needle is detected",
+          "darkness hatch" not in stripped)
+    check("planted: missing onboarding-contract needle is detected",
+          "onboarding contract" not in stripped)
+    intact = ("A toggle is a TWO-surface test; Exemption is for internals, never a darkness "
+              "hatch; ships with an onboarding contract or it ships ON.\n")
+    check("planted: intact doctrine passes the same needles",
+          all(n in intact for n in ("TWO-surface test", "darkness hatch", "onboarding contract")))
+
+
 def main():
     print("Agent/command structural calibration")
-    for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine):
+    for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
+               test_v17_doctrine, test_v17_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

@@ -59,7 +59,15 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
     deliverable in this plan or a dated debt entry — silent deferral is how old features go blind
     to new capabilities.
   Close the plan by dispatching the `integration-adversary` (fresh context, refute-framed: "name
-  what this plan should touch but doesn't"); a confirming reviewer rubber-stamps islands.
+  what this plan should touch but doesn't"); a confirming reviewer rubber-stamps islands. **This
+  dispatch is MANDATORY, not optional, for any deliverable that adds a config gate or a
+  user-facing capability** — that is exactly the case where the author's own imagination is the
+  blind spot (they know the flag works when set, so they never ask whether a real user can FIND
+  and flip it). The one check built to counter your bounded imagination is the one it's tempting
+  to skip; skipping it is how a toggle ships dark (origin: six downstream toggles built + wired +
+  tested + registered yet unreachable, because the adversary was optional and skipped, 2026-07).
+  The adversary must answer, per new gate/capability: does it appear in the user-facing control
+  surface AND the health/status surface, or is it dark-by-default / un-toggleable / health-invisible?
 And ONCE per plan, BEFORE the deliverables — **spec integrity**. Everything downstream (§§1–6)
 rigorously verifies what the PLAN says; a wrong reading of the request here passes every gate. So:
 - **Assumptions stated explicitly.** If the request supports multiple readings, present them and say
@@ -269,7 +277,19 @@ target the feature). For each deliverable assert it is:
   verify-oracle stack behind a config gate with no switch, a delivery target shipping as "none").
   A feature whose gate depends on another DISABLED
   gate must REPORT itself dark, never silently no-op. Repos with a capability registry (§6a): the
-  deliverable's entry is part of this proof — `capability_registry.py validate` must pass; AND
+  deliverable's entry is part of this proof — `capability_registry.py validate` must pass.
+  **For a USER-CONTROLLABLE (toggle-gated) deliverable, reachability of the SWITCH is the bar — and
+  it's a TWO-surface test, asserted mechanically:** code that merely READS the flag is the
+  route-exists trap ("the flag works when set"); the real bar is "a human other than the author can
+  FIND and flip it." So ACTIVATED for such a deliverable must assert its toggle is (1) reachable
+  through the project's canonical feature-control surface — the `/features`/settings equivalent,
+  where a user turns things on — AND (2) visible in the project's health/status surface — the
+  doctor/dark-inventory equivalent, where an operator sees it exists-but-off. Absent from (1) it is
+  dark-to-the-USER; absent from (2) it is dark-to-the-OPERATOR (the doctor can't report what it
+  can't see). The documented failure was BOTH at once: six toggles that read their flags correctly,
+  were tested, and were even registered, yet appeared in neither `/features` nor `doctor` (§6a names
+  HOW that slips through — a coverage-test exemption). Where the repo HAS these surfaces, asserting
+  reachability in both is not optional polish; it's what "wired-in" MEANS for a toggle. AND
 - **EXERCISED** — point at a SPECIFIC `file::test_name`; assert (via `ast`) that the test is DEFINED and
   NOT skip-marked (`@pytest.mark.skip`/`skipif` or a module-level `pytestmark` skip). A string-token grep
   only proves a *reference*; a hollow button or a `@skip`'d test must trip the Tripwire.
@@ -309,6 +329,21 @@ yet"). Darkness is invisible by construction unless you enumerate from what SHOU
   `python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate` (BLOCKING in the release
   gate) · `… doctor` prints the dark-feature inventory — every built-but-off capability WITH its
   on-switch, write-only emitters, debt aging. The doctor makes the next archaeology audit unnecessary.
+- **Exemption is for internals, NEVER a darkness hatch.** A coverage/registration test that
+  enforces "everything that should be registered IS" almost always ships an ignore / exempt /
+  allow-list escape hatch for genuine internals (a private helper, a dev-only flag, a
+  build-plumbing capability with no user surface). That hatch is for NON-USER-FACING internals
+  ONLY. Using it to silence the coverage test for a user-facing (or measured-rollout) feature is
+  the single most efficient darkness vector there is: the very same exemption entry that quiets
+  the test ALSO drops the feature from the control surface (`/features`) and the health surface
+  (`doctor`) — the exact two surfaces the test exists to protect (§6 ACTIVATED). One
+  inappropriate exemption defeats every automated guard at once, silently, and looks like green.
+  (Origin: six downstream toggles, all hidden by ONE exemption entry — the guards weren't
+  bypassed, they were told the feature didn't exist.) So pair the exemption list with a COMPANION
+  test that asserts every user-facing / measured-rollout gate is REGISTERED, never exempted — an
+  exemption entry pointing at a user-facing capability must FAIL the suite. An exemption is a
+  claim "no user can reach this"; §12 says a claim needs evidence, and a user-facing toggle
+  refutes it on its face.
 - **The ASSEMBLY suite (`@pytest.mark.assembly`)** — the standing antidote to self-wired fixtures:
   build the real production object graph per platform (real daemon factory, real agent build) and
   assert every ENABLED registry capability is reachable in it, both directions (§6's symmetric rule).
@@ -322,6 +357,31 @@ yet"). Darkness is invisible by construction unless you enumerate from what SHOU
   review finding, a "we'll wire it later": each gets an owner + expiry (debt entry) or gets parked
   LOUDLY (removed from the registry with a stated reason). Findings without owners rot; the registry
   makes the rot expire instead of accumulate.
+
+## 6b. Onboard, don't hide — a default-OFF feature needs an onboarding contract
+§6 catches "off with no on-switch." This catches the subtler darkness: an on-switch that nobody is
+scheduled to throw. **A switch with no scheduled hand on it is a switch that will never be thrown** —
+the feature is built, wired, and quietly zero forever, which is dark WASTE wearing the disguise of
+caution. So a deliverable that ships default-OFF must ship an ONBOARDING CONTRACT, five parts, or it
+doesn't ship default-OFF:
+- **(a) A named ONLINE metric that populates the moment it's on** — a real production signal
+  (telemetry counter, dashboard row, success-rate lane) that moves off zero once the switch flips,
+  NOT a synthetic offline eval someone has to remember to run. "OFF pending an offline eval someday"
+  is the dark-rollout trap: the eval never gets run and the feature lives at zero indefinitely.
+- **(b) A turn-on-at-deploy step** — the concrete action, with an owner, that flips it on in the
+  target environment. In the plan, not a vague "we'll enable it later."
+- **(c) A scheduled review with a keep / flip / kill call** — a DATED checkpoint (the §13 cadence)
+  where a human reads (a)'s metric and makes the decision. Unscheduled = never.
+- **(d) A kill condition** — the metric threshold or the date at which the feature is removed if it
+  hasn't earned its keep, so a dead default-OFF feature EXPIRES instead of accreting (§6a's
+  decide-or-park, made numeric).
+- **(e) A user-reachable toggle** — through the canonical control surface AND visible in the health
+  surface (§6 ACTIVATED's two-surface bar), so someone other than the author can find it.
+**The forcing rule: if a feature can't be measured online, it ships ON, or it doesn't ship
+default-OFF.** A feature you can't watch is a feature you can't onboard, and shipping it dark is
+shipping it into a silence you designed yourself. This section is the rollout MIRROR of §6a: §6a
+enumerates darkness that already happened; the onboarding contract prevents the default-OFF rollout
+that becomes it.
 
 ## 7. Determinism & flaky tests (zero tolerance)
 - Deterministic by construction: no `sleep`/hard waits (use auto-waiting/polling assertions); full test

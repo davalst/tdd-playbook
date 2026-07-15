@@ -17,8 +17,12 @@ For EACH deliverable, verify and report four things separately (don't round up):
 - **ACTIVATED** — its state in the SHIPPED default config: on, or off behind a NAMED,
   user-reachable switch (UI toggle / wizard step / documented command). Off with no on-switch
   is RED. A gate that depends on another DISABLED gate must report itself dark, never
-  silently no-op. If the repo carries a capability registry, the deliverable's entry is part
-  of this proof — run:
+  silently no-op. For a USER-CONTROLLABLE (toggle-gated) deliverable this is a TWO-surface
+  test: code that merely reads the flag is the route-exists trap — the switch must be reachable
+  through the project's canonical feature-control surface (the `/features`/settings equivalent)
+  AND visible in its health/status surface (the doctor/dark-inventory equivalent). Dark in
+  either surface is RED. If the repo carries a capability registry, the deliverable's entry is
+  part of this proof — run:
 
       python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate
 

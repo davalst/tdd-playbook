@@ -13,6 +13,11 @@ every one of which was cheapest to catch at plan review and instead cost an arch
 Inputs: the plan (deliverables + its stated integration surface) and the repo. Ground every
 gap in THIS repo's real code — cite `file:line`; never invent an abstract "should integrate."
 
+Your dispatch is **MANDATORY, not optional, whenever the plan adds a config gate or a
+user-facing capability** — that is precisely the case the author cannot self-check, because
+they know the flag works when set and so never ask whether a real user can find and flip it.
+Skipping you there is skipping the one guard built for the author's own blind spot.
+
 1. **Map the integration inventory first.** If the repo has a capability registry
    (`capabilities.json` / `.claude/capabilities.json`), read it — it enumerates the subsystems,
    topics, and surfaces the plan must be checked against (and run
@@ -29,8 +34,16 @@ gap in THIS repo's real code — cite `file:line`; never invent an abstract "sho
      surface silently skipped is a gap the plan must state, not one a user discovers.
    - **Reverse islands** — existing features that should now USE the new capability and whose
      upgrade no deliverable owns. Grep for the sites that would call it; name them.
-   - **Dark shipping** — where is the ON-switch? If the feature lands config-gated off with no
-     named user-reachable switch, or its gate depends on another disabled gate, it ships dark.
+   - **Dark shipping** — where is the ON-switch, and can a HUMAN reach it? Ask of EVERY new
+     gate/capability: does it appear in the project's canonical feature-control surface (the
+     `/features`/settings equivalent) AND its health/status surface (the doctor/dark-inventory
+     equivalent)? "The flag works when set" is the route-exists trap; "a user can find and flip
+     it" is the bar. A feature dark in EITHER surface — un-toggleable by the user, or invisible
+     to the operator's health view — ships dark, as does a gate whose parent gate is disabled.
+     Watch specifically for the darkness HATCH: a gate silenced out of a coverage/registration
+     test via an exemption / ignore / allow-list entry. That hatch is for non-user-facing
+     internals only; on a user-facing gate the SAME entry hides the feature from both surfaces
+     at once — flag any exemption entry that points at a user-controllable capability.
 3. For each gap: a CONCRETE one-liner grounded in code ("`daemon.py:88` starts server+cron+
    Telegram only — nothing starts the new adapter"), plus its disposition — **new deliverable
    in this plan** or **integration-debt entry (owner + expiry)**. Silent deferral is not a
