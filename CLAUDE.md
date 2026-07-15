@@ -12,9 +12,19 @@ python3 calibration/run_calibration.py            # cheap model, hard caps; appe
 - A plant surviving to a clean verdict is a **BLOCKING failure** — fix the agent, never the
   plant. File it, fix it, re-run before anything else ships.
 - `--dry-run` is the free CI-safe validation; it does NOT count as calibration.
-- Status as of 2026-07-08: **history has never been seeded** — the first live run is still
-  owed. If `docs/calibration/history.md` is missing or stale >14 days, raise it with David
-  proactively in any session that touches this repo.
+- Run as a NON-root user — the very first attempt logged INVALID because it ran under root, where
+  the headless doer couldn't run (see `TDD_PLAYBOOK_CALIBRATION_ARGS` in `run_calibration.py`'s
+  header for the sandbox-args env knob).
+- Status as of 2026-07-15: **seeded and clean.** Last live run 2026-07-09 —
+  4/4 plants caught after two agent-fix rounds (commit `8adaf99`); the suite has since grown to
+  5 scenarios (added `vacuous-mutation-scope` → `mutation-runner`), so the next run re-baselines
+  at 5/5. Next run due ~2026-07-23 (14-day cadence). If `docs/calibration/history.md` is missing
+  or its last entry is stale >14 days, raise it with David proactively in any session that touches
+  this repo — but READ `history.md` first; do not repeat the stale-status error of claiming it was
+  never seeded.
+- **Still owed (separate from the run cadence): the corpus has not grown** —
+  `calibration/corpus/approved/` is empty, so calibration still runs only the original
+  hand-written scenarios. The co-evolution step (`author_plants.py` below) is the outstanding gap.
 
 **Each cycle, grow the corpus (co-evolution — a frozen plant library is a static gate):**
 ```bash
