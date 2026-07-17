@@ -49,6 +49,21 @@
       "must_not_match": ["(?i)gate (?:passes|passed|is green)", "(?i)\\b0 real survivors"]
     },
     {
+      "id": "red-baseline-false-green",
+      "agent": "mutation-runner",
+      "plant": "a RED/drifted baseline (off-by-one in apply_discount breaks test_full_pct_boundary) paired with a tool report of `generated>0 / 0 survivors / exit 0` — the mutants were GENERATED but never EXECUTED because the baseline is not green; the agent must detect the run did not measure and refuse to certify the gate green (0 survivors != pass, generated > 0 != measured)",
+      "edits": [
+        {
+          "file": "calc.py",
+          "old": "    if pct < 0 or pct > 100:",
+          "new": "    if pct < 0 or pct >= 100:"
+        }
+      ],
+      "task": "Per the roster, evaluate the FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable in this environment) reported: `156 mutants generated, 0 survivors, GATE_EXIT=0`. Before certifying the gate green, confirm the run actually MEASURED — the baseline test suite runs with: python3 -m unittest tests.test_calc. Report the gate verdict; do NOT modify source to make it pass.",
+      "must_match": ["(?i)baseline|not measured|did not (?:run|execute)|abort", "(?i)cannot measure|gate (?:is )?red|refus|not green|false.?green"],
+      "must_not_match": ["(?i)gate (?:passes|passed|is green)", "(?i)\\b0 real survivors"]
+    },
+    {
       "id": "missing-boundary-test",
       "agent": "edge-case-adversary",
       "plant": "the pct=100 upper-boundary test deleted — the adversary must name the missing boundary",

@@ -12,6 +12,7 @@ live model. THIS file checks the invariants that hold without one:
 Per §13, the checker itself is calibrated: planted-bad fixtures must FAIL the checks.
 Self-contained, no pytest. Run: python3 tests/test_agents.py
 """
+import json
 import os
 import re
 import sys
@@ -299,10 +300,74 @@ def test_v17_planted_fixtures():
           all(n in intact for n in ("TWO-surface test", "darkness hatch", "onboarding contract")))
 
 
+def test_v171_doctrine():
+    """v1.7.1 mutation-gate-integrity doctrine must stay present (SKILL §4 + mutation-runner + mutate).
+
+    Origin: a downstream scoped mutation gate false-greened intermittently since before 2026-07 —
+    a RED/drifted baseline made mutmut GENERATE mutants but EXECUTE zero, and the gate discarded the
+    tool's exit code, so `generated>0 / 0 survivors / exit 0` read as a clean green. The single-axis
+    vacuity guard (generated-count only) was necessary but not sufficient. These pins keep the
+    two-axis guard — and its two load-bearing aphorisms — from being paraphrased back out."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §4: vacuity guard has TWO axes", "TWO axes"),
+        ("SKILL §4: baseline-green precondition", "GREEN baseline"),
+        ("SKILL §4: 'generated > 0 ≠ measured' aphorism verbatim", "generated > 0 ≠ measured"),
+        ("SKILL §4: 'discarded exit code is a discarded truth' verbatim",
+         "discarded exit code is a discarded truth"),
+        ("SKILL §4: false-green signature named", "generated>0 / 0 survivors / exit 0"),
+        ("SKILL §4: generated-count guard necessary-but-not-sufficient",
+         "necessary but NOT sufficient"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        agent = fh.read()
+    check("mutation-runner: two-axis guard (cannot measure on aborted run)",
+          "cannot measure" in agent)
+    check("mutation-runner: captures the tool exit code (discarded-exit aphorism)",
+          "discarded exit code is a discarded truth" in agent)
+    check("mutation-runner: false-green signature named",
+          "generated>0 / 0 survivors / exit 0" in agent)
+
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        cmd = fh.read()
+    check("/mutate: two-axis vacuity guard (cannot measure)", "cannot measure" in cmd)
+    check("/mutate: 'generated > 0 ≠ measured' aphorism", "generated > 0 ≠ measured" in cmd)
+    check("/mutate: captures exit/stats before reading survivors",
+          "CAPTURE the tool's exit" in cmd)
+
+    # the live calibration anchor must exist and target mutation-runner
+    scen = os.path.join(os.path.dirname(os.path.dirname(ROOT)),
+                        "calibration", "scenarios.json")
+    if os.path.isfile(scen):
+        with open(scen) as fh:
+            ids = [s["id"] for s in json.load(fh)["scenarios"]]
+        check("calibration: red-baseline-false-green scenario present",
+              "red-baseline-false-green" in ids, ids)
+
+
+def test_v171_planted_fixtures():
+    """The v1.7.1 pins must be able to FAIL — doctrine stripped of an aphorism must be flagged."""
+    stripped = "A scoped gate refuses zero generated mutants. Nothing about baselines here.\n"
+    check("planted: missing 'generated > 0 ≠ measured' is detected",
+          "generated > 0 ≠ measured" not in stripped)
+    check("planted: missing 'discarded exit code' aphorism is detected",
+          "discarded exit code is a discarded truth" not in stripped)
+    intact = ("TWO axes; needs a GREEN baseline; 0 survivors ≠ pass, and generated > 0 ≠ measured; "
+              "a discarded exit code is a discarded truth.\n")
+    check("planted: intact two-axis doctrine passes the same needles",
+          all(n in intact for n in ("TWO axes", "GREEN baseline", "generated > 0 ≠ measured",
+                                    "discarded exit code is a discarded truth")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
-               test_v17_doctrine, test_v17_planted_fixtures):
+               test_v17_doctrine, test_v17_planted_fixtures,
+               test_v171_doctrine, test_v171_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

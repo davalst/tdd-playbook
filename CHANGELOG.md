@@ -3,6 +3,42 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.7.1 — 2026-07-17
+
+**Mutation-gate integrity — the two-axis vacuity guard** (origin: a vendored consumer's scoped
+mutation gate had been false-greening *intermittently since before 2026-07* — the anti-gaming check
+for every critical module was itself asleep). Two root causes downstream: a **RED/drifted baseline**
+(a refactor left one test asserting on a return value that had moved) made `mutmut` print `failed to
+collect stats / runner returned 1` and execute **zero** mutants while still **generating** them on
+disk; and the gate **ran the tool but discarded its exit code**. Result: the exact false-green
+signature `generated>0 / 0 survivors / exit 0` — generated > 0 satisfied the existing guard, the
+survivor collector came back empty (empty both when all-killed AND when stats abort), and "0
+survivors" read as a clean green.
+
+The §4 vacuity guard was **single-axis** (it only caught a scope matching zero *generated* mutants —
+a typo'd function name) and its own comment wrongly assumed a RED baseline yields 0 generated
+mutants. That guard was **necessary but not sufficient**. This release extends it to **two axes**,
+stack-agnostically (`mutmut`/`cosmic-ray`/`Stryker`/`pitest` all need a green baseline):
+
+- **SKILL §4** — the guard now has a *scope* axis (existing) AND an *execution* axis: a mutation
+  "green" is valid only when a positive count of mutants actually **EXECUTED against a GREEN
+  baseline**. Three preconditions before trusting a pass — baseline GREEN, run-count > 0 from the
+  tool's *run stats* (not the on-disk generated set), kill tests collected. The gate must **capture
+  the tool's exit code / stats-abort markers**, never run-and-discard. Names the shared-baseline
+  poisoning fact (one RED test disables every scoped gate at once) and a §13 tie-in: a deliberately-
+  RED baseline must make the gate ABORT/FAIL. Two aphorisms are now load-bearing doctrine: **"0
+  survivors ≠ pass, and generated > 0 ≠ measured"** and **"a discarded exit code is a discarded
+  truth."** The "count from generated" line is reconciled, not blunted (it prevents the perfect-run
+  false-*fail*; the new axis prevents the aborted-run false-*pass*).
+- **`mutation-runner` agent + `/mutate` command** — carry the execution axis operationally (capture
+  the exit/stats output; "cannot measure — gate RED" on an aborted run; confirm run-count > 0 before
+  reading survivors).
+- **New live calibration scenario** `red-baseline-false-green` (mutation-runner) — plants a RED
+  baseline + the `generated>0 / 0 survivors / exit 0` report and requires the agent to refuse to
+  certify green. The live suite grows **5 → 6** (re-baselines at 6/6 on the next run).
+- Pinned by `test_agents.py::test_v171_doctrine` (+ planted-fixture) — the aphorisms are asserted
+  verbatim so they can't be paraphrased out. SKILL description unchanged (958 chars, within budget).
+
 ## 1.7.0 — 2026-07-15
 
 **The reachability release — closing the "toggle that ships dark" gap** (origin: a vendored

@@ -179,12 +179,27 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   the gated list until their survivors die. A whole-file floor either flatters the debt or lets the
   debt dilute the new floor — function-scoped gating keeps the strong floor undiluted and the debt
   visible.
-- **Every scoped gate needs a VACUITY GUARD:** a scope pattern matching ZERO generated mutants
-  (typo'd function name, module dropped from the tool config) must FAIL LOUDLY ("refusing a
-  vacuous pass"), never read as green — a gate that can pass by testing nothing is the one gaming
-  vector scope-based gating opens. Count the denominator from mutants the tool GENERATED, not from
-  its survivors/problems report: a fully-killed scope looks empty there, and a naive guard would
-  fail a perfect run.
+- **Every scoped gate needs a VACUITY GUARD — on TWO axes, scope AND execution.** *Scope:* a
+  pattern matching ZERO generated mutants (typo'd function name, module dropped from the tool
+  config) must FAIL LOUDLY ("refusing a vacuous pass"), never read as green — a gate that can pass
+  by testing nothing is the one gaming vector scope-based gating opens. Count that denominator from
+  mutants the tool GENERATED, not from its survivors/problems report: a fully-killed scope looks
+  empty there, and a naive guard would fail a perfect run. *Execution:* generated is NOT executed —
+  the scope guard is necessary but NOT sufficient. A mutation tool needs a GREEN baseline to score;
+  a RED baseline (one drifted test is enough) makes it print `failed to collect stats / runner
+  returned N` and run ZERO mutants while still GENERATING them on disk, so the survivor collector
+  comes back empty and `generated>0 / 0 survivors / exit 0` reads as a clean green. **0 survivors ≠
+  pass, and generated > 0 ≠ measured** — before trusting any pass assert three things: (1) baseline
+  GREEN, (2) executed/run count > 0 read from the tool's RUN stats (not the on-disk generated set),
+  (3) kill tests collected (next bullet). The gate must CAPTURE the tool's exit code / output and
+  detect its stats-abort markers — **a discarded exit code is a discarded truth**; a gate that runs
+  the tool and ignores the result certifies unmeasured scopes as green. A SHARED baseline is a
+  shared point of failure: one RED/drifted test anywhere disables EVERY scoped mutation gate at
+  once, for as long as it stays red — surface "cannot measure," never a green. And calibrate this
+  plumbing (§13): a deliberately-RED baseline must make the gate ABORT/FAIL — a mutation gate you
+  can't demonstrate failing on a broken baseline has been asleep for an unknown duration (origin: a
+  downstream gate false-greened intermittently since before 2026-07; the generated-count guard
+  alone never noticed).
 - **Verify the gate's KILLING SUITE actually collects your kill tests.** Tools with a dedicated
   mutation suite (e.g. mutmut's `tests_mutation/`) never see kill tests written in the normal
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import

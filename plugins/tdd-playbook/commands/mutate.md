@@ -12,15 +12,19 @@ nothing). Steps:
    repo (mutant explosion). Critical = auth, money, permissions, lifecycle, core algorithms.
    **Roster admission:** every rostered module needs its one-line "a survivor here costs ___"
    justification; rendering/presentation modules are out — flag unjustified entries for
-   pruning instead of paying ceremony on them. **Scoped runs need the vacuity guard:** a
-   scope matching zero generated mutants fails loudly ("refusing a vacuous pass"), never green.
+   pruning instead of paying ceremony on them. **Scoped runs need the vacuity guard — two axes:**
+   a scope matching zero generated mutants OR a RED baseline / zero mutants run / a discarded tool
+   exit code all fail loudly ("cannot measure — refusing a vacuous pass"), never green (0 survivors
+   ≠ pass, generated > 0 ≠ measured — a discarded exit code is a discarded truth).
    **Reviewing a diff rather than finishing a feature? Run DIFF-SCOPED** (Stryker
    `--incremental`/`--since origin/main`, pitest history, mutmut on the changed files) and
    surface survivors on the changed lines only. **For a concern-critical change** (auth,
    money, permissions), also run **targeted-mutant mode**: write 3–5 plausible
    concern-specific mutants (drop the permission check, flip the rounding, skip the state
    guard) and require a test that kills each — mutation as test generator, not just grader.
-2. Run it; collect surviving mutants from the machine-readable stats.
+2. Run it; CAPTURE the tool's exit/stats output and confirm the run actually EXECUTED (run-stats
+   total > 0, baseline green) BEFORE reading survivors — an aborted run returns an empty survivor
+   set that masquerades as a clean gate. Then collect surviving mutants from the machine-readable stats.
 3. **Triage survivors:** for each, decide real-vs-equivalent. Equivalent mutants (e.g. SQL
    keyword case that SQLite treats identically, string-subscript case) are UN-KILLABLE —
    exclude them with a conservative case-only-in-SQL/subscript filter; do NOT chase them

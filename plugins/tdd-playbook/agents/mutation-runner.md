@@ -23,10 +23,16 @@ and re-verify). Prefer running the pass in a `git worktree` when the tool allows
    **Roster admission check:** if a rostered module lacks a "a survivor here costs ___"
    justification, or is rendering/presentation code, flag it for PRUNING in your report —
    critical-only is a rule with teeth, not a vibe.
-   **Vacuity guard (scoped runs):** if the requested scope generates ZERO mutants (typo'd
-   function name, module missing from the tool config), report "refusing a vacuous pass" and
-   stop — never report a green gate over an empty scope. Count the denominator from GENERATED
-   mutants, not the survivors report (a fully-killed scope looks empty there).
+   **Vacuity guard (scoped runs) — TWO axes:** *Scope* — if the requested scope generates ZERO
+   mutants (typo'd function name, module missing from the tool config), report "refusing a vacuous
+   pass" and stop; count that denominator from GENERATED mutants, not the survivors report (a
+   fully-killed scope looks empty there). *Execution* — generated is NOT executed. Never run the
+   tool and discard its result: a discarded exit code is a discarded truth. CAPTURE the exit code /
+   output; if it aborted (`failed to collect stats` / runner returned nonzero / 0 mutants run — the
+   classic cause is a RED/drifted baseline test), report "cannot measure — gate RED (baseline not
+   green)" and stop, never a green over an unmeasured scope. Confirm the tool actually RAN the
+   mutants (run-stats total > 0): `generated>0 / 0 survivors / exit 0` is the false-green signature,
+   a RED gate — 0 survivors ≠ pass, generated > 0 ≠ measured.
    **Killing-suite visibility:** if the tool uses a dedicated mutation suite (mutmut's
    `tests_mutation/`), confirm it actually COLLECTS the kill tests you're counting on
    (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
