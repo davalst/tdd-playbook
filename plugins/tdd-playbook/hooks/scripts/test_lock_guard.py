@@ -58,10 +58,17 @@ def findings_for(path, lock, root):
             "reviewed by /grade)",
         ]
     if base in _VERIFIER_BASENAMES:
+        # Actionable message (observed live: an agent burned two write attempts
+        # guessing what this block wanted) — say exactly what to do next.
         return [
-            "TEST-LOCK active: '{}' is verifier surface — patching the harness is "
-            "equivalent to editing the locked test (H5)".format(rel),
-            "finish to green first, or unlock with a journaled reason",
+            "TEST-LOCK active: '{}' is verifier surface (conftest/runner config) — "
+            "patching the harness while tests are locked is equivalent to editing the "
+            "locked test (H5)".format(rel),
+            "your options: (1) implement the SOURCE to green first — most harness "
+            "edits stop being needed; (2) if this change is genuinely required now, "
+            "unlock with a journaled reason: python3 <plugin>/bin/tdd_lock.py unlock "
+            "--reason \"why\" — then re-lock after; do NOT try to write around the "
+            "harness (helpers belong in a normal test file, not {})".format(base),
         ]
     return []
 

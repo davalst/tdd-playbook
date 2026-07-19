@@ -374,10 +374,117 @@ def test_tripwire_reminder():
               (p.returncode, p.stderr))
 
 
+# ---------------------------------------------------------------- red_lock (auto-lock)
+def test_red_lock():
+    s = "red_lock.py"
+
+    def bash(cmd, response):
+        ev = {"tool_name": "Bash", "tool_input": {"command": cmd}}
+        if response is not None:
+            ev["tool_response"] = response
+        return ev
+
+    def run_in(d, event):
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["CLAUDE_PROJECT_DIR"] = d
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
+                           input=json.dumps(event), capture_output=True, text=True,
+                           cwd=d, env=env, timeout=20)
+        return p
+
+    def read_json(d, rel):
+        path = os.path.join(d, ".claude", rel)
+        if not os.path.isfile(path):
+            return {}
+        with open(path) as fh:
+            return json.load(fh)
+
+    with tempfile.TemporaryDirectory() as d:
+        d = os.path.realpath(d)
+        os.makedirs(os.path.join(d, "tests"), exist_ok=True)
+        tf = os.path.join(d, "tests", "test_new.py")
+        with open(tf, "w") as fh:
+            fh.write("def test_x():\n    assert False\n")
+
+        # 1. test-file write -> pending recorded
+        p = run_in(d, write(tf, "def test_x():\n    assert False\n"))
+        pend = read_json(d, "tdd-pending-red.json").get("files", {})
+        check("redlock: test-file write records pending",
+              p.returncode == 0 and os.path.join("tests", "test_new.py") in pend,
+              (p.returncode, pend))
+
+        # 2. non-test write -> NOT pending
+        src = os.path.join(d, "app.py")
+        with open(src, "w") as fh:
+            fh.write("x = 1\n")
+        run_in(d, write(src, "x = 1\n"))
+        pend = read_json(d, "tdd-pending-red.json").get("files", {})
+        check("redlock: source write not pending", "app.py" not in pend, pend)
+
+        # 3. failing test run -> pending file LOCKED + journaled + announced
+        p = run_in(d, bash("python -m pytest tests/ -q", "1 failed, 2 passed in 0.1s"))
+        lock = read_json(d, "tdd-lock.json").get("files", {})
+        pend = read_json(d, "tdd-pending-red.json").get("files", {})
+        jpath = os.path.join(d, ".claude", "tdd-lock-journal.jsonl")
+        journal = open(jpath).read() if os.path.isfile(jpath) else ""
+        check("redlock: red run locks the pending test",
+              os.path.join("tests", "test_new.py") in lock and not pend,
+              (lock, pend))
+        check("redlock: auto-lock journaled + announced",
+              "auto_lock_red" in journal and p.returncode == 1
+              and "auto-locked" in p.stderr,
+              (p.returncode, p.stderr[:120], journal[:120]))
+
+        # 4. the LOCKED file is now defended by test_lock_guard (end-to-end) —
+        # ANY edit to a locked file is blocked, so neutral strings suffice.
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["CLAUDE_PROJECT_DIR"] = d
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, "test_lock_guard.py")],
+                           input=json.dumps(edit(tf, "alpha", "beta")),
+                           capture_output=True, text=True, cwd=d, env=env, timeout=20)
+        check("redlock: guard blocks an edit to the auto-locked test",
+              p.returncode == 2 and "TEST-LOCK" in p.stderr, (p.returncode, p.stderr[:120]))
+
+    with tempfile.TemporaryDirectory() as d:
+        d = os.path.realpath(d)
+        os.makedirs(os.path.join(d, "tests"), exist_ok=True)
+        tf = os.path.join(d, "tests", "test_g.py")
+        with open(tf, "w") as fh:
+            fh.write("def test_g():\n    assert add(1, 1) == 2\n")
+        run_in(d, write(tf, "def test_g():\n    assert add(1, 1) == 2\n"))
+
+        # 5. GREEN run -> pending cleared, NO lock
+        run_in(d, bash("pytest -q", "3 passed in 0.2s"))
+        check("redlock: green run clears pending without locking",
+              not read_json(d, "tdd-pending-red.json").get("files", {})
+              and not read_json(d, "tdd-lock.json").get("files", {}),
+              (read_json(d, "tdd-pending-red.json"), read_json(d, "tdd-lock.json")))
+
+        # 6. a NON-test command with failure text -> nothing happens
+        run_in(d, write(tf, "def test_g():\n    assert add(1, 1) == 2\n"))
+        run_in(d, bash("cat build.log", "1 failed, something"))
+        check("redlock: non-test command never locks",
+              not read_json(d, "tdd-lock.json").get("files", {}),
+              read_json(d, "tdd-lock.json"))
+
+        # 7. test run with NO tool_response -> fail-open (no lock, pending kept)
+        run_in(d, bash("pytest -q", None))
+        check("redlock: missing tool_response is fail-open",
+              not read_json(d, "tdd-lock.json").get("files", {})
+              and read_json(d, "tdd-pending-red.json").get("files", {}),
+              (read_json(d, "tdd-lock.json"), read_json(d, "tdd-pending-red.json")))
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
-               test_flaky, test_intent, test_tripwire_reminder):
+               test_flaky, test_intent, test_tripwire_reminder, test_red_lock):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
