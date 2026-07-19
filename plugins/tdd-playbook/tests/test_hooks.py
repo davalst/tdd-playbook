@@ -147,6 +147,54 @@ def test_overmock():
     check("H3: non-test file ignored", rc == 0, rc)
 
 
+# ----------------------------------------------------------------------- vibe_test_guard
+def test_vibetest():
+    s = "vibe_test_guard.py"
+    tf = "tests/test_vibe.py"
+
+    # PLANTED (H4): a NEW test file with a test but ZERO assertions -> warn (advisory tier).
+    # This is the case the weakening guard is structurally blind to (no old side to diff).
+    rc, _o, e = run(s, write(tf, "def test_a():\n    result = compute()\n    print(result)\n"))
+    check("H4: assertion-free new test file flagged (warn)",
+          rc == 1 and "zero assertions" in e.lower(), (rc, e))
+
+    # CLEAN: a bare `assert` statement is a real assertion -> silent
+    rc, _o, e = run(s, write(tf, "def test_a():\n    assert compute() == 4\n"))
+    check("H4: assert statement counts -> silent", rc == 0 and e == "", (rc, e))
+
+    # CLEAN: unittest assertEqual (assert<Word>(...) form) counts -> silent
+    rc, _o, e = run(s, write(tf, "class TestX(unittest.TestCase):\n"
+                                 "    def test_a(self):\n        self.assertEqual(compute(), 4)\n"))
+    check("H4: assertEqual counts -> silent", rc == 0 and e == "", (rc, e))
+
+    # CLEAN: pytest.raises context manager IS the assertion -> silent (no false positive)
+    rc, _o, e = run(s, write(tf, "def test_raises():\n    with pytest.raises(ValueError):\n        boom()\n"))
+    check("H4: pytest.raises counts -> silent", rc == 0 and e == "", (rc, e))
+
+    # NEGATIVE: a fixture/helper file with NO test declarations is not a vibe test -> silent
+    rc, _o, e = run(s, write("tests/conftest.py",
+                             "import pytest\n@pytest.fixture\ndef db():\n    return object()\n"))
+    check("H4: fixture file (no test decls) not flagged", rc == 0 and e == "", (rc, e))
+
+    # NEGATIVE: non-test source file with no asserts -> ignored
+    rc, _o, _e = run(s, write("src/app.py", "def f():\n    return 1\n"))
+    check("H4: non-test source file ignored", rc == 0, _e)
+
+    # SCOPE: an Edit (fragment, not whole file) is the weakening guard's job, not this one -> silent
+    rc, _o, e = run(s, edit(tf, "assert x == 1", "y = 2"))
+    check("H4: Edit is out of scope for the vibe guard -> silent", rc == 0 and e == "", (rc, e))
+
+    # MODE: off silences
+    rc, _o, e = run(s, write(tf, "def test_a():\n    compute()\n"),
+                    {"TDD_PLAYBOOK_HOOK_VIBETEST": "off"})
+    check("H4: off mode -> exit 0 silent", rc == 0 and e == "", (rc, e))
+
+    # MODE: opt-in block promotes to exit 2
+    rc, _o, _e = run(s, write(tf, "def test_a():\n    compute()\n"),
+                     {"TDD_PLAYBOOK_HOOK_VIBETEST": "block"})
+    check("H4: block mode -> exit 2", rc == 2, _e)
+
+
 # ---------------------------------------------------------------------- snapshot_guard
 def test_snapshot():
     s = "snapshot_guard.py"
@@ -376,8 +424,8 @@ def test_tripwire_reminder():
 
 def main():
     print("TDD Playbook hook calibration")
-    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
-               test_flaky, test_intent, test_tripwire_reminder):
+    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_vibetest,
+               test_snapshot, test_flaky, test_intent, test_tripwire_reminder):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

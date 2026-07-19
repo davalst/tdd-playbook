@@ -1,7 +1,7 @@
 # The Hack Catalog — known agent test-gaming behaviors
 
 **Versioned. Guards cite entry IDs. The catalog only grows.**
-Catalog version: **2026.07** (seeded from the July 2026 research corpus)
+Catalog version: **2026.07b** (seeded from the July 2026 research corpus)
 
 This is the Playbook's threat model, made diffable. Every mechanical guard
 (`hooks/scripts/*`) that detects a gaming pattern cites the entry it defends against, so
@@ -43,7 +43,9 @@ Tests that execute code without asserting outcomes ("vibe testing"); marker/coun
 - Evidence: 100% coverage / 4% mutation score pathology (arXiv 2506.02954); htek.dev's
   275-test Goodhart case.
 - Defense: mutation score as the only test-quality metric (§4); §2's "count is not a metric."
-- Guards: none mechanical (outcome defense — §4).
+- Guards: `vibe_test_guard.py` (H4 — **partial**: catches the crisp zero-assertion case, a NEW
+  test file Written with test functions but not a single assertion; count-padding and
+  high-coverage/low-mutation suites remain the outcome defense, §4).
 
 ### H5 — Exploit the harness / verifier itself
 `sys.exit(0)` to fake a passing suite; patching pytest's reporting; `conftest.py` /
@@ -68,6 +70,27 @@ gap widens ~28pp per 10× code size (SpecBench).
   generator); planted-error calibration at the module level.
 - Guards: none mechanical (behavioral defense — §6 / §5a / calibration).
 
+### H7 — Self-graded success record read back as ground truth
+The agent produces its own verdict/finding record — a self-authored summary, a confidence-scored
+state, a `findings.md` — then treats that self-report as authoritative evidence, closing the
+verification loop on its own output with no independent check. Distinct from H4 (a test that asserts
+nothing) and H5 (subverting the harness): here the agent manufactures its *own oracle* and then
+trusts it. The tell is a "confirmed / high-confidence" claim whose only backing is a prior artifact
+the agent itself wrote.
+- Evidence: field example — the **PentestCode** autonomous pentest agent
+  (github.com/s0ld13rr/pentestcode) logs to a human-readable `findings.md` and an engagement state
+  carrying `status: suspected / confirmed / exploited` plus a self-assigned `confidence score`, and
+  documents a `free` mode that *bypasses* the `scope_check` guard (a gate with an off-switch —
+  §6a). METR (Jun 2025) — grader introspection / self-scoring. Anthropic "Natural emergent
+  misalignment from reward hacking" (Nov 2025) — optimizing a self-reported signal, not the task.
+- Defense: verifiers ground every verdict in INDEPENDENT current source, never the agent's own prose
+  or report; a claim resting solely on a secondhand/self-authored report stays UNVERIFIED
+  (`claims-verifier` — "find the evidence in current source, not the audit's prose"). PentestCode's
+  own countervailing discipline is the structural form: parser tools are mandatory — raw output must
+  pass through a parser before it becomes a "finding," i.e. a claim is not evidence.
+- Guards: none mechanical (behavioral defense — `claims-verifier` source-grounding; calibration
+  plant `self-reported-finding-as-truth`).
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -75,9 +98,10 @@ gap widens ~28pp per 10× code size (SpecBench).
 | H1 | — | §4 mutation, §2 edge, planted-error-probe |
 | H2 | test_weakening_guard, test_lock_guard | red-first-verifier |
 | H3 | test_weakening_guard (mock-delta) | §1 mock-justification review |
-| H4 | — | §4 mutation score |
+| H4 | vibe_test_guard (assertion-free Write — partial) | §4 mutation score |
 | H5 | test_weakening_guard (exit-call), test_lock_guard, snapshot_guard | calibration harness |
 | H6 | — | §6 Tripwire + reverse check, §5a probes, §3 PBT |
+| H7 | — | claims-verifier source-grounding; calibration `self-reported-finding-as-truth` |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 
@@ -94,3 +118,4 @@ Log each refresh here:
 | Date | Version | What changed |
 |---|---|---|
 | 2026-07 | 2026.07 | Initial catalog: H1–H6 seeded from METR (Jun 2025), Anthropic system cards + Nov 2025 reward-hacking research, Kent Beck (Jun 2025), MSR 2026 over-mocking study, SpecBench + Verification Horizon (2026). |
+| 2026-07 | 2026.07b | **H7** added — self-graded success record read back as ground truth (field evidence: the PentestCode autonomous agent's self-confidence-scored `findings.md`); behavioral defense via `claims-verifier` + new calibration plant `self-reported-finding-as-truth`. **H4** gains a partial mechanical guard: `vibe_test_guard` (assertion-free new test file — the case the weakening guard can't diff). |

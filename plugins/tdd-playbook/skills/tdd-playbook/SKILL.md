@@ -101,6 +101,11 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
 - **Every new mock needs a one-line justification** — what real behavior it stands in for and
   where that behavior IS tested for real. Over-mocking is the most common agent weakening
   (H3: agents add mocks ~36% of test commits vs ~26% for humans); the `overmock` guard reminds.
+- **Assert an outcome, don't just run code.** A test that executes the code but asserts nothing is
+  the 100%-coverage / ~0 mutation-score pathology (H4). The `vibe_test` guard flags the crisp case —
+  a new test file written with test functions but ZERO assertions (advisory; the weakening guard
+  can't see it because there's no prior assertion to diff). Mutation score (§4) remains the real
+  quality metric; the guard is just the floor.
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
   guarantee of test quality. The guarantee is §3–§4 (+ the TEST-LOCK above).
 

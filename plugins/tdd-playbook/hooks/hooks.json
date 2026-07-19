@@ -51,6 +51,12 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/overmock_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: over-mock guard"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/vibe_test_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: vibe-test guard"
           }
         ]
       }

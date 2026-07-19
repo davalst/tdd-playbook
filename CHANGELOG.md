@@ -3,6 +3,39 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.8.0 — 2026-07-19
+
+**Closing two catalog gaps surfaced by an external field example.** A review of the PentestCode
+autonomous pentest agent (github.com/s0ld13rr/pentestcode) — read as data, not vendored — surfaced a
+shipped instance of *self-grading*: the agent logs findings to its own `findings.md` and an
+engagement state with self-assigned `status: confirmed` / `confidence` values, then reads them back
+as ground truth (its `free` mode even bypasses the built-in `scope_check`). That is a distinct
+test-gaming strategy the catalog did not name, and it exposed a blind spot in one of our own guards.
+
+- **HACK_CATALOG H7 — self-graded success record read back as ground truth** (catalog version
+  `2026.07 → 2026.07b`). The agent manufactures its own oracle (a self-authored summary / confidence
+  score / findings file) and then trusts it — distinct from H4 (asserts nothing) and H5 (subverts
+  the harness). Behavioral defense: `claims-verifier` grounds every verdict in independent current
+  source; a claim resting solely on a self-authored/secondhand report stays UNVERIFIED. Proven by a
+  new calibration plant, `self-reported-finding-as-truth` (claims-verifier) — a "CONFIRMED,
+  confidence 0.97" finding whose only evidence is the agent's own report, contradicted by current
+  source; the deterministic oracle requires `REFUTED` / `confirmed 0`.
+- **New guard `vibe_test_guard.py` — partial mechanical defense for H4** (assertion-free "vibe"
+  tests). The existing `test_weakening_guard` catches assertions *dropped* from a file but is
+  structurally blind to a brand-NEW test file that never had one. This guard closes that crisp case:
+  a Write of a test file that defines test functions but contains ZERO assertions. **Advisory
+  (warn)** by design — a suite asserting through a shared helper has no literal assertion, so it must
+  never wedge a session; Write-only, because an Edit fragment can't prove a whole-file zero. Planted
+  input tests in `test_hooks.py` cover the flag, every false-positive path (assert / assertEqual /
+  `pytest.raises` / fixture-only file / non-test file / Edit scope), and the off/block modes. The H4
+  map row flips from `—` to a named partial guard; count-padding and low-mutation suites remain the
+  §4 outcome defense.
+
+Release gate: all suites green (68 hook checks, installer, 8 plugin suites, calibration harness),
+7-scenario `--dry-run` clean, manifests parse, `capability_registry validate` clean, scratch-repo
+`install_into_repo.py` parity verified (new guard vendored + wired, `${CLAUDE_PLUGIN_ROOT}`
+rewritten). Live agent calibration of the new H7 plant remains David's model-gated cadence task.
+
 ## 1.7.1 — 2026-07-17
 
 **Mutation-gate integrity — the two-axis vacuity guard** (origin: a vendored consumer's scoped
