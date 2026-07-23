@@ -68,6 +68,13 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
   tested + registered yet unreachable, because the adversary was optional and skipped, 2026-07).
   The adversary must answer, per new gate/capability: does it appear in the user-facing control
   surface AND the health/status surface, or is it dark-by-default / un-toggleable / health-invisible?
+  Dispatch the `architecture-adversary` alongside it — the DESIGN-quality counterpart, refute-framed
+  "does this plan fix the ROOT at the right seam, or patch a symptom / add an Nth copy of something
+  that already exists?" Islands and band-aids are DIFFERENT failures: a plan can be fully connected
+  and still be spaghetti (origin: a false-positive "fixed" by adding a tool name to ONE of THREE
+  disagreeing read-only lists instead of unifying them — every other gate passed it, because none
+  evaluates design quality). Advisory, not a hard block; fold each finding in as a deliverable or an
+  owned debt entry, or reject it with a reason.
 And ONCE per plan, BEFORE the deliverables — **spec integrity**. Everything downstream (§§1–6)
 rigorously verifies what the PLAN says; a wrong reading of the request here passes every gate. So:
 - **Assumptions stated explicitly.** If the request supports multiple readings, present them and say
@@ -326,6 +333,12 @@ target the feature). For each deliverable assert it is:
   scope creep, a drive-by refactor, or an orphaned helper: remove orphans YOUR change created; unrelated
   cleanup/dead code gets MENTIONED, not done ("dead" is a negative claim — §12 requires the exhaustive
   sweep before acting on it).
+- **Design-quality pass (diff → debt):** the Tripwire proves the fix is wired and tested; it does NOT
+  prove the fix is at the RIGHT SEAM. Run the `architecture-adversary` on the diff — does the change fix
+  the root, or add debt (an Nth copy of a list/enum, a special-case branch, a helper that duplicates one
+  that exists, a check keyed on a proxy name instead of the fact it's about)? A green, fully-wired diff
+  that band-aids the architecture is exactly the failure this catches. Advisory like the
+  integration-adversary, not a hard block, but its findings are specific enough to act on.
 - Author it red-first, drive to green; report `Tripwire: N/N`. It's a FLOOR, not a target — never add a
   hollow button/stub to go green. Anchor it to the PLAN, not the implementation.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral
@@ -513,7 +526,10 @@ unverified NEGATIVE about a file it never read.)
 - **Subagent/secondhand reports are UNVERIFIED claims.** Spot-check load-bearing ones before
   publishing (a subagent confidently reported a whole subsystem unreachable; one runtime probe
   killed it). When a cheap runtime check exists (`python -c` import/registration probe, hit the
-  route), prefer it over static inference.
+  route), prefer it over static inference. This governs the fresh-context reviewers too — the
+  `integration-adversary`'s islands and the `architecture-adversary`'s band-aid findings obey this
+  section: no "these are the only two copies" / "no existing helper does this" without the exhaustive
+  grep sweep cited, and a hedged finding is demoted to a lead, never worn as a severity.
 - **No severity without verification.** A hedged claim cannot carry a severity or a scoreboard row.
   Demote it to an explicit "Unverified leads" section WITH its falsification path ("confirmed/
   refuted by grepping X"). Leads are first-class — the sin is uncertainty wearing a severity badge;

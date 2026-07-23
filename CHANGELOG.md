@@ -3,6 +3,38 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.8.0 — 2026-07-23
+
+**New agent: the `architecture-adversary`** — the design-quality counterpart to the
+`integration-adversary`. Origin: on a real multi-surface agent codebase, a false-positive was
+"fixed" by adding a tool name to ONE of THREE already-disagreeing "read-only tool" lists instead of
+unifying them to a single source of truth. Every existing gate passed it — the wiring was fine
+(integration-adversary), the claim was true (claims-verifier), the tests were green (Tripwire) —
+because none of them evaluates DESIGN quality. A human caught it: "don't band-aid our architecture
+into a spaghetti net of crap." This agent makes that check mechanical.
+
+- **`agents/architecture-adversary.md`** — a fresh-context, refute-framed reviewer ("assume the fix
+  is a band-aid and try to prove it"), tools `Read, Grep, Glob, Bash`, mirroring the
+  integration-adversary's structure/tone. Hunts seven band-aid patterns: WRONG SEAM, DUPLICATION,
+  SPECIAL-CASE CREEP, REUSE MISS, LAYERING VIOLATION, GATE-BY-PROXY, CONFIG/KNOB SPRAWL. Refute-frame:
+  "what is the earliest seam where this class of bug is impossible?" Deterministic output
+  (`seam_where_fix_landed` / `seam_where_it_should_land` / pattern# / why / smallest_fix) and a forced
+  `Verdict: ARCHITECTURAL / BAND-AID(n) / MIXED(n)` + `Recommendation:` line. §12 claims discipline
+  binding (negatives need the exhaustive grep sweep); it must say so when it finds nothing (never
+  invents debt). Ships with a worked example (the origin incident).
+- **Wired at two points** (advisory, never a hard block): SKILL §0 plan-close dispatches it alongside
+  the integration-adversary ("does this PLAN fix the root or a symptom?"); SKILL §6 adds a diff-time
+  design-quality pass ("does this DIFF add debt?"); SKILL §12 folds its findings under the claims
+  discipline; `/tdd-plan` dispatches both adversaries and reports both in `Loop closed:`.
+- **Anti-theater calibration** (§5a/§13): two new live scenarios — `band-aid-parallel-list` (plants a
+  fix that adds to one of two disagreeing read-only lists; the agent MUST flag it) and
+  `good-fix-single-source` (plants the unified fix; the agent must NOT false-positive), backed by a
+  small `tools.py`/`audit.py` fixture that models the incident. The live suite grows **6 → 8**. The
+  oracle is proven without model spend by stub-driven checks in `calibration/test_harness.py` (a
+  rubber-stamp and a false-positive both BLOCKING-FAIL; a correct catch and a correct clean both PASS).
+- Pinned by `test_agents.py::test_v18_doctrine` (+ planted-fixture); the agent roster is now **9**.
+  SKILL description unchanged (958 chars, within budget).
+
 ## 1.7.1 — 2026-07-17
 
 **Mutation-gate integrity — the two-axis vacuity guard** (origin: a vendored consumer's scoped

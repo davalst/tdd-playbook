@@ -67,6 +67,7 @@ AGENT_CONTRACTS = {
     "claims-verifier": (False, [r"Recommendation:"]),
     "edge-case-adversary": (False, [r"Recommendation:"]),
     "integration-adversary": (False, [r"Recommendation:"]),
+    "architecture-adversary": (False, [r"Recommendation:"]),
     "mutation-runner": (True, []),
     "planted-error-probe": (True, [r"SAFETY NET VERIFIED", r"BLOCKING GAP"]),
     "ux-probe-calibrator": (True, [r"PROBE VERIFIED", r"BLOCKING GAP", r"Recommendation:"]),
@@ -85,7 +86,7 @@ def test_agents():
         with open(os.path.join(AGENTS, fn)) as fh:
             found[name] = fh.read()
 
-    check("all 8 contracted agents exist", set(AGENT_CONTRACTS) == set(found),
+    check("all 9 contracted agents exist", set(AGENT_CONTRACTS) == set(found),
           sorted(set(AGENT_CONTRACTS) ^ set(found)))
 
     for name, text in sorted(found.items()):
@@ -363,11 +364,72 @@ def test_v171_planted_fixtures():
                                     "discarded exit code is a discarded truth")))
 
 
+def test_v18_doctrine():
+    """v1.8 architecture-adversary (design-quality band-aid reviewer) must be present + wired.
+
+    Origin: on a real multi-surface agent codebase, a false-positive was 'fixed' by adding a tool
+    name to ONE of THREE disagreeing read-only lists instead of unifying them — every other gate
+    (wiring, claims, tests) passed it because none evaluates DESIGN quality. This agent makes that
+    check mechanical; these pins keep it, its seven patterns, and its dispatch points from
+    regressing out."""
+    with open(os.path.join(AGENTS, "architecture-adversary.md")) as fh:
+        agent = fh.read()
+    for label, needle in [
+        ("architecture-adversary: refute-framed band-aid stance", "band-aid"),
+        ("architecture-adversary: pattern WRONG SEAM", "WRONG SEAM"),
+        ("architecture-adversary: pattern DUPLICATION", "DUPLICATION"),
+        ("architecture-adversary: pattern SPECIAL-CASE CREEP", "SPECIAL-CASE CREEP"),
+        ("architecture-adversary: pattern REUSE MISS", "REUSE MISS"),
+        ("architecture-adversary: pattern LAYERING VIOLATION", "LAYERING VIOLATION"),
+        ("architecture-adversary: pattern GATE-BY-PROXY", "GATE-BY-PROXY"),
+        ("architecture-adversary: pattern CONFIG/KNOB SPRAWL", "CONFIG/KNOB SPRAWL"),
+        ("architecture-adversary: earliest-seam refute question", "EARLIEST seam"),
+        ("architecture-adversary: forced Verdict contract", "Verdict: ARCHITECTURAL"),
+        ("architecture-adversary: origin incident (read-only lists)", "read-only"),
+        ("architecture-adversary: worked example present", "Worked example"),
+        ("architecture-adversary: must not invent debt", "invent debt"),
+    ]:
+        check(label, needle in agent, "needle {!r} missing".format(needle))
+
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    check("SKILL §0/§6: dispatches architecture-adversary", "architecture-adversary" in text)
+    check("SKILL: names the band-aid/spaghetti design failure",
+          "band-aid" in text or "spaghetti" in text)
+
+    with open(os.path.join(COMMANDS, "tdd-plan.md")) as fh:
+        check("/tdd-plan: dispatches architecture-adversary",
+              "architecture-adversary" in fh.read())
+
+    scen = os.path.join(os.path.dirname(os.path.dirname(ROOT)),
+                        "calibration", "scenarios.json")
+    if os.path.isfile(scen):
+        with open(scen) as fh:
+            ids = [s["id"] for s in json.load(fh)["scenarios"]]
+        check("calibration: band-aid plant scenario present", "band-aid-parallel-list" in ids, ids)
+        check("calibration: good-fix (no-false-positive) scenario present",
+              "good-fix-single-source" in ids, ids)
+
+
+def test_v18_planted_fixtures():
+    """The v1.8 pins must be able to FAIL — a design reviewer stripped of its contract is flagged."""
+    stripped = "A design reviewer that only praises clean code and never names a seam.\n"
+    check("planted: missing band-aid stance detected", "band-aid" not in stripped)
+    check("planted: missing Verdict contract detected", "Verdict: ARCHITECTURAL" not in stripped)
+    intact = ("Assume it's a band-aid; hunt WRONG SEAM / DUPLICATION / GATE-BY-PROXY; "
+              "end with Verdict: ARCHITECTURAL or BAND-AID.\n")
+    check("planted: intact architecture-adversary doctrine passes the same needles",
+          all(n in intact for n in ("band-aid", "WRONG SEAM", "GATE-BY-PROXY",
+                                    "Verdict: ARCHITECTURAL")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
                test_v17_doctrine, test_v17_planted_fixtures,
-               test_v171_doctrine, test_v171_planted_fixtures):
+               test_v171_doctrine, test_v171_planted_fixtures,
+               test_v18_doctrine, test_v18_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

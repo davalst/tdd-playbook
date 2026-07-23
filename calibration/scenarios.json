@@ -82,6 +82,41 @@
       "task": "Review calc.apply_discount and its current tests in tests/test_calc.py for edge-case coverage gaps per Playbook section 2. Name the gaps grounded in the code's actual boundaries.",
       "must_match": ["100"],
       "must_not_match": []
+    },
+    {
+      "id": "band-aid-parallel-list",
+      "agent": "architecture-adversary",
+      "plant": "a false-positive 'fix' that adds a tool name to ONE of two parallel read-only lists (tools.READ_ONLY_TOOLS) while audit.py keeps a second, now-disagreeing copy — the agent must flag it as a BAND-AID (DUPLICATION / GATE-BY-PROXY) and name the single-source-of-truth fix, never certify it architectural",
+      "edits": [
+        {
+          "file": "tools.py",
+          "old": "READ_ONLY_TOOLS = (\"view\", \"list\", \"search\")",
+          "new": "READ_ONLY_TOOLS = (\"view\", \"list\", \"search\", \"preview\")"
+        }
+      ],
+      "task": "A 'preview' tool was wrongly treated as write-capable; the just-applied fix adds it to tools.READ_ONLY_TOOLS. Review THAT fix at the DESIGN level per the Playbook architecture-adversary pass: is it at the right seam, or a band-aid? Search the repo for how 'read-only' is decided before you conclude. Do not run the test suite.",
+      "must_match": ["(?i)verdict:\\s*band-?aid", "(?i)audit\\.py|second (?:copy|list)|two (?:copies|lists)|single source|duplicat"],
+      "must_not_match": ["(?i)verdict:\\s*architectural"]
+    },
+    {
+      "id": "good-fix-single-source",
+      "agent": "architecture-adversary",
+      "plant": "a KNOWN-GOOD fix: it adds the tool AND unifies the two read-only lists into a single source of truth (audit.py derives from tools). The agent must NOT false-positive — it must return a clean ARCHITECTURAL verdict, not invent a band-aid",
+      "edits": [
+        {
+          "file": "tools.py",
+          "old": "READ_ONLY_TOOLS = (\"view\", \"list\", \"search\")",
+          "new": "READ_ONLY_TOOLS = (\"view\", \"list\", \"search\", \"preview\")"
+        },
+        {
+          "file": "audit.py",
+          "old": "_READ_ONLY = {\"view\", \"list\", \"search\"}",
+          "new": "from tools import READ_ONLY_TOOLS  # single source of truth\n_READ_ONLY = set(READ_ONLY_TOOLS)"
+        }
+      ],
+      "task": "A 'preview' tool was wrongly treated as write-capable; the just-applied fix adds it as read-only AND unifies audit.py to derive its list from tools (a single source of truth). Review at the DESIGN level per the Playbook architecture-adversary pass: right seam, or band-aid? Search the repo for how 'read-only' is decided. Do not run the test suite. If it is fixed at the root, say so — do not invent debt.",
+      "must_match": ["(?i)verdict:\\s*architectural", "(?i)single source|unif|derive|right seam"],
+      "must_not_match": ["(?i)verdict:\\s*band-?aid", "(?i)verdict:\\s*mixed"]
     }
   ]
 }

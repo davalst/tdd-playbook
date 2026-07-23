@@ -40,12 +40,17 @@ Per deliverable:
 End with the proposed **Tripwire deliverable list** (one row per deliverable to verify
 BUILT + WIRED + ACTIVATED + EXERCISED).
 
-**Close the loop (not optional):** DISPATCH the `integration-adversary` agent on the drafted
-plan — a fresh-context, refute-framed pass that assumes the plan builds an island and tries to
-prove it (the author's integration list is bounded by the same imagination that wrote the plan).
-Fold each gap it names into the plan as a deliverable or an owned debt entry, or explicitly
+**Close the loop (not optional):** DISPATCH TWO fresh-context, refute-framed adversaries on the
+drafted plan — the author's own imagination bounds both lists:
+- `integration-adversary` — assumes the plan builds an ISLAND and tries to prove it (subsystems it
+  should touch but doesn't, emitters with no consumer, surfaces left behind, dark-by-default shipping).
+- `architecture-adversary` — assumes the plan is a BAND-AID and tries to prove it (fixes a symptom
+  at the wrong seam, duplicates a list/enum/helper that already exists, keys a check on a proxy name
+  instead of the fact). Islands and band-aids are different failures — a plan can be fully connected
+  and still be spaghetti.
+Fold each gap either names into the plan as a deliverable or an owned debt entry, or explicitly
 reject it with a reason.
 
-Report `Loop closed: yes (integration-adversary dispatched — <its top gap>)` or
-`Loop closed: NO — <why>`. Then stop — this plan is the single upstream spec; let me review
-before writing code.
+Report `Loop closed: yes (integration-adversary — <top island>; architecture-adversary — <top
+band-aid or "clean">)` or `Loop closed: NO — <why>`. Then stop — this plan is the single upstream
+spec; let me review before writing code.

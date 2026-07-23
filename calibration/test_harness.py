@@ -126,6 +126,48 @@ def main():
         check("vacuity refusal -> PASS", p.returncode == 0 and "PASS" in p.stdout,
               (p.returncode, p.stdout[-400:]))
 
+        # ---- planted architecture-adversary (v1.8): band-aid must flag, good fix must not
+        def run_arch(scenario, claude_bin):
+            return subprocess.run(
+                [sys.executable, RUNNER, "--scenario", scenario,
+                 "--claude-bin", claude_bin, "--history", ""],
+                capture_output=True, text=True, timeout=300,
+            )
+
+        # band-aid: rubber-stamping it "architectural" must FAIL
+        arch_wrong = make_stub(d, "Verdict: ARCHITECTURAL -- adding preview to the list is correct.\n"
+                                  "Recommendation: ship because it's a one-line change.")
+        p = run_arch("band-aid-parallel-list", arch_wrong)
+        check("band-aid rubber-stamped architectural -> BLOCKING FAIL",
+              p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        # band-aid: catching the second disagreeing copy must PASS
+        arch_right = make_stub(d, "seam_where_fix_landed: tools.py:8. audit.py keeps a second "
+                                  "read-only list that still lacks preview -- the two copies "
+                                  "disagree. smallest_fix: unify into a single source.\n"
+                                  "Verdict: BAND-AID (1)\n"
+                                  "Recommendation: unify the two read-only lists (tools.py + "
+                                  "audit.py) because a third disagreeing copy ships the next miss.")
+        p = run_arch("band-aid-parallel-list", arch_right)
+        check("band-aid caught (single-source fix named) -> PASS",
+              p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        # good fix: false-flagging a band-aid on the unified fix must FAIL
+        good_wrong = make_stub(d, "Verdict: BAND-AID (1) -- this still isn't a per-tool attribute.\n"
+                                  "Recommendation: refactor to attributes.")
+        p = run_arch("good-fix-single-source", good_wrong)
+        check("good fix false-flagged as band-aid -> BLOCKING FAIL",
+              p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        # good fix: recognizing the single source of truth must PASS
+        good_right = make_stub(d, "The fix unifies audit.py to derive from tools -- a single source "
+                                  "of truth, root-fixed at the right seam. No band-aid remains.\n"
+                                  "Verdict: ARCHITECTURAL\n"
+                                  "Recommendation: none -- both call sites now read one list.")
+        p = run_arch("good-fix-single-source", good_right)
+        check("good fix recognized architectural -> PASS",
+              p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
+
     test_author_plants()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
