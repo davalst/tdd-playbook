@@ -97,6 +97,41 @@ def main():
         check("content drift within an already-dirty file is caught",
               p.returncode == 1 and "CONTENT differs" in p.stderr, (p.returncode, p.stderr))
 
+    # ---- preflight: refuse a revert-based pass over uncommitted tracked work (v1.8.1)
+    with tempfile.TemporaryDirectory() as d3:
+        make_repo(d3)
+
+        # clean committed tree -> preflight passes (safe for a git-checkout revert)
+        p = run(d3, "preflight")
+        check("preflight clean tree passes", p.returncode == 0 and "preflight clean" in p.stdout,
+              (p.returncode, p.stdout, p.stderr))
+
+        # PLANTED: uncommitted TRACKED change -> refuse loudly (a checkout would clobber it)
+        with open(os.path.join(d3, "mod.py"), "w") as fh:
+            fh.write("def f():\n    return 99  # uncommitted work\n")
+        p = run(d3, "preflight")
+        check("preflight refuses uncommitted tracked change",
+              p.returncode == 1 and "REFUSING" in p.stderr and "mod.py" in p.stderr,
+              (p.returncode, p.stderr))
+
+        # staged-but-uncommitted also refused (a checkout HEAD -- . would clobber it)
+        subprocess.run(["git", "add", "mod.py"], cwd=d3, capture_output=True, text=True)
+        p = run(d3, "preflight")
+        check("preflight refuses staged uncommitted change", p.returncode == 1,
+              (p.returncode, p.stderr))
+
+        # commit it -> clean again -> preflight passes
+        subprocess.run(["git", "commit", "-qm", "work"], cwd=d3, capture_output=True, text=True)
+        p = run(d3, "preflight")
+        check("preflight passes once committed", p.returncode == 0, (p.returncode, p.stderr))
+
+        # untracked-only files do NOT block (git checkout leaves them alone)
+        with open(os.path.join(d3, "scratch.tmp"), "w") as fh:
+            fh.write("untracked")
+        p = run(d3, "preflight")
+        check("preflight ignores untracked-only files", p.returncode == 0,
+              (p.returncode, p.stdout, p.stderr))
+
     # not a git repo -> usage error, not a crash
     with tempfile.TemporaryDirectory() as d2:
         p = run(d2, "begin")

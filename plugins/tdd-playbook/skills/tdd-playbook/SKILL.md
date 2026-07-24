@@ -222,6 +222,13 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   concern-specific mutants and require a test that kills each, BEFORE trusting the suite. Inverts
   the workflow: instead of only grading tests after the fact, mutants state what the tests must
   catch. (Validated at 10k-class scale, 73% engineer acceptance.)
+  **Precondition — a CLEAN, COMMITTED tree (or a worktree).** A targeted-mutant pass that
+  `git checkout`/`stash`-reverts to restore source WILL clobber uncommitted work, silently
+  (origin: a hand-rolled targeted-mutant script git-checkout'd away uncommitted work mid-pass —
+  detect-after is worse than refuse-before). Gate any revert-based script on
+  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
+  tracked changes) — or use `with_snapshot.py begin`/`verify`, which RECORDS a dirty tree and
+  restores it rather than blindly reverting. Committing first is the cheapest form of both.
 - **Mutants stay OUT of the implementing agent's context.** A visible verifier is a gameable
   verifier (METR: models introspect graders when they can see them). Dispatch `mutation-runner`
   fresh; the implementer sees killed/survived VERDICTS, never the mutant list it could special-case.
@@ -509,7 +516,9 @@ manual policy means he could forget and lose the backstop. So, proactively and w
   transients (mutation-tool source copies, generated `mutants/` dirs, lockfile churn); tag wip
   commits with a session id so concurrent sessions stop absorbing each other's work. Better still,
   run slow tree-mutating passes (mutation testing) in an isolated worktree so their transients never
-  touch the main tree at all.
+  touch the main tree at all. A REVERT-BASED targeted-mutant script (one that `git checkout`s to
+  restore source) gates on `with_snapshot.py preflight` — it refuses over uncommitted work instead
+  of checkout-clobbering it (§4).
 
 ## 12. Analysis & audit discipline — claims are code
 For audit / review / diagnosis / "investigate X" work the deliverable is CLAIMS, and the same

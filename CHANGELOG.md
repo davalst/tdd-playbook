@@ -3,6 +3,25 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.8.1 — 2026-07-23
+
+**Targeted-mutant revert-safety — `with_snapshot.py preflight`** (origin: downstream telemetry —
+a hand-rolled targeted-mutant script `git checkout`'d away UNCOMMITTED work mid-pass; the lesson
+"commit before a revert-based tree-mutating op" was half-covered by §11 but never stated at the
+targeted-mutant step, and detect-after-the-fact — `with_snapshot verify` — is worse than
+refuse-before). This makes refuse-before mechanical:
+
+- **New `with_snapshot.py preflight` subcommand** — REFUSES (loud exit 1) when the tree has
+  uncommitted changes to TRACKED files, because a revert-via-`git checkout` pass would clobber
+  them. Untracked-only files don't block (a checkout leaves them alone). This is the guard for the
+  bare-checkout pattern; `begin`/`verify` remains the other pattern (it RECORDS a dirty tree and
+  restores it, so it doesn't need a clean tree). Backed by 5 planted tests in `test_with_snapshot.py`
+  (clean passes · uncommitted tracked refused · staged refused · committed passes · untracked ignored).
+- **Doctrine:** SKILL §4 targeted-mutant mode gains a clean-committed-tree precondition (gate any
+  revert-based script on `preflight`, or use `begin`/`verify`); §11 cross-references it on the
+  worktree line; the `mutation-runner` agent and `/mutate` command carry the precondition.
+- Pinned by `test_agents.py::test_v181_doctrine` (+ planted-fixture). SKILL description unchanged.
+
 ## 1.8.0 — 2026-07-23
 
 **New agent: the `architecture-adversary`** — the design-quality counterpart to the

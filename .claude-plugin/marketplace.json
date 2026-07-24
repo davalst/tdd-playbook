@@ -12,7 +12,7 @@
       "name": "tdd-playbook",
       "source": "./plugins/tdd-playbook",
       "description": "Universal TDD/QA Playbook (auto-firing skill) + enforcement hooks, scaffolding commands, and verification agents. Composes with repo-local testing conventions.",
-      "version": "1.8.0",
+      "version": "1.8.1",
       "author": { "name": "David Alston" }
     }
   ]

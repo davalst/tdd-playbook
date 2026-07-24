@@ -424,12 +424,49 @@ def test_v18_planted_fixtures():
                                     "Verdict: ARCHITECTURAL")))
 
 
+def test_v181_doctrine():
+    """v1.8.1 targeted-mutant revert-safety: a revert-based pass must preflight a clean tree.
+
+    Origin (downstream telemetry): a hand-rolled targeted-mutant script git-checkout'd away
+    uncommitted work mid-pass. detect-after (verify) is worse than refuse-before (preflight).
+    These pins keep the precondition + the mechanical guard (with_snapshot.py preflight) present."""
+    binp = os.path.join(ROOT, "bin", "with_snapshot.py")
+    with open(binp) as fh:
+        wsnap = fh.read()
+    check("with_snapshot: preflight subcommand present",
+          "cmd_preflight" in wsnap and '"preflight"' in wsnap)
+    check("with_snapshot: preflight refuses + names the clobber risk",
+          "REFUSING" in wsnap and "clobber" in wsnap.lower())
+
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    check("SKILL §4: targeted-mutant clean-tree precondition (preflight)", "preflight" in text)
+    check("SKILL §4: revert clobbers uncommitted work named", "clobber uncommitted" in text)
+
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        check("mutation-runner: revert-based pass gates on preflight", "preflight" in fh.read())
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        check("/mutate: revert-based script preflight precondition", "preflight" in fh.read())
+
+
+def test_v181_planted_fixtures():
+    """The v1.8.1 pin must be able to FAIL — guidance stripped of the preflight precondition."""
+    stripped = "Run the mutation pass and git checkout to revert when done.\n"
+    check("planted: missing preflight precondition detected", "preflight" not in stripped)
+    intact = ("Gate a revert-based pass on with_snapshot.py preflight — it refuses to clobber "
+              "uncommitted work.\n")
+    check("planted: intact preflight precondition passes",
+          "preflight" in intact and "clobber" in intact)
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
                test_v17_doctrine, test_v17_planted_fixtures,
                test_v171_doctrine, test_v171_planted_fixtures,
-               test_v18_doctrine, test_v18_planted_fixtures):
+               test_v18_doctrine, test_v18_planted_fixtures,
+               test_v181_doctrine, test_v181_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

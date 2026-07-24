@@ -14,6 +14,11 @@ pass can leave a live mutant in the tree. Run
 verify will enumerate exactly those divergences — QUOTE its output in your report and confirm
 every listed path is an intended new/changed test (anything else is a leaked mutant: fix it
 and re-verify). Prefer running the pass in a `git worktree` when the tool allows it.
+**Before a REVERT-BASED targeted-mutant pass** (a hand-rolled script that `git checkout`s to
+restore source), run `python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" preflight` first — it
+REFUSES on uncommitted tracked changes, so the checkout can't silently clobber your work; commit,
+stash, or use a worktree, then proceed. (`begin`/`verify` already RECORDS and restores a dirty
+tree; a bare `git checkout` does not — that gap is what preflight guards.)
 
 1. Identify the stack's tool (`mutmut`/`cosmic-ray` Python, `Stryker` JS/TS, etc.) and the
    CRITICAL modules in scope (auth, money, permissions, lifecycle, core algorithms). Never

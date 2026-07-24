@@ -22,6 +22,9 @@ nothing). Steps:
    money, permissions), also run **targeted-mutant mode**: write 3–5 plausible
    concern-specific mutants (drop the permission check, flip the rounding, skip the state
    guard) and require a test that kills each — mutation as test generator, not just grader.
+   **Precondition for a REVERT-BASED script** (one that `git checkout`s to restore source):
+   commit/stash first, or gate it on `with_snapshot.py preflight` — a bare checkout silently
+   clobbers uncommitted work.
 2. Run it; CAPTURE the tool's exit/stats output and confirm the run actually EXECUTED (run-stats
    total > 0, baseline green) BEFORE reading survivors — an aborted run returns an empty survivor
    set that masquerades as a clean gate. Then collect surviving mutants from the machine-readable stats.

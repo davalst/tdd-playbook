@@ -7,10 +7,19 @@ promise to restore it. A prose promise is an honor system — the exact seam thi
 exists to close (§13: "make the honest path the cheap path and the dishonest path visible").
 This tool makes the promise a checked invariant:
 
+    with_snapshot.py preflight # REFUSE (loud exit 1) if uncommitted TRACKED changes exist —
+                               #   a revert-based (git checkout) pass would clobber them
     with_snapshot.py begin    # record the tree's state BEFORE touching anything
     ... plant / stash / mutate / revert ...
     with_snapshot.py verify   # exit 0 iff the tree is EXACTLY as recorded; loud exit 1 if not
     with_snapshot.py status   # show the recorded snapshot, if any
+
+`preflight` is for the REVERT-VIA-CHECKOUT pattern (a hand-rolled targeted-mutant script that
+`git checkout`s to restore source): a bare checkout silently destroys uncommitted work, so gate
+the script on `preflight` and it fails loudly instead. `begin`/`verify` is the OTHER pattern — it
+RECORDS a dirty tree and restores it, so it does not need a clean tree (origin: a targeted-mutant
+script git-checkout'd away uncommitted work mid-pass; detect-after-the-fact is worse than
+refuse-before).
 
 State is kept in .git/tdd_playbook_snapshot.json (never committed, per-repo, survives the
 agent's process). `verify` deletes the snapshot on success so a stale snapshot can't mask a
@@ -104,6 +113,29 @@ def cmd_verify():
     return 0
 
 
+def cmd_preflight():
+    """Refuse a REVERT-BASED pass (git checkout/stash-pop to restore source) when the tree has
+    uncommitted changes to TRACKED files — a bare checkout would clobber that work. Untracked
+    files survive a checkout, so they don't block. Commit/stash first, run in a `git worktree`,
+    or use begin/verify (which RECORDS and restores the dirty state) instead of a bare checkout."""
+    status = _git("status", "--porcelain")
+    if status.returncode != 0:
+        sys.stderr.write("with_snapshot: git status failed: {}\n".format(status.stderr.strip()))
+        return 2
+    dirty = [ln for ln in status.stdout.splitlines() if ln.strip() and not ln.startswith("??")]
+    if dirty:
+        sys.stderr.write("with_snapshot: REFUSING — {} uncommitted tracked change(s); a "
+                         "revert-based (git checkout) pass will CLOBBER them:\n".format(len(dirty)))
+        for ln in dirty:
+            sys.stderr.write("  - {}\n".format(ln.strip()))
+        sys.stderr.write("Commit or stash first, run in a `git worktree`, or use "
+                         "`with_snapshot.py begin`/`verify` (records + restores the dirty state).\n")
+        return 1
+    print("with_snapshot: preflight clean — no uncommitted tracked changes; safe for a "
+          "revert-based pass")
+    return 0
+
+
 def cmd_status():
     path = snap_path()
     if not os.path.isfile(path):
@@ -118,10 +150,11 @@ def cmd_status():
 
 def main(argv=None):
     argv = argv if argv is not None else sys.argv[1:]
-    if len(argv) != 1 or argv[0] not in ("begin", "verify", "status"):
-        sys.stderr.write("usage: with_snapshot.py begin|verify|status\n")
+    if len(argv) != 1 or argv[0] not in ("preflight", "begin", "verify", "status"):
+        sys.stderr.write("usage: with_snapshot.py preflight|begin|verify|status\n")
         return 2
-    return {"begin": cmd_begin, "verify": cmd_verify, "status": cmd_status}[argv[0]]()
+    return {"preflight": cmd_preflight, "begin": cmd_begin, "verify": cmd_verify,
+            "status": cmd_status}[argv[0]]()
 
 
 if __name__ == "__main__":
