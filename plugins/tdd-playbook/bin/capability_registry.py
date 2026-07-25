@@ -177,8 +177,14 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
         lines.append("  %s" % cid)
 
     emitted = {(em or {}).get("topic") for c in caps for em in (c.get("emits") or [])}
-    orphans = [(c.get("id"), t) for c in caps for t in (c.get("consumes") or [])
-               if t not in emitted]
+
+    def _consume_topic(entry):
+        # `consumes` entries are either a bare topic string or the same dict
+        # shape `emits` uses ({"topic": ..., "producer": ...}).
+        return (entry or {}).get("topic") if isinstance(entry, dict) else entry
+
+    orphans = [(c.get("id"), topic) for c in caps for t in (c.get("consumes") or [])
+               if (topic := _consume_topic(t)) and topic not in emitted]
     lines.append("\n[consumed but never emitted (check the seam): %d]" % len(orphans))
     for cid, topic in orphans:
         lines.append("  %-28s consumes '%s' — no registered emitter" % (cid, topic))
