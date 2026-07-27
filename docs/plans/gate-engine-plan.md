@@ -165,7 +165,30 @@ exist separately — validating this design — but no product/OSS combines them
   real prior art matching the threat model, ADOPT it — this plan prefers not-invented-here
   losing to a genuine fit.
 
-## 11. Open questions for David
+## 11. Relationship to MemStruct (decided 2026-07-27: share primitives, never the trust chain)
+
+MemStruct already ships the engine's DNA in production form: Ed25519-signed offline-replayable
+proof bundles (`memproof-2`), hash-chained tamper-evident ledgers, deterministic zero-model-call
+verdicts, fail-closed refusal, planted-error non-vacuity. Consolidation was considered and
+REJECTED on trust grounds:
+- **The judge can't live inside a defendant.** MemStruct is actively agent-developed and is a
+  repo this engine should WATCH; merging means every agent-written MemStruct deploy redeploys
+  the judge (violates trust rule #5).
+- **Trust chains must be boring.** The engine is ~450 frozen stdlib lines; MemStruct is a living
+  product (FastAPI/Docker/migrations/pgvector/MCP) — its whole dependency + deploy surface would
+  join the verdict trust chain, and its churn would block releases (fail-closed cuts both ways).
+What we DO take:
+1. **Same VPS**, separate unix users + systemd units (Hermes pattern).
+2. **Primitives, if they extract cleanly:** prefer MemStruct's proven Ed25519 sign/verify +
+   replay core over `ssh-keygen -Y` IF it vendors as a small frozen no-dependency module
+   (build-time call in the engine repo; the stdlib-only rule is the bar).
+3. **MemStruct as downstream CONSUMER:** verdicts ingested READ-ONLY into MemStruct as governed
+   records ("was release SHA X verified — prove it, point-in-time"), feeding its audit-budget
+   story without entering the trust chain. Git ledger remains the source of truth.
+Family framing for productization: Playbook (methodology) · Gate Engine (CI verdicts) ·
+MemStruct (memory/decision verdicts) — one verification-trust DNA, three surfaces.
+
+## 12. Open questions for David
 
 1. VPS specs / OS version (sizes the resource caps).
 2. Watch `main` only, or feature branches too? (main-only is the cheap start.)
