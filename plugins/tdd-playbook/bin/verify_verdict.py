@@ -14,11 +14,13 @@ reason. Absence is never a silent pass: a release that ships during a verdict ou
 the failure the engine exists to prevent.
 
 WHY VENDOR, NOT IMPORT: the plugin is PUBLIC and vendors into sandboxes; CIVerd/memrebel are
-PRIVATE. So this tool re-implements the memproof-2 verification (stdlib + `cryptography` for
-Ed25519 — nothing else). Hand-rolling Ed25519 would fail *open* on a subtle bug (a verifier that
-wrongly returns True passes everything), which is worse than no gate; `cryptography` is required
-and its absence is RED, not a degraded pass. This is a release-time tool run where you can
-`pip install`, not a per-commit hook.
+PRIVATE. So this tool re-implements the memproof-2 verification. It is STDLIB-ONLY — like every
+other bin here — because the machine that watches this repo installs only `pytest`, so a
+third-party import (`cryptography`) would make CIVerd emit a permanent RED for its only subject.
+Ed25519 verification is provided by the sibling `_ed25519_verify` module (verification-only, no
+signing/keygen). The one fear with a hand-written verifier is failing OPEN; that is neutralized by
+RFC 8032 known-answer + negative vectors in tests/test_ed25519_verify.py (a `return True` mutant
+must turn the suite RED). This is a release-time tool, not a per-commit hook.
 
 TRUST MODEL: the adversary is the coding agent on this laptop, which cannot forge an Ed25519
 signature. So signature + subject + freshness + `ok` is sufficient here; replaying the gate
@@ -43,6 +45,9 @@ import os
 import subprocess
 import sys
 from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _ed25519_verify  # noqa: E402  (sibling stdlib verifier, vendored alongside)
 
 # --- The trust anchor. PUBLIC by design: confirms a verdict, can never forge one. Generated on
 # the VPS, 0400 owned by civerd-signer, never left the box. Also at civerd:trust/issuer.pub.
@@ -71,73 +76,69 @@ class Refused(Exception):
 
 
 # --------------------------------------------------------------------------- serializations
-# canonical(): RFC 8785 JCS — keys sorted, compact separators, ensure_ascii=False, floats
-# rejected. Used for record cores and the root statement. For the ASCII payloads CIVerd emits,
-# JCS's UTF-16 key order coincides with Python's code-point sort_keys; floats are rejected
-# explicitly because a float would hash differently across encoders.
+# canonical(): RFC 8785 JCS. Keys sorted by UTF-16 CODE UNITS (NOT Python's code-point sort_keys —
+# they agree on all ASCII and diverge only above the BMP, so real fixtures can't catch the bug; a
+# wrong sort surfaces as a false RED on an honest non-ASCII verdict). Minimal escapes, literal
+# UTF-8, floats rejected (a float would hash differently across encoders). Cross-validated against
+# memrebel's golden canonical_vectors. Used for record cores and the root statement.
 def canonical(obj):
-    _reject_floats(obj)
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
-        "utf-8"
-    )
+    return _jcs(obj).encode("utf-8")
 
 
-# stable_json(): sort_keys + compact separators. Used ONLY for `snapshot` and `claimed_report`.
+def _jcs(o):
+    if o is True:
+        return "true"
+    if o is False:
+        return "false"
+    if o is None:
+        return "null"
+    if isinstance(o, float):
+        raise Refused("noncanonical", "float in signed core")
+    if isinstance(o, int):
+        return str(o)
+    if isinstance(o, str):
+        return json.dumps(o, ensure_ascii=False)
+    if isinstance(o, list):
+        return "[" + ",".join(_jcs(x) for x in o) + "]"
+    if isinstance(o, dict):
+        for k in o:
+            if not isinstance(k, str):
+                raise Refused("noncanonical", "non-string key")
+        items = sorted(o.items(), key=lambda kv: kv[0].encode("utf-16-be"))
+        return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + _jcs(v)
+                              for k, v in items) + "}"
+    raise Refused("noncanonical", "unserializable type")
+
+
+# stable_json(): sort_keys (code point) + compact separators. Used ONLY for `snapshot` and
+# `claimed_report`, whose keys are ASCII. Unlike canonical() it does NOT reject floats.
+# Cross-validated against memrebel's golden stable_json_vectors.
 def stable_json(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
 
 
-def _reject_floats(obj):
-    if isinstance(obj, float):
-        raise Refused("noncanonical", "float in signed core")
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if not isinstance(k, str):
-                raise Refused("noncanonical", "non-string key")
-            _reject_floats(v)
-    elif isinstance(obj, list):
-        for v in obj:
-            _reject_floats(v)
-
-
 # --------------------------------------------------------------------------- crypto primitives
-def _load_verifier():
-    """Import Ed25519 lazily so `--help`/arg errors work without the lib, but any real
-    verification without it is RED (cryptography_missing), never a degraded pass."""
-    try:
-        from cryptography.exceptions import InvalidSignature
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-    except ImportError:
-        raise Refused("cryptography_missing", "pip install cryptography (required to verify)")
-    return Ed25519PublicKey, InvalidSignature
-
-
 def _pubkey(hex_key):
-    Ed25519PublicKey, _ = _load_verifier()
+    """Validate and return the 32 raw bytes of the pinned issuer key. A non-hex/non-32-byte or
+    small-order key is `bad_issuer_key` — distinct from `issuer_key_mismatch` (a well-formed key
+    that just isn't ours). A truncated paste fails closed, so name it a key error, not an outage."""
     try:
         raw = bytes.fromhex(hex_key.strip())
-    except ValueError:
-        raise Refused("issuer_key_mismatch", "pinned key is not hex")
-    if len(raw) != 32:
-        # A truncated paste makes every verify fail closed — call it out as key error, not outage.
-        raise Refused("issuer_key_mismatch", "pinned key is not 32 bytes")
-    try:
-        return Ed25519PublicKey.from_public_bytes(raw)
-    except Exception:
-        raise Refused("issuer_key_mismatch", "pinned key is not a valid Ed25519 point")
+    except (ValueError, AttributeError):
+        raise Refused("bad_issuer_key", "pinned key is not hex")
+    if not _ed25519_verify.valid_pubkey(raw):
+        raise Refused("bad_issuer_key", "pinned key is not a valid non-small-order Ed25519 key")
+    return raw
 
 
-def _verify(pk, sig_hex, prefixed_payload, reason):
-    _, InvalidSignature = _load_verifier()
+def _verify(pk_bytes, sig_hex, prefixed_payload, reason):
     try:
         sig = bytes.fromhex(sig_hex)
     except (ValueError, TypeError, AttributeError):
         raise Refused(reason, "signature not hex")
-    try:
-        pk.verify(sig, prefixed_payload)
-    except InvalidSignature:
+    if not _ed25519_verify.verify(pk_bytes, prefixed_payload, sig):
         raise Refused(reason, "signature does not verify")
 
 
@@ -163,22 +164,25 @@ def _fold_merkle(records):
     return level[0].hex()
 
 
-def verify_bundle(bundle, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_KEY):
-    """Verify one memproof-2 bundle end to end. Returns a dict:
-        {authentic, verdict_ok, kind, commit, reason}
-    `authentic` ("this is genuinely our signed verdict") is reported SEPARATELY from `verdict_ok`
-    ("the gate said yes") — conflating them ships red builds. Raises Refused on the first failure.
-    """
+def verify_facts(bundle, pinned=PINNED_ISSUER_KEY):
+    """Verify the FACTS layer of one memproof-2 bundle: version, issuer, every signature, the
+    count/leaf_index set, and the Merkle fold. This is the crypto/structure half — it is
+    time-independent and subject-independent, so it exactly mirrors memrebel's own facts check
+    (cross-validated against its golden bundle_cases, reason strings included). Returns
+        {kind, commit, verdict_ok}
+    on success — where `verdict_ok` ("the gate said yes") is deliberately SEPARATE from the fact
+    that the bundle is authentic; conflating them ships red builds. Raises Refused(reason) on the
+    first failure, with memrebel's exact reason string. Freshness/commit-match/engine-liveness are
+    the RELEASE-decision layer and live in may_release(), not here."""
     if not isinstance(bundle, dict):
         raise Refused("malformed", "bundle is not an object")
 
-    # 1. version
+    # version
     if bundle.get("version") != WIRE_VERSION:
         raise Refused("unsupported_version", str(bundle.get("version")))
 
-    # 2. issuer key equals the vendored pin (case-insensitive, whitespace-stripped). Because we
-    # ONLY ever verify against this pin (never a bundle-supplied key), a substituted small-order
-    # key can't be used — pin-equality subsumes torsion rejection.
+    # issuer must equal the vendored pin (case-insensitive, whitespace-stripped); then the pinned
+    # key itself must be a valid non-small-order point. mismatch vs bad-key are distinct reasons.
     issuer = str(bundle.get("issuer_public_key", "")).strip().lower()
     if issuer != pinned.strip().lower():
         raise Refused("issuer_key_mismatch", "bundle issuer != pinned")
@@ -188,11 +192,11 @@ def verify_bundle(bundle, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_KEY):
     if not isinstance(records, list) or not records:
         raise Refused("malformed", "no records")
 
-    # 4. count == len(records) AND leaf_index set is exactly {0..count-1}. LOAD-BEARING: without
-    # it a keyless relay could delete a record and duplicate another at its index and still verify.
+    # count == len(records), THEN leaf_index set is exactly {0..count-1}. LOAD-BEARING: without the
+    # set rule a keyless relay could delete a record and duplicate another at its index and verify.
     count = bundle.get("count")
     if count != len(records):
-        raise Refused("leaf_index_set_invalid", "count != len(records)")
+        raise Refused("count_mismatch", "count != len(records)")
     try:
         idxs = sorted(int(r["leaf_index"]) for r in records)
     except (KeyError, TypeError, ValueError):
@@ -200,21 +204,24 @@ def verify_bundle(bundle, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_KEY):
     if idxs != list(range(count)):
         raise Refused("leaf_index_set_invalid", "leaf_index set != {0..count-1}")
 
-    # 3. every record signature verifies over the record core
+    # every record signature verifies over the record core
     for r in records:
-        _verify(pk, r.get("signature", ""), _P_RECORD + canonical(r["core"]), "record_sig_invalid")
+        _verify(pk, r.get("signature", ""), _P_RECORD + canonical(r["core"]),
+                "record_signature_invalid")
 
-    # 5. each leaf folds to merkle_root
+    # each leaf folds to merkle_root
     if _fold_merkle(records) != bundle.get("merkle_root"):
         raise Refused("merkle_root_mismatch", "records do not fold to merkle_root")
 
-    # 6. root signature over {merkle_root, count, as_of}
+    # root signature over {merkle_root, count, as_of} — a tampered as_of surfaces HERE (the reason
+    # is root_signature_invalid), never as a fake "stale", because as_of is inside the signed root.
     root_stmt = {
         "merkle_root": bundle.get("merkle_root"),
         "count": count,
         "as_of": bundle.get("as_of"),
     }
-    _verify(pk, bundle.get("root_signature", ""), _P_ROOT + canonical(root_stmt), "root_sig_invalid")
+    _verify(pk, bundle.get("root_signature", ""), _P_ROOT + canonical(root_stmt),
+            "root_signature_invalid")
 
     v = bundle.get("verdict")
     if not isinstance(v, dict):
@@ -224,17 +231,22 @@ def verify_bundle(bundle, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_KEY):
     if not isinstance(snapshot, dict) or not isinstance(claimed, dict):
         raise Refused("malformed", "verdict missing snapshot/claimed_report")
 
-    # 7. verdict section signatures (stable_json, NOT canonical)
+    # verdict-section signatures (stable_json, NOT canonical)
     _verify(pk, v.get("snapshot_signature", ""), _P_SNAPSHOT + stable_json(snapshot),
-            "snapshot_sig_invalid")
+            "snapshot_signature_invalid")
     _verify(pk, v.get("claimed_report_signature", ""), _P_CLAIMED + stable_json(claimed),
-            "claimed_report_sig_invalid")
+            "claimed_report_signature_invalid")
 
-    # --- bytes are authentic past this point. Now the SUBJECT/FRESHNESS/RESULT questions. ---
-    kind = snapshot.get("kind")
-    commit = snapshot.get("commit")
+    return {
+        "kind": snapshot.get("kind"),
+        "commit": snapshot.get("commit"),
+        "verdict_ok": bool(claimed.get("ok") is True),
+    }
 
-    # 9. fresh: as_of within window AND not future-dated (a future stamp must not extend validity)
+
+def _fresh(bundle, now, max_age_s):
+    """Freshness gate (release-decision layer). Raises Refused('stale') if as_of is unparseable,
+    future-dated (a future stamp must not extend its own validity), or older than max_age_s."""
     as_of = _parse_ts(bundle.get("as_of"))
     if as_of is None:
         raise Refused("stale", "unparseable as_of")
@@ -243,14 +255,6 @@ def verify_bundle(bundle, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_KEY):
         raise Refused("stale", "as_of is in the future")
     if age > max_age_s:
         raise Refused("stale", "older than max-age ({:.0f}s)".format(age))
-
-    return {
-        "authentic": True,
-        "verdict_ok": bool(claimed.get("ok") is True),
-        "kind": kind,
-        "commit": commit,
-        "reason": "ok",
-    }
 
 
 def _parse_ts(s):
@@ -287,21 +291,23 @@ def may_release(ledger_lines, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_K
     for b in bundles:
         snap = (b.get("verdict") or {}).get("snapshot") or {}
         kind = snap.get("kind")
-        # Heartbeat: authentic + fresh (checks 1-9) => engine is alive.
+        # Heartbeat: authentic facts + fresh => engine is alive.
         if kind == "heartbeat":
             try:
-                verify_bundle(b, expect_sha=None, now=now, max_age_s=max_age_s, pinned=pinned)
+                verify_facts(b, pinned=pinned)
+                _fresh(b, now, max_age_s)
                 engine_alive = True
             except Refused:
                 pass
             continue
         if kind != "run":
             continue
-        # A run verdict: does it authenticate AND concern our SHA AND say ok?
+        # A run verdict: does it authenticate AND concern our SHA AND is fresh AND say ok?
         if snap.get("commit") != expect_sha:
             continue
         try:
-            res = verify_bundle(b, expect_sha, now=now, max_age_s=max_age_s, pinned=pinned)
+            res = verify_facts(b, pinned=pinned)
+            _fresh(b, now, max_age_s)
         except Refused as e:
             run_hit = (False, e.reason)
             continue

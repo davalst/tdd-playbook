@@ -3,6 +3,37 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.12.0 — 2026-07-27
+
+**CIVerd release gate — off-box, signed release verdicts (audit finding F4).** The Playbook could
+verify its own work but had no INDEPENDENT check that the code shipped actually passed CI on a
+machine the coding agent can't reach. F4 adds the hub side of CIVerd (the VPS CI engine): a release
+is permitted only for a fresh, signed, GREEN run verdict of the exact release SHA, from a live
+engine.
+
+- **`bin/verify_verdict.py`** — verifies a memproof-2 bundle end to end (version, pinned issuer key,
+  every Ed25519 signature, the `count`/`leaf_index` set rule, the Merkle fold, freshness, `ok`, and
+  engine liveness). A lone heartbeat (commit `0x00…`) can never satisfy a real-SHA request; a
+  forged `ok` flip is caught because it breaks the signature; absence (no verdict / stale /
+  unreachable ledger / silent engine) is each its own RED reason, never a silent pass. No `--force`.
+- **STDLIB-ONLY, by invariant.** Every bin here runs in any Claude Code sandbox / vendored repo with
+  just `python3`. CIVerd's own runner installs only `pytest`, so a `cryptography` import would make
+  the engine emit a permanent RED for its only subject. Ed25519 verification is therefore a vendored
+  pure-Python verifier (`bin/_ed25519_verify.py`, verification-only — no signing/keygen).
+- **Validated against the reference, not just itself.** `bin/_ed25519_verify.py` is pinned by RFC
+  8032 §7.1 known-answer vectors plus negative controls (tampered msg/sig/key, non-canonical `S ≥ L`,
+  small-order key) and an anti-fail-open `return True` mutant check. `verify_verdict.py` is
+  cross-validated against **memrebel's golden corpus** — canonicalization (incl. the RFC 8785 UTF-16
+  key-order trap that ASCII fixtures can't catch) and all 10 bundle-case reason strings must match
+  the reference implementation exactly.
+- **`scripts/release_verify.py` (decision D5)** — the EXECUTABLE release gate: the release tag is
+  created only after `verify_verdict.py` returns 0 for the release SHA. A checklist line is a wish;
+  this script (no bypass flag) is the control. Gates the release SHA actually shipped, not its parent
+  (the parent skips the agent-written bump commit). CIVerd signs post-commit, so use `--wait-s`.
+- New suites: `test_ed25519_verify.py` (14), `test_verify_verdict.py` (32), `test_release_verify.py`
+  (10) — all stdlib-only. NOTE: `verify_verdict.py` ships IN 1.12.0, so the tag-gate is the standing
+  control from 1.13.0 on (1.12.0 is dogfooded live against CIVerd's verdict for its own SHA).
+
 ## 1.11.0 — 2026-07-27
 
 **Verifier-strength floor made mechanical (audit finding F3).** §13's verifier-strength policy

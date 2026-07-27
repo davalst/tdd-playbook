@@ -131,6 +131,18 @@ Local-machine plugin installs update separately (no prompt needed):
   present, `${CLAUDE_PLUGIN_ROOT}` rewritten).
 - Version bumps update BOTH `plugins/tdd-playbook/.claude-plugin/plugin.json` and
   `.claude-plugin/marketplace.json`, plus CHANGELOG.md.
+- **CIVerd release gate (audit finding F4).** The release TAG is created ONLY by
+  `scripts/release_verify.py`, and only after the shipped `verify_verdict.py` returns 0 for the
+  release SHA — a fresh, signed, GREEN CIVerd run verdict from a live engine, verified against the
+  vendored issuer key with a stdlib-only Ed25519 verifier (no third-party deps — the plugin is
+  stdlib-only by invariant, and CIVerd's runner installs only pytest). CIVerd signs a verdict
+  AFTER a commit lands, so this gates the release SHA you actually ship (not its parent — the
+  parent skips the agent-written bump commit). There is NO bypass flag: `push → CIVerd signs →
+  scripts/release_verify.py --wait-s … → tag only on exit 0`. A checklist line is a wish; this
+  script is the control. Cross-validated against memrebel's golden corpus
+  (`tests/fixtures/civerd_crossvalidation_corpus.json`) — canonicalization + all reason strings
+  must match the reference implementation exactly. NOTE: `verify_verdict.py` shipped IN v1.12.0, so
+  v1.12.0 itself can't be tag-gated by it; the tag-gate is the standing control from v1.13.0 on.
 - Roadmap context: `docs/plans/implementation-plan-2026-07.md` (WS5 — Stagehand-Python
   spike, §5b agent evals, positioning, public scoreboard — is built but NOT started;
   v2.0 is gated on ≥1 month of live calibration history).

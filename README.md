@@ -106,8 +106,16 @@ python3 plugins/tdd-playbook/tests/test_with_snapshot.py  # mechanical revert sa
 python3 plugins/tdd-playbook/tests/test_agents.py         # agent/command structural contracts
 python3 plugins/tdd-playbook/tests/test_verify_citations.py
 python3 plugins/tdd-playbook/tests/test_capability_registry.py  # wiring-liveness registry (§6a)
+python3 plugins/tdd-playbook/tests/test_ed25519_verify.py   # stdlib Ed25519 verifier (RFC 8032 KAT + negatives)
+python3 plugins/tdd-playbook/tests/test_verify_verdict.py   # CIVerd release gate vs memrebel golden corpus
+python3 plugins/tdd-playbook/tests/test_release_verify.py   # executable release gate (no tag without a green verdict)
 python3 calibration/test_harness.py                       # the calibration harness itself
 ```
+
+**Release verification (CIVerd, audit finding F4).** An independent CI engine on a VPS signs a
+verdict for each pushed commit; `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) checks
+it, and `scripts/release_verify.py` creates the release tag only for a fresh signed GREEN verdict
+of the release SHA — no bypass flag. See CLAUDE.md for the gate wiring.
 The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must
 catch (`calibration/`, results in `docs/calibration/`):
 ```bash

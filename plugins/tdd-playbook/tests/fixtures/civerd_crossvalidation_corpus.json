@@ -1,0 +1,931 @@
+{
+ "bundle_cases": [
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": true,
+    "reason": null
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "real_run_verdict",
+   "note": "the genuine article \u2014 must verify"
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-3"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "unsupported_version"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "future_version",
+   "note": "a memproof-3 bundle is REFUSED, never best-effort"
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 2,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "count_mismatch"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "count_inflated",
+   "note": ""
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 2,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     },
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "leaf_index_set_invalid"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "duplicate_leaf_index",
+   "note": "record suppression: every sig still valid, count matches"
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "record_signature_invalid"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "tampered_core",
+   "note": ""
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "record_signature_invalid"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "tampered_record_signature",
+   "note": ""
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "root_signature_invalid"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "tampered_root_signature",
+   "note": ""
+  },
+  {
+   "bundle": {
+    "as_of": "2027-01-01T00:00:00+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "root_signature_invalid"
+   },
+   "issuer_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+   "name": "tampered_as_of",
+   "note": "as_of is covered by the root statement"
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "issuer_key_mismatch"
+   },
+   "issuer_key": "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
+   "name": "wrong_issuer_key",
+   "note": ""
+  },
+  {
+   "bundle": {
+    "as_of": "2026-07-27T20:23:26.457662+00:00",
+    "count": 1,
+    "issuer_public_key": "0000000000000000000000000000000000000000000000000000000000000000",
+    "merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+    "records": [
+     {
+      "core": {
+       "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+       "engine_version": "civerd/1",
+       "gate_cmd": "venv && deps && tests",
+       "kind": "ci-run",
+       "outcome_digest": "39accb37db2e67f7859f84996d74e27361c7c8cbcc93fec01c789df3e3e94dfa",
+       "record_id": "tdd-playbook-31fa8ac4f0b3",
+       "ref": "refs/heads/main",
+       "runner": "srv1621832",
+       "started_at": "2026-07-27T20:08:41.377192+00:00"
+      },
+      "inclusion_proof": [],
+      "leaf_index": 0,
+      "signature": "c0ff0c20d413a731974797813243c971c3538a06f6793a2d2dcd19d8c485a357ec36fffbaa7ab40b446610ac04dc5e297aa32b22255aa0963b43df7089f3b80c"
+     }
+    ],
+    "root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+    "verdict": {
+     "claimed_report": {
+      "checks_run": 3,
+      "failed": [],
+      "malformed": false,
+      "ok": true,
+      "required_failed": [],
+      "required_missing": []
+     },
+     "claimed_report_signature": "ba6309c03ae2b636177995055c1dd8f4bf2e3448d0267718dda97b43b4361dd2fd776b58bd3e33f6128071b819a2ba974d877c827ffa275825509551fc72200d",
+     "snapshot": {
+      "bundle_merkle_root": "5e170b048a62c2567302336194cdf90d09e7cf1bbde597753575949d8eb28068",
+      "bundle_root_signature": "20568ba23620e202890aa3f7989a47b2dcd43dd0c3a37c22b1bbaa677d9f51791086c5aed065727da5ca70db96d400e30db5b85ac5183bdbe5fb075ff2303501",
+      "checks": [
+       {
+        "exit_code": 0,
+        "name": "venv",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "deps",
+        "passed": true,
+        "required": true
+       },
+       {
+        "exit_code": 0,
+        "name": "tests",
+        "passed": true,
+        "required": true
+       }
+      ],
+      "commit": "31fa8ac4f0b31e5cd2e3a0523d2d2eacbc8c5e9b",
+      "engine_version": "civerd/1",
+      "gate_cmd": "venv && deps && tests",
+      "kind": "run",
+      "ref": "refs/heads/main",
+      "required": [
+       "deps",
+       "tests",
+       "venv"
+      ],
+      "runner": "srv1621832",
+      "started_at": "2026-07-27T20:08:41.377192+00:00",
+      "verdict_spec": "civerd-1"
+     },
+     "snapshot_signature": "ee6c53760049e0a29b9c1a0ce1a5f552b8179f6e2bcb78cd3576c34abf63c39c2bb9b7b943cec5183dd30bc2caef56f239eaa0d91ea81194d01fa35c83347d06",
+     "verdict_spec": "civerd-1"
+    },
+    "version": "memproof-2"
+   },
+   "expected": {
+    "facts_ok": false,
+    "reason": "bad_issuer_key"
+   },
+   "issuer_key": "0000000000000000000000000000000000000000000000000000000000000000",
+   "name": "small_order_key",
+   "note": "torsion keys must be refused outright"
+  }
+ ],
+ "canonical_vectors": [
+  {
+   "expected": "{\"alpha\":2,\"beta\":1}",
+   "input": {
+    "alpha": 2,
+    "beta": 1
+   }
+  },
+  {
+   "expected": "{\"\ud800\udc00\":2,\"\uff61\":1}",
+   "input": {
+    "\uff61": 1,
+    "\ud800\udc00": 2
+   },
+   "note": "THE TRAP: RFC 8785 sorts by UTF-16 CODE UNITS. Naive sorted() agrees on all ASCII and diverges only above the BMP \u2014 so real fixtures cannot catch this."
+  },
+  {
+   "expected": "{\"e\":\"caf\u00e9\",\"emoji\":\"\u2705\"}",
+   "input": {
+    "e": "caf\u00e9",
+    "emoji": "\u2705"
+   },
+   "note": "literal UTF-8, never \\u escapes"
+  },
+  {
+   "expected": "{\"a\":[1,\"x\",null,true,false]}",
+   "input": {
+    "a": [
+     1,
+     "x",
+     null,
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "expected": "{\"q\":\"he said \\\"hi\\\"\\n\"}",
+   "input": {
+    "q": "he said \"hi\"\n"
+   }
+  }
+ ],
+ "generated_by": "memrebel 5bc78a2 \u2014 the reference implementation",
+ "pinned_key": "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda",
+ "stable_json_vectors": [
+  {
+   "expected": "{\"a\":1,\"b\":0.5}",
+   "input": {
+    "a": 1,
+    "b": 0.5
+   }
+  },
+  {
+   "expected": "{\"note\":\"caf\u00e9\"}",
+   "input": {
+    "note": "caf\u00e9"
+   },
+   "note": "stable_json is ensure_ascii=False too"
+  }
+ ]
+}

@@ -76,6 +76,21 @@
       "activation": {"default": "off", "switch": "python3 scripts/install_into_repo.py --doctor <repo> (run after any plugin release; vendor stamps are written automatically)"},
       "wired_by": ["scripts/install_into_repo.py::doctor"],
       "exercised_by": ["plugins/tdd-playbook/tests/test_installer.py"]
+    },
+    {
+      "id": "civerd-release-gate",
+      "summary": "verify_verdict.py (+ stdlib pure-Python _ed25519_verify) checks a signed CIVerd memproof-2 run verdict for a SHA; release_verify.py creates the release tag only on a green verdict (F4). No bypass flag.",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "off", "switch": "scripts/release_verify.py --wait-s <n> at release time; verify side (bin/verify_verdict.py) vendors on and runs anywhere with plain python3"},
+      "wired_by": ["scripts/release_verify.py", "CLAUDE.md::CIVerd release gate"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_verify_verdict.py", "plugins/tdd-playbook/tests/test_ed25519_verify.py", "plugins/tdd-playbook/tests/test_release_verify.py"],
+      "integration_debt": [
+        {
+          "what": "verify_verdict.py shipped IN v1.12.0, so the tag-gate is only the standing control from v1.13.0 on; v1.12.0 is dogfooded live against CIVerd's verdict for its own SHA. P3 rollout to downstream repos (cheliped, MemStruct) still pending.",
+          "owner": "david",
+          "expires": "2026-09-15"
+        }
+      ]
     }
   ]
 }
