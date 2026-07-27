@@ -5,8 +5,17 @@
 Every gate in this plugin is a decaying asset; the calibration schedule IS the product.
 The scoreboard (`docs/calibration/history.md`) must show a live cadence before v2.0 ships.
 
+**Staleness is now MECHANICAL, not a memory (audit finding F5).** The 14-day cadence is enforced by
+`calibration/check_staleness.py` — it reads `history.md`, finds the most recent dated run, and exits
+nonzero when it is missing or older than the threshold (`--as-of` injects the date for tests). The
+release gate runs it `--warn-only` (loud, doesn't wedge a code release on a calibration chore), and
+CIVerd runs it as a `staleness` check so the independent engine flags decay on its daily timer.
+Pinned by planted-date tests in `calibration/test_harness.py`. This replaces "David remembers"; the
+run itself still needs a real `claude` binary (below).
+
 **Weekly (needs a real `claude` binary — David runs or schedules this):**
 ```bash
+python3 calibration/check_staleness.py            # deterministic: is the scoreboard stale? (F5)
 python3 calibration/run_calibration.py            # cheap model, hard caps; appends history
 ```
 - A plant surviving to a clean verdict is a **BLOCKING failure** — fix the agent, never the
@@ -122,7 +131,8 @@ Local-machine plugin installs update separately (no prompt needed):
 - Every mechanical change ships with a planted-input test (a planted violation that slips
   past a check is a failure). Suites: `plugins/tdd-playbook/tests/test_*.py` +
   `calibration/test_harness.py`; scenario sanity: `calibration/run_calibration.py --dry-run`.
-- Release gate before any version bump: all suites green, `hooks.json`/`plugin.json`/
+- Release gate before any version bump: all suites green, `calibration/check_staleness.py
+  --warn-only` run (F5 — surfaces a stale scoreboard loudly), `hooks.json`/`plugin.json`/
   `marketplace.json` parse, `capability_registry.py validate` passes on this repo's own
   `capabilities.json` (we eat the §6a dogfood — enforced MECHANICALLY by
   `test_capability_registry.py::test_own_registry` on every suite run with the real date,

@@ -119,9 +119,13 @@ of the release SHA — no bypass flag. See CLAUDE.md for the gate wiring.
 The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must
 catch (`calibration/`, results in `docs/calibration/`):
 ```bash
+python3 calibration/check_staleness.py             # deterministic: is the scoreboard stale? (F5)
 python3 calibration/run_calibration.py --dry-run   # free validation (CI)
 python3 calibration/run_calibration.py             # weekly, cheap model, hard caps
 ```
+`check_staleness.py` makes the 14-day cadence mechanical instead of a memory: it fails loudly when
+`docs/calibration/history.md`'s latest run is missing or stale. It runs in the release gate and as a
+CIVerd `staleness` check, so decay is flagged off-box on the engine's daily timer.
 
 ## Layout
 ```

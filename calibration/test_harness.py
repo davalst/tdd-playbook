@@ -46,8 +46,48 @@ def run(claude_bin, *extra):
     )
 
 
+def _check_staleness():
+    """Planted-input calibration of check_staleness.py (F5): a stale scoreboard MUST be detected.
+    A staleness gate that can't fail on a planted-old date is theater (§13). Deterministic via
+    injected --as-of; no real clock, no history.md dependency (uses a temp file)."""
+    cs = os.path.join(HERE, "check_staleness.py")
+
+    def run(text, as_of, max_age="14", warn=False, missing=False):
+        with tempfile.TemporaryDirectory() as d:
+            hist = os.path.join(d, "history.md")
+            if not missing:
+                with open(hist, "w") as fh:
+                    fh.write(text)
+            args = [sys.executable, cs, "--history", hist, "--as-of", as_of, "--max-age-days", max_age]
+            if warn:
+                args.append("--warn-only")
+            return subprocess.run(args, capture_output=True, text=True, timeout=30)
+
+    rows = ("| date | model | scenario | agent | result |\n"
+            "| 2026-07-10 | haiku | s | a | PASS |\n"
+            "| 2026-07-27 | haiku | s | a | PASS |\n")  # latest = 2026-07-27
+    check("staleness: fresh (5 days) -> exit 0", run(rows, "2026-08-01").returncode == 0)
+    check("staleness: PLANTED stale (30 days) -> exit 1 + STALE",
+          run(rows, "2026-08-26").returncode == 1 and "STALE" in run(rows, "2026-08-26").stderr)
+    check("staleness: exactly at threshold -> fresh",
+          run(rows, "2026-08-10").returncode == 0)  # 14 days
+    check("staleness: one past threshold -> stale",
+          run(rows, "2026-08-11").returncode == 1)  # 15 days
+    check("staleness: missing history -> exit 1 never_calibrated",
+          run(rows, "2026-08-01", missing=True).returncode == 1)
+    check("staleness: no dated rows -> exit 1",
+          run("| header only |\n", "2026-08-01").returncode == 1)
+    check("staleness: future-dated latest -> exit 1 (broken scoreboard)",
+          run(rows, "2026-07-01").returncode == 1)
+    check("staleness: --warn-only never hard-fails on stale",
+          run(rows, "2026-09-01", warn=True).returncode == 0)
+    check("staleness: bad --as-of -> exit 2",
+          run(rows, "not-a-date").returncode == 2)
+
+
 def main():
     print("Calibration-harness calibration")
+    _check_staleness()
 
     # dry-run over the real shipped scenarios must validate
     p = subprocess.run([sys.executable, RUNNER, "--dry-run"],

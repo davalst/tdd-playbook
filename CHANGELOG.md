@@ -3,6 +3,24 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.13.0 — 2026-07-27
+
+**Calibration staleness made mechanical (audit finding F5).** The 14-day calibration cadence — the
+Playbook's ungameable anchor, whose scoreboard "IS the product" — was enforced only by a human
+remembering to check `docs/calibration/history.md`. A decaying gate whose decay nobody is forced to
+notice has been asleep for an unknown duration (§13).
+
+- **`calibration/check_staleness.py`** (stdlib) reads `history.md`, finds the most recent dated run,
+  and exits nonzero when it is missing, future-dated (broken scoreboard), or older than the
+  threshold (default 14 days). `--as-of` injects the date so tests never touch the real clock;
+  `--warn-only` surfaces the finding without hard-blocking.
+- **Wired three ways** so staleness is impossible to miss: the release gate runs it `--warn-only`
+  (loud, but a code release isn't wedged on a calibration chore); CIVerd runs it as a `staleness`
+  check so the independent engine flags decay on its daily timer; and the `calibration-loop`
+  capability's liveness probe now names the mechanical script instead of a prose reminder.
+- Pinned by 9 planted-date tests in `calibration/test_harness.py` (a planted-stale scoreboard MUST
+  be detected — a staleness gate that can't fail is theater). Harness 45/45.
+
 ## 1.12.0 — 2026-07-27
 
 **CIVerd release gate — off-box, signed release verdicts (audit finding F4).** The Playbook could

@@ -52,7 +52,7 @@
       "wired_by": ["calibration/run_calibration.py", "calibration/author_plants.py"],
       "exercised_by": ["calibration/test_harness.py"],
       "emits": [{"topic": "docs/calibration/history.md", "consumers": ["public scoreboard (WS5)", "v2.0 release gate"]}],
-      "liveness": {"max_quiet_days": 14, "probe": "history.md staleness — CLAUDE.md standing requirement"},
+      "liveness": {"max_quiet_days": 14, "probe": "calibration/check_staleness.py — mechanical history.md staleness gate (F5), run in the release gate and as a CIVerd check"},
       "integration_debt": [
         {
           "what": "first live run landed 2026-07-10 (4/4 after two fix rounds); v2.0 remains gated on >=1 month of sustained live cadence",
