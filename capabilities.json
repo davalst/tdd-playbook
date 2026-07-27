@@ -84,6 +84,12 @@
       "activation": {"default": "off", "switch": "scripts/release_verify.py --wait-s <n> at release time; verify side (bin/verify_verdict.py) vendors on and runs anywhere with plain python3"},
       "wired_by": ["scripts/release_verify.py", "CLAUDE.md::CIVerd release gate"],
       "exercised_by": ["plugins/tdd-playbook/tests/test_verify_verdict.py", "plugins/tdd-playbook/tests/test_ed25519_verify.py", "plugins/tdd-playbook/tests/test_release_verify.py"],
+      "deploy_surface": {
+        "runs_on": "srv1621832 (Hostinger VPS, civerd engine)",
+        "gets_there_by": "deploy/update.sh on the VPS (git ff-only + verify_install.sh); the engine watches this repo via root-owned /etc/civerd/repos.yml",
+        "running_version_probe": "each signed verdict carries snapshot.engine_version + commit; verify_verdict.py asserts commit == the requested SHA, so a stale engine cannot green a release it did not actually run",
+        "divergence": "a drifted/broken engine publishes no run verdict (or an old one) -> verify_verdict returns engine_silent/no_verdict_for_commit = RED -> release blocked; owner: david (VPS admin over Tailscale SSH)"
+      },
       "integration_debt": [
         {
           "what": "verify_verdict.py shipped IN v1.12.0, so the tag-gate is only the standing control from v1.13.0 on; v1.12.0 is dogfooded live against CIVerd's verdict for its own SHA. P3 rollout to downstream repos (cheliped, MemStruct) still pending.",

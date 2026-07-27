@@ -3,6 +3,35 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.14.0 — 2026-07-27
+
+**Remote-runtime discipline — the RUNNING Tripwire leg (CIVerd capability-gaps report, Deliverable
+A).** The Playbook's mechanical oracles (Tripwire wiring-liveness, planted-error calibration) were
+scoped to *code in the repo you're sitting in*. The moment a deliverable runs elsewhere — a VPS, a
+daemon, a vendored `.claude/` in another repo — there was no mechanical oracle, so verification fell
+back to *reading output*, which is exactly where over-confidence lives. (Origin: a deployed engine
+ran code 97 minutes / six commits behind while all four Tripwire legs "passed" about the laptop.)
+
+- **§6 — a fifth Tripwire leg, RUNNING**, required only for remote deliverables: the deployed
+  instance echoes the sha/version it runs, and a probe asserts it equals the intended sha. Report
+  `Tripwire: N/N (+ RUNNING M/M)`. The SKILL description now names the fifth leg (968/1024).
+- **§6a — version-echo convention**: "running == intended," the same assertion `verify_verdict.py`
+  (`commit == SHA`) and `install_into_repo.py --doctor` (vendor stamp) already make. Deploy drift is
+  wiring rot's remote twin; a health check that inspects the local checkout can't see it.
+- **Capability registry — `deploy_surface` field** `{runs_on, gets_there_by, running_version_probe,
+  divergence}`. `validate` FAILS a remote surface with no `running_version_probe` (`R-DEPLOY`);
+  `doctor` lists remote surfaces and flags a missing probe. `civerd-release-gate` registered with a
+  real `deploy_surface` — our own first RUNNING-leg example.
+- **Folded Deliverable D doctrine**: §1 "assert the outcome, not the proxy" now reaches every CHECK
+  (not just tests); §12 — "done" about a remote runtime is a claim needing a probe, never a commit
+  sha, and the human-run step ships in the SAME message; §13 — grade WHO CAUGHT IT
+  (self/accidental/human/peer) as the over-confidence signal.
+- Pinned by planted-input tests: `test_capability_registry.py` (R-DEPLOY, 29), `test_agents.py`
+  (§6/§6a/§1/§12/§13 needles + planted fixtures, 210). Deliverables B (§0 deploy-surface block) and
+  C (`script-adversary` agent) follow as their own releases; operational planted-error calibration
+  (Gap 2.1) is deferred as owned registry debt. Comprehensive plan:
+  `docs/plans/remote-runtime-discipline-2026-07.md`.
+
 ## 1.13.0 — 2026-07-27
 
 **Calibration staleness made mechanical (audit finding F5).** The 14-day calibration cadence — the

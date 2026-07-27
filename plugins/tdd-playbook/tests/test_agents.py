@@ -564,6 +564,55 @@ def test_verifier_pin_planted():
     check("planted: pinned verifier detected", frontmatter(pinned).get("model") == "opus")
 
 
+def test_v114_doctrine():
+    """v1.14 remote-runtime discipline (audit finding: CIVerd capability-gaps report). The
+    Playbook's mechanical oracles were scoped to code-in-this-repo; a deliverable that RUNS
+    ELSEWHERE (VPS, daemon, vendored copy) had no oracle, so verification fell back to reading
+    output — where over-confidence lives. These pins keep the counter-rules present:
+      §6  a fifth RUNNING Tripwire leg for remote deliverables (deployed version == intended).
+      §6a version-echo convention + deploy_surface/running_version_probe registry field.
+      §1  assert the outcome not the proxy — reaches every CHECK, not just tests.
+      §12 "done" about a remote runtime is a claim needing a probe, never a commit sha.
+      §13 grade WHO CAUGHT IT (self/accidental/human/peer) — the over-confidence signal."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §6: RUNNING is a fifth leg", "a FIFTH leg"),
+        ("SKILL §6: 97-minutes/six-commits origin", "97 minutes / six commits"),
+        ("SKILL §6: remote deliverable needs a running_version_probe", "running_version_probe"),
+        ("SKILL §6: Tripwire report includes RUNNING M/M", "RUNNING M/M"),
+        ("SKILL §6a: version-echo convention", "Version-echo"),
+        ("SKILL §6a: deploy drift named", "DEPLOY DRIFT"),
+        ("SKILL §6a: running == intended invariant", "running == intended"),
+        ("SKILL §6a: R-DEPLOY registry rule", "R-DEPLOY"),
+        ("SKILL §1: assert the outcome not the proxy reaches CHECKS", "reaches every CHECK"),
+        ("SKILL §1: RuntimeMaxSec Type=oneshot origin", "Type=oneshot"),
+        ("SKILL §12: remote 'done' needs a probe not a sha", "never a commit sha"),
+        ("SKILL §13: grade who caught it", "Grade WHO CAUGHT IT"),
+        ("SKILL §13: over-confidence signal named", "over-confidence"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    # the description now names the fifth leg and stays within budget
+    fm = frontmatter(text) or {}
+    desc = fm.get("description", "")
+    check("SKILL description names the RUNNING leg", "+ RUNNING" in desc)
+    check("SKILL description within 1024-char budget", len(desc) <= 1024, len(desc))
+
+
+def test_v114_planted_fixtures():
+    """The v1.14 pins must be able to FAIL — doctrine stripped of a remote-runtime counter-rule
+    must be detected (§13 calibrate-the-checker)."""
+    stripped = "SKILL with four Tripwire legs and no remote-runtime discipline at all.\n"
+    check("planted: missing RUNNING-leg needle detected", "a FIFTH leg" not in stripped)
+    check("planted: missing version-echo needle detected", "Version-echo" not in stripped)
+    check("planted: missing who-caught-it needle detected", "Grade WHO CAUGHT IT" not in stripped)
+    intact = ("a FIFTH leg RUNNING; Version-echo asserts running == intended; Grade WHO CAUGHT IT.\n")
+    check("planted: intact remote-runtime doctrine passes the same needles",
+          all(n in intact for n in ("a FIFTH leg", "Version-echo", "Grade WHO CAUGHT IT")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -572,7 +621,8 @@ def main():
                test_v18_doctrine, test_v18_planted_fixtures,
                test_v181_doctrine, test_v181_planted_fixtures,
                test_v19_doctrine, test_v19_planted_fixtures,
-               test_verifier_model_pins, test_verifier_pin_planted):
+               test_verifier_model_pins, test_verifier_pin_planted,
+               test_v114_doctrine, test_v114_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

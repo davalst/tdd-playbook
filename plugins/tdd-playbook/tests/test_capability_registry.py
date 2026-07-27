@@ -121,6 +121,31 @@ def test_validate():
     v = mod.validate(bad, today=TODAY)
     check("planted missing exercised_by trips R-SCHEMA", "R-SCHEMA" in rules_of(v), v)
 
+    # a well-formed remote deploy_surface is clean
+    good_remote = copy.deepcopy(CLEAN)
+    good_remote["capabilities"][0]["deploy_surface"] = {
+        "runs_on": "vps-1", "gets_there_by": "update.sh",
+        "running_version_probe": "heartbeat echoes sha; assert == HEAD",
+        "divergence": "no heartbeat -> RED; owner: david"}
+    check("well-formed deploy_surface passes", mod.validate(good_remote, today=TODAY) == [],
+          mod.validate(good_remote, today=TODAY))
+
+    # PLANTED: a remote surface with NO running_version_probe — drift is undetectable
+    bad = copy.deepcopy(good_remote)
+    del bad["capabilities"][0]["deploy_surface"]["running_version_probe"]
+    v = mod.validate(bad, today=TODAY)
+    check("planted remote surface w/o version probe trips R-DEPLOY", "R-DEPLOY" in rules_of(v), v)
+
+    # PLANTED: a remote surface missing runs_where/gets-there-how also trips R-DEPLOY
+    bad = copy.deepcopy(good_remote)
+    del bad["capabilities"][0]["deploy_surface"]["gets_there_by"]
+    v = mod.validate(bad, today=TODAY)
+    check("planted deploy_surface missing gets_there_by trips R-DEPLOY", "R-DEPLOY" in rules_of(v), v)
+
+    # a capability with NO deploy_surface (local-only) is unaffected
+    check("local-only capability needs no deploy_surface",
+          "R-DEPLOY" not in rules_of(mod.validate(CLEAN, today=TODAY)))
+
     # future-dated debt with owner is a legitimate loan, not a violation
     check("future-dated owned debt is NOT a violation",
           mod.validate(CLEAN, today=TODAY) == [])
@@ -145,6 +170,15 @@ def test_doctor():
     bad["capabilities"][0]["consumes"] = ["events.ghost_topic"]
     check("doctor surfaces consumed-but-never-emitted topics",
           "events.ghost_topic" in mod.doctor(bad, today=TODAY))
+
+    # doctor enumerates a remote deploy surface and loudly flags a missing version probe
+    remote = copy.deepcopy(CLEAN)
+    remote["capabilities"][0]["deploy_surface"] = {
+        "runs_on": "vps-1", "gets_there_by": "update.sh", "running_version_probe": "",
+        "divergence": "no heartbeat -> RED"}
+    rep = mod.doctor(remote, today=TODAY)
+    check("doctor lists remote deploy surfaces", "remote deploy surfaces" in rep, rep)
+    check("doctor flags missing version probe loudly", "NO VERSION PROBE" in rep, rep)
 
 
 def test_cli():

@@ -1,6 +1,6 @@
 ---
 name: tdd-playbook
-description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED), the integration surface + capability registry + wiring-liveness discipline (assembly suite, darkness doctor, integration audits), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook".
+description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring-liveness discipline (assembly suite, darkness doctor, integration audits), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook".
 ---
 
 # The TDD Playbook
@@ -89,6 +89,11 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
 ## 1. The TDD loop
 - Author tests from the spec, run RED, then implement to green. **Never weaken/delete a test to pass.**
 - Test BEHAVIOR and OUTCOMES, not implementation details or "did the route fire."
+- **Assert the outcome, not the proxy — this reaches every CHECK, not just tests.** A health check that
+  inspects a systemd unit instead of exercising the service, a config READ instead of the remote QUERIED,
+  source text GREPPED instead of parsed — each is the "route fired" trap wearing operational clothes.
+  Exercise the effect. (Origin: `RuntimeMaxSec` is silently ignored for `Type=oneshot` — systemd said so
+  in the journal and it was scrolled past for hours because the check read the directive, never the run.)
 - **Built ≠ wired-in ≠ usable.** Verify the user-visible outcome AND reachability (nav/button/CLI/tool)
   AND second-order effects (what list it leaves/joins; consistency across surfaces). Report "route
   exists + unit-tested" separately from "reachable + behaviorally verified." Don't round up.
@@ -401,6 +406,18 @@ target the feature). For each deliverable assert it is:
 - **EXERCISED** — point at a SPECIFIC `file::test_name`; assert (via `ast`) that the test is DEFINED and
   NOT skip-marked (`@pytest.mark.skip`/`skipif` or a module-level `pytestmark` skip). A string-token grep
   only proves a *reference*; a hollow button or a `@skip`'d test must trip the Tripwire.
+- **RUNNING** — a FIFTH leg, required ONLY for a REMOTE deliverable (one whose execution host is not the
+  session's repo/process: a VPS, a daemon, an installed plugin, a vendored `.claude/` in another repo).
+  The first four legs are all answerable *about the laptop* — BUILT/WIRED/ACTIVATED/EXERCISED can every one
+  be green while the DEPLOYED instance runs different code. RUNNING closes that: the deployed instance
+  ECHOES the sha/version it is executing, and a probe asserts it equals the intended sha (§6a version-echo).
+  In a laptop-only repo commit-and-push IS the deploy, so "fixed" and "running" are the same event; the
+  moment a remote runtime exists they come apart and nothing else re-separates them. (Origin: a deployed
+  engine ran code **97 minutes / six commits behind** while all four other legs "passed" — every reported
+  fix had never executed anywhere.) This sharpens the EXTERNAL-STATE proof class below from "cite how you
+  checked" into a named probe. Capability registry (§6a): a remote deliverable MUST carry a
+  `deploy_surface` with a `running_version_probe` — `validate` fails without it (`R-DEPLOY`). Report
+  `Tripwire: N/N (+ RUNNING M/M for remote deliverables)`.
 - **Prove wiring through the PRODUCTION composition root, not a self-assembling fixture.** The
   documented root cause of whole-subsystem darkness: every component ships tests that wire the
   component up THEMSELVES, so it works in a fixture that never exists in production (the handler on
@@ -443,6 +460,17 @@ yet"). Darkness is invisible by construction unless you enumerate from what SHOU
   `python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate` (BLOCKING in the release
   gate) · `… doctor` prints the dark-feature inventory — every built-but-off capability WITH its
   on-switch, write-only emitters, debt aging. The doctor makes the next archaeology audit unnecessary.
+- **Version-echo — for capabilities that run ELSEWHERE (the RUNNING leg's mechanism).** Wiring rot has a
+  remote twin: DEPLOY DRIFT — the deployed instance silently runs an older version than HEAD, and a health
+  check that inspects the local checkout can't see it. The invariant is "running == intended," the same
+  assertion `verify_verdict.py` makes (`commit == SHA`) and `install_into_repo.py --doctor` makes (vendor
+  stamp vs canonical) — copy those. Convention: every deployed/remote component EXPOSES the sha/version it
+  is running (an endpoint, a `--version`, a heartbeat field, a stamp file) and its verifier ASSERTS it
+  equals the intended sha, failing LOUD on drift or an unreachable echo (never a silent pass). Mechanically:
+  a capability that runs elsewhere declares a `deploy_surface` — `{runs_on, gets_there_by,
+  running_version_probe, divergence}` (the four questions §0's deploy surface asks); `validate` FAILS a
+  remote surface with no `running_version_probe` (`R-DEPLOY`), and `doctor` lists remote surfaces flagging
+  any missing probe. "No way to tell if the box runs the right version" is a hard failure, not an omission.
 - **Exemption is for internals, NEVER a darkness hatch.** A coverage/registration test that
   enforces "everything that should be registered IS" almost always ships an ignore / exempt /
   allow-list escape hatch for genuine internals (a private helper, a dev-only flag, a
@@ -611,6 +639,12 @@ unverified NEGATIVE about a file it never read.)
 - **Built ≠ wired-in ≠ usable applies to claims too:** trace the wire end-to-end — who SETS the
   value, who CONSUMES it, which config gates it — before claiming wired or unwired. A registration,
   an export, or a comment is not a wire.
+- **"Done" about a REMOTE RUNTIME is a claim needing a probe, never a commit sha.** "Fixed"/"working"
+  about a VPS/daemon/deployed service requires evidence the DEPLOYED instance changed — a version echo, a
+  log line, a health probe — because a pushed commit is not a running one (§6 RUNNING). And when a human
+  must run something for the fix to land, that instruction ships in the SAME message as the fix, not a
+  message later. (Origin: six "fixed" reports over a box running code from before any of them — "how have
+  you fixed things if you didn't give me something to paste into the VPS terminal?")
 - **Subagent/secondhand reports are UNVERIFIED claims.** Spot-check load-bearing ones before
   publishing (a subagent confidently reported a whole subsystem unreachable; one runtime probe
   killed it). When a cheap runtime check exists (`python -c` import/registration probe, hit the
@@ -644,6 +678,14 @@ visible — never "trust the agent more."
   in/out (net of cache), turn count — tool logs, not the model's account of its own diligence.
 - **Score claim-evidence LINKAGE, not volume:** more files read must not raise the grade unless
   claims cite them — count-pumping is §2's marker theater wearing a new badge.
+- **Grade WHO CAUGHT IT — the over-confidence signal.** Split each caught defect by discovery path:
+  self-caught by a mechanical oracle (best), caught accidentally (a check went red on correct code — a
+  weak check, not diligence), caught by the human, or caught by a peer/cross-session review. A defect the
+  human caught in output you had already declared "green" is the loudest signal there is — it means the
+  oracle ended exactly where your confidence began. Track the ratio, not just the count; a run heavy on
+  human-caught / accidental is over-confidence to flag NOW, not at the next retro. (Reference ratio from
+  the CIVerd build: 3 self / 3 accidental / 3 human / 1 peer — the 3 human-caught were the most
+  consequential and all three were places already called green.)
 - **Grader independent of doer:** fresh context, refute-framing, a different (cheap) model.
 - **Planted-error calibration is the ungameable anchor** — mutation testing for the verification
   loop itself. Two layers, different rot: (a) deterministic planted-false-claim / planted-wasteful-

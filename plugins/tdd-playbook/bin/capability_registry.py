@@ -18,6 +18,9 @@ Subcommands:
                 R-DEBT        integration_debt entries carry what/owner/expires; an EXPIRED
                               entry FAILS (same teeth as §7 flaky quarantine — a loan, not
                               a landfill)
+                R-DEPLOY      a capability with a deploy_surface (runs elsewhere: VPS, daemon,
+                              vendored copy) MUST name a running_version_probe — else the
+                              deployed version can drift from HEAD undetected (§6 RUNNING leg)
   doctor    — human report: dark features + their on-switch, write-only emitters, debt
               expiring/expired, capabilities with no liveness probe, topics consumed but
               never emitted. Exit 0 (report), or 1 with --strict if validate would fail.
@@ -40,6 +43,11 @@ import sys
 
 REQUIRED_FIELDS = ("id", "summary", "surfaces", "activation", "wired_by", "exercised_by")
 DEBT_FIELDS = ("what", "owner", "expires")
+# A capability whose execution host is NOT this repo/process (a VPS, a daemon, a vendored copy in
+# another repo) declares a deploy_surface. running_version_probe is load-bearing: without a way to
+# assert the deployed version == the intended one, the deliverable can drift (the "97-minutes-behind"
+# class) while every other Tripwire leg passes about the laptop. See SKILL.md §6 RUNNING leg.
+DEPLOY_FIELDS = ("runs_on", "gets_there_by", "running_version_probe", "divergence")
 DEBT_WARN_DAYS = 14
 
 TEMPLATE = {
@@ -120,6 +128,21 @@ def validate(reg: dict, today: _dt.date | None = None) -> list[str]:
                            "write-only loop; name the reader or file integration debt"
                            % (cid, topic))
 
+        ds = cap.get("deploy_surface")
+        if ds is not None:
+            if not isinstance(ds, dict):
+                out.append("R-DEPLOY %s: deploy_surface must be an object" % cid)
+            else:
+                if not (ds.get("running_version_probe") or "").strip():
+                    out.append("R-DEPLOY %s: remote deploy_surface with NO "
+                               "running_version_probe — the deployed version can drift from the "
+                               "intended one undetected (§6 RUNNING); name the probe" % cid)
+                other = [f for f in DEPLOY_FIELDS
+                         if f != "running_version_probe" and not (ds.get(f) or "").strip()]
+                if other:
+                    out.append("R-DEPLOY %s: deploy_surface missing %s (runs where / gets there "
+                               "how / who notices divergence)" % (cid, "/".join(other)))
+
         for j, debt in enumerate(cap.get("integration_debt") or []):
             label = "%s debt #%d" % (cid, j)
             missing = [f for f in DEBT_FIELDS if not (debt or {}).get(f)]
@@ -170,6 +193,15 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
             any_debt = True
     if not any_debt:
         lines.append("  none")
+
+    remote = [c for c in caps if c.get("deploy_surface")]
+    lines.append("\n[remote deploy surfaces (running != intended is a drift risk): %d]"
+                 % len(remote))
+    for c in remote:
+        ds = c.get("deploy_surface") or {}
+        probe = (ds.get("running_version_probe") or "").strip() or "!! NO VERSION PROBE — drift undetectable !!"
+        lines.append("  %-28s runs_on: %s | probe: %s"
+                     % (c.get("id"), ds.get("runs_on") or "?", probe))
 
     no_liveness = [c.get("id") for c in caps if not c.get("liveness")]
     lines.append("\n[no liveness probe (staleness undetectable): %d]" % len(no_liveness))
