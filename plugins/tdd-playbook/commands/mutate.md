@@ -28,10 +28,18 @@ nothing). Steps:
 2. Run it; CAPTURE the tool's exit/stats output and confirm the run actually EXECUTED (run-stats
    total > 0, baseline green) BEFORE reading survivors — an aborted run returns an empty survivor
    set that masquerades as a clean gate. Then collect surviving mutants from the machine-readable stats.
+   **Account for every mutant:** if killed + survived < generated, the gap (segfault/timeout/
+   no-covering-test/skipped) is UNMEASURED — refuse to certify, don't warn. **Discovery is
+   per-module:** run ONE module, READ the actual survivor lines, write kills, re-run that module,
+   then move on — a full pass VERIFIES, it doesn't discover (and the survivor list finds real bugs
+   that guessing never will).
 3. **Triage survivors:** for each, decide real-vs-equivalent. Equivalent mutants (e.g. SQL
-   keyword case that SQLite treats identically, string-subscript case) are UN-KILLABLE —
-   exclude them with a conservative case-only-in-SQL/subscript filter; do NOT chase them
-   (that's gaming). Equivalents the filter can't classify → the audited equivalence ledger
+   keyword/identifier case that SQLite treats identically, string-subscript case) are UN-KILLABLE —
+   exclude them with a conservative case-only-in-SQL/subscript filter, but ONLY for keywords/
+   identifiers: SQLite is case-SENSITIVE for VALUES, so `type='table'` → `'TABLE'` is a REAL mutant,
+   never excluded. A too-permissive filter is a GATE DEFECT — every exclusion rule ships a negative
+   test proving the nearest real mutant still blocks. Do NOT chase equivalents (that's gaming).
+   Equivalents the filter can't classify → the audited equivalence ledger
    (written proof + exact-substitution match + can't-overmatch test per entry; keep it short).
    **Class string survivors by role:** DATA strings (SQL/keys/hash inputs/persisted content)
    are real — kill them; operator-facing display prose is informational — never resolve it by

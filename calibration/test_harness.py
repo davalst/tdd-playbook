@@ -168,6 +168,20 @@ def main():
         check("good fix recognized architectural -> PASS",
               p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
 
+        # ---- planted mutant-accounting (v1.9): killed+survived < generated must NOT read green
+        unmeas_wrong = make_stub(d, "0 survivors found -- the gate passes.")
+        p = run_arch("unmeasured-not-certified", unmeas_wrong)
+        check("all-segfault scope certified green -> BLOCKING FAIL",
+              p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        unmeas_right = make_stub(d, "118 segfaulted + 2 no-covering-test: killed + survived (0) is "
+                                    "less than generated (120) -- the scope is UNMEASURED, not "
+                                    "clean. Refusing to certify.\n"
+                                    "Recommendation: fix the segfaulting harness, then re-run.")
+        p = run_arch("unmeasured-not-certified", unmeas_right)
+        check("unmeasured scope refused (killed+survived<generated) -> PASS",
+              p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
+
     test_author_plants()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

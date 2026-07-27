@@ -460,13 +460,78 @@ def test_v181_planted_fixtures():
           "preflight" in intact and "clobber" in intact)
 
 
+def test_v19_doctrine():
+    """v1.9 mutation-discipline + test-honesty amendments (from a 52.5%->91.2% downstream session).
+
+    Three grounded lessons the abstract doctrine didn't prevent: (1) 'tests that cannot fail' — a
+    fixture picks values where correct and mutated code agree (§1); (2) phase-boundary gating + the
+    per-module discovery loop (§4); (3) three further false-green modes — killed+survived<generated
+    is UNMEASURED, a too-permissive equivalence filter is a GATE DEFECT (SQLite values are
+    case-SENSITIVE), and a roster entry with no gate invocation is a comment (§4). Pins keep the
+    concrete rules (which is what made them land) from being paraphrased back to the abstractions."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        # Amendment 2 — §1 tests that cannot fail
+        ("SKILL §1: 'tests that cannot fail' subsection", "Tests that cannot fail"),
+        ("SKILL §1: the fixture-value check question",
+         "what value would make this pass with the bug present"),
+        ("SKILL §1: 'a mystery in a test is usually the test'",
+         "mystery in a test is usually the test"),
+        # Amendment 1 — §4 phase gating + per-module loop
+        ("SKILL §4: each phase is a feature for gating", "EACH PHASE is a feature for gating"),
+        ("SKILL §4: per-module discovery loop", "per-module discovery loop"),
+        # Amendment 3a/b/c — §4 three false-green modes
+        ("SKILL §4: killed+survived<generated = UNMEASURED", "killed + survived < generated"),
+        ("SKILL §4: SQLite values are case-SENSITIVE (filter correctness)",
+         "case-SENSITIVE for VALUES"),
+        ("SKILL §4: too-permissive filter is a GATE DEFECT", "GATE DEFECT"),
+        ("SKILL §4: audit the excluded SHARE over time", "excluded SHARE"),
+        ("SKILL §4: roster entry with no gate invocation is a comment",
+         "roster entry with no gate invocation is a comment"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        agent = fh.read()
+    check("mutation-runner: accounts for every mutant (unmeasured refusal)",
+          "killed + survived < generated" in agent and "UNMEASURED" in agent)
+    check("mutation-runner: SQLite values case-SENSITIVE filter correction",
+          "case-SENSITIVE for VALUES" in agent)
+
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        cmd = fh.read()
+    check("/mutate: mutant-accounting + per-module discovery", "UNMEASURED" in cmd and "per-module" in cmd)
+
+    scen = os.path.join(os.path.dirname(os.path.dirname(ROOT)), "calibration", "scenarios.json")
+    if os.path.isfile(scen):
+        with open(scen) as fh:
+            ids = [s["id"] for s in json.load(fh)["scenarios"]]
+        check("calibration: unmeasured-not-certified scenario present",
+              "unmeasured-not-certified" in ids, ids)
+
+
+def test_v19_planted_fixtures():
+    """The v1.9 pins must be able to FAIL — doctrine stripped of an amendment is flagged."""
+    stripped = "Run mutation, count survivors, gate on the score.\n"
+    check("planted: missing 'tests that cannot fail' detected", "Tests that cannot fail" not in stripped)
+    check("planted: missing accounting rule detected", "killed + survived < generated" not in stripped)
+    intact = ("Tests that cannot fail pick agreeing values; killed + survived < generated is "
+              "UNMEASURED; the per-module discovery loop reads survivor lines.\n")
+    check("planted: intact v1.9 doctrine passes the same needles",
+          all(n in intact for n in ("Tests that cannot fail", "killed + survived < generated",
+                                    "per-module discovery loop".replace(" discovery loop", ""))))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
                test_v17_doctrine, test_v17_planted_fixtures,
                test_v171_doctrine, test_v171_planted_fixtures,
                test_v18_doctrine, test_v18_planted_fixtures,
-               test_v181_doctrine, test_v181_planted_fixtures):
+               test_v181_doctrine, test_v181_planted_fixtures,
+               test_v19_doctrine, test_v19_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

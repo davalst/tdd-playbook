@@ -110,6 +110,31 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   (H3: agents add mocks ~36% of test commits vs ~26% for humans); the `overmock` guard reminds.
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
   guarantee of test quality. The guarantee is §3–§4 (+ the TEST-LOCK above).
+- **Tests that cannot fail — the fixture-VALUE trap.** Red-first proves a test fails without the
+  FIX; it does NOT prove the test can fail AT ALL once the fix is in. A fixture can pick values
+  where the correct code and a MUTATED version produce identical output — the test then asserts the
+  right property, looks thorough in review, and passes forever while advertising coverage that
+  doesn't exist (observed: 11 in one session, every one review-clean). Recurring shapes:
+  - **A clamp/floor hides the difference** — `weight(samples=10_000, heeded=0)` hits the lower
+    bound either way; the mutant only shows at a magnitude where no clamp binds. Test ON the
+    boundary, not comfortably past it.
+  - **The happy path takes the same branch** — `capture_output=True → None` is invisible against a
+    command that succeeds silently; only a FAILING invocation produces output to capture. Include
+    the negative case.
+  - **A sibling branch produces the same observable** — two thresholds that both emit ⚠; a fixture
+    tripping both tests neither.
+  - **Correlated fixture inputs** — keying a class on `i % 4` and the outcome on `i % 2` gives
+    PERFECT stratification in a fixture named "flat". Make the key INDEPENDENT of the outcome.
+  - **An unconditionally-true assertion** — `record.exc_info is not None` cannot fail: Python
+    logging stores `exc_info = False` when you pass `exc_info=False`, and `False is not None` is
+    True. (An earlier session blamed the test framework for the "unexplained" pass; it was the
+    assertion, and a two-line experiment settled it. **A mystery in a test is usually the test** —
+    spend the two minutes, don't ship a note that says "unexplained".)
+  The check, after writing any test: **what value would make this pass with the bug present?** If
+  such a value exists and your fixture uses it, change the fixture. Prefer EXACT values to orderings
+  — `a > b` is satisfied by a dozen wrong implementations; `w == (h + 0.35*20)/(n + 20)` by one.
+  This is the strongest argument for §4 as an OUTCOME gate, not a ritual: the mutation score is the
+  only thing that reliably catches this whole class.
 
 ## 2. Edge cases — a never-skipped category (`@pytest.mark.edge`)
 Run each deliverable methodically through this checklist; write tests for the ones that genuinely apply:
@@ -152,14 +177,29 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   renderers — the rule is only real when every entry carries its cost line).
 - **Surviving mutants = weak/missing tests.** Triage survivors on critical paths first; add the test that
   kills each. Aim ~80%+ EFFECTIVE mutation score on critical modules.
+- **The per-module discovery loop — full passes VERIFY, they don't DISCOVER.** To RAISE a score,
+  iterate one module at a time: run ONE module → READ the actual survivor lines → write kills →
+  re-run that module → repeat until it clears the floor → next module → full pass only at the end.
+  Per-module feedback is minutes; a full multi-module pass is 40+. And the survivor list tells you
+  what's weak — guessing doesn't: in one 52.5% → 91.2% session (8 modules, ~2,100 mutants) reading
+  survivor lines surfaced FIVE production bugs no passing test could (a probe that raised on every
+  real call, an unreachable branch, a 10-second teardown stall, a constant contradicting its own
+  docstring, two write-only emitters with no caller). Mutation is a bug-finder, not only a test-grader.
 - **Equivalent mutants are real and UN-KILLABLE — don't chase them (that's performative gaming).** On
   DB/SQL-heavy code, tools (e.g. mutmut, no toggle to disable string mutation) case-mutate SQL keywords +
   dict/`Row` subscript keys, which SQL/SQLite treat identically — these survive forever. Exclude them with
   a CONSERVATIVE automated filter: a survivor whose single changed line differs by CASE ONLY *and* sits in
-  a SQL statement or a string-subscript (never excludes a free-text/user-facing string mutation). Gate on
-  the EFFECTIVE score = killed / non-equivalent; print raw + effective + the count excluded (transparent).
-  (Real example: reconcile went 62.8% raw → 67% → 89.7% effective once equivalents were filtered AND
-  real `reconcile()` contract tests were added.)
+  a SQL statement or a string-subscript — and ONLY when the changed token is a KEYWORD or IDENTIFIER.
+  SQL/SQLite is case-INsensitive for keywords and identifiers but case-SENSITIVE for VALUES, so a
+  case-change to a quoted value (`WHERE type='table'` → `'TABLE'`) is a REAL mutant that makes the check
+  match nothing forever — never exclude it, nor a free-text/user-facing string. A too-permissive filter is
+  a GATE DEFECT, not a scoring detail: it silently removes a bug class from EVERY gate. So every exclusion
+  rule — filter OR ledger — ships a NEGATIVE test proving the nearest REAL mutant still blocks, and you
+  AUDIT the excluded SHARE over time: if it grows while the score improves, the filter is doing the work
+  the tests should (a healthy run holds or shrinks it — e.g. 4.5% → 4.1% while the score went 55% → 91%).
+  Gate on the EFFECTIVE score = killed / non-equivalent; print raw + effective + the count excluded
+  (transparent). (Real example: reconcile went 62.8% raw → 67% → 89.7% effective once equivalents were
+  filtered AND real `reconcile()` contract tests were added.)
 - **Equivalents the heuristic can't classify go in an audited equivalence ledger**, never into a
   widened filter. One entry per mutant, with (a) a WRITTEN equivalence proof in the entry itself,
   (b) EXACT-substitution matching — the changed line must be exactly the documented before→after,
@@ -180,6 +220,12 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
 - **Gate it (close the loop):** a small script parses the tool's machine-readable stats, prints
   `Mutation: N%`, and FAILS under a no-regression FLOOR — BLOCKING in CI. Raise the floor as genuine
   survivors are killed; never lower it. Report-only mutation that nobody must act on is theater.
+  **A roster entry with no gate invocation is a comment.** The admission rule (above) says whether a
+  module BELONGS on the roster; it does NOT prove the entry is WIRED to a gate. Assert (tripwire-style)
+  that every rostered module appears in at least one gate invocation, or is listed as explicitly-tracked
+  debt — §6's BUILT-vs-WIRED applied to the gate itself (observed: 8 rostered modules with cost lines and
+  a suite shim but in NO gate invocation, twice in one week — the second repeating a mistake the repo's own
+  CI script documented six days earlier).
 - **When a critical file mixes eras, scope the gate by FUNCTION (two-tier policy):** new/core work
   gates at ZERO real survivors on its NAMED functions (nothing to lower); pre-Playbook debt paths in
   the same file are named as tracked debt next to the roster entry, with an instruction not to widen
@@ -207,12 +253,27 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   can't demonstrate failing on a broken baseline has been asleep for an unknown duration (origin: a
   downstream gate false-greened intermittently since before 2026-07; the generated-count guard
   alone never noticed).
+- **Account for EVERY mutant — killed + survived < generated means UNMEASURED.** Outcomes that are
+  neither killed nor survived (SEGFAULT, timeout, no-covering-test, skipped) are INVISIBLE to a
+  survivor collector that harvests only `": survived"` lines — while the vacuity guard counts
+  mutants GENERATED. So a scope where every mutant SEGFAULTED prints "0 survivors — PASS" and sails
+  the guard (observed: 151 segfaults + 56 no-covering-test in one pass, 94 of the segfaults in the
+  single function carrying a feature's whole safety claim — the gate called it clean). RULE: if
+  killed + survived < generated, the scope is UNMEASURED — REFUSE to certify, don't merely warn.
+  And CHECK baseline-green at HEAD as an explicit PRECONDITION (don't assume it): under a shared
+  baseline one pre-existing red test silently disables every scoped gate, so assume-green is exactly
+  how it stays undetected.
 - **Verify the gate's KILLING SUITE actually collects your kill tests.** Tools with a dedicated
   mutation suite (e.g. mutmut's `tests_mutation/`) never see kill tests written in the normal
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
   the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
   shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
-- **Diff-scoped on PRs; full pass at feature completion.** The full critical-module pass stays at
+- **Diff-scoped on PRs; full pass at feature completion — and EACH PHASE is a feature for gating.**
+  A multi-phase program runs the gate at every phase boundary, not once at the end. Deferring
+  doesn't cost mutant count (8 new modules generate ~2,000 either way); it costs a systematic
+  weak-test habit compounding across every module built before the first measurement (observed: one
+  ranges-not-values habit → 8 modules at 52.5%; measured at phase 3, phases 4–7 write differently).
+  The full critical-module pass stays at
   feature completion, but substantive changes to critical modules get a DIFF-SCOPED run in review
   (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a handful of
   survivors surfaced on the changed lines, Google-style. A repo-wide score is NOT a KPI (noise,

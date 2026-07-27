@@ -43,7 +43,11 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
 2. Run the pass; collect surviving mutants from the machine-readable output, and BATCH the
    survivor-diff extraction (one pass over the tool's results/cache, not a per-mutant
-   `show` subprocess — per-mutant extraction has taken longer than the mutation run itself). In
+   `show` subprocess — per-mutant extraction has taken longer than the mutation run itself).
+   **Account for EVERY mutant before reporting:** if killed + survived < generated, the difference
+   (segfault, timeout, no-covering-test, skipped) is UNMEASURED — a survivor collector that reads
+   only `": survived"` sees 0 survivors and calls a scope that all SEGFAULTED "clean". REFUSE to
+   certify ("cannot measure — N of M mutants unmeasured"), don't merely warn. In
    **targeted-mutant mode** (caller names a concern — auth/money/permissions/lifecycle),
    ALSO author 3–5 plausible concern-specific mutants by hand (drop the check, flip the
    rounding, skip the guard) and verify a test kills each; a concern-mutant that survives
@@ -54,8 +58,13 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
 3. **Triage each survivor real-vs-equivalent.** Equivalent mutants are real and UN-KILLABLE:
    e.g. SQL keyword case that SQLite treats identically, dict/Row subscript-key case. Exclude
    them with a CONSERVATIVE filter (changed line differs by CASE ONLY *and* sits in a SQL
-   statement or string-subscript — never exclude a free-text/user-facing string mutation).
-   Do NOT chase equivalents — that is performative gaming.
+   statement or string-subscript — and ONLY when the changed token is a KEYWORD or IDENTIFIER).
+   SQL/SQLite is case-INsensitive for keywords/identifiers but case-SENSITIVE for VALUES, so a
+   case-change to a quoted value (`type='table'` → `'TABLE'`) is a REAL mutant — never exclude it,
+   nor a free-text/user-facing string. A too-permissive filter is a GATE DEFECT (removes a bug class
+   from every gate): every exclusion rule ships a NEGATIVE test proving the nearest REAL mutant still
+   blocks, and you audit the excluded SHARE (growing while the score improves = the filter doing the
+   tests' work). Do NOT chase equivalents — that is performative gaming.
    An equivalent the filter can't classify goes in the repo's audited **equivalence ledger**:
    a WRITTEN proof per entry, exact-substitution matching (the changed line must be exactly
    the documented before→after, so the entry can't swallow a neighboring real mutant), and a

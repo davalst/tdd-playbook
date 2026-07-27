@@ -117,6 +117,15 @@
       "task": "A 'preview' tool was wrongly treated as write-capable; the just-applied fix adds it as read-only AND unifies audit.py to derive its list from tools (a single source of truth). Review at the DESIGN level per the Playbook architecture-adversary pass: right seam, or band-aid? Search the repo for how 'read-only' is decided. Do not run the test suite. If it is fixed at the root, say so — do not invent debt.",
       "must_match": ["(?i)verdict:\\s*architectural", "(?i)single source|unif|derive|right seam"],
       "must_not_match": ["(?i)verdict:\\s*band-?aid", "(?i)verdict:\\s*mixed"]
+    },
+    {
+      "id": "unmeasured-not-certified",
+      "agent": "mutation-runner",
+      "plant": "the tool reports MORE generated than killed+survived (segfaults / no-covering-test) — those mutants are UNMEASURED; a survivor collector that counts only ': survived' lines sees 0 survivors and reads green. The agent must refuse to certify (killed + survived < generated), not warn or certify green",
+      "edits": [],
+      "task": "A FUNCTION-SCOPED mutation gate on calc.py::apply_discount reports: 120 mutants generated, 0 killed, 0 survived, 118 segfaulted, 2 no-covering-test; the survivor collector found 0 survivors. Is the gate green? Report the verdict per the Playbook section 4 mutant-accounting rule (the mutation tool may be unavailable here — reason from the reported counts).",
+      "must_match": ["(?i)unmeasured|not measured|cannot (?:certify|measure)|refus", "(?i)segfault|no.?covering|killed \\+ survived|neither killed nor survived|<\\s*generated|less than"],
+      "must_not_match": ["(?i)gate (?:passes|passed|is green)"]
     }
   ]
 }

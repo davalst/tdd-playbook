@@ -3,6 +3,39 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.9.0 — 2026-07-27
+
+**Mutation-discipline + test-honesty amendments** — three grounded lessons from a downstream session
+that took a mutation score 52.5% → 91.2% across 8 modules / ~2,100 mutants. Each abstract rule was
+already implicit in the Playbook and still didn't prevent the mistake, so the concrete cases are kept
+(that's what makes them land).
+
+- **§1 — new "Tests that cannot fail" subsection (the fixture-VALUE trap).** Red-first proves a test
+  fails without the fix; it does NOT prove the test can fail AT ALL once the fix is in — a fixture can
+  pick values where correct and mutated code produce identical output (11 in one session, all
+  review-clean). Five recurring shapes (clamp/floor hides the diff · happy path takes the same branch ·
+  sibling branch, same observable · correlated `i%4`/`i%2` fixtures · the unconditionally-true
+  `False is not None`). The check: *what value would make this pass with the bug present?* Prefer exact
+  values to orderings. "A mystery in a test is usually the test."
+- **§4 — phase-boundary gating + the per-module discovery loop.** Each PHASE of a multi-phase program
+  is a feature for gating (run the gate at every phase boundary — deferring lets one weak-test habit
+  compound across every module built before the first measurement). Full passes VERIFY; to DISCOVER,
+  iterate one module at a time and READ the actual survivor lines (which found five production bugs no
+  passing test could) — guessing finds none.
+- **§4 — three further false-green modes for the gate itself:** (a) **killed + survived < generated =
+  UNMEASURED** — segfault/timeout/no-covering-test/skipped mutants are invisible to a `": survived"`
+  collector while the vacuity guard counts GENERATED, so an all-segfault scope reads "0 survivors —
+  PASS"; refuse to certify. (b) A too-permissive equivalence filter is a **GATE DEFECT**: SQLite is
+  case-SENSITIVE for VALUES (only keywords/identifiers are case-insensitive), so `type='table'` →
+  `'TABLE'` is a REAL mutant — **corrects the Playbook's own previously too-broad case-only filter**;
+  every exclusion rule now ships a negative test and you audit the excluded SHARE trend. (c) A **roster
+  entry with no gate invocation is a comment** — §6 BUILT-vs-WIRED applied to the gate itself. Plus:
+  CHECK baseline-green at HEAD as an explicit precondition (a shared red test disables every scoped gate).
+- Carried into the `mutation-runner` agent + `/mutate` command. **New live calibration scenario**
+  `unmeasured-not-certified` (live suite 8 → 9) with stub-harness proof (all-segfault-green BLOCKING-
+  FAILs; a correct refusal PASSes). Pinned by `test_agents.py::test_v19_doctrine` (+ planted-fixture).
+  SKILL description unchanged (958 chars, within budget).
+
 ## 1.8.1 — 2026-07-23
 
 **Targeted-mutant revert-safety — `with_snapshot.py preflight`** (origin: downstream telemetry —
