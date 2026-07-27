@@ -98,8 +98,11 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   prior test covered, or in a path once known-good. Never skip it or defer it to "later."
 - **TEST-LOCK — make the iron rule mechanical (default for feature/multi-deliverable work):**
   once the plan's tests are authored, RED for the right reason, and COMMITTED, lock them
-  (`/tdd-lock`) — the `test_lock_guard` hook then BLOCKS edits to the locked tests AND the
-  verifier surface (conftest, test configs) until `/tdd-unlock` with a JOURNALED reason. The
+  (`/tdd-lock`) — the `test_lock_guard` hook then BLOCKS both structured EDITS and write-shaped
+  SHELL commands (`sed -i`, `> file`, `git checkout -- test`, `rm`, inline-python writes) to four
+  surfaces: the locked tests, the verifier surface (conftest, test configs), the lock's OWN state
+  (you can't self-unlock by deleting `tdd-lock.json`), and the guard/hook files themselves —
+  until `/tdd-unlock` with a JOURNALED reason. Reads and running the locked tests stay free. The
   strongest validated defense against the documented top agent attack vector (editing the
   failing test — HACK_CATALOG H2/H5; prompts don't stop it, mechanisms do). Unlock reasons
   are reviewed by §13's `/grade`; "adjusted test to match output" is the move the lock exists

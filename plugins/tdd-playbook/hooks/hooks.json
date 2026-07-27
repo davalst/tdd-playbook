@@ -23,6 +23,12 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/test_lock_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: test-lock guard (shell)"
+          },
+          {
+            "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/snapshot_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: snapshot guard"

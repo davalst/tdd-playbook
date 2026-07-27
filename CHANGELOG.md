@@ -3,6 +3,33 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.10.0 — 2026-07-27
+
+**TEST-LOCK closes its shell bypass + protects its own state (audit findings F1+F2).** A
+self-audit of the enforcement layer (mechanical vs prose) found the lock was Edit-only: the
+`test_lock_guard` hook fired on `Edit|MultiEdit|Write` but the ONLY Bash PreToolUse hook was the
+snapshot guard — so while a lock was active, a locked red test could be rewritten with `sed -i` /
+`> file` / `git checkout -- test` / `rm` / inline-python, and the lock file itself (`tdd-lock.json`)
+could simply be `rm`'d to self-unlock without the journaled reason. The shell IS the channel a
+capable model reaches for; the guard now covers it.
+
+- **F1 — shell channel.** `test_lock_guard.py` gains `bash_findings`: write-shaped commands
+  (`sed -i`/`perl -i`, `>`/`>>` redirection, `rm`/`mv`/`cp`/`tee`/`truncate`/`dd`, `git checkout`/
+  `restore` incl. revert-all `git checkout .`, and inline `open(path,'w')`) targeting a protected
+  path BLOCK. **Reads and running the locked tests stay free** (only writes block — a guard that
+  wedges legitimate work is the adoption killer). Wired into the Bash PreToolUse matcher in
+  `hooks.json`. Honest bound: heuristic on the shell side (common write verbs, not every possible
+  command) — the deeper backstop is the independent verifier (CIVerd/memrebel), not a perfect parser.
+- **F2 — lock self-protection.** The lock's own state (`tdd-lock.json`, its journal,
+  `tdd-pending-red.json`) and the enforcement itself (guard scripts, `hooks.json`, `settings.json`)
+  are now protected surfaces (both channels) while a lock is active — deleting the lock or disabling
+  the hook is blocked. The one sanctioned exit remains `tdd_lock.py unlock --reason` (which the guard
+  does NOT block — verified).
+- 24 planted-input tests (`test_hooks.py::test_lock_shell`) — every bypass blocks, every read/run/
+  branch-checkout/journaled-unlock passes; the fifth test caught a real gap (a needle inside a
+  `dir/path` redirection target) that was fixed before ship. SKILL §1 TEST-LOCK doctrine updated.
+  Suites: hooks 89/89, all 8 plugin suites green, registry OK, description unchanged (958).
+
 ## 1.9.1 — 2026-07-27
 
 **§4 consolidation — behavior-preserving refactor (no doctrine changed).** §4 had accreted ~16 flat

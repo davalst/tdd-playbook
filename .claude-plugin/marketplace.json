@@ -3,7 +3,7 @@
   "owner": {
     "name": "David Alston"
   },
-  "description": "David's public Claude Code marketplace. Hosts the TDD Playbook plugin — the universal engineering/QA habits that apply in every repo, on every surface (local, web, mobile). Public so cloud sandboxes can load it without auth; contains no secrets.",
+  "description": "David's public Claude Code marketplace. Hosts the TDD Playbook plugin \u2014 the universal engineering/QA habits that apply in every repo, on every surface (local, web, mobile). Public so cloud sandboxes can load it without auth; contains no secrets.",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -12,8 +12,10 @@
       "name": "tdd-playbook",
       "source": "./plugins/tdd-playbook",
       "description": "Universal TDD/QA Playbook (auto-firing skill) + enforcement hooks, scaffolding commands, and verification agents. Composes with repo-local testing conventions.",
-      "version": "1.9.1",
-      "author": { "name": "David Alston" }
+      "version": "1.10.0",
+      "author": {
+        "name": "David Alston"
+      }
     }
   ]
 }

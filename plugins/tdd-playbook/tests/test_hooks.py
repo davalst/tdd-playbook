@@ -481,10 +481,85 @@ def test_red_lock():
               (read_json(d, "tdd-lock.json"), read_json(d, "tdd-pending-red.json")))
 
 
+def test_lock_shell():
+    """F1 (shell channel) + F2 (lock self-protection) for test_lock_guard.py.
+
+    A locked test the agent can rewrite with `sed -i` / `> file` / `git checkout`, or a lock
+    file it can `rm`, is a lock in name only. These planted bypasses MUST block; reads and the
+    sanctioned unlock MUST pass (a guard that wedges legitimate work is the adoption killer)."""
+    s = "test_lock_guard.py"
+
+    def drive(d, event):
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["CLAUDE_PROJECT_DIR"] = d
+        return subprocess.run([sys.executable, os.path.join(HOOKS, s)],
+                              input=json.dumps(event), capture_output=True, text=True,
+                              cwd=d, env=env, timeout=20)
+
+    def bash_ev(cmd):
+        return {"tool_name": "Bash", "tool_input": {"command": cmd}}
+
+    def setup_lock(d, files=("tests/test_pay.py",)):
+        os.makedirs(os.path.join(d, ".claude"), exist_ok=True)
+        for f in files:
+            fp = os.path.join(d, f)
+            os.makedirs(os.path.dirname(fp), exist_ok=True)
+            with open(fp, "w") as fh:
+                fh.write("def test_pay():\n    assert charge() == 10\n")
+        with open(os.path.join(d, ".claude", "tdd-lock.json"), "w") as fh:
+            json.dump({"files": {f: {"locked_at": "t"} for f in files}}, fh)
+
+    def block(name, d, ev):
+        p = drive(d, ev)
+        check(name, p.returncode == 2 and "TEST-LOCK" in p.stderr, (p.returncode, p.stderr[:110]))
+
+    def allow(name, d, ev):
+        p = drive(d, ev)
+        check(name, p.returncode == 0 and p.stderr == "", (p.returncode, p.stderr[:110]))
+
+    with tempfile.TemporaryDirectory() as d:
+        d = os.path.realpath(d)
+        setup_lock(d)
+        # F1 — shell WRITE bypasses on a locked test must block
+        block("lock/sh: sed -i on locked test blocks", d, bash_ev("sed -i 's/10/9/' tests/test_pay.py"))
+        block("lock/sh: redirect-overwrite locked test blocks", d, bash_ev('echo "def test_pay(): pass" > tests/test_pay.py'))
+        block("lock/sh: append-redirect locked test blocks", d, bash_ev("cat foo >> tests/test_pay.py"))
+        block("lock/sh: git checkout -- locked test blocks", d, bash_ev("git checkout -- tests/test_pay.py"))
+        block("lock/sh: git checkout . (revert-all) blocks", d, bash_ev("git checkout ."))
+        block("lock/sh: git restore . blocks", d, bash_ev("git restore ."))
+        block("lock/sh: rm locked test blocks", d, bash_ev("rm tests/test_pay.py"))
+        block("lock/sh: mv over locked test blocks", d, bash_ev("mv /tmp/x tests/test_pay.py"))
+        block("lock/sh: inline python open(...,'w') blocks", d, bash_ev("python3 -c \"open('tests/test_pay.py','w').write('')\""))
+        # F1 — READS and legitimate runs must NOT block (adoption killer if they do)
+        allow("lock/sh: cat locked test is allowed", d, bash_ev("cat tests/test_pay.py"))
+        allow("lock/sh: run locked test is allowed", d, bash_ev("python -m pytest tests/test_pay.py -q"))
+        allow("lock/sh: run + redirect OUTPUT elsewhere is allowed", d, bash_ev("pytest tests/test_pay.py -q > /tmp/out.log"))
+        allow("lock/sh: git checkout a branch is allowed", d, bash_ev("git checkout main"))
+        # F1 — verifier surface + enforcement via shell
+        block("lock/sh: sed -i on conftest blocks (H5)", d, bash_ev("sed -i 's/a/b/' conftest.py"))
+        block("lock/sh: rm on a guard hook blocks", d, bash_ev("rm .claude/hooks/scripts/test_lock_guard.py"))
+        # F2 — the lock's own state cannot be removed/rewritten to self-unlock
+        block("lock/sh: rm tdd-lock.json blocks (F2)", d, bash_ev("rm .claude/tdd-lock.json"))
+        block("lock/sh: overwrite tdd-lock.json blocks (F2)", d, bash_ev("echo '{}' > .claude/tdd-lock.json"))
+        block("lock/sh: truncate the journal blocks (F2)", d, bash_ev("truncate -s0 .claude/tdd-lock-journal.jsonl"))
+        block("lock/edit: editing tdd-lock.json blocks (F2)", d, edit(os.path.join(d, ".claude", "tdd-lock.json"), "a", "b"))
+        block("lock/edit: editing hooks.json blocks", d, edit(os.path.join(d, ".claude", "hooks", "hooks.json"), "a", "b"))
+        # the SANCTIONED unlock must pass (references tdd_lock.py, not the state file literal)
+        allow("lock/sh: journaled unlock via tdd_lock.py is allowed", d,
+              bash_ev('python3 /plug/bin/tdd_lock.py unlock --reason "impl done"'))
+
+    with tempfile.TemporaryDirectory() as d2:
+        d2 = os.path.realpath(d2)  # NO lock active
+        allow("lock/sh: no lock -> rm test is zero-cost allow", d2, bash_ev("rm tests/test_pay.py"))
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
-               test_flaky, test_intent, test_tripwire_reminder, test_red_lock):
+               test_flaky, test_intent, test_tripwire_reminder, test_red_lock, test_lock_shell):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
