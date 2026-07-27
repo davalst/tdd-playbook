@@ -215,6 +215,19 @@ def test_author_plants():
           rc.turns_for({"max_turns": 3}) == rc.MAX_TURNS)
     check("turns_for: garbage falls back", rc.turns_for({"max_turns": "lots"}) == rc.MAX_TURNS)
 
+    # F3 (2026-07-27): the scoreboard shows verifier-vs-adversary tier for corpus plants
+    with tempfile.TemporaryDirectory() as hd:
+        hp = os.path.join(hd, "history.md")
+        rc.append_history(hp, "haiku", [
+            ({"id": "cx", "agent": "claims-verifier",
+              "_meta": {"authored_by_model": "fable-5"}}, True, []),
+            ({"id": "bx", "agent": "claims-verifier"}, False, []),
+        ])
+        txt = open(hp).read()
+    check("history: corpus row shows verifier-vs-adversary tier",
+          "haiku vs fable-5" in txt and "| cx |" in txt, txt)
+    check("history: base row shows verifier tier only", "| haiku | bx |" in txt, txt)
+
     check("valid plant validates", ap.validate(good) == [], ap.validate(good))
     check("unknown agent rejected", any("unknown agent" in p for p in ap.validate(bad_agent)))
     # regression (2026-07-27): KNOWN_AGENTS froze at the original four while the roster grew —

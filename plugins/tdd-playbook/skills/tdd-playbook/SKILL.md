@@ -657,6 +657,19 @@ visible — never "trust the agent more."
   doer's model tier (`calibration/author_plants.py` — human-reviewed, corpus only grows, each
   plant records its authoring model); a doer-model upgrade REQUIRES a calibration run before
   its work is trusted. Never let the thing generating code outrun the thing checking it.
+  **The floor is now MECHANICAL, not a hope:** the judgment/adversary verifiers
+  (`claims-verifier`, `tripwire-auditor`, `architecture-adversary`, `integration-adversary`,
+  `edge-case-adversary`, `mutation-runner`) pin `model: opus` in their frontmatter, so live
+  dispatch never silently floats down to a cheap session model — the verifier's strength is
+  decoupled from whatever tier the doer happens to run on (audit finding F3: a verifier that
+  inherits the session model is the same mind it's checking, on the same tier). The mechanical
+  test-runners (`red-first-verifier`, `planted-error-probe`, `ux-probe-calibrator`) stay
+  inherit — they run suites, not judgment, so tier barely moves them. Two rules follow: (1) if
+  the DOER routinely runs ABOVE the pinned tier, RAISE the pins — a floor below the doer
+  violates the policy, and the scoreboard's verifier-vs-adversary column surfaces the lag; (2)
+  calibration deliberately runs the verifiers at a CHEAP tier (`haiku`) as a CONSERVATIVE lower
+  bound — a plant a weak verifier catches, the pinned production verifier catches too; the pin
+  is not tested by calibration (frontmatter is stripped), it is the production guarantee ON TOP.
 - **Retro proposes the SMALLEST tweak** (one config knob / prompt line / threshold), human-reviewed.
   A healthy loop's proposals shrink toward noise over time; report-only grades nobody must act on
   are theater (§4's rule, same teeth).

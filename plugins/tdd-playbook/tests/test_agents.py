@@ -533,6 +533,37 @@ def test_v19_planted_fixtures():
                                     "per-module discovery loop".replace(" discovery loop", ""))))
 
 
+def test_verifier_model_pins():
+    """F3: the judgment/adversary verifiers pin a strong model floor so live dispatch never
+    silently floats to a cheap session model (a verifier on the doer's tier is the same mind it
+    checks). Mechanical test-runners stay inherit — they run suites, not judgment."""
+    PINNED = {"claims-verifier", "tripwire-auditor", "architecture-adversary",
+              "integration-adversary", "edge-case-adversary", "mutation-runner"}
+    INHERIT = {"red-first-verifier", "planted-error-probe", "ux-probe-calibrator"}
+    for name in sorted(PINNED):
+        with open(os.path.join(AGENTS, name + ".md")) as fh:
+            fm = frontmatter(fh.read())
+        check("{}: pins a model floor (F3)".format(name),
+              fm is not None and fm.get("model") == "opus", fm and fm.get("model"))
+    for name in sorted(INHERIT):
+        with open(os.path.join(AGENTS, name + ".md")) as fh:
+            fm = frontmatter(fh.read())
+        check("{}: mechanical runner stays inherit (no pin)".format(name),
+              fm is not None and "model" not in fm, fm and fm.get("model"))
+    with open(os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")) as fh:
+        text = fh.read()
+    check("SKILL §13: mechanical verifier-model floor documented",
+          "pin `model: opus`" in text and "audit finding F3" in text)
+
+
+def test_verifier_pin_planted():
+    """The pin check must be able to FAIL — an unpinned judgment verifier is detectable."""
+    unpinned = "---\nname: claims-verifier\ndescription: x\ntools: Read\n---\nbody\n"
+    check("planted: unpinned judgment verifier detected", "model" not in frontmatter(unpinned))
+    pinned = "---\nname: claims-verifier\ndescription: x\ntools: Read\nmodel: opus\n---\nbody\n"
+    check("planted: pinned verifier detected", frontmatter(pinned).get("model") == "opus")
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -540,7 +571,8 @@ def main():
                test_v171_doctrine, test_v171_planted_fixtures,
                test_v18_doctrine, test_v18_planted_fixtures,
                test_v181_doctrine, test_v181_planted_fixtures,
-               test_v19_doctrine, test_v19_planted_fixtures):
+               test_v19_doctrine, test_v19_planted_fixtures,
+               test_verifier_model_pins, test_verifier_pin_planted):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

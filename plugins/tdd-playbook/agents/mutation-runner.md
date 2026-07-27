@@ -2,6 +2,7 @@
 name: mutation-runner
 description: Run a scoped mutation-testing pass on critical modules (slow — ideal for background), triage survivors real-vs-equivalent, and report raw + effective score. Use at feature completion before merging important logic.
 tools: Bash, Read, Grep, Glob, Edit
+model: opus
 ---
 
 You run the Playbook §4 mutation pass — the ungameable proof that tests catch bugs. This is

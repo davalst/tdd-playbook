@@ -3,6 +3,31 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.11.0 — 2026-07-27
+
+**Verifier-strength floor made mechanical (audit finding F3).** §13's verifier-strength policy
+("never let the thing generating code outrun the thing checking it") was prose: every agent
+inherited the session model, so a verifier silently ran on the doer's own tier — the same mind
+checking itself. The two live BLOCKING FAILs earlier today (Fable-authored plants a haiku verifier
+missed) were the empirical proof.
+
+- **Model floor pinned** on the six judgment/adversary verifiers (`claims-verifier`,
+  `tripwire-auditor`, `architecture-adversary`, `integration-adversary`, `edge-case-adversary`,
+  `mutation-runner`) via `model: opus` frontmatter — live dispatch no longer floats down to a cheap
+  session model. The three mechanical test-runners (`red-first-verifier`, `planted-error-probe`,
+  `ux-probe-calibrator`) stay inherit: they run suites, not judgment, so tier barely moves them.
+- **Calibration/production relationship documented (§13):** the frontmatter pin governs PRODUCTION
+  dispatch only — calibration strips frontmatter and runs verifiers at a cheap tier (`haiku`) as a
+  CONSERVATIVE lower bound (a plant a weak verifier catches, the pinned production verifier catches
+  too). Two rules stated: raise the pins if the doer routinely runs above the pinned tier; the
+  scoreboard surfaces the lag.
+- **Scoreboard now shows the verifier-vs-adversary tier:** `docs/calibration/history.md` corpus rows
+  record `<verifier> vs <plant-author>` (e.g. `haiku vs claude-fable-5`), so a verifier weaker than
+  the model that authored the plant is VISIBLE, not just policy (the §13 ratio made mechanical).
+- Pinned by `test_agents.py::test_verifier_model_pins` (+ planted fixture) and a `test_harness.py`
+  scoreboard check. Suites: test_agents 191/191, harness 36/36, all 8 plugin suites, registry OK,
+  description unchanged (958).
+
 ## 1.10.0 — 2026-07-27
 
 **TEST-LOCK closes its shell bypass + protects its own state (audit findings F1+F2).** A

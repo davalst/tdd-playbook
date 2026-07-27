@@ -188,8 +188,13 @@ def append_history(history_path, model, results):
                      "|---|---|---|---|---|\n")
         today = datetime.date.today().isoformat()
         for sc, passed, _problems in results:
+            # F3 — surface the verifier-vs-adversary tier: `<verifier> vs <plant-author>` for
+            # corpus plants so a verifier weaker than the model that authored the plant is
+            # VISIBLE on the scoreboard (the §13 ratio, not just prose).
+            author = (sc.get("_meta") or {}).get("authored_by_model")
+            model_cell = "{} vs {}".format(model, author) if author else model
             fh.write("| {} | {} | {} | {} | {} |\n".format(
-                today, model, sc["id"], sc["agent"],
+                today, model_cell, sc["id"], sc["agent"],
                 "PASS" if passed else "**BLOCKING FAIL**"))
 
 
