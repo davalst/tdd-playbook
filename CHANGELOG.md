@@ -3,6 +3,30 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.15.0 — 2026-07-27
+
+**Gate-honesty guard — `pytest` could false-green a failing suite (found by stress-testing the
+CIVerd gate).** Before shipping the next doctrine work, we planted errors to prove CIVerd's gate can
+actually go RED. It exposed a real false-green: CIVerd runs `pytest -q plugins/tdd-playbook/tests
+calibration/test_harness.py`, but this repo's suites are SCRIPT-STYLE — `check()` counts failures
+and only `main()` sums them and `sys.exit(1)`. Under `pytest`, a `test_*` function calls `check()`,
+the check fails, and the function returns normally → **pytest reports pass**; and the main()-only
+suites (no `test_*` functions) are collected as zero tests and never run. Confirmed empirically:
+a planted `check()` failure gave `pytest` exit 0 while `python3 file.py` gave exit 1. Every green
+CIVerd verdict had been verifying little more than "imports without raising."
+
+- **`tests/test_aaa_suites_via_main.py`** closes it with the one construct pytest cannot miss — a raw
+  `assert`: it runs every sibling suite AND `calibration/test_harness.py` through their real `main()`
+  (`python3 file.py`) and asserts exit 0. Now `pytest` and the `python3` loop agree, so even CIVerd's
+  current bare-pytest command catches a real regression. A self-calibration test proves the guard can
+  fail (a nonzero exit must be observed).
+- The proper complementary fix is CIVerd's side: point its `tests` check at the repo's real gate
+  command (`for t in …/test_*.py; do python3 "$t" || exit 1; done && python3 calibration/test_harness.py`),
+  not bare pytest — documented for the `repos.yml` update. This release makes the gate honest
+  regardless.
+- Also a standing caution now in the record: a NEW script-style suite must expose its failures
+  through a raw assert or this guard, never `check()` alone, or `pytest` will not see it.
+
 ## 1.14.0 — 2026-07-27
 
 **Remote-runtime discipline — the RUNNING Tripwire leg (CIVerd capability-gaps report, Deliverable
