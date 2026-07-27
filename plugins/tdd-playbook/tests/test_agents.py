@@ -499,6 +499,8 @@ def test_v19_doctrine():
           "killed + survived < generated" in agent and "UNMEASURED" in agent)
     check("mutation-runner: SQLite values case-SENSITIVE filter correction",
           "case-SENSITIVE for VALUES" in agent)
+    check("mutation-runner: resolves named scope first, never substitutes (vacuity fix)",
+          "RESOLVE the named scope" in agent and "NEVER silently substitute" in agent)
 
     with open(os.path.join(COMMANDS, "mutate.md")) as fh:
         cmd = fh.read()

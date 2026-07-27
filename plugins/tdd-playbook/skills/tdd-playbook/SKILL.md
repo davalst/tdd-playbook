@@ -166,6 +166,10 @@ a generator finds the boundaries I'd never list (research: ~35–50% higher edge
 
 ## 4. Mutation testing — the real anti-performative metric
 This is the ungameable check that tests actually catch bugs (100% coverage can assert nothing).
+The integrity of the gate ITSELF — the documented ways a green verdict can mean nothing was
+measured — lives in §4a; this section is how to run mutation WELL.
+
+**Scope — what goes on the roster.**
 - Run a mutation pass on CRITICAL modules only (auth, money, permissions, lifecycle, core algorithms) —
   not the whole repo (mutant explosion). Tools: `mutmut`/`cosmic-ray` (Python), `Stryker` (JS/TS).
 - **Roster admission — anti-creep teeth for "critical only":** a module enters the mutation roster
@@ -175,8 +179,24 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   and the ceremony costs the same as on an audit chain. Re-audit the roster at feature end (origin:
   doctrine said "critical only" and practice still drifted to 44 rostered modules, 5 of them TUI
   renderers — the rule is only real when every entry carries its cost line).
-- **Surviving mutants = weak/missing tests.** Triage survivors on critical paths first; add the test that
-  kills each. Aim ~80%+ EFFECTIVE mutation score on critical modules.
+- **When a critical file mixes eras, scope the gate by FUNCTION (two-tier policy):** new/core work
+  gates at ZERO real survivors on its NAMED functions (nothing to lower); pre-Playbook debt paths in
+  the same file are named as tracked debt next to the roster entry, with an instruction not to widen
+  the gated list until their survivors die. A whole-file floor either flatters the debt or lets the
+  debt dilute the new floor — function-scoped gating keeps the strong floor undiluted and the debt
+  visible.
+
+**Run & discover — cadence is a discovery tool, not just a checkpoint.**
+- **Diff-scoped on PRs; full pass at feature completion — and EACH PHASE is a feature for gating.**
+  A multi-phase program runs the gate at every phase boundary, not once at the end. Deferring
+  doesn't cost mutant count (8 new modules generate ~2,000 either way); it costs a systematic
+  weak-test habit compounding across every module built before the first measurement (observed: one
+  ranges-not-values habit → 8 modules at 52.5%; measured at phase 3, phases 4–7 write differently).
+  The full critical-module pass stays at
+  feature completion, but substantive changes to critical modules get a DIFF-SCOPED run in review
+  (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a handful of
+  survivors surfaced on the changed lines, Google-style. A repo-wide score is NOT a KPI (noise,
+  arid code); per-module floors on critical code are the gate.
 - **The per-module discovery loop — full passes VERIFY, they don't DISCOVER.** To RAISE a score,
   iterate one module at a time: run ONE module → READ the actual survivor lines → write kills →
   re-run that module → repeat until it clears the floor → next module → full pass only at the end.
@@ -185,6 +205,22 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   survivor lines surfaced FIVE production bugs no passing test could (a probe that raised on every
   real call, an unreachable branch, a 10-second teardown stall, a constant contradicting its own
   docstring, two write-only emitters with no caller). Mutation is a bug-finder, not only a test-grader.
+- **Targeted-mutant mode — mutation as test GENERATOR (Meta ACH pattern):** for the CONCERN of the
+  change (auth bypass, money rounding, permission drop, lifecycle skip), generate 3–5 plausible
+  concern-specific mutants and require a test that kills each, BEFORE trusting the suite. Inverts
+  the workflow: instead of only grading tests after the fact, mutants state what the tests must
+  catch. (Validated at 10k-class scale, 73% engineer acceptance.)
+  **Precondition — a CLEAN, COMMITTED tree (or a worktree).** A targeted-mutant pass that
+  `git checkout`/`stash`-reverts to restore source WILL clobber uncommitted work, silently
+  (origin: a hand-rolled targeted-mutant script git-checkout'd away uncommitted work mid-pass —
+  detect-after is worse than refuse-before). Gate any revert-based script on
+  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
+  tracked changes) — or use `with_snapshot.py begin`/`verify`, which RECORDS a dirty tree and
+  restores it rather than blindly reverting. Committing first is the cheapest form of both.
+
+**Triage survivors — real vs equivalent.**
+- **Surviving mutants = weak/missing tests.** Triage survivors on critical paths first; add the test that
+  kills each. Aim ~80%+ EFFECTIVE mutation score on critical modules.
 - **Equivalent mutants are real and UN-KILLABLE — don't chase them (that's performative gaming).** On
   DB/SQL-heavy code, tools (e.g. mutmut, no toggle to disable string mutation) case-mutate SQL keywords +
   dict/`Row` subscript keys, which SQL/SQLite treat identically — these survive forever. Exclude them with
@@ -217,21 +253,26 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   exemption covers LITERAL STRING CONTENT only: a logic mutant on a display line (True→False,
   and/or flip, dropped guard) and anything inside an f-string `{expression}` is CODE and stays
   real/blocking — mask the string's characters, never the line it sits on.
+
+**Anti-gaming hygiene.**
+- **Mutants stay OUT of the implementing agent's context.** A visible verifier is a gameable
+  verifier (METR: models introspect graders when they can see them). Dispatch `mutation-runner`
+  fresh; the implementer sees killed/survived VERDICTS, never the mutant list it could special-case.
+- Frame the anti-gaming story around mutation score, not the red-first ritual.
+
+## 4a. Gate integrity — a gate can report green on nothing
+A mutation gate is only as honest as its plumbing: a green verdict is worthless if the run measured
+nothing. These are the documented false-green modes — each has bitten a real gate, and the abstract
+"gate it properly" was not enough to prevent any of them.
 - **Gate it (close the loop):** a small script parses the tool's machine-readable stats, prints
   `Mutation: N%`, and FAILS under a no-regression FLOOR — BLOCKING in CI. Raise the floor as genuine
   survivors are killed; never lower it. Report-only mutation that nobody must act on is theater.
-  **A roster entry with no gate invocation is a comment.** The admission rule (above) says whether a
+  **A roster entry with no gate invocation is a comment.** The admission rule (§4) says whether a
   module BELONGS on the roster; it does NOT prove the entry is WIRED to a gate. Assert (tripwire-style)
   that every rostered module appears in at least one gate invocation, or is listed as explicitly-tracked
   debt — §6's BUILT-vs-WIRED applied to the gate itself (observed: 8 rostered modules with cost lines and
   a suite shim but in NO gate invocation, twice in one week — the second repeating a mistake the repo's own
   CI script documented six days earlier).
-- **When a critical file mixes eras, scope the gate by FUNCTION (two-tier policy):** new/core work
-  gates at ZERO real survivors on its NAMED functions (nothing to lower); pre-Playbook debt paths in
-  the same file are named as tracked debt next to the roster entry, with an instruction not to widen
-  the gated list until their survivors die. A whole-file floor either flatters the debt or lets the
-  debt dilute the new floor — function-scoped gating keeps the strong floor undiluted and the debt
-  visible.
 - **Every scoped gate needs a VACUITY GUARD — on TWO axes, scope AND execution.** *Scope:* a
   pattern matching ZERO generated mutants (typo'd function name, module dropped from the tool
   config) must FAIL LOUDLY ("refusing a vacuous pass"), never read as green — a gate that can pass
@@ -244,7 +285,7 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   comes back empty and `generated>0 / 0 survivors / exit 0` reads as a clean green. **0 survivors ≠
   pass, and generated > 0 ≠ measured** — before trusting any pass assert three things: (1) baseline
   GREEN, (2) executed/run count > 0 read from the tool's RUN stats (not the on-disk generated set),
-  (3) kill tests collected (next bullet). The gate must CAPTURE the tool's exit code / output and
+  (3) kill tests collected (below). The gate must CAPTURE the tool's exit code / output and
   detect its stats-abort markers — **a discarded exit code is a discarded truth**; a gate that runs
   the tool and ignores the result certifies unmeasured scopes as green. A SHARED baseline is a
   shared point of failure: one RED/drifted test anywhere disables EVERY scoped mutation gate at
@@ -268,32 +309,6 @@ This is the ungameable check that tests actually catch bugs (100% coverage can a
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
   the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
   shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
-- **Diff-scoped on PRs; full pass at feature completion — and EACH PHASE is a feature for gating.**
-  A multi-phase program runs the gate at every phase boundary, not once at the end. Deferring
-  doesn't cost mutant count (8 new modules generate ~2,000 either way); it costs a systematic
-  weak-test habit compounding across every module built before the first measurement (observed: one
-  ranges-not-values habit → 8 modules at 52.5%; measured at phase 3, phases 4–7 write differently).
-  The full critical-module pass stays at
-  feature completion, but substantive changes to critical modules get a DIFF-SCOPED run in review
-  (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a handful of
-  survivors surfaced on the changed lines, Google-style. A repo-wide score is NOT a KPI (noise,
-  arid code); per-module floors on critical code are the gate.
-- **Targeted-mutant mode — mutation as test GENERATOR (Meta ACH pattern):** for the CONCERN of the
-  change (auth bypass, money rounding, permission drop, lifecycle skip), generate 3–5 plausible
-  concern-specific mutants and require a test that kills each, BEFORE trusting the suite. Inverts
-  the workflow: instead of only grading tests after the fact, mutants state what the tests must
-  catch. (Validated at 10k-class scale, 73% engineer acceptance.)
-  **Precondition — a CLEAN, COMMITTED tree (or a worktree).** A targeted-mutant pass that
-  `git checkout`/`stash`-reverts to restore source WILL clobber uncommitted work, silently
-  (origin: a hand-rolled targeted-mutant script git-checkout'd away uncommitted work mid-pass —
-  detect-after is worse than refuse-before). Gate any revert-based script on
-  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
-  tracked changes) — or use `with_snapshot.py begin`/`verify`, which RECORDS a dirty tree and
-  restores it rather than blindly reverting. Committing first is the cheapest form of both.
-- **Mutants stay OUT of the implementing agent's context.** A visible verifier is a gameable
-  verifier (METR: models introspect graders when they can see them). Dispatch `mutation-runner`
-  fresh; the implementer sees killed/survived VERDICTS, never the mutant list it could special-case.
-- Frame the anti-gaming story around mutation score, not the red-first ritual.
 
 ## 5. UX journeys — `@pytest.mark.ux` — interface-agnostic
 A UX journey drives the REAL interface a user touches and asserts the user-visible outcome + the persisted

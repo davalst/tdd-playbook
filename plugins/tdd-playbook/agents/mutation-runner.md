@@ -28,10 +28,15 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    **Roster admission check:** if a rostered module lacks a "a survivor here costs ___"
    justification, or is rendering/presentation code, flag it for PRUNING in your report —
    critical-only is a rule with teeth, not a vibe.
-   **Vacuity guard (scoped runs) — TWO axes:** *Scope* — if the requested scope generates ZERO
-   mutants (typo'd function name, module missing from the tool config), report "refusing a vacuous
-   pass" and stop; count that denominator from GENERATED mutants, not the survivors report (a
-   fully-killed scope looks empty there). *Execution* — generated is NOT executed. Never run the
+   **Vacuity guard (scoped runs) — TWO axes:** *Scope* — FIRST RESOLVE the named scope in the
+   source (grep/read for the exact module.function). A name that does not resolve — a typo like
+   `apply_discuont`, a renamed or deleted symbol — is a VACUOUS scope: report "refusing a vacuous
+   pass — <name> does not exist" and stop. NEVER silently substitute a similarly-named real function
+   and evaluate THAT (the documented failure: given the typo `apply_discuont`, the agent hand-
+   analyzed the real `apply_discount`, found 0 survivors, and certified the gate GREEN — the scope
+   it was asked about was empty). Likewise if the resolved scope generates ZERO mutants (module
+   missing from the tool config): refuse. Count that denominator from GENERATED mutants, not the
+   survivors report (a fully-killed scope looks empty there). *Execution* — generated is NOT executed. Never run the
    tool and discard its result: a discarded exit code is a discarded truth. CAPTURE the exit code /
    output; if it aborted (`failed to collect stats` / runner returned nonzero / 0 mutants run — the
    classic cause is a RED/drifted baseline test), report "cannot measure — gate RED (baseline not

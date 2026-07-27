@@ -3,6 +3,38 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.9.1 — 2026-07-27
+
+**§4 consolidation — behavior-preserving refactor (no doctrine changed).** §4 had accreted ~16 flat
+bullets mixing four concerns. Treated as a REFACTOR, not a rewrite: every load-bearing sentence kept
+VERBATIM (so the `test_v16…v19_doctrine` pins — 176 of them — are the regression suite that
+mechanically proves no rule was lost), only sub-headers and connective intros added.
+
+- **§4 now reads scope → run → triage → hygiene** under four inline sub-headers: *Scope* (critical-
+  only, roster admission, function-tier gating) · *Run & discover* (diff/phase/full cadence,
+  per-module discovery loop, targeted-mutant mode + preflight) · *Triage survivors* (weak-vs-
+  equivalent, the filter, the ledger, string-role classing) · *Anti-gaming hygiene*.
+- **New §4a "Gate integrity — a gate can report green on nothing"** collects the false-green
+  machinery into one navigable home (matching the §5a/§6a subsection pattern): the mechanical gate
+  + floor, roster-entry-wired-to-gate, the two-axis vacuity guard, account-for-every-mutant, and
+  killing-suite collection. A reader asking "why is my gate green?" now goes straight to §4a.
+- Verified: 177/177 doctrine pins green (no rule lost), each moved bullet appears exactly once,
+  SKILL description unchanged (958 chars), scratch-install parity holds. The §4 change is structure
+  only — no doctrine reworded.
+
+**First full live calibration since 2026-07-09 (`docs/calibration/history.md`).** All 9 scenarios
+run on haiku — **8/9 caught on the first pass**, then 9/9 after one agent fix:
+- The five scenarios added this session all validated LIVE on the first pass: `red-baseline-false-
+  green` and `unmeasured-not-certified` (mutation-runner accounting), and both architecture-adversary
+  scenarios — including `good-fix-single-source`, confirming the agent does NOT false-positive on a
+  genuinely clean fix (the risk flagged when it shipped).
+- One BLOCKING FAIL, fixed per the standing rule (fix the agent, never the plant): on
+  `vacuous-mutation-scope`, given a scope naming the typo `apply_discuont`, the model "helpfully"
+  hand-analyzed the real `apply_discount` and certified GREEN — it never noticed the named function
+  doesn't exist. The `mutation-runner` vacuity guard now RESOLVES the named scope first and refuses a
+  name that doesn't resolve, explicitly forbidding silent substitution of a similar real function.
+  Re-run live → PASS. Pinned by a new `test_v19_doctrine` needle.
+
 ## 1.9.0 — 2026-07-27
 
 **Mutation-discipline + test-honesty amendments** — three grounded lessons from a downstream session
