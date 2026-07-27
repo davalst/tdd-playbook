@@ -1,7 +1,7 @@
-# Gate Engine — independent CI verdicts for the TDD Playbook (build plan)
+# CIVerd — independent CI verdicts for the TDD Playbook (build plan)
 
 **Status:** approved-for-build plan · 2026-07-27 · lives here in the hub; copy into the new
-`gate-engine` repo as its founding spec.
+`civerd` repo as its founding spec.
 **Deployment target:** David's Hostinger VPS (cohabiting with idle Hermes) · Tailscale for
 admin only · no public inbound.
 **Origin:** Playbook audit finding F4 — every release-gate "green" is currently self-attested
@@ -35,7 +35,7 @@ the satellite architecture: **the Playbook hub owns the protocol; runners are du
 
 No public webhooks · no inbound HTTP · no GitHub Actions · no matrix builds · no test
 orchestration logic (repos define their own gate command) · minimal dependencies (stdlib +
-git + `memproof-core`, which carries only `cryptography` for Ed25519 — see §11; fallback
+git + `memrebel-core`, which carries only `cryptography` for Ed25519 — see §11; fallback
 `ssh-keygen -Y` if the extraction spike fails) · not a general CI platform — it watches the
 Playbook repo family only.
 
@@ -43,14 +43,14 @@ Playbook repo family only.
 
 ```
                     (poll, read-only deploy key)
-   GitHub remotes  <──────────────────────────────  [gate-runner user]
+   GitHub remotes  <──────────────────────────────  [civerd-runner user]
    (watched repos)                                   fresh clone per SHA
         │                                            run configured gate cmd
         │ push verdicts / commit statuses            capture exit+output digest
-        ▼                                            write result → /var/spool/gate/
-   gate-verdicts repo  ◄──────────────────────────  [gate-signer user]
+        ▼                                            write result → /var/spool/civerd/
+   civerd-verdicts repo  ◄──────────────────────────  [civerd-signer user]
    + commit statuses (statuses:write PAT)            validate spool entry
-        │                                            memproof sign → append ledger
+        │                                            memrebel sign → append ledger
         ▼                                            push ledger + post status
    David's laptop / agent sessions                   daily heartbeat verdict
    READ verdicts via git/gh like anyone else
@@ -61,14 +61,14 @@ Playbook repo family only.
 
 **The trust rules (load-bearing, in order):**
 1. Laptop→engine: no data-plane write path exists. Period.
-2. Verdicts are signed on-box as **memproof bundles** (`memproof-core`, Ed25519 — the open
+2. Verdicts are signed on-box as **memrebel bundles** (`memrebel-core`, Ed25519 — the open
    proof format extracted from MemStruct; DECIDED 2026-07-27, see §11 and
-   `docs/plans/memproof-plan.md`). Private key: owned by `gate-signer`, mode 0400, generated
+   `docs/plans/memrebel-plan.md`). Private key: owned by `civerd-signer`, mode 0400, generated
    on the VPS, never leaves it. Public key: vendored into the Playbook, so any session can
    VERIFY (offline, bit-for-bit replay) but none can FORGE. Fallback if the extraction spike
    fails: `ssh-keygen -Y sign` (verdicts carry a schema version, so a later format migration
    is additive).
-3. `gate-runner` cannot read the key or write the ledger. `gate-signer` never executes repo
+3. `civerd-runner` cannot read the key or write the ledger. `civerd-signer` never executes repo
    code. The spool directory is the only shared surface (runner: write-only; signer:
    read+delete; validated schema, size-capped).
 4. A verdict binds `{repo, sha, branch, gate_cmd, exit, stdout_digest, started, duration,
@@ -83,10 +83,10 @@ Playbook repo family only.
 
 | Component | User | ~Size | Responsibility |
 |---|---|---|---|
-| `poller.py` | gate-runner | 120 ln | Every 60s: `git ls-remote` watched repos; new SHA on a watched branch → enqueue job. |
-| `runner.py` | gate-runner | 150 ln | Fresh `git clone --depth 1` at SHA into throwaway dir; run the repo's configured gate command with timeout + resource caps; write result JSON to spool; scrub workdir. |
-| `signer.py` | gate-signer | 150 ln | Validate spool entry against schema; canonicalize; sign as a memproof bundle (`memproof-core`; fallback `ssh-keygen -Y`); append to `verdicts.jsonl`; commit+push to `gate-verdicts` repo; POST commit status; delete spool entry. |
-| `heartbeat` | gate-signer | 30 ln | Daily signed heartbeat verdict (cron/systemd timer). |
+| `poller.py` | civerd-runner | 120 ln | Every 60s: `git ls-remote` watched repos; new SHA on a watched branch → enqueue job. |
+| `runner.py` | civerd-runner | 150 ln | Fresh `git clone --depth 1` at SHA into throwaway dir; run the repo's configured gate command with timeout + resource caps; write result JSON to spool; scrub workdir. |
+| `signer.py` | civerd-signer | 150 ln | Validate spool entry against schema; canonicalize; sign as a memrebel bundle (`memrebel-core`; fallback `ssh-keygen -Y`); append to `verdicts.jsonl`; commit+push to `civerd-verdicts` repo; POST commit status; delete spool entry. |
+| `heartbeat` | civerd-signer | 30 ln | Daily signed heartbeat verdict (cron/systemd timer). |
 | `repos.yml` | root-owned | — | Allowlist: repo URL, branches, gate command, timeout. Nothing else is ever watched. |
 | systemd units ×2 | root | — | Hardening: `NoNewPrivileges`, `ProtectSystem=strict`, `PrivateTmp`, `ProtectHome`, `MemoryMax`, `RuntimeMaxSec` per run; runner unit additionally `IPAddressAllow` = GitHub only. |
 
@@ -97,11 +97,11 @@ configs collapse to that one line. Engine stays dumb either way.
 
 ## 5. Playbook-side integration (separate release in the hub repo)
 
-- `bin/verify_verdict.py --sha <sha>`: pulls `gate-verdicts`, finds the newest verdict for the
+- `bin/verify_verdict.py --sha <sha>`: pulls `civerd-verdicts`, finds the newest verdict for the
   SHA, verifies signature against the vendored `allowed_signers`, checks freshness + exit==0.
   Exit 0 only on a valid signed green. **This joins the release gate:** no version bump ships
   without a signed engine verdict for the release SHA (absence/stale/tampered/wrong-sha = RED).
-- Session flow: after push, `Monitor` the `gate-verdicts` remote (or `gh api` the commit
+- Session flow: after push, `Monitor` the `civerd-verdicts` remote (or `gh api` the commit
   status) — the return comes INTO our flow; nobody reads a foreign CI tab.
 - Optional, zero-GHA enforcement: branch protection requiring the engine's status context.
 
@@ -131,17 +131,17 @@ theater — same rule as every other gate in the system.
 
 ## 8. VPS prerequisites (David checks before build)
 
-- [ ] `python3 --version` ≥ 3.9; `git --version`; `pip install cryptography` OK on the VPS (memproof-core's sole dep); `ssh-keygen -Y sign` available (OpenSSH ≥ 8.2p1, fallback path only)
+- [ ] `python3 --version` ≥ 3.9; `git --version`; `pip install cryptography` OK on the VPS (memrebel-core's sole dep); `ssh-keygen -Y sign` available (OpenSSH ≥ 8.2p1, fallback path only)
 - [ ] Disk ≥ 2 GB free (clones are shallow + scrubbed); RAM headroom with Hermes idle (engine needs ~100 MB peak)
-- [ ] systemd available; can create `gate-runner`/`gate-signer` users
+- [ ] systemd available; can create `civerd-runner`/`civerd-signer` users
 - [ ] Tailscale up; sshd bound to tailnet interface only; public inbound closed
 - [ ] GitHub: read-only deploy key (or fine-grained PAT, contents:read) + statuses:write PAT — created by David, stored only on the VPS, never on the laptop
-- [ ] New empty `gate-verdicts` repo + new `gate-engine` repo
+- [ ] New empty `civerd-verdicts` repo + new `civerd` repo
 
 ## 9. Build phases & acceptance
 
 - **P1 — Engine MVP:** poller + runner + signer + heartbeat + units + planted suite. Accept:
-  a push to `tdd-playbook` produces a signed verdict in `gate-verdicts` within ~2 min; every
+  a push to `tdd-playbook` produces a signed verdict in `civerd-verdicts` within ~2 min; every
   planted-suite check green; laptop demonstrably cannot write engine state (documented probe).
 - **P2 — Hub integration (tdd-playbook release):** `verify_verdict.py` + vendored pubkey +
   release-discipline line ("no bump without a signed verdict") + Monitor flow. Accept: a
@@ -185,24 +185,24 @@ REJECTED on trust grounds:
   join the verdict trust chain, and its churn would block releases (fail-closed cuts both ways).
 What we DO take (upgraded 2026-07-27 from "consider" to DECIDED — kernel unification):
 1. **Same VPS**, separate unix users + systemd units (Hermes pattern).
-2. **`memproof-core` is the verdict format** — MemStruct's proof kernel (≈400 lines across
+2. **`memrebel-core` is the verdict format** — MemStruct's proof kernel (≈400 lines across
    `app/gate_eval.py` + `app/proof_replay.py` + `scripts/verify_proof.py`, sole dep
    `cryptography` for Ed25519 — verified by inspection 2026-07-27) is extracted into its OWN
    repo as a tiny open standard; this engine is its FIRST reference implementation. Founding
-   spec: `docs/plans/memproof-plan.md`. Build order: memproof extraction → engine P1 consumes
+   spec: `docs/plans/memrebel-plan.md`. Build order: memrebel extraction → engine P1 consumes
    it. Fallback if extraction disappoints: `ssh-keygen -Y`, migrate later (schema-versioned).
 3. **MemStruct as downstream CONSUMER:** verdicts ingested READ-ONLY into MemStruct as governed
    records ("was release SHA X verified — prove it, point-in-time"), feeding its audit-budget
    story without entering the trust chain. Git ledger remains the source of truth.
-4. **Sequencing (David's call, agreed):** gate-engine + memproof proven on the VPS FIRST;
-   MemStruct retrofits to memproof-core AFTER (swap-the-import, guaranteed by the golden-vector
-   compatibility rule in the memproof plan). Interim divergence guard: MemStruct's embedded
+4. **Sequencing (David's call, agreed):** civerd + memrebel proven on the VPS FIRST;
+   MemStruct retrofits to memrebel-core AFTER (swap-the-import, guaranteed by the golden-vector
+   compatibility rule in the memrebel plan). Interim divergence guard: MemStruct's embedded
    proof kernel is FROZEN (one line in its CLAUDE.md) until the retrofit.
 5. **MemStruct itself moves to the VPS** (its own roadmap item): the same independence argument
    applies to it — a tamper-evident ledger on the laptop where agents hold the user's
    privileges is theater; agents get API-only scoped writes, keys/ledger beyond laptop reach.
-Family framing for productization: Playbook (methodology) · **memproof (the open standard)** ·
-Gate Engine + MemStruct (reference products) — one verification-trust DNA.
+Family framing for productization: Playbook (methodology) · **memrebel (the open standard)** ·
+CIVerd + MemStruct (reference products) — one verification-trust DNA.
 
 ## 12. Open questions for David
 
