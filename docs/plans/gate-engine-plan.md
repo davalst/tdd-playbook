@@ -143,7 +143,29 @@ theater — same rule as every other gate in the system.
 - **P3 — Rollout + probes:** add consumer repos to `repos.yml`; monthly known-red live probe
   scheduled; optional branch-protection status contexts.
 
-## 10. Open questions for David
+## 10. Prior art (swept 2026-07-27 — build justified, two borrowings)
+
+Five-search sweep across four facets before committing to build. Conclusion: **the two halves
+exist separately — validating this design — but no product/OSS combines them.**
+- **Buildkite** independently validates the satellite pattern (agents poll outward over HTTPS,
+  no inbound, compute stays yours) — but its SaaS is the truth store: unsigned verdicts in
+  their DB/UI. Borrow the pattern, not the product.
+- **Laminar CI / Woodpecker / Gitea-Forgejo Actions / sourcehut builds**: minimal runners
+  exist, but all are execution-only or hub-shaped (webhooks/forge/their UI), none sign
+  verdicts, none have the runner/signer privilege split. Laminar could replace `runner.py`
+  only by adding a C++ daemon dependency — rejected.
+- **Sigstore/cosign/Rekor + in-toto**: mature signed-attestation machinery, built for
+  supply-chain artifact provenance (keyless OIDC, public logs) — heavier than our need.
+  **Borrowing:** shape the verdict JSON as an in-toto Statement envelope (field-naming only,
+  ~zero cost) for future interop.
+- **Agent-sandbox industry (E2B/Modal/Northflank/Docker, 2026)**: solves the INVERSE problem
+  (protect the world from agent code), not ours (protect the verdict from the agent). The
+  agent-adversarial, fail-closed verdict gate appears unserved.
+- §12 bound: "doesn't exist" is bounded by this sweep. If the build session's own dive finds
+  real prior art matching the threat model, ADOPT it — this plan prefers not-invented-here
+  losing to a genuine fit.
+
+## 11. Open questions for David
 
 1. VPS specs / OS version (sizes the resource caps).
 2. Watch `main` only, or feature branches too? (main-only is the cheap start.)
