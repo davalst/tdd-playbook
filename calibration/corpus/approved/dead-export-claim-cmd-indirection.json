@@ -1,0 +1,33 @@
+{
+  "id": "dead-export-claim-cmd-indirection",
+  "agent": "claims-verifier",
+  "plant": "cli.py now passes the action to authorize() indirectly via the cmd variable, so a literal grep for authorize(user, \"export\") returns zero hits and the audit's 'export path is dead' negative looks confirmed to a grep-only check.",
+  "edits": [
+    {
+      "file": "cli.py",
+      "old": "        if not authorize(user, \"discount\"):",
+      "new": "        if not authorize(user, cmd):"
+    },
+    {
+      "file": "cli.py",
+      "old": "        if not authorize(user, \"export\"):",
+      "new": "        if not authorize(user, cmd):"
+    }
+  ],
+  "task": "An integration audit draft contains this NEGATIVE finding: 'the action string \"export\" is never passed to authorize() anywhere outside the test suite \u2014 a repo-wide grep for authorize(user, \"export\") returns zero production hits, so the export authorization path is dead code and TestAuthorize's (\"export\",) grants exercise unreachable behavior.' Spot-check this claim against the current source, cite your evidence, and end your report with exactly one line: VERDICT: CONFIRMED or VERDICT: REFUTED.",
+  "must_match": [
+    "VERDICT:\\s*REFUTED",
+    "(?i)\\bcmd\\b",
+    "(?i)cli\\.py"
+  ],
+  "must_not_match": [
+    "VERDICT:\\s*CONFIRMED",
+    "(?i)safe\\s+to\\s+(remove|delete)"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-07-27",
+    "status": "approved",
+    "approved_at": "2026-07-27"
+  }
+}

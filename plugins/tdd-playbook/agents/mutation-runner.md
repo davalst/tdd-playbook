@@ -43,9 +43,15 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    green)" and stop, never a green over an unmeasured scope. Confirm the tool actually RAN the
    mutants (run-stats total > 0): `generated>0 / 0 survivors / exit 0` is the false-green signature,
    a RED gate — 0 survivors ≠ pass, generated > 0 ≠ measured.
-   **Killing-suite visibility:** if the tool uses a dedicated mutation suite (mutmut's
-   `tests_mutation/`), confirm it actually COLLECTS the kill tests you're counting on
-   (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
+   **Killing-suite visibility — collection AND binding:** if the tool uses a dedicated mutation
+   suite (mutmut's `tests_mutation/`), confirm it actually COLLECTS the kill tests you're counting
+   on (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
+   And VERIFY THE BINDING: confirm the tests actually EXERCISE the scoped symbol through its real
+   import path — grep the test files for a local redefinition of the scoped name (a `def` after the
+   import silently SHADOWS it, so a green suite exercises the copy and every mutant in the real
+   function survives; a plausible comment like "hermetic local reference" makes it look deliberate).
+   A green suite proves nothing about a function it never calls — check what the tests BIND to,
+   not just that they exist and pass.
 2. Run the pass; collect surviving mutants from the machine-readable output, and BATCH the
    survivor-diff extraction (one pass over the tool's results/cache, not a per-mutant
    `show` subprocess — per-mutant extraction has taken longer than the mutation run itself).

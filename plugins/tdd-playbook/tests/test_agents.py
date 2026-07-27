@@ -501,6 +501,13 @@ def test_v19_doctrine():
           "case-SENSITIVE for VALUES" in agent)
     check("mutation-runner: resolves named scope first, never substitutes (vacuity fix)",
           "RESOLVE the named scope" in agent and "NEVER silently substitute" in agent)
+    # 2026-07-27 corpus live-fails (fix the agent, never the plant):
+    check("mutation-runner: verifies test BINDING (shadowed-import live fail)",
+          "VERIFY THE BINDING" in agent and "SHADOWS" in agent)
+    with open(os.path.join(AGENTS, "architecture-adversary.md")) as fh:
+        arch = fh.read()
+    check("architecture-adversary: caller count irrelevant to seam (csv-escape live fail)",
+          "caller count today is irrelevant" in arch)
 
     with open(os.path.join(COMMANDS, "mutate.md")) as fh:
         cmd = fh.read()

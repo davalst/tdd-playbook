@@ -206,8 +206,26 @@ def test_author_plants():
                     edits=[{"file": "calc.py", "old": "NOT IN FILE", "new": "x"}])
     bad_regex = dict(good, id="corpus-test-badregex", must_match=["([unclosed"])
 
+    # per-scenario turn budget (2026-07-27): investigation-heavy plants may raise the cap,
+    # never lower it (the default stays the cost floor); garbage falls back to the default
+    import run_calibration as rc
+    check("turns_for: default when unset", rc.turns_for({}) == rc.MAX_TURNS)
+    check("turns_for: scenario may raise the cap", rc.turns_for({"max_turns": 40}) == "40")
+    check("turns_for: cannot lower below the default",
+          rc.turns_for({"max_turns": 3}) == rc.MAX_TURNS)
+    check("turns_for: garbage falls back", rc.turns_for({"max_turns": "lots"}) == rc.MAX_TURNS)
+
     check("valid plant validates", ap.validate(good) == [], ap.validate(good))
     check("unknown agent rejected", any("unknown agent" in p for p in ap.validate(bad_agent)))
+    # regression (2026-07-27): KNOWN_AGENTS froze at the original four while the roster grew —
+    # plants for the newest agents were mechanically rejected (§6a old-blind-to-new). The
+    # corpus must be able to target every read-only verdict agent, and never a tree-touching one.
+    for a in ("mutation-runner", "architecture-adversary", "integration-adversary"):
+        check("corpus can target {}".format(a),
+              ap.validate(dict(good, id="corpus-test-" + a, agent=a)) == [])
+    check("tree-touching agent stays excluded from corpus",
+          any("unknown agent" in p
+              for p in ap.validate(dict(good, id="corpus-test-pep", agent="planted-error-probe"))))
     check("stale edit anchor rejected", any("do not apply" in p for p in ap.validate(bad_edit)))
     check("bad oracle regex rejected", any("bad regex" in p for p in ap.validate(bad_regex)))
     check("duplicate id rejected",

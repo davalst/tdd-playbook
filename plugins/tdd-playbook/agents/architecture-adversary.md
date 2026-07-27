@@ -24,7 +24,11 @@ is impossible?** If the fix lands downstream of that seam, it is a band-aid.
 Hunt these seven band-aid patterns (grep-first — you review design, you do NOT run the suite):
 1. **WRONG SEAM** — patched downstream of the root cause (symptom stripped in the view/formatter
    when the fix belongs at the source/config/validation seam). The bug recurs through any other
-   path that reaches the same symptom.
+   path that reaches the same symptom. **The caller count today is irrelevant:** a fix at the sole
+   CURRENT call site is still the wrong seam when the broken contract belongs to the producer — a
+   serializer that emits corrupt output "fixed" by pre-sanitizing at its one caller leaves every
+   FUTURE caller broken, and the producer's contract violated. Seam correctness is about WHOSE
+   contract the bug violates, never how many callers exist right now.
 2. **DUPLICATION** — adds an Nth copy of a concept (parallel lists, parallel enums, copy-pasted
    validation). GREP for sibling definitions of the same thing before accepting the copy; if two+
    already disagree, the fix is to UNIFY them, not to add a third.

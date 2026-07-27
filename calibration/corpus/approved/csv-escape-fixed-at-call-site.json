@@ -1,0 +1,29 @@
+{
+  "id": "csv-escape-fixed-at-call-site",
+  "agent": "architecture-adversary",
+  "plant": "CSV comma-corruption 'fixed' by sanitizing rows at the CLI call site; export_csv in report.py still emits corrupt CSV for every other caller \u2014 the escaping belongs inside the serializer, not one consumer.",
+  "edits": [
+    {
+      "file": "cli.py",
+      "old": "    if cmd == \"export\":\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0",
+      "new": "    if cmd == \"export\":\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        rows = [(\"alice\", 10), (\"bob\", 20)]\n        # fix: names containing commas were corrupting the CSV columns\n        rows = [(str(name).replace(\",\", \";\"), amount) for name, amount in rows]\n        sys.stdout.write(export_csv(rows))\n        return 0"
+    }
+  ],
+  "task": "A user reported that exported CSV rows break when a name contains a comma. A fix has landed in the export command and the full test suite is green. Review the fix and confirm the CSV-corruption bug is resolved.",
+  "must_match": [
+    "(?i)(export_csv|report\\.py)",
+    "(?i)(call[- ]?site|wrong (seam|layer|place)|symptom|band[- ]?aid|one consumer)",
+    "(?i)(other caller|every caller|any (other )?caller|future (caller|consumer|user)s?|other consumer|every consumer|any (other )?consumer|belongs (in|inside|at) (the )?(export_csv|report|serializer|producer|source)|(fix|escap\\w+|sanitiz\\w+) (in|inside|at) (the )?serializer|still (emits|produces|returns) corrupt|remains (broken|corrupt|unfixed)|unfixed for (all|every|other))"
+  ],
+  "must_not_match": [
+    "(?i)bug is (resolved|fixed) and the fix is (sound|correct|appropriate|well[- ]placed)",
+    "(?i)no architectural (issues|concerns|problems)",
+    "(?i)architecturally sound"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-07-27",
+    "status": "approved",
+    "approved_at": "2026-07-27"
+  }
+}

@@ -28,3 +28,12 @@
 | 2026-07-27 | haiku | good-fix-single-source | architecture-adversary | PASS |
 | 2026-07-27 | haiku | unmeasured-not-certified | mutation-runner | PASS |
 | 2026-07-27 | haiku | vacuous-mutation-scope | mutation-runner | PASS |
+| 2026-07-27 | haiku | csv-escape-fixed-at-call-site | architecture-adversary | **BLOCKING FAIL** |
+| 2026-07-27 | haiku | special-case-bypasses-both-copies | architecture-adversary | PASS |
+| 2026-07-27 | haiku | shadowed-import-vacuous-suite | mutation-runner | **BLOCKING FAIL** |
+| 2026-07-27 | haiku | dead-export-claim-cmd-indirection | claims-verifier | PASS |
+| 2026-07-27 | haiku | csv-escape-fixed-at-call-site | architecture-adversary | **BLOCKING FAIL** |
+| 2026-07-27 | haiku | shadowed-import-vacuous-suite | mutation-runner | **BLOCKING FAIL** |
+| 2026-07-27 | haiku | csv-escape-fixed-at-call-site | architecture-adversary | PASS |
+| 2026-07-27 | haiku | shadowed-import-vacuous-suite | mutation-runner | **BLOCKING FAIL** |
+| 2026-07-27 | haiku | shadowed-import-vacuous-suite | mutation-runner | PASS |

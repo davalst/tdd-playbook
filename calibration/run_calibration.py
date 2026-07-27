@@ -125,11 +125,22 @@ def oracle(scenario, output):
     return (not problems), problems
 
 
+def turns_for(scenario):
+    """Per-scenario turn budget: `max_turns` (int) overrides the default hard cap.
+    Investigation-heavy plants (e.g. static analysis under a ceremony-heavy brief on a
+    cheap model) legitimately need more room than count-reasoning ones; the default stays
+    the cost floor, never lower."""
+    try:
+        return str(max(int(scenario.get("max_turns", MAX_TURNS)), int(MAX_TURNS)))
+    except (TypeError, ValueError):
+        return MAX_TURNS
+
+
 def run_agent(scenario, root, claude_bin, model):
     prompt = (agent_body(scenario["agent"])
               + "\n\n# TASK (work in the current directory; it is a git repo)\n"
               + scenario["task"])
-    cmd = [claude_bin, "-p", prompt, "--model", model, "--max-turns", MAX_TURNS]
+    cmd = [claude_bin, "-p", prompt, "--model", model, "--max-turns", turns_for(scenario)]
     extra = os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split()
     cmd.extend(extra)
     p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=TIMEOUT_S)

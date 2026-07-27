@@ -23,9 +23,12 @@ python3 calibration/run_calibration.py            # cheap model, hard caps; appe
   `docs/calibration/history.md` is missing or its last entry is stale >14 days, raise it with David
   proactively — but READ `history.md` first; do not repeat the stale-status error of claiming it was
   never seeded.
-- **Still owed (separate from the run cadence): the corpus has not grown** —
-  `calibration/corpus/approved/` is empty, so calibration still runs only the original
-  hand-written scenarios. The co-evolution step (`author_plants.py` below) is the outstanding gap.
+- **Corpus: seeded 2026-07-27** — first co-evolution cycle complete: 4 adversary-authored plants
+  (by `claude-fable-5`, David-approved) in `calibration/corpus/approved/`, so live runs now cover
+  13 scenarios (9 shipped + 4 corpus). Keep the cycle going each calibration period
+  (`author_plants.py` below); the corpus only grows. Known pipeline limitation: plants can only
+  MODIFY existing fixture files (`apply_edits` cannot create files — 4 of 6 first-batch candidates
+  were mechanically rejected for that; a `create` capability is a possible future enhancement).
 
 **Each cycle, grow the corpus (co-evolution — a frozen plant library is a static gate):**
 ```bash

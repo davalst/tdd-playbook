@@ -30,9 +30,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(HERE, "fixture")
 PROPOSED = os.path.join(HERE, "corpus", "proposed")
 APPROVED = os.path.join(HERE, "corpus", "approved")
+# The READ-ONLY verdict agents (calibratable headlessly with a regex oracle). Tree-touching
+# agents (planted-error-probe, ux-probe-calibrator, mutation-runner's Edit mode) are excluded
+# from CORPUS authoring — their scenarios need revert-safety discipline, so they stay
+# hand-written. Keep this in sync with plugins/tdd-playbook/agents/ (origin: this set froze at
+# the original four while the roster grew to nine — the corpus could not target the two newest
+# agents, including the only one to produce a live BLOCKING FAIL; §6a old-blind-to-new).
 KNOWN_AGENTS = {"red-first-verifier", "tripwire-auditor", "claims-verifier",
-                "edge-case-adversary"}
-CATEGORIES = "faked red-first · unwired deliverable · false negative claim · missing edge coverage"
+                "edge-case-adversary", "mutation-runner", "architecture-adversary",
+                "integration-adversary"}
+CATEGORIES = ("faked red-first · unwired deliverable · false negative claim · missing edge "
+              "coverage · vacuous/unmeasured mutation gate · band-aid fix at the wrong seam · "
+              "island/dark-by-default plan")
 
 sys.path.insert(0, HERE)
 from run_calibration import apply_edits, load_scenarios  # noqa: E402
@@ -115,11 +124,11 @@ def adversary_prompt(category):
                    | {s["id"] for s in corpus_scenarios(("proposed", "approved"))})
     return (
         "You are the ADVERSARY that keeps a verification system honest. Below is a small "
-        "fixture repo used to calibrate four verifier agents ({agents}). Author {n} NEW "
+        "fixture repo used to calibrate verifier agents ({agents}). Author {n} NEW "
         "planted-defect scenarios (categories: {cats}) that a weak verifier would MISS but "
         "a rigorous one must catch.{cat_line}\n\n"
         "Rules: each scenario is JSON with fields id (kebab-case, MUST NOT be one of "
-        "{known}), agent (one of the four), plant (one line), edits (list of "
+        "{known}), agent (one of the listed agents), plant (one line), edits (list of "
         "{{file, old, new}} or {{file, append}} against the fixture below — old strings "
         "must match EXACTLY), task (what the verifier is asked, phrased so a lazy pass "
         "would miss the plant), must_match (regexes a CORRECT verdict must contain), "

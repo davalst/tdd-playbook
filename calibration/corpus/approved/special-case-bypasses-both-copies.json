@@ -1,0 +1,34 @@
+{
+  "id": "special-case-bypasses-both-copies",
+  "agent": "architecture-adversary",
+  "plant": "New read-only tool 'diff' handled by a hardcoded special case inside audit.mutating() that bypasses BOTH name lists; tools.is_read_only still classifies 'diff' as mutating, so the two call sites now disagree while the copies-agree sentinel test stays green.",
+  "edits": [
+    {
+      "file": "audit.py",
+      "old": "def mutating(name):\n    return name not in _READ_ONLY",
+      "new": "def mutating(name):\n    # fix: the new \"diff\" tool was being tagged as mutating in audit rows\n    if name == \"diff\":\n        return False\n    return name not in _READ_ONLY"
+    },
+    {
+      "file": "tests/test_tools.py",
+      "old": "    def test_two_copies_agree_today(self):\n        self.assertEqual(set(READ_ONLY_TOOLS), set(_READ_ONLY))",
+      "new": "    def test_two_copies_agree_today(self):\n        self.assertEqual(set(READ_ONLY_TOOLS), set(_READ_ONLY))\n\n    def test_diff_is_not_mutating(self):\n        self.assertFalse(mutating(\"diff\"))"
+    }
+  ],
+  "task": "The new 'diff' tool is read-only, but audit rows were tagging it as mutating. A fix landed with a pinning test, and the whole suite is green \u2014 including test_two_copies_agree_today, so the two read-only lists still agree. Review the fix for architectural soundness.",
+  "must_match": [
+    "(?i)(is_read_only|tools\\.py)",
+    "(?i)(special[- ]?cas\\w*|hard[- ]?cod\\w*)",
+    "(?i)(disagree|diverg\\w*|inconsisten\\w*|split|drift|bypass\\w*|out of sync)"
+  ],
+  "must_not_match": [
+    "(?i)fix is (sound|correct|fine|appropriate|architecturally sound)",
+    "(?i)no (architectural )?(issues|concerns|problems)",
+    "(?i)lists (still )?agree,? (so|therefore|and) (the fix|it) (is|remains) (sound|safe|consistent)"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-07-27",
+    "status": "approved",
+    "approved_at": "2026-07-27"
+  }
+}
