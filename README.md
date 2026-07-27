@@ -57,20 +57,45 @@ clone of THIS repo, pointing at the target repo):
 python3 scripts/install_into_repo.py /path/to/your/repo
 cd /path/to/your/repo && git add .claude && git commit -m "chore: vendor TDD Playbook for cloud" && git push
 ```
-That vendors the skill + commands + agents + hooks (and `verify_citations`) into the repo's
-`.claude/`, rewriting `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude` and merging the hooks
-into `.claude/settings.json` (existing hooks preserved; the unreliable marketplace block removed).
-Open a cloud session and it loads — guaranteed, no marketplace fetch. **Re-run after this repo
-updates** to refresh a vendored repo (idempotent). Having both the user-scope plugin and the
-vendored copy is harmless — Claude Code de-dupes by name.
+That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_snapshot`,
+`grade_from_otel`, `capability_registry`, `verify_citations`) into the repo's `.claude/`, rewriting
+`${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude`. The installer is **reconciling**: it prunes
+every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
+three integrity guards (`test_lock_guard`, `snapshot_guard`, `overmock_guard`) plus the advisory
+guards — so a refresh can't leave dead hook references behind. **Your own non-Playbook hooks are
+preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
+marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
+de-dupes by name.
+
+### Re-vendoring / refreshing a downstream repo
+Re-running the installer is idempotent and updates the files, but that alone is **not the whole
+refresh** — the current mechanisms only take effect once you also verify and adopt them. After
+`install_into_repo.py`:
+- **Verify the vendored surface** — `.claude/bin/` has `tdd_lock.py`, `with_snapshot.py`,
+  `grade_from_otel.py`, `capability_registry.py`; `.claude/settings.json` carries the PreToolUse
+  integrity guards; the vendored `SKILL.md` mentions TEST-LOCK, the decay principle, and the
+  ACTIVATED Tripwire leg.
+- **Seed the capability registry** (the installer does *not* do this) — if the repo has no
+  `capabilities.json`, run `python3 .claude/bin/capability_registry.py init` and register the repo's
+  real entry points; then `validate` before committing. If it already exists, run `validate` + `doctor`.
+- **Calibration-staleness check** — read this repo's `docs/calibration/history.md`; if its last
+  entry is missing or >14 days old, the gates you just vendored have not been recently live-calibrated
+  — flag it (calibration needs a real `claude` binary and is the Playbook maintainer's action, not
+  something you run in the downstream repo).
+
+The **complete, copy-pasteable refresh prompt** — including hook-mode adoption, `/tdd-lock` usage,
+the four-leg Tripwire, and the registry-as-release-gate — lives in this repo's
+[`CLAUDE.md`](./CLAUDE.md) under **"STANDING PROMPT — refreshing downstream repos."** Paste it into
+the target repo's session; it is the authoritative revendoring checklist.
 
 ## Hook controls
 Two tiers. **Integrity hooks default to `block`** — they defend the documented agent attack
 vectors (see `docs/HACK_CATALOG.md`; the research is unambiguous that warnings don't stop
-test-gaming): `TDD_PLAYBOOK_HOOK_TESTWEAKEN` (and, once locked, `_TESTLOCK`, `_SNAPSHOTGUARD`).
-**Advisory hooks default to `warn`**: `_FLAKY`, `_TRIPWIRE`. Override per hook with
-`warn` | `block` | `off`; `TDD_PLAYBOOK_HOOK_MODE` sets the global default (an explicit global
-overrides per-hook defaults); `TDD_PLAYBOOK_NUDGE=off` disables the build-intent reminder.
+test-gaming): `TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_TESTLOCK`, and `_SNAPSHOTGUARD`. **Advisory hooks
+default to `warn`**: `_OVERMOCK`, `_FLAKY`, `_REDLOCK`. Override per hook with `warn` | `block` |
+`off`; `TDD_PLAYBOOK_HOOK_MODE` sets the global default (an explicit per-hook env wins over the
+global, which wins over the per-hook default); `TDD_PLAYBOOK_NUDGE=off` disables the build-intent
+reminder.
 
 ## Tests & calibration
 Everything mechanical is calibrated with planted inputs (a planted violation that slips past
