@@ -34,8 +34,10 @@ the satellite architecture: **the Playbook hub owns the protocol; runners are du
 ## 2. Non-goals
 
 No public webhooks · no inbound HTTP · no GitHub Actions · no matrix builds · no test
-orchestration logic (repos define their own gate command) · no pip dependencies (stdlib +
-git + ssh-keygen only) · not a general CI platform — it watches the Playbook repo family only.
+orchestration logic (repos define their own gate command) · minimal dependencies (stdlib +
+git + `memproof-core`, which carries only `cryptography` for Ed25519 — see §11; fallback
+`ssh-keygen -Y` if the extraction spike fails) · not a general CI platform — it watches the
+Playbook repo family only.
 
 ## 3. Architecture
 
@@ -48,7 +50,7 @@ git + ssh-keygen only) · not a general CI platform — it watches the Playbook 
         ▼                                            write result → /var/spool/gate/
    gate-verdicts repo  ◄──────────────────────────  [gate-signer user]
    + commit statuses (statuses:write PAT)            validate spool entry
-        │                                            ssh-keygen -Y sign → append ledger
+        │                                            memproof sign → append ledger
         ▼                                            push ledger + post status
    David's laptop / agent sessions                   daily heartbeat verdict
    READ verdicts via git/gh like anyone else
@@ -59,9 +61,13 @@ git + ssh-keygen only) · not a general CI platform — it watches the Playbook 
 
 **The trust rules (load-bearing, in order):**
 1. Laptop→engine: no data-plane write path exists. Period.
-2. Verdicts are signed on-box (`ssh-keygen -Y sign`, ed25519). Private key: owned by
-   `gate-signer`, mode 0400, generated on the VPS, never leaves it. Public key: vendored
-   into the Playbook (`allowed_signers`), so any session can VERIFY but none can FORGE.
+2. Verdicts are signed on-box as **memproof bundles** (`memproof-core`, Ed25519 — the open
+   proof format extracted from MemStruct; DECIDED 2026-07-27, see §11 and
+   `docs/plans/memproof-plan.md`). Private key: owned by `gate-signer`, mode 0400, generated
+   on the VPS, never leaves it. Public key: vendored into the Playbook, so any session can
+   VERIFY (offline, bit-for-bit replay) but none can FORGE. Fallback if the extraction spike
+   fails: `ssh-keygen -Y sign` (verdicts carry a schema version, so a later format migration
+   is additive).
 3. `gate-runner` cannot read the key or write the ledger. `gate-signer` never executes repo
    code. The spool directory is the only shared surface (runner: write-only; signer:
    read+delete; validated schema, size-capped).
@@ -79,7 +85,7 @@ git + ssh-keygen only) · not a general CI platform — it watches the Playbook 
 |---|---|---|---|
 | `poller.py` | gate-runner | 120 ln | Every 60s: `git ls-remote` watched repos; new SHA on a watched branch → enqueue job. |
 | `runner.py` | gate-runner | 150 ln | Fresh `git clone --depth 1` at SHA into throwaway dir; run the repo's configured gate command with timeout + resource caps; write result JSON to spool; scrub workdir. |
-| `signer.py` | gate-signer | 150 ln | Validate spool entry against schema; canonicalize; `ssh-keygen -Y sign`; append to `verdicts.jsonl`; commit+push to `gate-verdicts` repo; POST commit status; delete spool entry. |
+| `signer.py` | gate-signer | 150 ln | Validate spool entry against schema; canonicalize; sign as a memproof bundle (`memproof-core`; fallback `ssh-keygen -Y`); append to `verdicts.jsonl`; commit+push to `gate-verdicts` repo; POST commit status; delete spool entry. |
 | `heartbeat` | gate-signer | 30 ln | Daily signed heartbeat verdict (cron/systemd timer). |
 | `repos.yml` | root-owned | — | Allowlist: repo URL, branches, gate command, timeout. Nothing else is ever watched. |
 | systemd units ×2 | root | — | Hardening: `NoNewPrivileges`, `ProtectSystem=strict`, `PrivateTmp`, `ProtectHome`, `MemoryMax`, `RuntimeMaxSec` per run; runner unit additionally `IPAddressAllow` = GitHub only. |
@@ -125,7 +131,7 @@ theater — same rule as every other gate in the system.
 
 ## 8. VPS prerequisites (David checks before build)
 
-- [ ] `python3 --version` ≥ 3.9; `git --version`; `ssh-keygen -Y sign` available (OpenSSH ≥ 8.2p1)
+- [ ] `python3 --version` ≥ 3.9; `git --version`; `pip install cryptography` OK on the VPS (memproof-core's sole dep); `ssh-keygen -Y sign` available (OpenSSH ≥ 8.2p1, fallback path only)
 - [ ] Disk ≥ 2 GB free (clones are shallow + scrubbed); RAM headroom with Hermes idle (engine needs ~100 MB peak)
 - [ ] systemd available; can create `gate-runner`/`gate-signer` users
 - [ ] Tailscale up; sshd bound to tailnet interface only; public inbound closed
@@ -177,16 +183,26 @@ REJECTED on trust grounds:
 - **Trust chains must be boring.** The engine is ~450 frozen stdlib lines; MemStruct is a living
   product (FastAPI/Docker/migrations/pgvector/MCP) — its whole dependency + deploy surface would
   join the verdict trust chain, and its churn would block releases (fail-closed cuts both ways).
-What we DO take:
+What we DO take (upgraded 2026-07-27 from "consider" to DECIDED — kernel unification):
 1. **Same VPS**, separate unix users + systemd units (Hermes pattern).
-2. **Primitives, if they extract cleanly:** prefer MemStruct's proven Ed25519 sign/verify +
-   replay core over `ssh-keygen -Y` IF it vendors as a small frozen no-dependency module
-   (build-time call in the engine repo; the stdlib-only rule is the bar).
+2. **`memproof-core` is the verdict format** — MemStruct's proof kernel (≈400 lines across
+   `app/gate_eval.py` + `app/proof_replay.py` + `scripts/verify_proof.py`, sole dep
+   `cryptography` for Ed25519 — verified by inspection 2026-07-27) is extracted into its OWN
+   repo as a tiny open standard; this engine is its FIRST reference implementation. Founding
+   spec: `docs/plans/memproof-plan.md`. Build order: memproof extraction → engine P1 consumes
+   it. Fallback if extraction disappoints: `ssh-keygen -Y`, migrate later (schema-versioned).
 3. **MemStruct as downstream CONSUMER:** verdicts ingested READ-ONLY into MemStruct as governed
    records ("was release SHA X verified — prove it, point-in-time"), feeding its audit-budget
    story without entering the trust chain. Git ledger remains the source of truth.
-Family framing for productization: Playbook (methodology) · Gate Engine (CI verdicts) ·
-MemStruct (memory/decision verdicts) — one verification-trust DNA, three surfaces.
+4. **Sequencing (David's call, agreed):** gate-engine + memproof proven on the VPS FIRST;
+   MemStruct retrofits to memproof-core AFTER (swap-the-import, guaranteed by the golden-vector
+   compatibility rule in the memproof plan). Interim divergence guard: MemStruct's embedded
+   proof kernel is FROZEN (one line in its CLAUDE.md) until the retrofit.
+5. **MemStruct itself moves to the VPS** (its own roadmap item): the same independence argument
+   applies to it — a tamper-evident ledger on the laptop where agents hold the user's
+   privileges is theater; agents get API-only scoped writes, keys/ledger beyond laptop reach.
+Family framing for productization: Playbook (methodology) · **memproof (the open standard)** ·
+Gate Engine + MemStruct (reference products) — one verification-trust DNA.
 
 ## 12. Open questions for David
 
