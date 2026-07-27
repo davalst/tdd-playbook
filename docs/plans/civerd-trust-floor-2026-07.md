@@ -1,0 +1,178 @@
+# CIVerd trust floor — diff-integrity + engine-owned planted-error probe (contract)
+
+*Drafted from the tdd-playbook repo (CIVerd's first subject), 2026-07-27, for the CIVerd engine to
+implement. Companion to the trust-posture decision: a sha256 pin on a gate script cannot anchor trust
+against a repo-writing agent, because the script's exit code is a function of agent-authored callees
+that change every commit (proven by this repo's own v1.15.0 case — `git rm
+test_aaa_suites_via_main.py` reverts the suite to a pytest false-green while the gate script's bytes
+never change). Trust must move to checks the ENGINE owns and the agent cannot weaken. These are two.*
+
+## 0. The trust boundary this establishes
+
+| Layer | Who owns it | Agent can weaken? |
+|---|---|---|
+| Decomposition (which checks run) + target paths | ENGINE (root-owned `/etc/civerd/repos.yml`) | No |
+| **Diff-integrity baseline** (last-green inventory) | **ENGINE** (its ledger/state) | **No** |
+| **Plant recipes** (what defect to inject) | **ENGINE** (its own library) | **No** |
+| The code being judged (tests, guards, source) | repo | Yes — and that's the point |
+
+The honest ceiling, stated plainly so nobody over-claims: CIVerd attests *"the engine's chosen checks
+exited 0 for this SHA, and the engine's own integrity checks passed."* It never attests *"the code is
+correct."* These two checks close the specific forge the pin cannot: **the agent reducing what is
+verified.** A green means "the checks the engine ran, including checks the agent could not author
+away, passed" — and the exit code, not any parsed stdout, is the only trust-bearing signal (see §3).
+
+---
+
+## 1. Diff-integrity check — "verification surface did not shrink vs the last green"
+
+**Catches:** the `git rm the guard` / gut-the-tests / add-a-`@skip` forge — invisible to any check
+*inside* the repo (the agent authored those), trivial for the engine to see on the **diff against the
+last green**, which the agent cannot author away because the engine remembers it.
+
+### Baseline (engine-owned)
+The engine records, for each `(repo, branch)`, the **inventory** of the last SHA it signed GREEN:
+- every test file path + its byte size + a cheap structural count (`def test_` count, `assert`/`check(`
+  count, `@pytest.mark.skip`/`xfail`/`pytestmark`-skip count);
+- the same for a small set of **integrity-critical** files if the repo declares them (§1.3), but the
+  general rule needs no declaration — the baseline is simply "what was present and how big at last green."
+
+Stored in engine state next to the ledger, root-owned. The agent has no write path to it.
+
+### Signal (computed by the engine on the candidate SHA)
+Diff the candidate's inventory against the baseline. Flag any of:
+1. **Deletion** of a test file present at last green.
+2. **Shrinkage** of a test file beyond a threshold (e.g. `> 25%` fewer bytes OR `> 10` fewer lines).
+3. **Test-count / assertion-count regression** (fewer `def test_` or fewer `assert`/`check(` calls than
+   baseline, suite-wide) — catches gutting a file's bodies while keeping its name and size padding.
+4. **New skip markers** (`@pytest.mark.skip`/`skipif`, module `pytestmark` skip, `xfail`) not at baseline.
+
+### Verdict (fail-closed, no agent-usable override)
+- Any signal 1–4 → **integrity RED** for the SHA, UNLESS the engine holds a **ratification token** for
+  exactly this `(SHA, file)` (§1.4). A reduction is not always malicious (a real refactor consolidates
+  tests) — so the escape hatch exists, but it is **human, out-of-band, engine-recorded**, never a repo
+  file or an agent action. This is the one operation whose signature IS the forge, so it costs a human
+  ratification — the §6a "decide-or-park with an owner" rule applied to verification surface itself.
+- **Bootstrap:** the first commit has no baseline → integrity is `INCONCLUSIVE`, recorded as such; the
+  first trusted green must be **human-established** (David inspects and the engine snapshots the initial
+  inventory). You cannot diff-integrity the genesis commit — say so, don't fake a pass.
+- **Fail-closed on error:** cannot fetch the last-green SHA, cannot parse the tree, ambiguous baseline
+  → RED/`integrity_unknown`, never a silent pass (mirrors `verify_verdict`'s `ledger_unavailable`).
+
+### 1.3 Optional hard floor (recommended)
+A short engine-owned list of files whose deletion/emptying is **always RED, never ratifiable** — the
+meta-files that make every other check honest: the test-honesty guard, `conftest.py`, `pytest.ini`,
+the hooks dir, the test-weakening guard, the registry validator. Deleting these is never a legitimate
+refactor. Keep the list in root config, not the repo.
+
+### 1.4 Ratification token
+`ratify <sha> <path> --reason "<why>"` written on the box over admin SSH (root-owned store). Re-verify
+consumes it. Tokens are per-`(sha,path)`, single-use, and logged. Solo-dev volume is low; the friction
+is the point — a test deletion that no human reviewed should not clear the gate.
+
+### Composition
+Diff-integrity is a **required check in the decomposition**, run BEFORE `tests` (a shrunk suite that
+then "passes" is exactly the case this exists to stop). Its exit code joins the verdict like any other
+check. It does not run repo tooling — pure git + a small structural scan the engine performs itself.
+
+---
+
+## 2. Engine-owned planted-error probe — "the suite CATCHES a known bug"
+
+**Catches:** the deeper forge diff-integrity can't — a suite that keeps its size and shape but no
+longer *asserts anything real* (assertions loosened to tautologies, oracles widened to always-match).
+The §13 ungameable anchor: don't ask "do the tests pass" (agent-gameable), ask "do the tests CATCH a
+defect the ENGINE chose" (not gameable — the agent didn't author the defect).
+
+### Plant source (engine-owned — the load-bearing property)
+The engine holds its OWN library of **plant recipes** — generic, language-aware mutations applied to
+critical modules: negate a boolean/condition, drop a `sorted()`/`.strip()`, off-by-one a bound, return
+a constant, delete a validation branch, swap `==`/`!=`. The agent never sees which recipe lands where.
+The library **only grows and is sampled randomly per run** (co-evolution — the same discipline as this
+repo's `calibration/author_plants.py`; a frozen, fully-disclosed plant set invites overfitting).
+
+### Targets (repo-declared, engine-verifiable)
+A small repo-side manifest the engine reads (paths only — no recipes):
+```yaml
+# civerd-integrity.yml (repo root) — critical modules whose suite MUST catch mutations
+plant_targets:
+  - path: plugins/tdd-playbook/bin/verify_verdict.py
+  - path: plugins/tdd-playbook/bin/_ed25519_verify.py
+  - path: plugins/tdd-playbook/bin/capability_registry.py
+suite_cmd: "for t in plugins/tdd-playbook/tests/test_*.py; do python3 \"$t\" || exit 1; done"
+```
+The agent can shorten this list — but a module dropped from `plant_targets` is itself a **diff-integrity
+signal** (§1: the manifest is in the baseline inventory), so shrinking coverage is caught by check 1.
+The two checks interlock: #1 stops "reduce what's declared critical," #2 stops "keep it declared but
+gut the assertions."
+
+### Procedure (on a throwaway clone — the agent's tree is never touched)
+For each target, for K sampled recipes:
+1. apply the plant to the clone;
+2. run `suite_cmd` (the engine's decomposition command, exit-code judged — §3);
+3. record CAUGHT (suite went non-zero) or SURVIVED (suite stayed green);
+4. revert the plant.
+
+### Pass criterion (BLOCKING)
+Every applied plant on a declared-critical module MUST be CAUGHT. **A survivor is a BLOCKING failure**
+— the suite does not cover a defect it claims to (§13: "a planted error surviving to a clean verdict
+is a blocking failure; fix the agent/suite, never the plant"). The engine records survivors with the
+exact recipe+location so the gap is actionable, and marks the repo's green **not trustworthy for that
+module** until the suite is strengthened and re-probed. It never weakens the plant to get green.
+
+### Cadence (not every commit)
+The probe mutates the tree and runs the full suite K times — too heavy per-commit. Run it:
+- before the **first** trust of a repo/branch (establish the floor);
+- on a **schedule** (weekly — the "monthly live probe" from the F4 brief, but tighter);
+- on a **doer-model upgrade** (this repo's §13 rule: re-calibrate before trusting a stronger doer).
+Between probe runs, per-commit trust rests on the decomposition + diff-integrity; the probe is the
+periodic proof that the suite it trusts is not theater.
+
+### Anti-gaming
+Overfitting (a suite that catches exactly the known recipes while weak elsewhere) is countered by the
+same three mechanisms this repo already uses: the recipe library GROWS, it is SAMPLED (not exhaustive-
+disclosed), and survivors expand it (co-evolution). A suite that catches a broad, growing, sampled
+mutation set is a genuinely strong suite — "gaming" it converges on actually writing good tests, which
+is the win condition, not a loss.
+
+### Reuse (don't reinvent)
+This is `/mutate` + `planted-error-probe` from the Playbook, moved to the trusted side. The engine can
+invoke the same mutation tooling the repo uses; the ONLY thing that must move engine-side is **choice
+of plant + scope + reading the result** — because those are what the agent must not control.
+
+---
+
+## 3. How these compose with the verdict (Fork 2: exit-code, not stdout)
+
+Each check — `diff_integrity`, `venv`, `deps`, `tests`, `dryrun`, `registry`, `staleness`, and the
+periodic `planted_probe` — is a **separate engine-run command whose EXIT CODE is the signal**. The
+verdict's `checks[]` records each command's name + exit code (engine-owned decomposition), never a
+`name=pass` string parsed out of attacker-controlled stdout. Stdout is captured only as a
+**hard-truncated advisory blob** (cap it BEFORE the spool boundary) that never affects pass/fail — so
+">64 KiB stdout" cannot erase a RED and attacker text cannot reach the signer's schema. New states are
+**exit-code sentinels** (e.g. `2 = integrity_red`, `3 = planted_survivor`), not new schema fields.
+
+Fail-closed everywhere (the amplifier fix): a check that raises persists an **error/RED verdict for the
+SHA and marks it seen** — never re-poll into a crash-loop; spool rejection is a **RED, not a no-entry**.
+A failing build must never be able to erase its own verdict.
+
+---
+
+## 4. What this repo hands over vs what the engine owns
+
+- **Repo provides:** `civerd-integrity.yml` (critical-module paths + the real `suite_cmd` — the
+  `python3 test_*.py` loop that has no pytest false-green, NOT bare pytest). Nothing else.
+- **Engine owns:** the last-green baseline, the plant-recipe library, the ratification store, the
+  hard-floor list, and the decomposition — all root-owned, no agent write path.
+- **This repo will also provide** (on request) a reference `planted-error-probe` recipe set and a
+  `diff_integrity.py` reference implementation the engine can adapt, so CIVerd has runnable starting
+  points rather than only a spec.
+
+## 5. Honest limits (what these still do NOT catch)
+- A suite that is genuinely weak *and always was* (no reduction to flag, catches the sampled plants by
+  luck) — mitigated only by growing the recipe library over time.
+- Source correctness the tests never spec'd — out of scope for any CI; that's what review is for.
+- A compromised ENGINE — a different threat, handled by the runner/signer privilege split and the
+  signed-verdict chain, not here.
+These are stated so the floor is trusted for exactly what it delivers and no more.
+```
