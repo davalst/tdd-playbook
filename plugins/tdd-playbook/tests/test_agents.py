@@ -68,6 +68,7 @@ AGENT_CONTRACTS = {
     "edge-case-adversary": (False, [r"Recommendation:"]),
     "integration-adversary": (False, [r"Recommendation:"]),
     "architecture-adversary": (False, [r"Recommendation:"]),
+    "script-adversary": (False, [r"Recommendation:"]),
     "mutation-runner": (True, []),
     "planted-error-probe": (True, [r"SAFETY NET VERIFIED", r"BLOCKING GAP"]),
     "ux-probe-calibrator": (True, [r"PROBE VERIFIED", r"BLOCKING GAP", r"Recommendation:"]),
@@ -86,7 +87,7 @@ def test_agents():
         with open(os.path.join(AGENTS, fn)) as fh:
             found[name] = fh.read()
 
-    check("all 9 contracted agents exist", set(AGENT_CONTRACTS) == set(found),
+    check("all contracted agents exist", set(AGENT_CONTRACTS) == set(found),
           sorted(set(AGENT_CONTRACTS) ^ set(found)))
 
     for name, text in sorted(found.items()):
@@ -538,7 +539,8 @@ def test_verifier_model_pins():
     silently floats to a cheap session model (a verifier on the doer's tier is the same mind it
     checks). Mechanical test-runners stay inherit — they run suites, not judgment."""
     PINNED = {"claims-verifier", "tripwire-auditor", "architecture-adversary",
-              "integration-adversary", "edge-case-adversary", "mutation-runner"}
+              "integration-adversary", "edge-case-adversary", "mutation-runner",
+              "script-adversary"}
     INHERIT = {"red-first-verifier", "planted-error-probe", "ux-probe-calibrator"}
     for name in sorted(PINNED):
         with open(os.path.join(AGENTS, name + ".md")) as fh:
@@ -613,6 +615,51 @@ def test_v114_planted_fixtures():
           all(n in intact for n in ("a FIFTH leg", "Version-echo", "Grade WHO CAUGHT IT")))
 
 
+def test_v116_doctrine():
+    """v1.15/1.16 operational discipline (CIVerd capability-gaps report B + C):
+      §0  a deploy-surface plan block (Runs where / Gets there how / Verified how / Divergence) +
+          deploy-path-is-deliverable-#1, and the script-adversary dispatched on operator scripts.
+      C   the script-adversary agent brief carries the load-bearing probe rule + four failure modes."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §0: deploy-surface plan block", "Deploy surface"),
+        ("SKILL §0: names the actual host/process", "Runs where"),
+        ("SKILL §0: 'I'll paste files' is a finding", "I'll paste files"),
+        ("SKILL §0: deploy path is deliverable #1", "deploy path is deliverable #1"),
+        ("SKILL §0: dispatches script-adversary on operator scripts", "script-adversary"),
+        ("SKILL §13: script-adversary in the model-floor list",
+         "`mutation-runner`, `script-adversary`"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "script-adversary.md")) as fh:
+        sa = fh.read()
+    for label, needle in [
+        ("script-adversary: load-bearing probe rule", "TAKE ITS TARGET AS AN ARGUMENT"),
+        ("script-adversary: blocks-on-stdin mode", "BLOCKS ON STDIN"),
+        ("script-adversary: destructive-probe mode", "DESTRUCTIVE PROBE"),
+        ("script-adversary: passes-for-wrong-reason mode", "PASSES FOR THE WRONG REASON"),
+        ("script-adversary: guessed-diagnostics mode", "GUESSED DIAGNOSTICS"),
+        ("script-adversary: SCRIPT-SAFE verdict grammar", "Verdict: SCRIPT-SAFE"),
+    ]:
+        check(label, needle in sa, "needle {!r} missing".format(needle))
+    fm = frontmatter(sa)
+    check("script-adversary: pins model floor (F3)", fm and fm.get("model") == "opus")
+
+
+def test_v116_planted_fixtures():
+    """The v1.15/1.16 pins must be able to FAIL — stripped doctrine is detected (§13)."""
+    stripped = "a plan with an integration surface but no deploy discipline and no script review.\n"
+    check("planted: missing deploy-surface needle detected", "Deploy surface" not in stripped)
+    check("planted: missing probe-rule needle detected",
+          "TAKE ITS TARGET AS AN ARGUMENT" not in stripped)
+    intact = "Deploy surface: Runs where; script-adversary; TAKE ITS TARGET AS AN ARGUMENT.\n"
+    check("planted: intact doctrine passes the same needles",
+          all(n in intact for n in ("Deploy surface", "script-adversary", "TAKE ITS TARGET AS AN ARGUMENT")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -622,7 +669,8 @@ def main():
                test_v181_doctrine, test_v181_planted_fixtures,
                test_v19_doctrine, test_v19_planted_fixtures,
                test_verifier_model_pins, test_verifier_pin_planted,
-               test_v114_doctrine, test_v114_planted_fixtures):
+               test_v114_doctrine, test_v114_planted_fixtures,
+               test_v116_doctrine, test_v116_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

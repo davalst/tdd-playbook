@@ -38,7 +38,7 @@ APPROVED = os.path.join(HERE, "corpus", "approved")
 # agents, including the only one to produce a live BLOCKING FAIL; §6a old-blind-to-new).
 KNOWN_AGENTS = {"red-first-verifier", "tripwire-auditor", "claims-verifier",
                 "edge-case-adversary", "mutation-runner", "architecture-adversary",
-                "integration-adversary"}
+                "integration-adversary", "script-adversary"}
 CATEGORIES = ("faked red-first · unwired deliverable · false negative claim · missing edge "
               "coverage · vacuous/unmeasured mutation gate · band-aid fix at the wrong seam · "
               "island/dark-by-default plan")

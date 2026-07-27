@@ -58,6 +58,25 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
   - *Reverse sweep:* which EXISTING features should now use this new capability. Each hit becomes a
     deliverable in this plan or a dated debt entry — silent deferral is how old features go blind
     to new capabilities.
+- **Deploy surface** — required whenever a deliverable RUNS where this session does not control it
+  (a VPS, a server, a daemon, an installed plugin, a vendored `.claude/` in another repo). The
+  integration surface asks what it connects to; this asks whether the copy that's RUNNING is the one
+  you built — because in a laptop-only repo commit-and-push IS the deploy, and that reflex quietly
+  breaks the moment a remote runtime exists. Four mandatory answers (they populate the §6a
+  `deploy_surface` registry field and the §6 RUNNING leg):
+  - *Runs where:* the actual host/process, NAMED.
+  - *Gets there how:* the specific deploy mechanism. If the answer is "I'll paste files," that is a
+    FINDING, not a plan — hand-patching produces a running state no checkout matches.
+  - *Verified how:* how a session proves the RUNNING version equals the intended one (a version echo
+    asserted against HEAD, §6a). "It's pushed" is not "it's running."
+  - *Divergence:* what happens when the running and intended versions differ, and WHO notices.
+  And **the deploy path is deliverable #1** — build the thing that PROVES and updates the running
+  state (an `update.sh` + a version-echoing `verify_install.sh`) BEFORE the feature, same logic as
+  red-first (origin: a remote engine ran code 97 min / six commits behind because the deploy path was
+  built AFTER the damage and patched on by hand as base64 blobs; every "fixed" was about the laptop).
+  Any operator-facing verify/deploy/health SCRIPT in the plan gets the `script-adversary` (fresh
+  context, refute-framed: does the probe actually test its target, or report PASS having touched
+  nothing — blocking on stdin, writing to what it checks, reading any non-zero as "control held"?).
   Close the plan by dispatching the `integration-adversary` (fresh context, refute-framed: "name
   what this plan should touch but doesn't"); a confirming reviewer rubber-stamps islands. **This
   dispatch is MANDATORY, not optional, for any deliverable that adds a config gate or a
@@ -701,7 +720,7 @@ visible — never "trust the agent more."
   its work is trusted. Never let the thing generating code outrun the thing checking it.
   **The floor is now MECHANICAL, not a hope:** the judgment/adversary verifiers
   (`claims-verifier`, `tripwire-auditor`, `architecture-adversary`, `integration-adversary`,
-  `edge-case-adversary`, `mutation-runner`) pin `model: opus` in their frontmatter, so live
+  `edge-case-adversary`, `mutation-runner`, `script-adversary`) pin `model: opus` in their frontmatter, so live
   dispatch never silently floats down to a cheap session model — the verifier's strength is
   decoupled from whatever tier the doer happens to run on (audit finding F3: a verifier that
   inherits the session model is the same mind it's checking, on the same tier). The mechanical

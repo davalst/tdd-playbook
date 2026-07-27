@@ -3,6 +3,31 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.16.0 — 2026-07-27
+
+**Operational-surface discipline — deploy-surface plan block + script-adversary agent (CIVerd
+capability-gaps report, Deliverables B & C).** Closes the remaining two proposals from the report;
+Gap 2.1 (operational planted-error calibration) stays deferred as owned registry debt.
+
+- **B — §0 deploy-surface plan block.** Alongside the integration surface, a deliverable that RUNS
+  where the session doesn't control it (VPS, daemon, installed plugin, vendored copy) now answers
+  four questions in the plan: *Runs where / Gets there how / Verified how / Divergence*. "I'll paste
+  files" is a FINDING, not a plan. And the **deploy path is deliverable #1** — build the thing that
+  proves/updates the running state (`update.sh` + a version-echoing `verify_install.sh`) before the
+  feature, same logic as red-first.
+- **C — the `script-adversary` agent** (`model: opus`, F3). A fresh-context, refute-framed safety
+  review of operator-facing scripts (health checks, probes, deploy/verify scripts). One load-bearing
+  rule — *a probe must take its target as an argument, never touch stdin, never write, and
+  distinguish "refused" from "failed for any other reason"* — and four failure modes: blocks-on-stdin,
+  destructive-probe, passes-for-the-wrong-reason, guessed-diagnostics. Verdict `SCRIPT-SAFE /
+  UNSAFE(n) / MIXED(n)`. Dispatched from §0 on any operator-facing script; added to the §13 model-floor
+  list, `author_plants.py` KNOWN_AGENTS, and `test_agents.py` AGENT_CONTRACTS + the F3 pin set.
+- Calibration scenario `script-unsafe-probe` (fixture `calibration/fixture/verify_install.sh`): a
+  key-readability control rewritten into a `tee`-based, any-nonzero-is-PASS probe — the agent must
+  flag it UNSAFE. Live suite now 10 shipped scenarios (14 with corpus); dry-run 14/0.
+- Pinned by `test_agents.py` (§0/§13 needles, agent brief, planted fixtures — 230). This completes the
+  remote-runtime/operational discipline arc: v1.14.0 (A) + v1.15.0 (gate-honesty) + v1.16.0 (B+C).
+
 ## 1.15.0 — 2026-07-27
 
 **Gate-honesty guard — `pytest` could false-green a failing suite (found by stress-testing the
