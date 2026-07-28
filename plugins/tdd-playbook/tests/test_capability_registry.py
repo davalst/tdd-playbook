@@ -235,6 +235,19 @@ def test_own_registry():
     check("own registry validates (expired debt fails this suite BY DESIGN)",
           violations == [], violations)
 
+    # PLANTED (2026-07-28): --as-of makes the expiry trigger PROVABLE, deterministically —
+    # the H7 doctrine tells people to prove a deferral's trigger with
+    # `validate --as-of <expiry+1>`; without the flag that command exits 2 as an ARGPARSE
+    # error, i.e. nonzero for the wrong reason (the exact wrong-reason-green the
+    # script-adversary hunts — caught live when this repo's own trigger 'proof' turned out
+    # to be a usage error). The flag must exist, and its nonzero must mean EXPIRED.
+    rc = mod.main(["validate", "--base", repo_root, "--as-of", "2099-01-01"])
+    check("own registry: --as-of far-future -> exit 1 (every dated debt expired)", rc == 1)
+    rc = mod.main(["validate", "--base", repo_root, "--as-of", "2026-08-01"])
+    check("own registry: --as-of before all expiries -> exit 0", rc == 0)
+    rc = mod.main(["validate", "--base", repo_root, "--as-of", "not-a-date"])
+    check("--as-of garbage -> exit 2 (usage), distinct from expiry's exit 1", rc == 2)
+
 
 def main():
     print("capability_registry planted-input calibration")
