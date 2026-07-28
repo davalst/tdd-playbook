@@ -354,6 +354,178 @@ def _d2_fp_scoreboard_tests(d):
           p.returncode == 0 and "FP 0/1" in txt, (p.returncode, txt))
 
 
+def _d3_integrity_tests():
+    """PLANTED (D3): the scoreboard's write path was forgeable by any session agent — edited
+    rows, deleted corpus plants, loosened oracles. The reference checker must turn each forge
+    into a nonzero exit against a git baseline: 0 clean · 2 integrity_red · 3 baseline
+    unreadable (fail closed, never a silent pass)."""
+    print("\n[D3 scoreboard integrity]")
+    ck = os.path.join(HERE, "check_scoreboard_integrity.py")
+    if not os.path.isfile(ck):
+        check("check_scoreboard_integrity.py exists", False, "missing")
+        return
+
+    def scratch_repo(d):
+        os.makedirs(os.path.join(d, "docs", "calibration"))
+        os.makedirs(os.path.join(d, "calibration", "corpus", "approved"))
+        with open(os.path.join(d, "docs", "calibration", "history.md"), "w") as fh:
+            fh.write("# Calibration history\n\n| 2026-07-27 | haiku | s1 | a1 | PASS |\n")
+        with open(os.path.join(d, "calibration", "scenarios.json"), "w") as fh:
+            json.dump({"scenarios": [
+                {"id": "s1", "agent": "a1", "plant": "p", "task": "t",
+                 "must_match": ["REFUTED", "confirmed:?\\s*0"],
+                 "must_not_match": ["confirmed:?\\s*[1-9]"]},
+            ]}, fh)
+        with open(os.path.join(d, "calibration", "corpus", "approved", "c1.json"), "w") as fh:
+            json.dump({"id": "c1", "agent": "a1", "plant": "p", "task": "t",
+                       "must_match": ["X"]}, fh)
+        with open(os.path.join(d, "calibration", "oracle-changes.md"), "w") as fh:
+            fh.write("# Oracle change journal (append-only)\n")
+
+        def git(*a):
+            subprocess.run(["git", "-C", d, *a], capture_output=True, text=True, timeout=30)
+        git("init", "-q")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        git("add", "-A")
+        git("commit", "-qm", "baseline")
+        return d
+
+    def run_ck(repo, rev="HEAD"):
+        return subprocess.run([sys.executable, ck, "--repo", repo, "--baseline-rev", rev],
+                              capture_output=True, text=True, timeout=60)
+
+    def path_in(d, *parts):
+        return os.path.join(d, *parts)
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch_repo(d)
+        check("integrity: unchanged tree -> 0", run_ck(d).returncode == 0,
+              (run_ck(d).returncode, run_ck(d).stdout, run_ck(d).stderr))
+
+        # appended history rows are the normal case
+        with open(path_in(d, "docs", "calibration", "history.md"), "a") as fh:
+            fh.write("| 2026-08-10 | haiku | s1 | a1 | PASS |\n")
+        check("integrity: appended history rows -> 0", run_ck(d).returncode == 0,
+              run_ck(d).stdout)
+
+        # PLANTED: an EDITED old row breaks the byte-prefix rule
+        hp = path_in(d, "docs", "calibration", "history.md")
+        body = open(hp).read().replace("| 2026-07-27 | haiku | s1 | a1 | PASS |",
+                                       "| 2026-07-27 | haiku | s1 | a1 | **BLOCKING FAIL** |")
+        with open(hp, "w") as fh:
+            fh.write(body)
+        p = run_ck(d)
+        check("integrity: PLANTED edited old history row -> 2 (forged scoreboard)",
+              p.returncode == 2, (p.returncode, p.stdout))
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch_repo(d)
+        # PLANTED: a deleted approved corpus plant (the corpus 'only grows')
+        os.remove(path_in(d, "calibration", "corpus", "approved", "c1.json"))
+        p = run_ck(d)
+        check("integrity: PLANTED deleted corpus plant -> 2", p.returncode == 2,
+              (p.returncode, p.stdout))
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch_repo(d)
+        # PLANTED: a MODIFIED approved corpus plant (append-only means immutable)
+        cp = path_in(d, "calibration", "corpus", "approved", "c1.json")
+        with open(cp) as fh:
+            sc = json.load(fh)
+        sc["must_match"] = ["X|.*"]
+        with open(cp, "w") as fh:
+            json.dump(sc, fh)
+        p = run_ck(d)
+        check("integrity: PLANTED modified corpus plant -> 2", p.returncode == 2,
+              (p.returncode, p.stdout))
+        # a NEW corpus plant is growth, not tampering
+        with open(path_in(d, "calibration", "corpus", "approved", "c2.json"), "w") as fh:
+            json.dump({"id": "c2", "agent": "a1", "plant": "p", "task": "t",
+                       "must_match": ["Y"]}, fh)
+        with open(cp, "w") as fh:
+            json.dump({"id": "c1", "agent": "a1", "plant": "p", "task": "t",
+                       "must_match": ["X"]}, fh)
+        check("integrity: new corpus plant -> 0 (corpus grows)",
+              run_ck(d).returncode == 0, run_ck(d).stdout)
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch_repo(d)
+        sp = path_in(d, "calibration", "scenarios.json")
+
+        def write_scenarios(must_match, must_not_match, extra=None):
+            scs = [{"id": "s1", "agent": "a1", "plant": "p", "task": "t",
+                    "must_match": must_match, "must_not_match": must_not_match}]
+            if extra:
+                scs.append(extra)
+            with open(sp, "w") as fh:
+                json.dump({"scenarios": scs}, fh)
+
+        # PLANTED: a REMOVED oracle regex without a journal entry is test-weakening one
+        # level up
+        write_scenarios(["REFUTED"], ["confirmed:?\\s*[1-9]"])
+        p = run_ck(d)
+        check("integrity: PLANTED oracle regex removed, no journal -> 2",
+              p.returncode == 2, (p.returncode, p.stdout))
+
+        # the same change WITH a journaled reason (appended since baseline) passes
+        with open(path_in(d, "calibration", "oracle-changes.md"), "a") as fh:
+            fh.write("- 2026-08-10 · s1 · dropped the count regex: false-fired on the "
+                     "mandated summary line\n")
+        check("integrity: journaled oracle change -> 0", run_ck(d).returncode == 0,
+              run_ck(d).stdout)
+
+        # PLANTED: a TRUNCATED journal cannot authorize anything (append-only applies to
+        # the journal itself)
+        with open(path_in(d, "calibration", "oracle-changes.md"), "w") as fh:
+            fh.write("- 2026-08-10 · s1 · dropped the count regex\n")
+        p = run_ck(d)
+        check("integrity: PLANTED truncated journal -> 2", p.returncode == 2,
+              (p.returncode, p.stdout))
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch_repo(d)
+        sp = path_in(d, "calibration", "scenarios.json")
+        # pure additions pass: a new regex on an existing scenario + a new scenario
+        with open(sp) as fh:
+            data = json.load(fh)
+        data["scenarios"][0]["must_match"].append("swept")
+        data["scenarios"].append({"id": "s2", "agent": "a1", "plant": "p", "task": "t",
+                                  "must_match": ["Z"]})
+        with open(sp, "w") as fh:
+            json.dump(data, fh)
+        check("integrity: tightened oracle + new scenario -> 0 (directional rule)",
+              run_ck(d).returncode == 0, run_ck(d).stdout)
+        # PLANTED: a scenario REMOVED entirely without a journal entry
+        with open(sp, "w") as fh:
+            json.dump({"scenarios": [{"id": "s2", "agent": "a1", "plant": "p", "task": "t",
+                                      "must_match": ["Z"]}]}, fh)
+        p = run_ck(d)
+        check("integrity: PLANTED scenario removed, no journal -> 2", p.returncode == 2,
+              (p.returncode, p.stdout))
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch_repo(d)
+        p = run_ck(d, rev="no-such-rev")
+        check("integrity: unreadable baseline -> 3 (fail closed, never a silent pass)",
+              p.returncode == 3, (p.returncode, p.stdout, p.stderr))
+
+    # G11 — the suite, which IS mechanically gated, carries the real-repo check: HEAD vs
+    # the latest release tag must be integrity-clean (skip loudly if tags are absent)
+    repo_root = os.path.dirname(HERE)
+    tag = subprocess.run(["git", "-C", repo_root, "describe", "--tags", "--abbrev=0"],
+                         capture_output=True, text=True, timeout=30)
+    if tag.returncode == 0 and tag.stdout.strip():
+        p = subprocess.run([sys.executable, ck, "--repo", repo_root,
+                           "--baseline-rev", tag.stdout.strip()],
+                          capture_output=True, text=True, timeout=120)
+        check("integrity: THIS repo vs {} -> 0".format(tag.stdout.strip()),
+              p.returncode == 0, (p.returncode, p.stdout, p.stderr))
+    else:
+        print("  note - no release tag resolvable here; real-repo integrity check skipped "
+              "(runs on tagged clones)")
+
+
 def _unified_validator_tests():
     """PLANTED (D0): two disagreeing validators were the parallel-list bug one level up —
     run_calibration must own ONE validate_scenario, with KNOWN_AGENTS derived from the
@@ -425,6 +597,7 @@ def main():
     _staleness_invalid_tests()
     _unified_validator_tests()
     _d2_control_tests()
+    _d3_integrity_tests()
     with tempfile.TemporaryDirectory() as d1d:
         _d1_repeat_tests(d1d)
     with tempfile.TemporaryDirectory() as d2d:
