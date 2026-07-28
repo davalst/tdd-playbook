@@ -35,9 +35,11 @@ import sys
 
 MD_HEADER = ("# Gate yield record (R4 — derived from telemetry, never self-report)\n\n"
              "One committed row per gate per calibration cycle. blocks/warns = frictions "
-             "fired; overrides = journaled unlocks adjudicating a block as false-positive. "
-             "Candidates need >=2 cycles — see gate_yield.py.\n\n"
-             "| date | gate | blocks | warns | overrides |\n|---|---|---|---|---|\n")
+             "fired; overrides = journaled unlocks adjudicating a block as false-positive; "
+             "suppressed = findings that fired while the gate was demoted to off (a muzzled "
+             "gate, never a quiet one). Candidates need >=2 cycles — see gate_yield.py.\n\n"
+             "| date | gate | blocks | warns | overrides | suppressed |\n"
+             "|---|---|---|---|---|---|\n")
 
 
 def project_root():
@@ -81,11 +83,11 @@ def parse_md_rows(path):
     with open(path) as fh:
         for ln in fh:
             cells = [c.strip() for c in ln.strip().strip("|").split("|")]
-            if len(cells) != 5 or not cells[0][:4].isdigit():
+            if len(cells) not in (5, 6) or not cells[0][:4].isdigit():
                 continue
             try:
                 out.append((cells[0], cells[1], int(cells[2]), int(cells[3]),
-                            int(cells[4])))
+                            int(cells[4]), int(cells[5]) if len(cells) == 6 else 0))
             except ValueError:
                 continue
     return out
@@ -101,7 +103,8 @@ def cmd_rollup(args):
     per_gate = {}
     for row in raw:
         gate = str(row.get("gate") or "unknown")
-        counts = per_gate.setdefault(gate, {"block": 0, "warn": 0, "override": 0})
+        counts = per_gate.setdefault(gate, {"block": 0, "warn": 0, "override": 0,
+                                            "suppressed": 0})
         ev = row.get("event")
         if ev in counts:
             counts[ev] += 1
@@ -114,8 +117,8 @@ def cmd_rollup(args):
             fh.write(MD_HEADER)
         for gate in sorted(per_gate):
             c = per_gate[gate]
-            fh.write("| {} | {} | {} | {} | {} |\n".format(
-                args.date, gate, c["block"], c["warn"], c["override"]))
+            fh.write("| {} | {} | {} | {} | {} | {} |\n".format(
+                args.date, gate, c["block"], c["warn"], c["override"], c["suppressed"]))
     os.remove(args.log)  # drained — the committed rollup is the durable record
     print("rollup: {} gate(s) recorded for {} in {} (raw log drained)".format(
         len(per_gate), args.date, args.md))
@@ -127,14 +130,22 @@ def candidates(md_path, min_cycles):
     with every block overridden."""
     rows = parse_md_rows(md_path)
     by_gate = {}
-    for date, gate, blocks, warns, overrides in rows:
-        g = by_gate.setdefault(gate, {"cycles": set(), "blocks": 0, "overrides": 0})
+    for date, gate, blocks, warns, overrides, suppressed in rows:
+        g = by_gate.setdefault(gate, {"cycles": set(), "blocks": 0, "overrides": 0,
+                                      "suppressed": 0})
         g["cycles"].add(date)
         g["blocks"] += blocks
         g["overrides"] += overrides
+        g["suppressed"] += suppressed
     lines = []
     for gate in sorted(by_gate):
         g = by_gate[gate]
+        if g["suppressed"] > 0:
+            lines.append(
+                "SUPPRESSED FINDINGS: {} — {} finding(s) fired while the gate was demoted "
+                "to off (a muzzled gate, not a quiet one). A demotion nobody journaled is "
+                "the H-class kill switch; restore the gate or journal the demotion with an "
+                "owner and expiry.".format(gate, g["suppressed"]))
         if (len(g["cycles"]) >= min_cycles and g["blocks"] > 0
                 and g["overrides"] >= g["blocks"]):
             lines.append(

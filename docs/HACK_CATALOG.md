@@ -84,7 +84,10 @@ costume of discipline (YAGNI, phasing, "scope control"), which is what makes it 
 - Defense: deferral is only a legal disposal as **decide-or-park** (§0/§6a): named owner +
   dated expiry + a mechanism that fails loudly at expiry (a registered `integration_debt`
   validated with the REAL clock on every suite run), with the trigger PROVEN in the same
-  commit (`capability_registry.py validate --as-of <expiry+1>` must exit nonzero). The
+  commit: `capability_registry.py validate --as-of <expiry+1>` must exit **1 (EXPIRED)** —
+  exit 2 is usage, never proof (a nonzero that means "typo" once masqueraded as a passing
+  trigger proof in this very repo; asserting on the raw exit is the script-adversary's
+  passes-for-the-wrong-reason class). The
   tripwire-auditor audits the DISPOSAL itself and emits `Parking: LEGITIMATE` or
   `Parking: DARK` per parked deliverable — the only gate positioned to see the maneuver
   happen is the plan-time one.

@@ -6,3 +6,5 @@
 {"ts": "2026-07-28T12:16:54+00:00", "event": "unlock", "reason": "v1.17.0 implementation complete: all deliverables green (harness 101/101, hooks 94/94, gate_yield 12/12, dry-run 22/22, integrity clean vs v1.16.0)", "files": ["calibration/test_harness.py"]}
 {"ts": "2026-07-28T12:49:37+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}
 {"ts": "2026-07-28T12:52:37+00:00", "event": "unlock", "reason": "H7 implementation green: scenario pair + PARKED leg + catalog entry, harness 105/105, dry-run 24/24", "files": ["calibration/test_harness.py"]}
+{"ts": "2026-07-28T13:07:14+00:00", "event": "lock", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_gate_yield.py", "plugins/tdd-playbook/tests/test_hooks.py"]}
+{"ts": "2026-07-28T13:15:09+00:00", "event": "unlock", "reason": "bypass-sweep implementation green: harness 110/110, hooks 97/97, gate_yield 13/13, cap-registry 32/32, installer 17/17; releasing v1.19.0", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_gate_yield.py", "plugins/tdd-playbook/tests/test_hooks.py"]}

@@ -192,6 +192,27 @@ def doctor(target: str) -> int:
               "update the plugin (claude /plugin → update tdd-playbook, or refresh the "
               "marketplace) so live sessions stop running stale hooks")
         rc = 1
+
+    # Standing demotions (2026-07-28 sweep, hole 2): an env-block demotion in settings is a
+    # persistent, invisible guard kill switch — the doctor makes it visible per repo.
+    for rel in (".claude/settings.json", ".claude/settings.local.json"):
+        sp = os.path.join(target, rel)
+        if not os.path.isfile(sp):
+            continue
+        try:
+            with open(sp) as fh:
+                envblock = json.load(fh).get("env", {}) or {}
+        except ValueError:
+            print(f"DEMOTION CHECK: {rel} is unparseable — cannot rule out a standing "
+                  "demotion (fail closed)")
+            rc = 1
+            continue
+        demoted = {k: v for k, v in envblock.items() if k.startswith("TDD_PLAYBOOK_HOOK")}
+        if demoted:
+            print(f"STANDING DEMOTION: {rel} env block sets {demoted} — guards are "
+                  "demoted for EVERY session in this repo; restore or journal it with an "
+                  "owner and expiry (H-class kill switch otherwise)")
+            rc = 1
     return rc
 
 

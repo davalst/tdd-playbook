@@ -446,6 +446,20 @@ def main(argv=None):
             "shipped": len(shipped), "corpus": len(corpus), "controls": controls_total,
             "recall": recall, "fp": fp}
     append_history(args.history, args.model, results, meta)
+    # Weak-plant streak (2026-07-28 sweep): a plant no verifier has EVER missed teaches
+    # nothing — an adversary authoring easy plants inflates recall while the gate decays.
+    # Mechanical from the same prior rows the promotion check parsed; plants only (a
+    # control that never fails means the verifier never false-positives — that's health).
+    for r in results:
+        sc = r["sc"]
+        if r["verdict"] != "PASS" or sc.get("control_for"):
+            continue
+        prior = [row["kind"] for row in prior_rows if row["scenario"] == sc["id"]]
+        if len(prior) >= 2 and all(k == "PASS" for k in prior):
+            print("WEAK-PLANT? {} has never failed across {} recorded runs — a plant every "
+                  "verifier always catches teaches nothing; harden or supersede it next "
+                  "authoring cycle (the corpus grows, it never dilutes).".format(
+                      sc["id"], len(prior) + 1))
     print("\nCalibration: {}/{} caught · selected {} of {} ({} shipped + {} corpus · {} "
           "controls) · recall {}/{} · FP {}/{} · corpus size {} (only grows)".format(
               len(results) - failed, len(results), len(scenarios), len(all_scenarios),

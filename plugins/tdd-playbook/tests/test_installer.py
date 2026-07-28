@@ -142,6 +142,24 @@ def test_doctor():
             with tempfile.TemporaryDirectory() as bare:
                 check("doctor on non-vendored repo -> exit 0",
                       mod.main(["--doctor", bare]) == 0)
+
+            # PLANTED (hole 2, 2026-07-28): a standing guard demotion in the settings env
+            # block is a persistent invisible kill switch -> doctor fails loudly
+            # (cache env still points at the empty dir -> informational, so the ONLY
+            # failure signal here is the demotion)
+            sp = os.path.join(target, ".claude", "settings.json")
+            with open(sp) as fh:
+                settings = json.load(fh)
+            settings["env"] = {"TDD_PLAYBOOK_HOOK_TESTWEAKEN": "off"}
+            with open(sp, "w") as fh:
+                json.dump(settings, fh)
+            check("doctor catches STANDING DEMOTION in settings env (exit 1)",
+                  mod.main(["--doctor", target]) == 1)
+            settings.pop("env")
+            with open(sp, "w") as fh:
+                json.dump(settings, fh)
+            check("doctor clean again after demotion removed",
+                  mod.main(["--doctor", target]) == 0)
         finally:
             os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
 

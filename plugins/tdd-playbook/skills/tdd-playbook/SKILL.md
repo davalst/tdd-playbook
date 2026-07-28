@@ -103,7 +103,8 @@ rigorously verifies what the PLAN says; a wrong reading of the request here pass
 - **Deferral needs a TRIGGER, not a roadmap (H7).** Moving work to "later / the roadmap / a
   future cycle" is only a legal disposal as decide-or-park: named owner + dated expiry + a
   mechanism that fails loudly at expiry (a registered integration_debt validated on the real
-  clock), with the trigger PROVEN in the same commit (`validate --as-of <expiry+1>` nonzero).
+  clock), with the trigger PROVEN in the same commit — `validate --as-of <expiry+1>` exits
+  **1 (EXPIRED)**; exit 2 is usage, never proof.
   Prose deferral is the H7 maneuver — it evades every artifact-watching guard because
   never-built scope was never in any baseline, and the items quietly deferred skew toward
   exactly the checks that would constrain the agent. The tripwire-auditor audits each

@@ -8,8 +8,15 @@
       "activation": {"default": "on"},
       "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "scripts/install_into_repo.py::_merge_hooks"],
       "exercised_by": ["plugins/tdd-playbook/tests/test_hooks.py", "plugins/tdd-playbook/tests/test_installer.py"],
-      "emits": [{"topic": "hook.block_events", "consumers": ["gate_yield.py (per-cycle rollups + retirement candidates, R4)", "learning-loop (unlock journal via /grade)"]}],
-      "liveness": {"max_quiet_days": 90, "probe": "calibration/run_calibration.py exercises guards through the real seam"}
+      "emits": [{"topic": "hook.block_events", "consumers": ["gate_yield.py (per-cycle rollups + retirement candidates + suppressed-findings alarms, R4)", "learning-loop (unlock journal via /grade)"]}],
+      "liveness": {"max_quiet_days": 90, "probe": "calibration/run_calibration.py exercises guards through the real seam"},
+      "integration_debt": [
+        {
+          "what": "2026-07-28 sweep, engine-side closures still pending on srv1621832 (contract sections 1, 1.3-ext, 1.5, 1.4): diff_integrity (closes H2-via-shell on UNLOCKED files — assertion-count regression vs last green is write-path-independent), guard_env (settings env demotion becomes a ratifiable signed signal; local counters are visibility-only: suppressed yield events, doctor STANDING DEMOTION, planted settings test), extended hard floor covering agents/*.md brief softening, and the ratification store (makes self-journaled oracle weakening need a human token)",
+          "owner": "david",
+          "expires": "2026-09-15"
+        }
+      ]
     },
     {
       "id": "test-lock",

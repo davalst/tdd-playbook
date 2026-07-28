@@ -230,8 +230,19 @@ def main(argv=None) -> int:
     ap.add_argument("--registry", default=None, help="explicit path to capabilities.json")
     ap.add_argument("--strict", action="store_true",
                     help="doctor: exit 1 if validate would fail")
+    ap.add_argument("--as-of", default=None, metavar="YYYY-MM-DD",
+                    help="evaluate debt expiries as of this date instead of today — the "
+                         "deterministic way to PROVE a deferral's trigger fires "
+                         "(`validate --as-of <expiry+1>` must exit 1, meaning EXPIRED; "
+                         "exit 2 is usage, never proof)")
     args = ap.parse_args(argv)
     base = os.path.abspath(args.base)
+    as_of = None
+    if args.as_of is not None:
+        as_of = _parse_date(args.as_of)
+        if as_of is None:
+            sys.stderr.write("capability_registry: bad --as-of (want YYYY-MM-DD)\n")
+            return 2
 
     if args.command == "init":
         path = args.registry or os.path.join(base, "capabilities.json")
@@ -255,7 +266,7 @@ def main(argv=None) -> int:
         sys.stderr.write("cannot read %s: %s\n" % (path, e))
         return 2
 
-    violations = validate(reg)
+    violations = validate(reg, today=as_of)
     if args.command == "validate":
         for v in violations:
             print("VIOLATION " + v)

@@ -65,6 +65,30 @@ meta-files that make every other check honest: the test-honesty guard, `conftest
 the hooks dir, the test-weakening guard, the registry validator. Deleting these is never a legitimate
 refactor. Keep the list in root config, not the repo.
 
+**Extended watchlist (2026-07-28 sweep — the verification-surface files beyond tests):** the
+baseline inventory (§1) and the hard floor should also cover, for this repo:
+`plugins/tdd-playbook/agents/*.md` (a SOFTENED verifier brief keeps its verdict lines while
+losing its rules — between live calibrations nothing else sees the edit), `calibration/
+scenarios.json` + `calibration/oracle-changes.md` + `corpus/approved/` (§2b),
+`civerd-integrity.yml`, `check_scoreboard_integrity.py`, and `hooks/hooks.json`. Agent-brief
+*changes* are ratifiable (briefs legitimately evolve); *deletion/emptying* is hard-floor RED.
+
+### 1.5 guard_env check — "no silent kill switch" (2026-07-28 sweep)
+**Catches:** the demotion hole. Guards resolve their mode from `TDD_PLAYBOOK_HOOK_*` env vars;
+an agent that plants `TDD_PLAYBOOK_HOOK_TESTWEAKEN=off` in `.claude/settings*.json` demotes a
+blocking guard for EVERY future session — persistently, silently, without touching a guard
+file (so §1's inventory never fires). Local visibility exists (the `suppressed` yield event +
+the installer doctor + a planted settings test), but only the ENGINE can make it a signed
+signal the agent cannot suppress. The check, pure git + JSON, cheap enough for every SHA:
+1. Diff `.claude/settings.json` / `.claude/settings.local.json` vs last green; any
+   introduced/changed `TDD_PLAYBOOK_HOOK_*` env key → **ratifiable RED** (a demotion David
+   approved gets a token; one nobody approved blocks).
+2. Assert `hooks/hooks.json` still wires the engine-expected guard set (root-owned list —
+   the same shape as the decomposition): a guard dropped from the wiring is RED.
+Also closes the shell variant of H2 in composition: `diff_integrity`'s assertion-count
+regression (§1 signal 3) catches a test gutted via `python -c`/heredoc — the write path is
+irrelevant to a tree diff, which is exactly why this check must live engine-side.
+
 ### 1.4 Ratification token
 `ratify <sha> <path> --reason "<why>"` written on the box over admin SSH (root-owned store). Re-verify
 consumes it. Tokens are per-`(sha,path)`, single-use, and logged. Solo-dev volume is low; the friction
@@ -179,8 +203,8 @@ floor is trusted for exactly what it delivers.
 
 ## 3. How these compose with the verdict (Fork 2: exit-code, not stdout)
 
-Each check — `diff_integrity`, `calibration_integrity`, `venv`, `deps`, `tests`, `dryrun`,
-`registry`, `staleness`, and the
+Each check — `diff_integrity`, `calibration_integrity`, `guard_env`, `venv`, `deps`, `tests`,
+`dryrun`, `registry`, `staleness`, and the
 periodic `planted_probe` — is a **separate engine-run command whose EXIT CODE is the signal**. The
 verdict's `checks[]` records each command's name + exit code (engine-owned decomposition), never a
 `name=pass` string parsed out of attacker-controlled stdout. Stdout is captured only as a

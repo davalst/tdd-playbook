@@ -90,7 +90,13 @@ def emit(name, lines):
     `lines` is a list of human-readable finding strings (empty -> clean exit 0).
     """
     mode = resolve_mode(name)
-    if not lines or mode == "off":
+    if not lines:
+        sys.exit(0)
+    if mode == "off":
+        # A demoted gate must never be a SILENT kill switch: findings that fire while the
+        # gate is off leave a 'suppressed' trace, so the yield record can distinguish a
+        # muzzled gate from a quiet one (and gate_yield surfaces it loudly).
+        log_yield_event(name, "suppressed", {"findings": len(lines)})
         sys.exit(0)
     log_yield_event(name, mode, {"findings": len(lines)})
     header = "⚠️  TDD Playbook · {}".format(name)

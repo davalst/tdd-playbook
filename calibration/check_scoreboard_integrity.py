@@ -79,7 +79,8 @@ def oracle_map(scenarios_blob):
 
 
 def check(repo, rev):
-    """Returns a list of violation strings (empty = clean). Raises BaselineUnreadable."""
+    """Returns (violations, journal_added): violation strings (empty = clean) and the text
+    appended to the oracle journal since baseline. Raises BaselineUnreadable."""
     if _git(repo, "rev-parse", "--verify", "--quiet", rev + "^{commit}").returncode != 0:
         raise BaselineUnreadable("baseline rev not resolvable: {}".format(rev))
     violations = []
@@ -144,7 +145,7 @@ def check(repo, rev):
                     violations.append(
                         "{}: {} regex removed/replaced without an oracle-changes.md entry: "
                         "{}".format(sid, label, "; ".join("/{}/".format(rx) for rx in lost)))
-    return violations
+    return violations, journal_added
 
 
 def main(argv=None):
@@ -155,10 +156,17 @@ def main(argv=None):
     ap.add_argument("--repo", default=os.path.dirname(HERE))
     args = ap.parse_args(argv)
     try:
-        violations = check(args.repo, args.baseline_rev)
+        violations, journal_added = check(args.repo, args.baseline_rev)
     except BaselineUnreadable as e:
         print("INTEGRITY UNKNOWN (fail closed): {}".format(e), file=sys.stderr)
         return 3
+    if journal_added.strip():
+        # The journal mechanically authorizes whoever writes it (the engine's ratification
+        # token is the hard counter) — locally, every authorization is at least LOUD:
+        print("oracle-changes.md journal additions since {} (each authorizes the ids it "
+              "names — review them):".format(args.baseline_rev))
+        for ln in journal_added.strip().splitlines():
+            print("  | " + ln)
     if violations:
         for v in violations:
             print("INTEGRITY RED: " + v)

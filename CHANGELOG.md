@@ -3,6 +3,40 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.19.0 — 2026-07-28
+
+**Bypass sweep — the remaining evasion routes, closed locally or contracted to the engine.**
+Adversarial pass with David ("what's a smart model's next move?"), five verified holes:
+
+- **Silent demotion (closed locally, contracted engine-side).** `emit()` now logs a
+  `suppressed` yield event when findings fire under `off` — a muzzled gate is never a quiet
+  one; `gate_yield` (6-col rollups) surfaces SUPPRESSED FINDINGS loudly; the installer
+  doctor flags STANDING DEMOTION env blocks in settings; a planted test keeps this repo's
+  committed settings demotion-free. Engine contract gains **§1.5 `guard_env`**: settings
+  env-key diffs become a ratifiable signed signal.
+- **H2-via-shell on unlocked files (engine-side).** A `python -c` test-gut never passes the
+  Edit-event guard; the write-path-independent counter is §1 diff-integrity's
+  assertion-count regression — now explicit in the contract and carried as dated debt.
+- **Grandfather growth (closed).** `GRANDFATHERED_PLANT_IDS` pinned exactly — the pair
+  quota can no longer be bypassed by adding to the list.
+- **Self-journaled oracle weakening (visibility now, token engine-side).** The integrity
+  checker prints every journal addition since baseline; the §1.4 ratification store makes
+  it need a human.
+- **Agent-brief softening (engine-side).** §1.3 extended watchlist covers `agents/*.md`
+  (deletion/emptying hard-floor RED; changes ratifiable).
+- **Weak-plant streak flag.** A plant that never failed across recorded live runs is
+  flagged by the runner — easy plants inflate recall while the gate decays.
+- **`validate --as-of` (new flag) + an honest catch:** the previous trigger "proof" was an
+  argparse error exiting 2 — nonzero for the wrong reason, the script-adversary's own
+  class, self-inflicted. The flag now exists with clean semantics (1 = EXPIRED, 2 = usage,
+  planted-tested) and doctrine cites the precise form.
+- **Yield-record hygiene:** suite-level env isolation + a pollution-guard planted test;
+  removed a committed `gate_yield.md` that contained this session's own test exhaust
+  masquerading as cycle data (`git add -A` swept it in — the record restarts clean with
+  the first real cycle).
+- Engine-side closures consolidated as dated debt on `integrity-guards`
+  (owner david, expires 2026-09-15; proven: `--as-of 2026-09-16` → exit 1).
+
 ## 1.18.0 — 2026-07-28
 
 **H7 — roadmap laundering becomes a named, guarded attack vector.** David's insight, from a
