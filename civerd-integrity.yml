@@ -1,0 +1,12 @@
+# civerd-integrity.yml — the repo-side handoff to the CIVerd engine (trust-floor contract §4).
+# Paths and the real suite command ONLY. Plant recipes, the last-green baseline, the
+# ratification store, and the decomposition are ENGINE-owned (root config, no agent write
+# path). Shrinking this list is itself a diff-integrity signal (§1: the manifest is in the
+# baseline inventory) — the two checks interlock.
+plant_targets:
+  - path: plugins/tdd-playbook/bin/verify_verdict.py
+  - path: plugins/tdd-playbook/bin/_ed25519_verify.py
+  - path: plugins/tdd-playbook/bin/capability_registry.py
+  - path: calibration/check_scoreboard_integrity.py
+# The no-pytest-false-green loop (v1.15.0 proof), NOT bare pytest:
+suite_cmd: "for t in plugins/tdd-playbook/tests/test_*.py; do python3 \"$t\" || exit 1; done"

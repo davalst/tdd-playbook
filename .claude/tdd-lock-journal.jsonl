@@ -1,3 +1,5 @@
 {"ts": "2026-07-28T11:46:57+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}
 {"ts": "2026-07-28T11:52:52+00:00", "event": "unlock", "reason": "D0+D1 implemented to green (71/71, commit 52d1048); opening the file to add D2 red tests (paired controls), will re-lock before D2 implementation", "files": ["calibration/test_harness.py"]}
 {"ts": "2026-07-28T11:55:32+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}
+{"ts": "2026-07-28T12:00:17+00:00", "event": "unlock", "reason": "D2 implemented to green (88/88, commit caf6f50); opening to add D3 red tests (scoreboard integrity checker), will re-lock", "files": ["calibration/test_harness.py"]}
+{"ts": "2026-07-28T12:01:56+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}

@@ -142,9 +142,45 @@ of plant + scope + reading the result** — because those are what the agent mus
 
 ---
 
+## 2b. Calibration-integrity check — "the scoreboard the claims rest on was not forged" (v1.17)
+
+**Catches:** the forge neither §1 nor §2 sees — the calibration SCOREBOARD itself. Every
+calibration claim (recall, FP rate, the WS5.5 public numbers) rests on three artifacts a session
+agent can write: `docs/calibration/history.md`, `calibration/corpus/approved/`, and the shipped
+oracle regexes in `calibration/scenarios.json`. §1's inventory covers *test files*; none of these
+are. An agent that edits a BLOCKING FAIL row green, deletes an inconvenient plant, or loosens a
+`must_match` has weakened the verification surface without touching a test.
+
+**Rules (deterministic, engine-side baseline = last green):**
+1. `history.md` at baseline is a **byte-prefix** of the candidate (append-only — an edited,
+   truncated, or deleted row is a forged scoreboard).
+2. Every `corpus/approved/*.json` at baseline exists **byte-identical** ("the corpus only grows"
+   becomes enforced, not aspirational; a bad plant is superseded by a new one, never edited).
+3. **Directional oracle rule:** removing or replacing a baseline `must_match`/`must_not_match`
+   regex, or removing a scenario, is RED **unless journaled in `calibration/oracle-changes.md`
+   in text appended since the baseline**. Pure additions/tightenings always pass — a legitimate
+   oracle tightening (the 2026-07 count-regex fix after a live false-fire) must always ship.
+   The journal is itself append-only under rule 1, so it cannot retro-authorize. Engine-side,
+   an unjournaled weakening may additionally be cleared by a §1.4 ratification token.
+
+**Reference implementation:** `calibration/check_scoreboard_integrity.py` (stdlib-only) — exit
+sentinels `0` clean · `2` integrity_red · `3` baseline-unreadable (fail closed). Locally it runs
+in the release gate and the test suite against the previous release tag; the engine adapts it
+with its root-owned baseline. **`check_scoreboard_integrity.py` joins the §1.3 never-ratifiable
+hard floor** — the checker the agent it polices could otherwise delete.
+
+**Honest limit:** this cannot prove a calibration run was *live* — the engine has no `claude`
+binary by design, and a well-formed forged row appended by a local session survives these rules.
+The controls for that residue are: append-only visibility (any history-touching commit is
+inspectable in the signed verdict), and the fact that David runs the harness. Stated so the
+floor is trusted for exactly what it delivers.
+
+---
+
 ## 3. How these compose with the verdict (Fork 2: exit-code, not stdout)
 
-Each check — `diff_integrity`, `venv`, `deps`, `tests`, `dryrun`, `registry`, `staleness`, and the
+Each check — `diff_integrity`, `calibration_integrity`, `venv`, `deps`, `tests`, `dryrun`,
+`registry`, `staleness`, and the
 periodic `planted_probe` — is a **separate engine-run command whose EXIT CODE is the signal**. The
 verdict's `checks[]` records each command's name + exit code (engine-owned decomposition), never a
 `name=pass` string parsed out of attacker-controlled stdout. Stdout is captured only as a
@@ -161,7 +197,9 @@ A failing build must never be able to erase its own verdict.
 ## 4. What this repo hands over vs what the engine owns
 
 - **Repo provides:** `civerd-integrity.yml` (critical-module paths + the real `suite_cmd` — the
-  `python3 test_*.py` loop that has no pytest false-green, NOT bare pytest). Nothing else.
+  `python3 test_*.py` loop that has no pytest false-green, NOT bare pytest; **shipped at repo
+  root since v1.17**) and the `check_scoreboard_integrity.py` reference implementation (§2b).
+  Nothing else.
 - **Engine owns:** the last-green baseline, the plant-recipe library, the ratification store, the
   hard-floor list, and the decomposition — all root-owned, no agent write path.
 - **This repo will also provide** (on request) a reference `planted-error-probe` recipe set and a
