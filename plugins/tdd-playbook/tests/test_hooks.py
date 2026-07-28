@@ -22,12 +22,20 @@ HOOKS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _results = {"pass": 0, "fail": 0}
 
 
+# G5 isolation: every hook invocation in this suite writes its yield event to a temp file,
+# never to <repo>/.claude/playbook-yield.jsonl — a test run must not dirty the tree CIVerd's
+# diff-integrity watches.
+_YIELD_TMP = tempfile.mkdtemp(prefix="hook-yield-")
+_YIELD_DEFAULT = os.path.join(_YIELD_TMP, "yield.jsonl")
+
+
 def run(script, event, env_extra=None):
     env = dict(os.environ)
     # neutralize any developer override so tests see documented defaults
     for k in list(env):
         if k.startswith("TDD_PLAYBOOK_"):
             del env[k]
+    env["TDD_PLAYBOOK_YIELD_LOG"] = _YIELD_DEFAULT
     if env_extra:
         env.update(env_extra)
     p = subprocess.run(
@@ -556,10 +564,59 @@ def test_lock_shell():
         allow("lock/sh: no lock -> rm test is zero-cost allow", d2, bash_ev("rm tests/test_pay.py"))
 
 
+# ---------------------------------------------------------------- yield event log (R4/D4)
+def test_yield_logging():
+    """PLANTED (D4): every guard outcome flows through _common.emit(), so ONE logging call
+    there gives the yield instrument its data — a guard silently absent from the log would
+    read as zero-yield, which is a retirement trigger. Logging must never break enforcement."""
+    s = "test_weakening_guard.py"
+    tf = "tests/test_pay.py"
+    weaken = edit(tf, "assert total == 5\nassert ok", "assert ok")
+
+    with tempfile.TemporaryDirectory() as d:
+        log = os.path.join(d, "y.jsonl")
+        rc, _o, _e = run(s, weaken, env_extra={"TDD_PLAYBOOK_YIELD_LOG": log})
+        rows = [json.loads(ln) for ln in open(log)] if os.path.isfile(log) else []
+        check("yield: block event logged with gate + event + findings",
+              rc == 2 and len(rows) == 1 and rows[0].get("gate") == "testweaken"
+              and rows[0].get("event") == "block" and rows[0].get("findings", 0) >= 1,
+              (rc, rows))
+
+        def rows_of():
+            return [json.loads(ln) for ln in open(log)] if os.path.isfile(log) else []
+
+        rc, _o, _e = run(s, weaken, env_extra={"TDD_PLAYBOOK_YIELD_LOG": log,
+                                               "TDD_PLAYBOOK_HOOK_TESTWEAKEN": "warn"})
+        rows = rows_of()
+        check("yield: warn-mode event logged as warn",
+              rc == 1 and len(rows) == 2 and rows[1].get("event") == "warn", (rc, rows))
+
+        # a CLEAN pass adds no row (the log records friction, not traffic)
+        rc, _o, _e = run(s, edit(tf, "assert ok", "assert ok\nassert total == 5"),
+                         env_extra={"TDD_PLAYBOOK_YIELD_LOG": log})
+        rows = rows_of()
+        check("yield: clean pass logs nothing", rc == 0 and len(rows) == 2, (rc, rows))
+
+        # PLANTED: an unwritable log path (parent is a FILE) must never weaken enforcement
+        with open(os.path.join(d, "nope"), "w") as fh:
+            fh.write("a file, not a dir")
+        rc, _o, e = run(s, weaken,
+                        env_extra={"TDD_PLAYBOOK_YIELD_LOG": os.path.join(d, "nope", "x",
+                                                                          "y.jsonl")})
+        check("yield: unwritable log never breaks the block",
+              rc == 2 and "assertions dropped" in e, (rc, e))
+
+    # G5: the suite's own runs land in the temp default, not the repo tree
+    check("yield: suite isolation — temp default log received this suite's events",
+          os.path.isfile(_YIELD_DEFAULT) and os.path.getsize(_YIELD_DEFAULT) > 0,
+          _YIELD_DEFAULT)
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
-               test_flaky, test_intent, test_tripwire_reminder, test_red_lock, test_lock_shell):
+               test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
+               test_lock_shell, test_yield_logging):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
