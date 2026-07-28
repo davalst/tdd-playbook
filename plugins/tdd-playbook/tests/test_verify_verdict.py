@@ -149,8 +149,75 @@ def main():
     finally:
         V._jcs = orig
 
+    test_probe_survivor_gaps(d)
+
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
+
+
+def test_probe_survivor_gaps(d):
+    """CIVerd probe run 2 (2026-07-28) planted flip_boolop + constant_return here and this
+    suite stayed green. Local sweep triage: malformed-TYPE guards (non-list records,
+    non-dict snapshot/claimed_report — the or->and flip lets truthy wrong-typed values
+    through to the wrong reason code, and reason strings are contractual vs memrebel) and
+    the ledger-acquisition helpers were unasserted. Each test verified to FAIL under its
+    mutant (mutation red-first — the probe chose the targets, not the author)."""
+    ok = next(c for c in d["bundle_cases"] if c["expected"]["facts_ok"])
+
+    # (a) records must be a LIST — a truthy dict/str must refuse as `malformed`, never
+    # leak through to count_mismatch or a crash
+    for bad_records in ({"0": "rec"}, "records-as-string", 7):
+        b = copy.deepcopy(ok["bundle"])
+        b["records"] = bad_records
+        got = _facts(b, ok["issuer_key"])
+        check("probe-gap: non-list records ({}) -> malformed".format(type(bad_records).__name__),
+              got == (False, "malformed"), got)
+
+    # (b) snapshot AND claimed_report must each be dicts — a truthy non-dict on either
+    # side of the `or` must refuse as `malformed`
+    for field in ("snapshot", "claimed_report"):
+        b = copy.deepcopy(ok["bundle"])
+        b["verdict"][field] = "not-a-dict"
+        got = _facts(b, ok["issuer_key"])
+        check("probe-gap: non-dict verdict.{} -> malformed".format(field),
+              got == (False, "malformed"), got)
+
+    # (c) _cache_dir: honors XDG_CACHE_HOME and names the civerd-verdicts dir (a constant
+    # return would break every ledger fetch silently)
+    import tempfile
+    old_xdg = os.environ.get("XDG_CACHE_HOME")
+    with tempfile.TemporaryDirectory() as tmp:
+        os.environ["XDG_CACHE_HOME"] = tmp
+        try:
+            got = V._cache_dir()
+            check("probe-gap: _cache_dir = $XDG_CACHE_HOME/civerd-verdicts",
+                  got == os.path.join(tmp, "civerd-verdicts"), got)
+
+            # (d) fetch_ledger returns the ACTUAL ledger lines (offline: a local origin
+            # cloned into the cache path takes the pull branch; no network, no gh)
+            origin = os.path.join(tmp, "origin")
+            os.makedirs(origin)
+            with open(os.path.join(origin, "verdicts.jsonl"), "w") as fh:
+                fh.write('{"row":1}\n{"row":2}\n')
+
+            def git(cwd, *a):
+                subprocess.run(["git", "-C", cwd, *a], capture_output=True, timeout=30)
+            git(origin, "init", "-q")
+            git(origin, "config", "user.email", "t@t")
+            git(origin, "config", "user.name", "t")
+            git(origin, "add", "-A")
+            git(origin, "commit", "-qm", "ledger")
+            subprocess.run(["git", "clone", "-q", origin,
+                            os.path.join(tmp, "civerd-verdicts")],
+                           capture_output=True, timeout=30)
+            lines = V.fetch_ledger()
+            check("probe-gap: fetch_ledger returns the real ledger lines",
+                  lines == ['{"row":1}\n', '{"row":2}\n'], lines)
+        finally:
+            if old_xdg is None:
+                os.environ.pop("XDG_CACHE_HOME", None)
+            else:
+                os.environ["XDG_CACHE_HOME"] = old_xdg
 
 
 if __name__ == "__main__":

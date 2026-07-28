@@ -1,5 +1,7 @@
 {
   "files": {
-    "plugins/tdd-playbook/tests/test_capability_registry.py": "2026-07-28T13:52:39+00:00"
+    "plugins/tdd-playbook/tests/test_capability_registry.py": "2026-07-28T13:52:39+00:00",
+    "plugins/tdd-playbook/tests/test_verify_verdict.py": "2026-07-28T14:30:32+00:00",
+    "plugins/tdd-playbook/tests/test_ed25519_verify.py": "2026-07-28T14:30:52+00:00"
   }
 }

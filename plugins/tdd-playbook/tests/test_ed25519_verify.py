@@ -107,6 +107,48 @@ def main():
     ignore_msg = lambda pk, msg, sig: ed.verify(pk, _positive_vector()[1], sig)  # noqa: E731
     check("ignore-message mutant is caught", "tampered_message" in run_negatives(ignore_msg))
 
+    # ---- probe-gap (CIVerd run 2, 2026-07-28): flip_boolop survived on the input guards.
+    # Triage found the REAL difference: under the mutant, non-bytes inputs RAISE TypeError
+    # (len(None)) where the contract says fail CLOSED — return False, never raise. The
+    # negatives below were verified to FAIL under each or->and mutant before shipping.
+    for bad in (None, 5, 3.14, ["k"], {"k": 1}, "not-bytes"):
+        try:
+            check("probe-gap: valid_pubkey({}) fails closed".format(type(bad).__name__),
+                  ed.valid_pubkey(bad) is False)
+        except Exception as e:
+            check("probe-gap: valid_pubkey({}) fails closed".format(type(bad).__name__),
+                  False, "RAISED {}".format(type(e).__name__))
+    pk, msg, sig = _positive_vector()
+    for bad_pk in (None, 7, "x" * 32):
+        try:
+            check("probe-gap: verify(non-bytes pk: {}) fails closed".format(
+                      type(bad_pk).__name__),
+                  ed.verify(bad_pk, msg, sig) is False)
+        except Exception as e:
+            check("probe-gap: verify(non-bytes pk: {}) fails closed".format(
+                      type(bad_pk).__name__), False, "RAISED {}".format(type(e).__name__))
+    for bad_sig in (None, 7, "x" * 64):
+        try:
+            check("probe-gap: verify(non-bytes sig: {}) fails closed".format(
+                      type(bad_sig).__name__),
+                  ed.verify(pk, msg, bad_sig) is False)
+        except Exception as e:
+            check("probe-gap: verify(non-bytes sig: {}) fails closed".format(
+                      type(bad_sig).__name__), False, "RAISED {}".format(type(e).__name__))
+    # length sweep: every wrong length fails closed (defense-in-depth stays observable)
+    length_ok = True
+    try:
+        for n in list(range(0, 40)) + [64]:
+            if n != 32 and ed.valid_pubkey(b"\x00" * n) is not False:
+                length_ok = False
+        for n in (0, 1, 32, 63, 65, 128):
+            if ed.verify(pk, msg, b"\x00" * n) is not False:
+                length_ok = False
+    except Exception as e:
+        length_ok = "RAISED {}".format(type(e).__name__)
+    check("probe-gap: all wrong lengths fail closed, never raise", length_ok is True,
+          length_ok)
+
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
 
