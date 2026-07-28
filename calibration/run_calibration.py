@@ -56,6 +56,16 @@ def known_agents():
     return names - TREE_TOUCHING_AGENTS
 
 
+# Pre-quota plants without a paired clean control (R2 grandfather, dated 2026-07-28).
+# This list only SHRINKS: the suite's self-cleaning check fails if an entry gains a control
+# or stops existing, so every backfilled pair forcibly retires its entry. Never add to it.
+GRANDFATHERED_PLANT_IDS = {
+    # corpus plants awaiting controls from the next author_plants cycles:
+    "csv-escape-fixed-at-call-site", "dead-export-claim-cmd-indirection",
+    "shadowed-import-vacuous-suite", "special-case-bypasses-both-copies",
+}
+
+
 def validate_scenario(sc, taken_ids, agents=None):
     """THE scenario validator (D0) — shipped scenarios, corpus plants, and adversary proposals
     all pass through here; there is deliberately no second copy. Returns problem strings."""
@@ -63,6 +73,15 @@ def validate_scenario(sc, taken_ids, agents=None):
     for key in ("id", "agent", "plant", "task", "must_match"):
         if not sc.get(key):
             problems.append("missing/empty field: " + key)
+    cf = sc.get("control_for")
+    if cf is not None:
+        if not isinstance(cf, str) or not cf:
+            problems.append("control_for must be a non-empty plant id")
+        elif cf == sc.get("id"):
+            problems.append("control_for: self-reference")
+        if not sc.get("must_not_match"):
+            problems.append("control missing must_not_match (the alarm verdict a fooled "
+                            "run would emit — without it the control cannot fail)")
     agents = known_agents() if agents is None else agents
     if sc.get("agent") not in agents:
         problems.append("unknown agent: {}".format(sc.get("agent")))
@@ -188,6 +207,32 @@ def oracle(scenario, output):
     return False, problems, mode
 
 
+def pairing_problems(scenarios):
+    """Set-level R2 invariant over shipped ∪ corpus: every non-grandfathered plant has a
+    clean control referencing it, and every control references a real plant. Runs on the
+    dry-run/release-gate path — a plant hand-dropped into scenarios.json or corpus/approved/
+    is caught HERE, not only at --approve (a one-time authoring gate)."""
+    ids = {s.get("id") for s in scenarios}
+    controlled = set()
+    problems = []
+    for s in scenarios:
+        cf = s.get("control_for")
+        if cf:
+            controlled.add(cf)
+            if cf not in ids:
+                problems.append("{}: control_for references unknown plant: {}".format(
+                    s.get("id"), cf))
+    for s in scenarios:
+        sid = s.get("id")
+        if s.get("control_for") or sid in GRANDFATHERED_PLANT_IDS:
+            continue
+        if sid not in controlled:
+            problems.append("{}: unpaired plant — no clean control references it "
+                            "(R2 pair quota; a recall-only corpus grows one-directional)"
+                            .format(sid))
+    return problems
+
+
 def turns_for(scenario):
     """Per-scenario turn budget: `max_turns` (int) overrides the default hard cap.
     Investigation-heavy plants (e.g. static analysis under a ceremony-heavy brief on a
@@ -233,6 +278,10 @@ def dry_run(scenarios):
         for msg in validate_scenario(sc, seen):
             problems.append("{}: {}".format(sc.get("id"), msg))
         seen.add(sc.get("id"))
+    # R2 pairing is a corpus-level invariant — evaluated over the FULL suite even when
+    # dry_run was invoked on a filtered selection (a --scenario run must not false-flag
+    # its plant's control as missing, nor mask a real gap).
+    problems.extend(pairing_problems(load_scenarios() + load_corpus()))
     for msg in problems:
         print("DRY-RUN PROBLEM: " + msg)
     print("dry-run: {} scenario(s), {} problem(s)".format(len(scenarios), len(problems)))

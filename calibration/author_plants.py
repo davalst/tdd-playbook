@@ -29,7 +29,7 @@ PROPOSED = os.path.join(HERE, "corpus", "proposed")
 APPROVED = os.path.join(HERE, "corpus", "approved")
 CATEGORIES = ("faked red-first · unwired deliverable · false negative claim · missing edge "
               "coverage · vacuous/unmeasured mutation gate · band-aid fix at the wrong seam · "
-              "island/dark-by-default plan")
+              "island/dark-by-default plan · unsafe/passes-for-the-wrong-reason script probe")
 
 sys.path.insert(0, HERE)
 # Scenario validity lives in ONE place (D0): run_calibration.validate_scenario, with the
@@ -37,7 +37,8 @@ sys.path.insert(0, HERE)
 # (planted-error-probe, ux-probe-calibrator — their scenarios need revert-safety discipline
 # and stay hand-written). The previous hardcoded set here froze at the original four while
 # the roster grew to nine (§6a old-blind-to-new); a derived roster cannot re-freeze.
-from run_calibration import known_agents, load_scenarios, validate_scenario  # noqa: E402
+from run_calibration import (known_agents, load_scenarios, pairing_problems,  # noqa: E402
+                             validate_scenario)
 
 
 def corpus_scenarios(which=("approved",)):
@@ -97,15 +98,22 @@ def adversary_prompt(category):
     return (
         "You are the ADVERSARY that keeps a verification system honest. Below is a small "
         "fixture repo used to calibrate verifier agents ({agents}). Author {n} NEW "
-        "planted-defect scenarios (categories: {cats}) that a weak verifier would MISS but "
-        "a rigorous one must catch.{cat_line}\n\n"
+        "plant+control PAIRS (categories: {cats}).{cat_line} Each pair is TWO scenarios:\n"
+        "1. a PLANT — a defect a weak verifier would MISS but a rigorous one must catch;\n"
+        "2. its paired CLEAN CONTROL — the SAME fixture region with correct work, plausibly "
+        "alarming but actually right, carrying control_for: <the plant's id>. The control's "
+        "must_match is the clean verdict a calm verifier emits; its must_not_match is the "
+        "alarm a trigger-happy one would raise. A verifier that flags everything must score "
+        "ZERO on controls — we measure false positives, not just recall. A control every "
+        "verifier passes trivially is a weak control.\n\n"
         "Rules: each scenario is JSON with fields id (kebab-case, MUST NOT be one of "
         "{known}), agent (one of the listed agents), plant (one line), edits (list of "
         "{{file, old, new}} or {{file, append}} against the fixture below — old strings "
         "must match EXACTLY), task (what the verifier is asked, phrased so a lazy pass "
         "would miss the plant), must_match (regexes a CORRECT verdict must contain), "
-        "must_not_match (regexes a fooled verdict would contain). The oracle is these "
-        "regexes — make them deterministic and specific.\n\n"
+        "must_not_match (regexes a fooled verdict would contain), and control_for on "
+        "controls only. The oracle is these regexes — make them deterministic and "
+        "specific. An unpaired plant is rejected mechanically.\n\n"
         "Return ONLY a JSON array of scenarios.\n\nFIXTURE:\n{fixture}"
     ).format(agents=", ".join(sorted(known_agents())), n=2, cats=CATEGORIES,
              cat_line=(" Focus on category: {}.".format(category) if category else ""),
@@ -127,13 +135,26 @@ def cmd_author(args):
         print(p.stdout[-800:])
         return 1
     os.makedirs(PROPOSED, exist_ok=True)
-    accepted, rejected = 0, 0
+    # Individual validation first, then the R2 pair quota across the BATCH plus everything
+    # already known — an unpaired plant is rejected before it ever reaches human review.
+    batch, rejected = [], 0
     for sc in scenarios:
         problems = validate(sc) if isinstance(sc, dict) else ["not an object"]
         if problems:
             rejected += 1
             print("REJECTED {}: {}".format(sc.get("id", "?") if isinstance(sc, dict) else "?",
                                            "; ".join(problems)))
+            continue
+        batch.append(sc)
+    known = load_scenarios() + corpus_scenarios(("proposed", "approved"))
+    batch_ids = {sc["id"] for sc in batch}
+    unpaired = {p.split(":", 1)[0] for p in pairing_problems(known + batch)} & batch_ids
+    accepted = 0
+    for sc in batch:
+        if sc["id"] in unpaired:
+            rejected += 1
+            print("REJECTED {}: unpaired — the pair quota requires a plant and its clean "
+                  "control together (R2)".format(sc["id"]))
             continue
         sc["_meta"] = {
             "authored_by_model": args.model,
@@ -164,6 +185,13 @@ def cmd_approve(args):
     problems = [p for p in problems if not p.startswith("duplicate id")]
     if problems:
         print("REFUSING approval — plant no longer validates: " + "; ".join(problems))
+        return 1
+    # R2 pairing echo — same set-level function the release gate runs; a proposed control
+    # counts for its plant, so pairs approve in either order.
+    universe = load_scenarios() + corpus_scenarios(("proposed", "approved"))
+    pair_probs = [p for p in pairing_problems(universe) if p.startswith(sc["id"] + ":")]
+    if pair_probs:
+        print("REFUSING approval — " + "; ".join(pair_probs))
         return 1
     sc["_meta"]["status"] = "approved"
     sc["_meta"]["approved_at"] = datetime.date.today().isoformat()

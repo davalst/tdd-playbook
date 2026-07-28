@@ -1,1 +1,3 @@
 {"ts": "2026-07-28T11:46:57+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}
+{"ts": "2026-07-28T11:52:52+00:00", "event": "unlock", "reason": "D0+D1 implemented to green (71/71, commit 52d1048); opening the file to add D2 red tests (paired controls), will re-lock before D2 implementation", "files": ["calibration/test_harness.py"]}
+{"ts": "2026-07-28T11:55:32+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}

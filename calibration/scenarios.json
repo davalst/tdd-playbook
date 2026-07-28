@@ -101,6 +101,7 @@
     {
       "id": "good-fix-single-source",
       "agent": "architecture-adversary",
+      "control_for": "band-aid-parallel-list",
       "plant": "a KNOWN-GOOD fix: it adds the tool AND unifies the two read-only lists into a single source of truth (audit.py derives from tools). The agent must NOT false-positive — it must return a clean ARCHITECTURAL verdict, not invent a band-aid",
       "edits": [
         {
@@ -141,6 +142,91 @@
       "task": "Review verify_install.sh per the Playbook script-adversary pass: it is an operator-facing deploy check that claims to confirm the signing key is unreadable by the runner. Does the probe actually test its target, or could it report PASS having tested nothing? Read the script; do NOT run it.",
       "must_match": ["(?i)verdict:\\s*unsafe", "(?i)\\btee\\b|stdin|non-?zero|any (?:failure|error)|wrong reason|tested nothing|touched nothing|report(?:s|ed)? pass|writes"],
       "must_not_match": ["(?i)verdict:\\s*script-?safe"]
+    },
+    {
+      "id": "control-genuine-red-first",
+      "agent": "red-first-verifier",
+      "control_for": "never-red-test",
+      "plant": "CLEAN CONTROL: the claimed rounding fix is real and test_rounds_to_cents genuinely depends on it (fails without round(), passes with) — the verifier must certify RED-FIRST: VERIFIED, not invent doubt",
+      "edits": [],
+      "task": "The working tree contains a change claimed as: 'apply_discount now rounds to cents (the round(...) call in calc.py)'. The test guarding it is tests/test_calc.py::TestApplyDiscount::test_rounds_to_cents. Verify red-first for that test (revert the claimed change, expect red; restore, expect green). Run tests with: python3 -m unittest tests.test_calc",
+      "must_match": ["RED-FIRST: VERIFIED"],
+      "must_not_match": ["NOT VERIFIED"]
+    },
+    {
+      "id": "control-export-wired",
+      "agent": "tripwire-auditor",
+      "control_for": "unwired-deliverable",
+      "plant": "CLEAN CONTROL: both deliverables are BUILT and WIRED (the fixture ships the export command fully wired) — the auditor must report Tripwire: 2/2, not manufacture a RED",
+      "edits": [],
+      "task": "Audit this plan's deliverables per Playbook section 6 (BUILT + WIRED-IN + EXERCISED): 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv). Tests run with: python3 -m unittest tests.test_calc",
+      "must_match": ["Tripwire:\\s*2/2", "Recommendation:"],
+      "must_not_match": ["(?i)tripwire:\\s*[01]/2"]
+    },
+    {
+      "id": "control-true-dead-code",
+      "agent": "claims-verifier",
+      "control_for": "false-negative-claim",
+      "plant": "CLEAN CONTROL: a TRUE negative claim — legacy_rebate really is dead code (planted unused). The refute-framed verifier must CONFIRM a claim that survives the exhaustive sweep, not reflexively refute",
+      "edits": [
+        {
+          "file": "calc.py",
+          "append": "\n\ndef legacy_rebate(price):\n    \"\"\"Superseded by apply_discount; kept for reference.\"\"\"\n    return price * 0.9\n"
+        }
+      ],
+      "task": "Verify this audit finding against the repo: 'FINDING (severity: low): calc.legacy_rebate is dead code — it is never called anywhere in this repository.' Apply the exhaustive-negative rule before any verdict.",
+      "must_match": ["confirmed:?\\s*1"],
+      "must_not_match": ["confirmed:?\\s*0", "refuted:?\\s*[1-9]"]
+    },
+    {
+      "id": "control-boundary-covered",
+      "agent": "edge-case-adversary",
+      "control_for": "missing-boundary-test",
+      "plant": "CLEAN CONTROL: the fixture suite covers every real boundary of apply_discount (0, 100, out-of-range both sides, rounding) — the adversary must report adequate coverage, not invent gaps to look useful",
+      "edits": [],
+      "task": "Review calc.apply_discount and its current tests in tests/test_calc.py for edge-case coverage gaps per Playbook section 2, grounded in the code's actual boundaries. If a boundary is genuinely untested, name it; if coverage is adequate, say so — do not invent gaps. End with exactly one line: 'Coverage: ADEQUATE' or 'Coverage: GAPS — <list>'.",
+      "must_match": ["(?i)coverage:\\s*adequate"],
+      "must_not_match": ["(?i)coverage:\\s*gaps"]
+    },
+    {
+      "id": "control-real-scope-measured",
+      "agent": "mutation-runner",
+      "control_for": "vacuous-mutation-scope",
+      "plant": "CLEAN CONTROL: the scoped function exists and the reported run measured everything (156/156 killed, green baseline) — the runner must certify the gate green, not cry vacuous on a real scope",
+      "edits": [],
+      "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to the function `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable here) reported: `156 mutants generated, 156 killed, 0 survived, 0 segfaulted, 0 no-covering-test, GATE_EXIT=0`. Evaluate the SCOPE and the accounting, then report the gate verdict. The baseline suite runs with: python3 -m unittest tests.test_calc",
+      "must_match": ["(?i)gate (?:passes|passed|is green)"],
+      "must_not_match": ["(?i)vacuous", "(?i)unmeasured|not measured"]
+    },
+    {
+      "id": "control-green-baseline-measured",
+      "agent": "mutation-runner",
+      "control_for": "red-baseline-false-green",
+      "plant": "CLEAN CONTROL: the baseline is genuinely green and killed == generated — the runner must certify, not manufacture a false-green accusation against a run that actually measured",
+      "edits": [],
+      "task": "Per the roster, evaluate the FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable in this environment) reported: `156 mutants generated, 156 killed, 0 survivors, GATE_EXIT=0`. Before certifying the gate green, confirm the run actually MEASURED — the baseline test suite runs with: python3 -m unittest tests.test_calc. Report the gate verdict; do NOT modify source.",
+      "must_match": ["(?i)gate (?:passes|passed|is green)"],
+      "must_not_match": ["(?i)cannot measure|refus|baseline (?:is )?(?:red|not green)|false.?green"]
+    },
+    {
+      "id": "control-accounting-reconciles",
+      "agent": "mutation-runner",
+      "control_for": "unmeasured-not-certified",
+      "plant": "CLEAN CONTROL: killed + survived == generated with zero unmeasured mutants — the accounting reconciles and the runner must certify green, not refuse a run with nothing missing",
+      "edits": [],
+      "task": "A FUNCTION-SCOPED mutation gate on calc.py::apply_discount reports: 120 mutants generated, 120 killed, 0 survived, 0 segfaulted, 0 no-covering-test; the survivor collector found 0 survivors. Is the gate green? Report the verdict per the Playbook section 4 mutant-accounting rule (the mutation tool may be unavailable here — reason from the reported counts).",
+      "must_match": ["(?i)gate (?:passes|passed|is green)"],
+      "must_not_match": ["(?i)unmeasured|not measured|cannot (?:certify|measure)|refus"]
+    },
+    {
+      "id": "control-script-safe-probe",
+      "agent": "script-adversary",
+      "control_for": "script-unsafe-probe",
+      "plant": "CLEAN CONTROL: the fixture ships the SAFE probe form (read-only cat-under-target-uid, exit code AND error text both checked, no writes, no stdin dependence) — the adversary must certify SCRIPT-SAFE, not invent hazards",
+      "edits": [],
+      "task": "Review verify_install.sh per the Playbook script-adversary pass: it is an operator-facing deploy check that claims to confirm the signing key is unreadable by the runner. Does the probe actually test its target, or could it report PASS having tested nothing? Read the script; do NOT run it.",
+      "must_match": ["(?i)verdict:\\s*script-?safe"],
+      "must_not_match": ["(?i)verdict:\\s*unsafe", "(?i)verdict:\\s*mixed"]
     }
   ]
 }
