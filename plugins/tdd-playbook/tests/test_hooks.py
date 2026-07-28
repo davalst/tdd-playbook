@@ -611,6 +611,41 @@ def test_yield_logging():
           os.path.isfile(_YIELD_DEFAULT) and os.path.getsize(_YIELD_DEFAULT) > 0,
           _YIELD_DEFAULT)
 
+    # PLANTED (hole 2, 2026-07-28): demotion-to-off must not be a SILENT kill switch — a
+    # finding suppressed by off-mode leaves a 'suppressed' trace in the yield log, so a
+    # muzzled gate is distinguishable from a quiet one
+    with tempfile.TemporaryDirectory() as d:
+        log = os.path.join(d, "y.jsonl")
+        rc, _o, _e = run(s, weaken, env_extra={"TDD_PLAYBOOK_YIELD_LOG": log,
+                                               "TDD_PLAYBOOK_HOOK_TESTWEAKEN": "off"})
+        rows = [json.loads(ln) for ln in open(log)] if os.path.isfile(log) else []
+        check("suppressed: off-mode finding still leaves a trace (muzzled != quiet)",
+              rc == 0 and len(rows) == 1 and rows[0].get("event") == "suppressed"
+              and rows[0].get("gate") == "testweaken", (rc, rows))
+        # a clean pass under off-mode logs nothing (no findings -> nothing suppressed)
+        rc, _o, _e = run(s, edit(tf, "assert ok", "assert ok\nassert x == 1"),
+                         env_extra={"TDD_PLAYBOOK_YIELD_LOG": log,
+                                    "TDD_PLAYBOOK_HOOK_TESTWEAKEN": "off"})
+        rows = [json.loads(ln) for ln in open(log)]
+        check("suppressed: clean pass under off-mode logs nothing",
+              rc == 0 and len(rows) == 1, (rc, rows))
+
+    # PLANTED (hole 2): this repo's committed settings must carry no standing demotions —
+    # an env-block demotion is the persistent, invisible variant of the kill switch
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HOOKS))))
+    demotions = []
+    for rel in (".claude/settings.json", ".claude/settings.local.json"):
+        sp = os.path.join(repo_root, rel)
+        if os.path.isfile(sp):
+            try:
+                envblock = json.load(open(sp)).get("env", {}) or {}
+            except ValueError:
+                envblock = {}
+            demotions += ["{}: {}={}".format(rel, k, v) for k, v in envblock.items()
+                          if k.startswith("TDD_PLAYBOOK_HOOK")]
+    check("no standing guard demotions in committed settings env blocks",
+          demotions == [], demotions)
+
 
 def main():
     print("TDD Playbook hook calibration")

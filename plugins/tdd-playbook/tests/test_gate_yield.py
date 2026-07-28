@@ -71,13 +71,16 @@ def main():
             "this line is not json (PLANTED corruption)",
             {"ts": "t", "source": "testlock", "gate": "testlock", "event": "override",
              "reason": "r"},
+            {"ts": "t", "source": "hook", "gate": "snapshotguard", "event": "suppressed",
+             "findings": 1},
         ])
         p = run_gy("rollup", "--log", raw, "--md", md, "--date", "2026-07-27")
         body = open(md).read() if os.path.isfile(md) else ""
         check("rollup: exit 0 with per-gate rows",
-              p.returncode == 0 and "| 2026-07-27 | testweaken | 2 | 0 | 0 |" in body
-              and "| 2026-07-27 | testlock | 1 | 0 | 1 |" in body
-              and "| 2026-07-27 | flaky | 0 | 1 | 0 |" in body,
+              p.returncode == 0 and "| 2026-07-27 | testweaken | 2 | 0 | 0 | 0 |" in body
+              and "| 2026-07-27 | testlock | 1 | 0 | 1 | 0 |" in body
+              and "| 2026-07-27 | flaky | 0 | 1 | 0 | 0 |" in body
+              and "| 2026-07-27 | snapshotguard | 0 | 0 | 0 | 1 |" in body,
               (p.returncode, body, p.stdout, p.stderr))
         check("rollup: PLANTED corrupt line skipped with a warning, run not failed",
               "corrupt" in (p.stdout + p.stderr).lower()
@@ -97,7 +100,7 @@ def main():
         body = open(md).read()
         check("rollup: second cycle appends, first cycle intact",
               "| 2026-07-27 | testweaken |" in body
-              and "| 2026-08-10 | testlock | 1 | 0 | 1 |" in body, body)
+              and "| 2026-08-10 | testlock | 1 | 0 | 1 | 0 |" in body, body)
 
         # candidates: testlock has 2 cycles of friction with every block overridden ->
         # candidate; testweaken has friction but no adjudication -> NOT a candidate;
@@ -110,12 +113,15 @@ def main():
               "RETIREMENT CANDIDATE: testweaken" not in p.stdout, p.stdout)
         check("candidates: absent gates stated as unmeasured, not zero",
               "unmeasured" in p.stdout.lower(), p.stdout)
+        check("candidates: suppressed findings surfaced LOUDLY (muzzled gate detection)",
+              "SUPPRESSED" in p.stdout and "snapshotguard" in p.stdout, p.stdout)
 
     with tempfile.TemporaryDirectory() as d:
         md = os.path.join(d, "gate_yield.md")
         with open(md, "w") as fh:
-            fh.write("| date | gate | blocks | warns | overrides |\n|---|---|---|---|---|\n"
-                     "| 2026-08-10 | testlock | 3 | 0 | 3 |\n")
+            fh.write("| date | gate | blocks | warns | overrides | suppressed |\n"
+                     "|---|---|---|---|---|---|\n"
+                     "| 2026-08-10 | testlock | 3 | 0 | 3 | 0 |\n")
         p = run_gy("candidates", "--md", md)
         check("candidates: ONE cycle is never enough (fresh-clone protection)",
               p.returncode == 0 and "RETIREMENT CANDIDATE" not in p.stdout, p.stdout)
@@ -142,9 +148,10 @@ def main():
         os.chmod(stub, 0o755)
         md = os.path.join(d, "gate_yield.md")
         with open(md, "w") as fh:
-            fh.write("| date | gate | blocks | warns | overrides |\n|---|---|---|---|---|\n"
-                     "| 2026-07-27 | testlock | 3 | 0 | 3 |\n"
-                     "| 2026-08-10 | testlock | 2 | 0 | 2 |\n")
+            fh.write("| date | gate | blocks | warns | overrides | suppressed |\n"
+                     "|---|---|---|---|---|---|\n"
+                     "| 2026-07-27 | testlock | 3 | 0 | 3 | 0 |\n"
+                     "| 2026-08-10 | testlock | 2 | 0 | 2 | 0 |\n")
         env = dict(os.environ)
         env["TDD_PLAYBOOK_YIELD_MD"] = md
         # isolation: never drain a developer's real raw log through this test

@@ -19,6 +19,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "run_calibration.py")
 sys.path.insert(0, HERE)
 
+# Yield isolation (the G5 class, second occurrence 2026-07-28): every run_calibration
+# subprocess in this suite triggers the end-of-run gate_yield rollup, which with default
+# paths DRAINS the repo's real event log into the repo's real committed record — test
+# exhaust masquerading as calibration-cycle data. All subprocesses inherit these.
+_YIELD_ISO = tempfile.mkdtemp(prefix="cal-yield-iso-")
+os.environ["TDD_PLAYBOOK_YIELD_LOG"] = os.path.join(_YIELD_ISO, "raw.jsonl")
+os.environ["TDD_PLAYBOOK_YIELD_MD"] = os.path.join(_YIELD_ISO, "gate_yield.md")
+_REPO_YIELD_MD = os.path.join(os.path.dirname(HERE), "docs", "calibration", "gate_yield.md")
+_REPO_YIELD_MD_BEFORE = (open(_REPO_YIELD_MD, "rb").read()
+                         if os.path.isfile(_REPO_YIELD_MD) else None)
+
 _results = {"pass": 0, "fail": 0}
 
 
@@ -308,6 +319,14 @@ def _d2_control_tests():
               and s.get("control_for") == "band-aid-parallel-list"
               for s in rc.load_scenarios()))
 
+    # PLANTED (hole 3, 2026-07-28): the pair quota must not be bypassable by ADDING a plant
+    # id to the grandfather list — the set is pinned exactly; it may only lose members
+    check("grandfather list pinned to the 4 pre-quota corpus plants (shrink-only)",
+          rc.GRANDFATHERED_PLANT_IDS == {
+              "csv-escape-fixed-at-call-site", "dead-export-claim-cmd-indirection",
+              "shadowed-import-vacuous-suite", "special-case-bypasses-both-copies"},
+          rc.GRANDFATHERED_PLANT_IDS)
+
     # dry_run carries the invariant (release-gate path) even for a synthetic corpus
     orig_ls, orig_lc = rc.load_scenarios, rc.load_corpus
     try:
@@ -468,12 +487,17 @@ def _d3_integrity_tests():
         check("integrity: PLANTED oracle regex removed, no journal -> 2",
               p.returncode == 2, (p.returncode, p.stdout))
 
-        # the same change WITH a journaled reason (appended since baseline) passes
+        # the same change WITH a journaled reason (appended since baseline) passes — and the
+        # additions are PRINTED (hole 4 visibility: a self-journaled weakening must at least
+        # be loud, since the journal mechanically authorizes whoever writes it)
         with open(path_in(d, "calibration", "oracle-changes.md"), "a") as fh:
             fh.write("- 2026-08-10 · s1 · dropped the count regex: false-fired on the "
                      "mandated summary line\n")
-        check("integrity: journaled oracle change -> 0", run_ck(d).returncode == 0,
-              run_ck(d).stdout)
+        p = run_ck(d)
+        check("integrity: journaled oracle change -> 0", p.returncode == 0, p.stdout)
+        check("integrity: journal additions since baseline printed loudly",
+              "dropped the count regex" in p.stdout and "journal" in p.stdout.lower(),
+              p.stdout)
 
         # PLANTED: a TRUNCATED journal cannot authorize anything (append-only applies to
         # the journal itself)
@@ -524,6 +548,49 @@ def _d3_integrity_tests():
     else:
         print("  note - no release tag resolvable here; real-repo integrity check skipped "
               "(runs on tagged clones)")
+
+
+def _weak_plant_flag_tests(d):
+    """PLANTED (2026-07-28 sweep): a plant that has NEVER failed across recorded live runs
+    teaches nothing — an adversary authoring easy plants inflates recall while the gate
+    decays. The runner must flag the streak mechanically (risk-3 made a mechanism)."""
+    print("\n[weak-plant streak flag]")
+    import history_format as hfmt
+
+    def run_hist(claude_bin, hist):
+        return subprocess.run(
+            [sys.executable, RUNNER, "--scenario", "false-negative-claim",
+             "--claude-bin", claude_bin, "--history", hist],
+            capture_output=True, text=True, timeout=300)
+
+    def seed(hp, verdicts):
+        for i, v in enumerate(verdicts):
+            date = "2026-07-{:02d}".format(10 + i)
+            hfmt.append_run_block(hp, {"date": date, "model": "haiku", "repo_sha": "0000000",
+                                       "selected": 1, "total": 24, "shipped": 20,
+                                       "corpus": 4, "controls": 10, "recall": (1, 1),
+                                       "fp": (0, 0)},
+                                  [{"date": date, "model_cell": "haiku",
+                                    "scenario": "false-negative-claim",
+                                    "agent": "claims-verifier",
+                                    "runs": "3/3" if v == "PASS" else "0/3",
+                                    "mode": None if v == "PASS" else "missed-entirely",
+                                    "verdict": v}])
+
+    stub, _ = make_sequence_stub(d, [OUT_RIGHT], "stub-weakflag")
+    hp = os.path.join(d, "h-weakflag.md")
+    seed(hp, ["PASS", "PASS"])
+    p = run_hist(stub, hp)
+    check("never-failed plant across >=3 runs -> WEAK-PLANT flag printed",
+          p.returncode == 0 and "WEAK-PLANT" in p.stdout
+          and "false-negative-claim" in p.stdout, (p.returncode, p.stdout[-500:]))
+
+    stub, _ = make_sequence_stub(d, [OUT_RIGHT], "stub-noflag")
+    hp = os.path.join(d, "h-noflag.md")
+    seed(hp, ["PASS", "**BLOCKING FAIL**"])
+    p = run_hist(stub, hp)
+    check("plant with a recorded failure -> no weak-plant flag",
+          p.returncode == 0 and "WEAK-PLANT" not in p.stdout, p.stdout[-300:])
 
 
 def _unified_validator_tests():
@@ -600,6 +667,8 @@ def main():
     _d3_integrity_tests()
     with tempfile.TemporaryDirectory() as d1d:
         _d1_repeat_tests(d1d)
+    with tempfile.TemporaryDirectory() as dwf:
+        _weak_plant_flag_tests(dwf)
     with tempfile.TemporaryDirectory() as d2d:
         _d2_fp_scoreboard_tests(d2d)
 
@@ -775,6 +844,12 @@ def main():
               p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
 
     test_author_plants()
+
+    # PLANTED (pollution guard): the suite must leave the repo's committed yield record
+    # byte-identical — test exhaust in the real record was a live incident (2026-07-28)
+    after = (open(_REPO_YIELD_MD, "rb").read() if os.path.isfile(_REPO_YIELD_MD) else None)
+    check("suite left repo docs/calibration/gate_yield.md untouched",
+          after == _REPO_YIELD_MD_BEFORE, "record changed during the test run")
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
