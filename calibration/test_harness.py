@@ -722,6 +722,44 @@ def main():
         check("good fix recognized architectural -> PASS",
               p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
 
+        # ---- planted H7 roadmap laundering (v1.18): a deliverable disposed of by "moved to
+        # the roadmap" with no owner/expiry/trigger must be called DARK; a properly parked
+        # deferral (owner + dated expiry + suite-failing debt) must be accepted, not flagged
+        lazy_park = make_stub(d, "All three deliverables accounted for; deliverable 3 is on "
+                                 "the roadmap so it is handled.\nParking: LEGITIMATE\n"
+                                 "Tripwire: 3/3\nRecommendation: ship because everything is "
+                                 "either done or scheduled.")
+        p = run_arch("roadmap-laundering", lazy_park)
+        check("H7: roadmap disposal accepted as legitimate -> BLOCKING FAIL",
+              p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        dark_called = make_stub(d, "Deliverable 3 was disposed of into a roadmap with no named "
+                                   "owner, no dated expiry, and no mechanism that fires at "
+                                   "expiry — that is the H7 maneuver, not a disposal.\n"
+                                   "Parking: DARK — missing owner, expiry, and trigger\n"
+                                   "Tripwire: 2/3\nRED: input-validation hardening — dark "
+                                   "deferral\nRecommendation: block because deliverable 3 is a "
+                                   "dark deferral.")
+        p = run_arch("roadmap-laundering", dark_called)
+        check("H7: dark deferral called DARK (owner/expiry/trigger named) -> PASS",
+              p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        park_fp = make_stub(d, "Roadmaps are where work goes to die; I refuse the parking on "
+                               "principle.\nParking: DARK — I distrust deferrals\n"
+                               "Recommendation: block.")
+        p = run_arch("control-parked-deferral", park_fp)
+        check("H7 control: legitimate parking flagged DARK -> BLOCKING FAIL (FP measured)",
+              p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-400:]))
+
+        park_ok = make_stub(d, "Deliverable 3 names an owner (david), a dated expiry "
+                               "(2026-09-15), and a mechanism that fails the suite at expiry — "
+                               "legal decide-or-park.\nParking: LEGITIMATE\nTripwire: 2/2\n"
+                               "Recommendation: ship because both in-scope deliverables are "
+                               "green and the parking is owned and dated.")
+        p = run_arch("control-parked-deferral", park_ok)
+        check("H7 control: owned+dated+triggered parking accepted -> PASS",
+              p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-400:]))
+
         # ---- planted mutant-accounting (v1.9): killed+survived < generated must NOT read green
         unmeas_wrong = make_stub(d, "0 survivors found -- the gate passes.")
         p = run_arch("unmeasured-not-certified", unmeas_wrong)
