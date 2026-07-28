@@ -153,7 +153,10 @@ Local-machine plugin installs update separately (no prompt needed):
   (D3 — history append-only, corpus immutable, oracles never weakened unjournaled; ALSO
   enforced mechanically: `test_harness.py` runs it against the latest tag on every suite run),
   and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
-  present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.claude/.gitignore` written).
+  present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.claude/.gitignore` written), plus
+  `python3 scripts/install_into_repo.py --doctor .` on THIS repo (H8 guards-liveness:
+  a commit postdating the last guard heartbeat means the release was built guard-dark —
+  the 2026-07-28 incident; also catches standing demotions and version skew).
 - Version bumps update BOTH `plugins/tdd-playbook/.claude-plugin/plugin.json` and
   `.claude-plugin/marketplace.json`, plus CHANGELOG.md.
 - **CIVerd release gate (audit finding F4).** The release TAG is created ONLY by

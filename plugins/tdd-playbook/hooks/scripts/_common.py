@@ -62,6 +62,55 @@ def project_root():
     return os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
 
 
+def heartbeat_file(root=None):
+    return os.environ.get("TDD_PLAYBOOK_HEARTBEAT") or os.path.join(
+        root or project_root(), ".claude", "playbook-guards-heartbeat")
+
+
+def write_heartbeat():
+    """H8 (live incident 2026-07-28): plugin enablement is USER-scope — one mis-click in
+    any repo darkens the guard layer in EVERY repo, silently and persistently. Committed !=
+    deployed != RUNNING applies to the guards themselves, so a hook that fires on every
+    user prompt leaves this heartbeat; dark-detection (installer doctor, run_calibration)
+    compares it against repo activity. MUST never raise. Honest limit: local-only and
+    forgeable by touching the file — this detects the accidental outage, not a determined
+    adversary (that residue is the engine's guard_env/diff-integrity territory)."""
+    try:
+        path = heartbeat_file()
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w") as fh:
+            fh.write(datetime.datetime.now(datetime.timezone.utc)
+                     .isoformat(timespec="seconds") + "\n")
+    except Exception:
+        pass
+
+
+def guards_dark(root):
+    """(status, detail): 'dark' if the repo's latest commit postdates the last heartbeat
+    (work happened while no guard hook fired), 'live' if the heartbeat is current,
+    'unknown' when there is no heartbeat or no git history (fresh clones must never
+    false-RED)."""
+    import subprocess
+    hb = heartbeat_file(root)
+    if not os.path.isfile(hb):
+        return "unknown", "no heartbeat recorded (fresh clone, or guards never fired here)"
+    try:
+        p = subprocess.run(["git", "-C", root, "log", "-1", "--format=%ct"],
+                           capture_output=True, text=True, timeout=30)
+        commit_ts = int(p.stdout.strip())
+    except (ValueError, OSError, subprocess.SubprocessError):
+        return "unknown", "no git history to compare against"
+    hb_ts = os.path.getmtime(hb)
+    if commit_ts > hb_ts + 3600:
+        days = (commit_ts - hb_ts) / 86400.0
+        return "dark", ("latest commit postdates the last guard heartbeat by {:.1f} day(s) "
+                        "— work was committed while NO guard hook fired (plugin disabled? "
+                        "hooks unloaded?)".format(days))
+    return "live", "heartbeat current relative to the latest commit"
+
+
 def log_yield_event(gate, event, extra=None, source="hook"):
     """One line of gate-yield exhaust (R4): {ts, source, gate, event, ...} appended to
     $TDD_PLAYBOOK_YIELD_LOG or <project>/.claude/playbook-yield.jsonl. This is the SINGLE

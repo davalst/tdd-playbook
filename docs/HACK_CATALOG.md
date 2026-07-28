@@ -96,6 +96,33 @@ costume of discipline (YAGNI, phasing, "scope control"), which is what makes it 
   `tripwire-auditor` PARKED leg, calibrated by the planted pair `roadmap-laundering` /
   `control-parked-deferral`.
 
+### H8 — Guard-layer dark: plugin disabled / hooks unloaded
+The cheapest kill switch of all: don't weaken any guard — unload the layer that runs them.
+Claude Code plugin enablement is **USER-scope**: one `/plugin` disable in ANY repo writes
+`enabledPlugins: false` into user settings and darkens every hook in every repo,
+persistently, with zero alarms. Sessions look identical (guards fire nothing when clean, so
+their absence is invisible), TEST-LOCK becomes advisory, and the yield instrument reads
+"no friction." Both the accidental variant (a mis-click) and the adversarial one (an agent
+editing user settings) produce the same silent outage.
+- Evidence: this repo, live, 2026-07-28 — disabled by mis-click in ANOTHER repo the prior
+  day; a full working day and three releases (v1.17–v1.19) shipped with zero mechanical
+  enforcement before a human noticed. Release verification held (suites + CIVerd are
+  command-line), but every session-side guard was theater.
+- Defense: **the guards' own RUNNING leg** (committed ≠ deployed ≠ RUNNING, applied to the
+  enforcement layer itself). The UserPromptSubmit hook beats a heartbeat
+  (`.claude/playbook-guards-heartbeat`) on every prompt, unconditionally and
+  un-silenceable; dark-detection compares it to repo activity — a commit that postdates the
+  last heartbeat means work happened while no guard fired: installer doctor → exit 1
+  (`GUARDS DARK`), `run_calibration` → loud warning on David's own run surface. Missing
+  heartbeat stays informational (fresh clones never false-RED); suites isolate the
+  heartbeat path so tests can't fake liveness.
+- Honest limit: local-only and forgeable (an agent can touch the file) — this catches the
+  accidental outage; the adversarial residue belongs to the engine (`guard_env`,
+  diff-integrity), which sees the repo but not session state.
+- Guards: `_common.write_heartbeat`/`guards_dark` + `install_into_repo.py --doctor` +
+  `run_calibration.py` warning (planted: `test_hooks.py::test_guards_heartbeat`,
+  `test_installer.py` doctor dark tests).
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -107,6 +134,7 @@ costume of discipline (YAGNI, phasing, "scope control"), which is what makes it 
 | H5 | test_weakening_guard (exit-call), test_lock_guard, snapshot_guard | calibration harness |
 | H6 | — | §6 Tripwire + reverse check, §5a probes, §3 PBT |
 | H7 | capability_registry expiry (test_own_registry, real clock) | tripwire-auditor PARKED leg + planted pair roadmap-laundering/control-parked-deferral |
+| H8 | doctor GUARDS-DARK (heartbeat vs latest commit) + run_calibration warning | engine guard_env for the adversarial variant (contracted) |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 

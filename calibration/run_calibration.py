@@ -338,6 +338,20 @@ def main(argv=None):
         print("--repeat must be >= 1")
         return 2
 
+    # H8 — guards-liveness check on the surface David actually runs: work committed after
+    # the last guard heartbeat means the hook layer was DARK (plugin disabled user-wide is
+    # one mis-click away — live incident 2026-07-28). Warning, never a run-blocker.
+    try:
+        sys.path.insert(0, os.path.join(REPO, "plugins", "tdd-playbook", "hooks", "scripts"))
+        from _common import guards_dark
+        status, detail = guards_dark(REPO)
+        if status == "dark":
+            print("GUARDS-DARK WARNING: {} — check `claude /plugin` enablement "
+                  "(user-scope!) before trusting any session-enforced discipline.".format(
+                      detail))
+    except Exception:
+        pass
+
     corpus = load_corpus()
     shipped = load_scenarios()
     # Composition is computed PRE-filter (arch-F8): a --scenario rerun records

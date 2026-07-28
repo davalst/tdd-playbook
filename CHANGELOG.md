@@ -3,6 +3,27 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.20.0 — 2026-07-28
+
+**H8 — the guards' own RUNNING leg.** Live incident: plugin enablement is USER-scope, and a
+mis-click disable in another repo darkened the entire guard layer across all repos for a
+full working day — three releases shipped with zero mechanical enforcement and zero alarms
+(release verification held: suites + CIVerd are command-line; every session-side guard was
+theater). Committed ≠ deployed ≠ RUNNING was doctrine for everything except the enforcement
+layer itself.
+
+- `intent_nudge` (UserPromptSubmit) beats `.claude/playbook-guards-heartbeat` on every
+  prompt — unconditionally, before the `NUDGE=off` check, never raising.
+- `_common.guards_dark`: a latest commit that postdates the heartbeat = work committed
+  while no guard fired. Installer doctor → `GUARDS DARK`, exit 1 (with the user-scope
+  enablement explanation); `run_calibration` → loud warning on the David-run surface.
+  Missing heartbeat is informational only — fresh clones never false-RED.
+- Suites isolate the heartbeat path (tests must not fake liveness); planted tests for the
+  beat, the dark verdict, and the fresh-clone case. HACK_CATALOG H8 + map row; release
+  gate gains `install_into_repo.py --doctor .` (would have caught the incident at v1.17).
+- Honest limit stated: local + forgeable — catches the accidental outage; the adversarial
+  variant is the engine's contracted `guard_env`/diff-integrity territory.
+
 ## 1.19.0 — 2026-07-28
 
 **Bypass sweep — the remaining evasion routes, closed locally or contracted to the engine.**

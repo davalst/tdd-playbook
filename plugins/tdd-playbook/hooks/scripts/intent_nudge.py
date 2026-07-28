@@ -109,6 +109,15 @@ def _should_fire(session_key, prompt):
 
 
 def main():
+    # H8 guards heartbeat — FIRST, unconditionally: liveness is about this hook RUNNING,
+    # not about the nudge firing (and not silenceable via TDD_PLAYBOOK_NUDGE=off — the
+    # heartbeat is the one signal dark-detection has). write_heartbeat never raises.
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from _common import write_heartbeat
+        write_heartbeat()
+    except Exception:
+        pass
     if os.environ.get("TDD_PLAYBOOK_NUDGE", "").strip().lower() == "off":
         sys.exit(0)
     try:

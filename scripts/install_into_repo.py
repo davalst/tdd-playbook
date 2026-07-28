@@ -213,12 +213,27 @@ def doctor(target: str) -> int:
                   "demoted for EVERY session in this repo; restore or journal it with an "
                   "owner and expiry (H-class kill switch otherwise)")
             rc = 1
+
+    # H8 (live incident 2026-07-28): plugin enablement is USER-scope — disabling it in any
+    # repo darkens the guard layer everywhere, silently. The heartbeat (written by the
+    # UserPromptSubmit hook) is the liveness signal; commits that postdate it mean work
+    # happened while no guard fired.
+    sys.path.insert(0, os.path.join(PLUGIN, "hooks", "scripts"))
+    from _common import guards_dark
+    status, detail = guards_dark(target)
+    if status == "dark":
+        print(f"GUARDS DARK: {detail} — check `claude /plugin` enablement "
+              "(user-scope: a disable in ANY repo darkens ALL repos) and reload")
+        rc = 1
+    else:
+        print(f"guards liveness: {status} — {detail}")
     return rc
 
 
 # Runtime exhaust the vendored playbook writes under .claude/ — the vendoring workflow is
 # `git add .claude`, so without this a downstream repo commits a growing event log (G2).
-_CLAUDE_IGNORES = ["playbook-yield.jsonl", "tdd-lock-journal.jsonl", "tdd-lock.json"]
+_CLAUDE_IGNORES = ["playbook-yield.jsonl", "tdd-lock-journal.jsonl", "tdd-lock.json",
+                   "playbook-guards-heartbeat"]
 
 
 def _merge_claude_gitignore(claude_dir: str) -> None:
