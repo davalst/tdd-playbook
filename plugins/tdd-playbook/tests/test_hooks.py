@@ -36,6 +36,9 @@ def run(script, event, env_extra=None):
         if k.startswith("TDD_PLAYBOOK_"):
             del env[k]
     env["TDD_PLAYBOOK_YIELD_LOG"] = _YIELD_DEFAULT
+    # H8 isolation: hook invocations from this suite must not write the repo's REAL
+    # guards-heartbeat — a test run faking liveness would mask an actual dark guard layer
+    env["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
     if env_extra:
         env.update(env_extra)
     p = subprocess.run(
@@ -647,11 +650,44 @@ def test_yield_logging():
           demotions == [], demotions)
 
 
+# ---------------------------------------------------------------- guards heartbeat (H8)
+def test_guards_heartbeat():
+    """PLANTED (H8, live incident 2026-07-28): the plugin was disabled user-wide by a
+    mis-click in ANOTHER repo and the whole guard layer went dark for a full working day —
+    three releases shipped with zero mechanical enforcement and no alarm. Committed !=
+    deployed != RUNNING applies to the guards themselves: a hook that fires on every user
+    prompt must leave a heartbeat, so dark-detection has a signal to check."""
+    with tempfile.TemporaryDirectory() as d:
+        hb = os.path.join(d, "heartbeat")
+        rc, _o, _e = run("intent_nudge.py", {"prompt": "let's build the new export feature"},
+                         env_extra={"TDD_PLAYBOOK_HEARTBEAT": hb,
+                                    "TDD_PLAYBOOK_NUDGE_STATE_DIR": d})
+        check("heartbeat: written on UserPromptSubmit (guards provably LIVE)",
+              os.path.isfile(hb) and open(hb).read().strip()[:4].isdigit(), (rc, hb))
+
+        # a prompt that does NOT trigger the nudge still beats the heart (liveness is
+        # about the hook RUNNING, not about the nudge firing)
+        hb2 = os.path.join(d, "heartbeat2")
+        rc, _o, _e = run("intent_nudge.py", {"prompt": "good morning"},
+                         env_extra={"TDD_PLAYBOOK_HEARTBEAT": hb2,
+                                    "TDD_PLAYBOOK_NUDGE_STATE_DIR": d})
+        check("heartbeat: beats even on non-intent prompts", os.path.isfile(hb2), rc)
+
+        # PLANTED: unwritable heartbeat path must never break the hook
+        with open(os.path.join(d, "blocked"), "w") as fh:
+            fh.write("file not dir")
+        rc, _o, _e = run("intent_nudge.py", {"prompt": "fix the bug in calc"},
+                         env_extra={"TDD_PLAYBOOK_HEARTBEAT":
+                                    os.path.join(d, "blocked", "x", "hb"),
+                                    "TDD_PLAYBOOK_NUDGE_STATE_DIR": d})
+        check("heartbeat: unwritable path never breaks the hook", rc in (0, 1), rc)
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
-               test_lock_shell, test_yield_logging):
+               test_lock_shell, test_yield_logging, test_guards_heartbeat):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

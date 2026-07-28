@@ -9,8 +9,10 @@ idempotent. Self-contained, no pytest. Run: python3 tests/test_installer.py
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import tempfile
+import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
@@ -159,6 +161,32 @@ def test_doctor():
             with open(sp, "w") as fh:
                 json.dump(settings, fh)
             check("doctor clean again after demotion removed",
+                  mod.main(["--doctor", target]) == 0)
+
+            # PLANTED (H8, live incident 2026-07-28): commits made AFTER the last guard
+            # heartbeat mean work happened while the guard layer was dark (plugin disabled
+            # user-wide by a mis-click in another repo; a whole day + 3 releases, zero
+            # alarms) -> doctor fails loudly. A missing heartbeat is informational only
+            # (fresh clones have none — never a false RED).
+            def git(*a):
+                subprocess.run(["git", "-C", target, *a], capture_output=True, timeout=30)
+            git("init", "-q")
+            git("config", "user.email", "t@t")
+            git("config", "user.name", "t")
+            git("add", "-A")
+            git("commit", "-qm", "work")
+            check("doctor: no heartbeat + commits -> informational, exit 0 (fresh clone)",
+                  mod.main(["--doctor", target]) == 0)
+            hb = os.path.join(target, ".claude", "playbook-guards-heartbeat")
+            with open(hb, "w") as fh:
+                fh.write("2026-07-20T00:00:00+00:00\n")
+            old = time.time() - 8 * 86400
+            os.utime(hb, (old, old))  # heartbeat 8 days older than the commit above
+            check("doctor: PLANTED commit newer than heartbeat -> GUARDS DARK, exit 1",
+                  mod.main(["--doctor", target]) == 1)
+            now = time.time()
+            os.utime(hb, (now, now))
+            check("doctor: fresh heartbeat -> exit 0 (guards were live)",
                   mod.main(["--doctor", target]) == 0)
         finally:
             os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
