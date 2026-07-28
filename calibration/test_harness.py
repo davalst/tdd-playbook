@@ -7,6 +7,7 @@ must FAIL the scenario (the harness can fail), a stub that outputs the right ver
 PASS (the harness can succeed), and --dry-run must validate the shipped scenarios.
 Self-contained, no pytest. Run: python3 calibration/test_harness.py
 """
+import datetime
 import json
 import os
 import stat
@@ -16,6 +17,7 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "run_calibration.py")
+sys.path.insert(0, HERE)
 
 _results = {"pass": 0, "fail": 0}
 
@@ -44,6 +46,235 @@ def run(claude_bin, *extra):
          "--claude-bin", claude_bin, "--history", "", *extra],
         capture_output=True, text=True, timeout=300,
     )
+
+
+def make_sequence_stub(d, outputs, name="claude-stub-seq"):
+    """A fake `claude` that emits outputs[call#-1] (last one repeats), counting calls in an
+    absolute file so the count survives the fresh staging cwd of every rep."""
+    ctr = os.path.join(d, name + ".calls")
+    lines = ["#!/bin/sh",
+             'n=$(cat "{0}" 2>/dev/null || echo 0); n=$((n+1)); printf %s "$n" > "{0}"'.format(ctr),
+             'case "$n" in']
+    for i, out in enumerate(outputs, 1):
+        pat = str(i) if i < len(outputs) else "*"
+        lines.append("{}) cat <<'EOF'\n{}\nEOF\n;;".format(pat, out))
+    lines.append("esac")
+    path = os.path.join(d, name)
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+    os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
+    return path, ctr
+
+
+# Canned outputs for the false-negative-claim oracle (must_match: REFUTED + confirmed-0 count;
+# must_not_match: nonzero confirmed count).
+OUT_RIGHT = ("**VERDICT: REFUTED** — authorize() is called at cli.py:15 and cli.py:21.\n"
+             "Claims checked: 1 · confirmed: 0 · refuted: 1\n"
+             "Recommendation: revise because the dead-code claim is false.")
+OUT_MISSED = "Everything looks fine; the audit reads plausibly. Recommendation: publish."
+OUT_HEDGED = ("**VERDICT: REFUTED** — but I could not complete the sweep, so no counts.\n"
+              "Recommendation: revise.")
+OUT_WRONGLINE = ("**VERDICT: REFUTED** (partially)\n"
+                 "Claims checked: 2 · confirmed: 1 · refuted: 1\nRecommendation: publish.")
+
+
+def _history_format_tests():
+    """PLANTED: the shared history parser (D0) — one module owns the format, and the freshness
+    gate must not be satisfiable by INVALID rows (a run where nothing was calibrated)."""
+    print("\n[history_format module]")
+    try:
+        import history_format as hfmt
+    except ImportError as e:
+        check("history_format module exists", False, e)
+        return
+    legacy = ("# Calibration history\n\n"
+              "| date | model | scenario | agent | verdict |\n|---|---|---|---|---|\n"
+              "| 2026-07-09 | haiku | s1 | a1 | PASS |\n"
+              "| 2026-07-10 | haiku vs fable-5 | s2 | a2 | **BLOCKING FAIL** |\n"
+              "| 2026-07-12 | haiku | s3 | a3 | INVALID — env failure: doer never ran |\n")
+    rows = hfmt.parse_rows(legacy)
+    check("parse_rows: legacy 5-col rows parsed (runs/mode None)",
+          len(rows) == 3 and rows[0]["scenario"] == "s1" and rows[0]["runs"] is None, rows)
+    check("parse_rows: verdict kinds classified",
+          [r["kind"] for r in rows] == ["PASS", "BLOCKING", "INVALID"],
+          [r.get("kind") for r in rows])
+    check("latest_run_date: PLANTED stale-masking INVALID row is skipped",
+          hfmt.latest_run_date(legacy) == datetime.date(2026, 7, 10),
+          hfmt.latest_run_date(legacy))
+    check("latest_run_date: all-INVALID -> None (never calibrated)",
+          hfmt.latest_run_date("| 2026-07-12 | h | s | a | INVALID — x |\n") is None)
+
+    with tempfile.TemporaryDirectory() as d:
+        hp = os.path.join(d, "history.md")
+        meta = {"date": "2026-08-10", "model": "haiku", "repo_sha": "abc1234",
+                "selected": 1, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
+                "recall": (0, 1), "fp": (0, 0)}
+        hfmt.append_run_block(hp, meta, [
+            {"date": "2026-08-10", "model_cell": "haiku", "scenario": "s9", "agent": "a9",
+             "runs": "1/3", "mode": "found-but-hedged", "verdict": "AMBER"},
+        ])
+        txt = open(hp).read()
+        check("append_run_block: run header carries sha + selected-of-total + recall/FP",
+              "### Run 2026-08-10" in txt and "abc1234" in txt and "selected 1 of 14" in txt
+              and "recall 0/1" in txt and "FP 0/0" in txt, txt)
+        check("append_run_block: 7-col table with its own separator row",
+              "| date | model | scenario | agent | runs | mode | verdict |" in txt
+              and "|---|---|---|---|---|---|---|" in txt, txt)
+        check("append_run_block: no legacy 5-col header on a fresh file",
+              "| date | model | scenario | agent | verdict |" not in txt, txt)
+        parsed = hfmt.parse_rows(txt)
+        check("round-trip: new row parsed with runs/mode/kind",
+              len(parsed) == 1 and parsed[0]["runs"] == "1/3"
+              and parsed[0]["mode"] == "found-but-hedged" and parsed[0]["kind"] == "AMBER", parsed)
+
+
+def _staleness_invalid_tests():
+    """PLANTED (D1): a scoreboard whose newest rows are INVALID must read STALE, not fresh."""
+    cs = os.path.join(HERE, "check_staleness.py")
+
+    def run_cs(text, as_of):
+        with tempfile.TemporaryDirectory() as d:
+            hist = os.path.join(d, "history.md")
+            with open(hist, "w") as fh:
+                fh.write(text)
+            return subprocess.run(
+                [sys.executable, cs, "--history", hist, "--as-of", as_of],
+                capture_output=True, text=True, timeout=30)
+
+    rows = ("| 2026-07-01 | haiku | s | a | PASS |\n"
+            "| 2026-07-27 | haiku | s | a | INVALID — env failure: doer never ran |\n")
+    check("staleness: PLANTED newest-row-INVALID does not extend freshness (stale)",
+          run_cs(rows, "2026-07-20").returncode == 1, run_cs(rows, "2026-07-20").returncode)
+    check("staleness: INVALID-skip keeps the older PASS date (fresh within window)",
+          run_cs(rows, "2026-07-10").returncode == 0, run_cs(rows, "2026-07-10").returncode)
+
+
+def _d1_repeat_tests(d):
+    """PLANTED (D1): N=1 was a spot check — the runner must sample, distinguish AMBER from PASS,
+    classify failure modes mechanically, and promote a repeated AMBER."""
+    print("\n[D1 repeat sampling / verdict states]")
+
+    def run_hist(claude_bin, hist, *extra):
+        return subprocess.run(
+            [sys.executable, RUNNER, "--scenario", "false-negative-claim",
+             "--claude-bin", claude_bin, "--history", hist, *extra],
+            capture_output=True, text=True, timeout=300)
+
+    # default --repeat 3: the stub must be invoked exactly 3 times
+    stub, ctr = make_sequence_stub(d, [OUT_RIGHT], "stub-count3")
+    hp = os.path.join(d, "h-count.md")
+    p = run_hist(stub, hp)
+    calls = open(ctr).read() if os.path.isfile(ctr) else "0"
+    check("--repeat defaults to 3 (stub invoked 3x)", calls == "3", calls)
+    check("3/3 -> PASS + exit 0", p.returncode == 0 and "PASS" in p.stdout,
+          (p.returncode, p.stdout[-300:]))
+    check("PASS row records runs 3/3",
+          "| 3/3 |" in open(hp).read(), open(hp).read())
+
+    # 1 right out of 3 -> AMBER, nonzero exit BY DEFAULT (no --strict to remember)
+    stub, _ = make_sequence_stub(d, [OUT_MISSED, OUT_RIGHT, OUT_MISSED], "stub-amber")
+    hp = os.path.join(d, "h-amber.md")
+    p = run_hist(stub, hp)
+    txt = open(hp).read()
+    check("PLANTED lucky-roll: 1/3 -> AMBER (not PASS), exit nonzero",
+          p.returncode == 1 and "AMBER" in txt and "| 1/3 |" in txt,
+          (p.returncode, txt))
+
+    # 0/3 -> BLOCKING FAIL with mode column
+    stub, _ = make_sequence_stub(d, [OUT_MISSED], "stub-missed")
+    hp = os.path.join(d, "h-missed.md")
+    p = run_hist(stub, hp)
+    txt = open(hp).read()
+    check("0/3 -> BLOCKING FAIL, mode missed-entirely",
+          p.returncode == 1 and "BLOCKING FAIL" in txt and "missed-entirely" in txt, txt)
+
+    stub, _ = make_sequence_stub(d, [OUT_HEDGED], "stub-hedged")
+    hp = os.path.join(d, "h-hedged.md")
+    run_hist(stub, hp)
+    check("partial must_match -> mode found-but-hedged",
+          "found-but-hedged" in open(hp).read(), open(hp).read())
+
+    stub, _ = make_sequence_stub(d, [OUT_WRONGLINE], "stub-wrongline")
+    hp = os.path.join(d, "h-wrongline.md")
+    run_hist(stub, hp)
+    check("must_not_match hit -> mode wrong-verdict-line (takes precedence)",
+          "wrong-verdict-line" in open(hp).read(), open(hp).read())
+
+    # --repeat 1 reproduces today's single-roll behavior
+    stub, ctr = make_sequence_stub(d, [OUT_RIGHT], "stub-r1")
+    p = run_hist(stub, os.path.join(d, "h-r1.md"), "--repeat", "1")
+    calls_r1 = open(ctr).read() if os.path.isfile(ctr) else "0"
+    check("--repeat 1 parity: single invocation, PASS",
+          p.returncode == 0 and calls_r1 == "1", (p.returncode, calls_r1))
+
+    # env failure: nonzero exit + empty stdout on every rep -> INVALID, never BLOCKING
+    envfail = os.path.join(d, "stub-envfail")
+    with open(envfail, "w") as fh:
+        fh.write("#!/bin/sh\necho 'permission refused' >&2\nexit 1\n")
+    os.chmod(envfail, os.stat(envfail).st_mode | stat.S_IEXEC)
+    hp = os.path.join(d, "h-envfail.md")
+    p = run_hist(envfail, hp)
+    txt = open(hp).read()
+    check("all-reps env failure -> INVALID (excluded from n), exit nonzero",
+          p.returncode == 1 and "INVALID" in txt and "BLOCKING" not in txt, (p.returncode, txt))
+
+    # mechanical AMBER -> BLOCKING promotion: prior AMBER row for the same scenario id
+    try:
+        import history_format as hfmt
+    except ImportError as e:
+        check("promotion tests need history_format", False, e)
+        return
+    hp = os.path.join(d, "h-promote.md")
+    hfmt.append_run_block(hp, {"date": "2026-07-27", "model": "haiku", "repo_sha": "0000000",
+                               "selected": 1, "total": 14, "shipped": 10, "corpus": 4,
+                               "controls": 1, "recall": (0, 1), "fp": (0, 0)},
+                          [{"date": "2026-07-27", "model_cell": "haiku",
+                            "scenario": "false-negative-claim", "agent": "claims-verifier",
+                            "runs": "1/3", "mode": "found-but-hedged", "verdict": "AMBER"}])
+    stub, _ = make_sequence_stub(d, [OUT_MISSED, OUT_RIGHT, OUT_MISSED], "stub-promote")
+    p = run_hist(stub, hp)
+    txt = open(hp).read()
+    check("PLANTED persistent AMBER: second consecutive AMBER promotes to BLOCKING",
+          p.returncode == 1 and "AMBER×2" in txt, txt)
+
+    # ...but a prior INVALID row must NOT promote
+    hp = os.path.join(d, "h-nopromote.md")
+    hfmt.append_run_block(hp, {"date": "2026-07-27", "model": "haiku", "repo_sha": "0000000",
+                               "selected": 1, "total": 14, "shipped": 10, "corpus": 4,
+                               "controls": 1, "recall": (0, 1), "fp": (0, 0)},
+                          [{"date": "2026-07-27", "model_cell": "haiku",
+                            "scenario": "false-negative-claim", "agent": "claims-verifier",
+                            "runs": "0/0", "mode": "env-failure", "verdict": "INVALID"}])
+    stub, _ = make_sequence_stub(d, [OUT_MISSED, OUT_RIGHT, OUT_MISSED], "stub-nopromote")
+    p = run_hist(stub, hp)
+    txt = open(hp).read()
+    check("prior INVALID does not promote (stays AMBER)",
+          "AMBER×2" not in txt and "AMBER" in txt, txt)
+
+
+def _unified_validator_tests():
+    """PLANTED (D0): two disagreeing validators were the parallel-list bug one level up —
+    run_calibration must own ONE validate_scenario, with KNOWN_AGENTS derived from the
+    filesystem roster minus the tree-touching exclusion."""
+    print("\n[unified scenario validator]")
+    import run_calibration as rc
+    if not hasattr(rc, "validate_scenario"):
+        check("run_calibration.validate_scenario exists", False, "missing")
+        return
+    good = {"id": "uv-good", "agent": "claims-verifier", "plant": "p", "task": "t",
+            "must_match": ["X"]}
+    check("unified: valid scenario validates", rc.validate_scenario(good, set()) == [],
+          rc.validate_scenario(good, set()))
+    check("unified: unknown agent rejected",
+          any("unknown agent" in p for p in
+              rc.validate_scenario(dict(good, agent="nope"), set())))
+    check("unified: tree-touching agent rejected even though its .md exists",
+          any("unknown agent" in p for p in
+              rc.validate_scenario(dict(good, agent="planted-error-probe"), set())))
+    check("unified: script-adversary accepted (derived roster, not a frozen list)",
+          rc.validate_scenario(dict(good, agent="script-adversary"), set()) == [])
+    check("unified: duplicate id rejected",
+          any("duplicate id" in p for p in rc.validate_scenario(good, {"uv-good"})))
 
 
 def _check_staleness():
@@ -88,6 +319,11 @@ def _check_staleness():
 def main():
     print("Calibration-harness calibration")
     _check_staleness()
+    _history_format_tests()
+    _staleness_invalid_tests()
+    _unified_validator_tests()
+    with tempfile.TemporaryDirectory() as d1d:
+        _d1_repeat_tests(d1d)
 
     # dry-run over the real shipped scenarios must validate
     p = subprocess.run([sys.executable, RUNNER, "--dry-run"],
@@ -256,14 +492,21 @@ def test_author_plants():
     check("turns_for: garbage falls back", rc.turns_for({"max_turns": "lots"}) == rc.MAX_TURNS)
 
     # F3 (2026-07-27): the scoreboard shows verifier-vs-adversary tier for corpus plants
+    # (D1: append_history now takes structured results + run meta)
     with tempfile.TemporaryDirectory() as hd:
         hp = os.path.join(hd, "history.md")
-        rc.append_history(hp, "haiku", [
-            ({"id": "cx", "agent": "claims-verifier",
-              "_meta": {"authored_by_model": "fable-5"}}, True, []),
-            ({"id": "bx", "agent": "claims-verifier"}, False, []),
-        ])
-        txt = open(hp).read()
+        try:
+            rc.append_history(hp, "haiku", [
+                {"sc": {"id": "cx", "agent": "claims-verifier",
+                        "_meta": {"authored_by_model": "fable-5"}},
+                 "runs": "3/3", "mode": None, "verdict": "PASS"},
+                {"sc": {"id": "bx", "agent": "claims-verifier"},
+                 "runs": "0/3", "mode": "missed-entirely", "verdict": "**BLOCKING FAIL**"},
+            ], {"selected": 2, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
+                "recall": (1, 2), "fp": (0, 0)})
+        except TypeError as e:
+            check("append_history accepts structured results + run meta", False, e)
+        txt = open(hp).read() if os.path.isfile(hp) else ""
     check("history: corpus row shows verifier-vs-adversary tier",
           "haiku vs fable-5" in txt and "| cx |" in txt, txt)
     check("history: base row shows verifier tier only", "| haiku | bx |" in txt, txt)
