@@ -54,3 +54,46 @@ def test_guard_can_detect_a_failing_suite():
             fh.write("import sys\nsys.exit(1)\n")
         r = subprocess.run([sys.executable, bad], capture_output=True, text=True, timeout=30)
         assert r.returncode != 0, "guard cannot observe a nonzero exit — it would be theater"
+
+
+def test_no_pytest_uncollectable_test_functions():
+    """LIVE incident (CIVerd gate RED at 5abe347): a `def test_*(arg)` with a required
+    parameter passes under `python3 file.py` (main() calls it with the arg) but ERRORS under
+    pytest ('fixture not found') — a gate RED invisible to the main() path. Every function
+    pytest can collect from these suites must be callable with zero arguments."""
+    import ast
+    bad = []
+    for suite in SUITES:
+        if not os.path.isfile(suite):
+            continue
+        tree = ast.parse(open(suite).read())
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+                nreq = (len(node.args.posonlyargs) + len(node.args.args)
+                        - len(node.args.defaults))
+                if nreq > 0:
+                    bad.append("{}::{} requires {} arg(s)".format(
+                        os.path.basename(suite), node.name, nreq))
+    assert not bad, ("pytest-collectable test functions with required args (they ERROR "
+                     "under pytest while main() passes): " + "; ".join(bad))
+
+
+def test_civerd_gate_script_is_the_real_gate():
+    """The v1.15 class recurred one layer up: the aaa-guard made pytest honest about THESE
+    suites, but the engine's gate command never ran calibration/'s script-style suites at
+    all (pytest collects ~0 items from them) — check_scoreboard_integrity read as
+    'essentially untested' while its 12 planted tests sat unexecuted. The fix is ONE blessed
+    entrypoint the engine execs: scripts/civerd_gate.sh. Behaviorally: it must exist, run a
+    suite directory, and FAIL when any suite in it fails."""
+    gate = os.path.join(REPO, "scripts", "civerd_gate.sh")
+    assert os.path.isfile(gate), "scripts/civerd_gate.sh missing — the gate has no blessed entrypoint"
+    assert os.access(gate, os.X_OK), "civerd_gate.sh is not executable"
+    with tempfile.TemporaryDirectory() as d:
+        with open(os.path.join(d, "test_ok.py"), "w") as fh:
+            fh.write("import sys\nsys.exit(0)\n")
+        r = subprocess.run(["sh", gate, d], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "gate script fails a passing suite dir: " + r.stdout + r.stderr
+        with open(os.path.join(d, "test_bad.py"), "w") as fh:
+            fh.write("import sys\nsys.exit(1)\n")
+        r = subprocess.run(["sh", gate, d], capture_output=True, text=True, timeout=60)
+        assert r.returncode != 0, "PLANTED failing suite not caught — the gate script is theater"
