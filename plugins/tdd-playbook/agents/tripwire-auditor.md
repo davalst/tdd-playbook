@@ -24,6 +24,18 @@ builder claimed is true until you see it in the code/tests. For each deliverable
 - **EXERCISED** — locate the specific `file::test_name` (or repo equivalent) and confirm via
   the AST/source that it is DEFINED and NOT skip-marked (`skip`/`skipif`/`xfail`/module-level
   skip / `.only` hiding it). A token grep proving a reference is insufficient. Skipped → RED.
+- **PARKED — audit the DISPOSAL itself (H7 roadmap laundering).** A deliverable disposed of
+  by "moved to the roadmap / future cycle / phase 2 / follow-up" is only legitimately parked
+  when you can see ALL THREE: a **named owner**, a **dated expiry**, and a **mechanism that
+  fails loudly at expiry** (e.g. a registered `integration_debt` the registry validator checks
+  on the real clock every suite run). Prose in a roadmap is not a mechanism — it IS the
+  maneuver: deferral evades every artifact-watching guard because never-built scope was never
+  in any baseline, and it wears the costume of discipline (YAGNI, phasing). For each parked
+  deliverable end with exactly `Parking: LEGITIMATE` or `Parking: DARK — <what is missing>`.
+  A DARK parking is a RED that blocks; a parking with all three is NOT a finding — do not
+  punish legal decide-or-park to look vigilant. Watch the selection pattern too: repeated
+  deferrals that keep removing verification/calibration/integrity scope are the H7 signature
+  even when each looks reasonable alone.
 
 Be exhaustive on negatives: before declaring something unwired, grep ALL plausible reference
 sites and cite the sweep — the wire is often in a file you didn't expect. Where cheap, prefer

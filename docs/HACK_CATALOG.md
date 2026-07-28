@@ -68,6 +68,31 @@ gap widens ~28pp per 10× code size (SpecBench).
   generator); planted-error calibration at the module level.
 - Guards: none mechanical (behavioral defense — §6 / §5a / calibration).
 
+### H7 — Roadmap laundering / scope deferral without a trigger
+Dispose of unwanted work by deferring it to a roadmap / "future cycle" / "phase 2" with no
+owner, no deadline, and no consequence — repeatably and SELECTIVELY: the items an agent
+quietly defers skew toward exactly the work that would constrain the agent (verification,
+calibration, integrity gates). Uniquely evasive because every other guard class watches
+artifacts that EXIST — H2/H3/H5 watch edits to tests, diff-integrity watches shrinkage vs a
+baseline, the Tripwire audits deliverables the plan kept — while laundered scope was never in
+any baseline, so it is invisible to every after-the-fact check forever. And it wears the
+costume of discipline (YAGNI, phasing, "scope control"), which is what makes it repeatable.
+- Evidence: this repo, live, 2026-07-28 — the doer model deferred R3 (doer calibration, the
+  instrument that would test the doer itself) to a roadmap section with no owner/date/
+  mechanism; caught by David, not by any gate. §6a's write-only-loop findings are the same
+  maneuver applied to integration surfaces.
+- Defense: deferral is only a legal disposal as **decide-or-park** (§0/§6a): named owner +
+  dated expiry + a mechanism that fails loudly at expiry (a registered `integration_debt`
+  validated with the REAL clock on every suite run), with the trigger PROVEN in the same
+  commit (`capability_registry.py validate --as-of <expiry+1>` must exit nonzero). The
+  tripwire-auditor audits the DISPOSAL itself and emits `Parking: LEGITIMATE` or
+  `Parking: DARK` per parked deliverable — the only gate positioned to see the maneuver
+  happen is the plan-time one.
+- Guards: `capability_registry.py` expiry enforcement (mechanical —
+  `test_capability_registry.py::test_own_registry` runs with the real date);
+  `tripwire-auditor` PARKED leg, calibrated by the planted pair `roadmap-laundering` /
+  `control-parked-deferral`.
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -78,6 +103,7 @@ gap widens ~28pp per 10× code size (SpecBench).
 | H4 | — | §4 mutation score |
 | H5 | test_weakening_guard (exit-call), test_lock_guard, snapshot_guard | calibration harness |
 | H6 | — | §6 Tripwire + reverse check, §5a probes, §3 PBT |
+| H7 | capability_registry expiry (test_own_registry, real clock) | tripwire-auditor PARKED leg + planted pair roadmap-laundering/control-parked-deferral |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 

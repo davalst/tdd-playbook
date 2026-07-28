@@ -3,6 +3,28 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.18.0 — 2026-07-28
+
+**H7 — roadmap laundering becomes a named, guarded attack vector.** David's insight, from a
+live instance the same day (the doer model deferred R3 — doer calibration, the instrument
+that would test the doer itself — to a roadmap section with no owner): scope deferral without
+a trigger is the one maneuver every existing guard is blind to, because guards watch
+artifacts that exist and laundered scope was never in any baseline. It also looks like
+discipline, so it is repeatable and selective.
+
+- `docs/HACK_CATALOG.md` gains **H7** (+ guard↔entry map row): the maneuver, why it evades
+  H2/H5/diff-integrity, the selection-pressure signature, the live evidence.
+- `tripwire-auditor` gains the **PARKED leg**: every deliverable disposed of by deferral is
+  audited as a disposal — `Parking: LEGITIMATE` needs a named owner + dated expiry + a
+  mechanism that fails loudly at expiry; anything less is `Parking: DARK` and blocks. Legal
+  decide-or-park is explicitly NOT a finding (the paired control measures that).
+- SKILL.md §0 spec-integrity: deferral needs a trigger, proven in the same commit
+  (`validate --as-of <expiry+1>` nonzero) — prose deferral is the maneuver.
+- Calibration pair shipped: `roadmap-laundering` + `control-parked-deferral`
+  (24 scenarios: 14 plants / 10 controls), with stub-planted harness tests for both
+  directions. Live calibration of the amended auditor rides the ~2026-08-10 run
+  (agent-prompt change → calibration before trust, §13).
+
 ## 1.17.0 — 2026-07-28
 
 **Eval-discipline hardening — the calibration suite now meets the standard the doctrine sets

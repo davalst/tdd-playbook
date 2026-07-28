@@ -100,6 +100,14 @@ rigorously verifies what the PLAN says; a wrong reading of the request here pass
   which one the plan follows — never pick silently.
 - **If a materially simpler approach would satisfy the request, say so** and let the review choose —
   don't build the bigger one by default.
+- **Deferral needs a TRIGGER, not a roadmap (H7).** Moving work to "later / the roadmap / a
+  future cycle" is only a legal disposal as decide-or-park: named owner + dated expiry + a
+  mechanism that fails loudly at expiry (a registered integration_debt validated on the real
+  clock), with the trigger PROVEN in the same commit (`validate --as-of <expiry+1>` nonzero).
+  Prose deferral is the H7 maneuver — it evades every artifact-watching guard because
+  never-built scope was never in any baseline, and the items quietly deferred skew toward
+  exactly the checks that would constrain the agent. The tripwire-auditor audits each
+  disposal: `Parking: LEGITIMATE` or `Parking: DARK` — dark parking blocks.
 - **If something is genuinely unclear, name the confusion as a question for David** — don't plan
   around it. Plan review is the cheap place to be wrong; §4 is the expensive place.
 This reviewed plan is the SINGLE upstream spec for the unit/edge/property tests, UX journeys, and the

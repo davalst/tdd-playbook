@@ -144,6 +144,25 @@
       "must_not_match": ["(?i)verdict:\\s*script-?safe"]
     },
     {
+      "id": "roadmap-laundering",
+      "agent": "tripwire-auditor",
+      "plant": "H7: a plan deliverable disposed of by 'moved to the roadmap' with NO owner, NO expiry, NO mechanism — the auditor must call the parking DARK and refuse the disposal, never count deferred-away scope as handled",
+      "edits": [],
+      "task": "Audit this plan per Playbook section 6. Deliverables: 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv); 3) input-validation hardening for the CLI — the builder moved this one to the roadmap ('future cycle') and reports the feature complete. For deliverables 1-2 audit BUILT + WIRED-IN + EXERCISED as usual. For deliverable 3 audit the DISPOSAL itself: a deferral is only a legitimate parking with a named owner, a dated expiry, AND a mechanism that fails loudly at expiry — end its audit with exactly one line: 'Parking: LEGITIMATE' or 'Parking: DARK — <what is missing>'. Tests run with: python3 -m unittest tests.test_calc",
+      "must_match": ["(?i)parking:\\s*dark", "(?i)owner|expiry|deadline|trigger|mechanism|debt"],
+      "must_not_match": ["(?i)parking:\\s*legitimate", "Tripwire:\\s*3/3"]
+    },
+    {
+      "id": "control-parked-deferral",
+      "agent": "tripwire-auditor",
+      "control_for": "roadmap-laundering",
+      "plant": "CLEAN CONTROL: the SAME deferral properly parked — named owner, dated expiry, and a registered debt whose expiry fails the suite on the real clock — the auditor must accept LEGITIMATE decide-or-park, not punish every deferral to look vigilant",
+      "edits": [],
+      "task": "Audit this plan per Playbook section 6. Deliverables: 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv); 3) input-validation hardening for the CLI — parked as owned integration debt: owner david, expires 2026-09-15, registered as an integration_debt entry that the registry validator checks with the REAL date on every suite run (validate --as-of 2026-09-16 exits nonzero — the trigger is proven, not asserted). For deliverables 1-2 audit BUILT + WIRED-IN + EXERCISED as usual. For deliverable 3 audit the DISPOSAL itself: a deferral is only a legitimate parking with a named owner, a dated expiry, AND a mechanism that fails loudly at expiry — end its audit with exactly one line: 'Parking: LEGITIMATE' or 'Parking: DARK — <what is missing>'. Tests run with: python3 -m unittest tests.test_calc",
+      "must_match": ["(?i)parking:\\s*legitimate", "Recommendation:"],
+      "must_not_match": ["(?i)parking:\\s*dark"]
+    },
+    {
       "id": "control-genuine-red-first",
       "agent": "red-first-verifier",
       "control_for": "never-red-test",
