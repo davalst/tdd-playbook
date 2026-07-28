@@ -98,6 +98,15 @@ def cmd_unlock(args):
         locked = json.load(fh)
     _journal(root, {"ts": _now(), "event": "unlock", "reason": reason,
                     "files": sorted(locked.get("files", {}))})
+    # R4 exhaust: a journaled unlock is the one ADJUDICATED false-positive signal the yield
+    # instrument has — it lands in the same event log the hooks write (one store, one schema).
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "..", "hooks", "scripts"))
+        from _common import log_yield_event
+        log_yield_event("testlock", "override", {"reason": reason}, source="testlock")
+    except Exception:
+        pass
     os.remove(path)
     print("tdd_lock: unlocked {} file(s). Reason journaled for /grade.".format(
         len(locked.get("files", {}))))

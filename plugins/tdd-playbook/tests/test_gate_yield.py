@@ -147,6 +147,8 @@ def main():
                      "| 2026-08-10 | testlock | 2 | 0 | 2 |\n")
         env = dict(os.environ)
         env["TDD_PLAYBOOK_YIELD_MD"] = md
+        # isolation: never drain a developer's real raw log through this test
+        env["TDD_PLAYBOOK_YIELD_LOG"] = os.path.join(d, "no-raw.jsonl")
         p = subprocess.run(
             [sys.executable, os.path.join(REPO, "calibration", "run_calibration.py"),
              "--scenario", "false-negative-claim", "--claude-bin", stub, "--history", "",

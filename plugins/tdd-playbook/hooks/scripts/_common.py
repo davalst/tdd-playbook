@@ -10,6 +10,7 @@ Exit-code contract (Claude Code):
   2  -> BLOCKING; stderr is fed back to Claude
   1  -> non-blocking; first line of stderr is shown to the user  (our "warn")
 """
+import datetime
 import json
 import os
 import sys
@@ -55,6 +56,34 @@ def resolve_mode(name):
     return _DEFAULT_MODES.get(name.lower(), "warn")
 
 
+def project_root():
+    """realpath: getcwd() resolves symlinks while CLAUDE_PROJECT_DIR may not (macOS
+    /var -> /private/var); mismatched roots produce garbage relative paths."""
+    return os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+
+
+def log_yield_event(gate, event, extra=None, source="hook"):
+    """One line of gate-yield exhaust (R4): {ts, source, gate, event, ...} appended to
+    $TDD_PLAYBOOK_YIELD_LOG or <project>/.claude/playbook-yield.jsonl. This is the SINGLE
+    write path for the yield instrument — every guard flows through emit(), so no guard can
+    silently drop out of the record and read as zero-yield. MUST never raise: telemetry
+    failing must never change enforcement."""
+    try:
+        path = os.environ.get("TDD_PLAYBOOK_YIELD_LOG") or os.path.join(
+            project_root(), ".claude", "playbook-yield.jsonl")
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        row = {"ts": datetime.datetime.now(datetime.timezone.utc)
+                                     .isoformat(timespec="seconds"),
+               "source": source, "gate": gate, "event": event}
+        row.update(extra or {})
+        with open(path, "a") as fh:
+            fh.write(json.dumps(row) + "\n")
+    except Exception:
+        pass
+
+
 def emit(name, lines):
     """Surface findings per the hook's mode, then exit with the right code.
 
@@ -63,6 +92,7 @@ def emit(name, lines):
     mode = resolve_mode(name)
     if not lines or mode == "off":
         sys.exit(0)
+    log_yield_event(name, mode, {"findings": len(lines)})
     header = "⚠️  TDD Playbook · {}".format(name)
     body = "\n".join("   - " + ln for ln in lines)
     if mode == "block":

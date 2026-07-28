@@ -689,6 +689,16 @@ trend). The calibration schedule below is not maintenance; it IS the product. Co
 the plant corpus only GROWS (a frozen plant library is itself a static gate); the guards'
 hack catalog (`docs/HACK_CATALOG.md`) is refreshed quarterly; a doer-model upgrade requires a
 calibration run before its work is trusted (verifier-strength policy, below).
+**Decay runs in BOTH directions.** A gate can decay by becoming weaker than the threat (the
+direction calibration instruments), OR by becoming more expensive than the risk it retires —
+ceremony built for a weaker doer, still charging rent against one that no longer needs it. The
+second direction is instrumented by the gate-yield record (`gate_yield.py`, one committed rollup
+per calibration cycle from the hooks' own event log — telemetry, never self-report): a gate with
+repeated cycles of friction whose every adjudicated block was a journaled false positive is a
+RETIREMENT CANDIDATE, surfaced by the calibration run itself. Retirement is never silent
+deletion: demote to warn with an owner and a dated re-check (the flaky-quarantine shape), and
+the PLANT CORPUS stays append-only regardless — only human/doer-facing ceremony is retirable.
+Absent yield data is UNMEASURED, never zero.
 After substantive work, grade the CYCLE (spend → evidence → claims → outcome) against a NAMED
 benchmark (e.g. "Claude Code on the same task"), so the system improves instead of re-learning.
 The design rule for every check below: make the honest path the cheap path and the dishonest path

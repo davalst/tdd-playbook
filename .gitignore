@@ -1,2 +1,9 @@
 __pycache__/
 *.pyc
+
+# Playbook runtime exhaust — never committed (R4/D4): the raw yield log is
+# ephemeral by design (committed rollups in docs/calibration/gate_yield.md are
+# the durable record); lock state and its journal are session artifacts.
+.claude/playbook-yield.jsonl
+.claude/tdd-lock-journal.jsonl
+.claude/tdd-lock.json

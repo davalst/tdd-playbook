@@ -195,6 +195,24 @@ def doctor(target: str) -> int:
     return rc
 
 
+# Runtime exhaust the vendored playbook writes under .claude/ — the vendoring workflow is
+# `git add .claude`, so without this a downstream repo commits a growing event log (G2).
+_CLAUDE_IGNORES = ["playbook-yield.jsonl", "tdd-lock-journal.jsonl", "tdd-lock.json"]
+
+
+def _merge_claude_gitignore(claude_dir: str) -> None:
+    path = os.path.join(claude_dir, ".gitignore")
+    existing = []
+    if os.path.isfile(path):
+        with open(path) as fh:
+            existing = [ln.rstrip("\n") for ln in fh]
+    missing = [ln for ln in _CLAUDE_IGNORES if ln not in existing]
+    if missing:
+        with open(path, "a") as fh:
+            for ln in missing:
+                fh.write(ln + "\n")
+
+
 def main(argv=None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     if argv and argv[0] == "--doctor":
@@ -216,6 +234,7 @@ def main(argv=None) -> int:
         if os.path.isdir(src):
             total += _copy_tree(src, os.path.join(claude_dir, dest_rel))
     hooks_added = _merge_hooks(claude_dir)
+    _merge_claude_gitignore(claude_dir)
     with open(os.path.join(target, _STAMP_REL), "w") as fh:
         fh.write(_canonical_version() + "\n")
 

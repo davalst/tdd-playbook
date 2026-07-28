@@ -451,6 +451,21 @@ def main(argv=None):
               len(results) - failed, len(results), len(scenarios), len(all_scenarios),
               len(shipped), len(corpus), controls_total, recall[0], recall[1],
               fp[0], fp[1], len(corpus)))
+    # R4 — the retirement-candidate mirror of the DECAY WARNING (§13's second decay
+    # direction: more expensive than the risk). This run IS the cycle: roll the raw yield
+    # exhaust into the committed record, then report. NEVER fails the calibration run.
+    try:
+        gy = os.path.join(REPO, "plugins", "tdd-playbook", "bin", "gate_yield.py")
+        if os.path.isfile(gy):
+            for cmd in ("rollup", "candidates"):
+                p = subprocess.run([sys.executable, gy, cmd], capture_output=True,
+                                   text=True, timeout=60)
+                if p.stdout.strip():
+                    print(p.stdout.strip())
+        else:
+            print("yield: unmeasured (gate_yield.py not present)")
+    except Exception as e:
+        print("yield: unmeasured (gate_yield unavailable: {})".format(e))
     return 1 if failed else 0
 
 
