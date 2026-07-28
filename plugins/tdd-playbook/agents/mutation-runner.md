@@ -44,6 +44,15 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    green)" and stop, never a green over an unmeasured scope. Confirm the tool actually RAN the
    mutants (run-stats total > 0): `generated>0 / 0 survivors / exit 0` is the false-green signature,
    a RED gate — 0 survivors ≠ pass, generated > 0 ≠ measured.
+   **Bytecode-cache hygiene (two independent live hits, 2026-07-28):** CPython invalidates
+   `.pyc` by (mtime-seconds, size) — a mutant written within the same second as the prior
+   compile, with the same byte length (`==`→`!=` flips are length-preserving), silently
+   executes the ORIGINAL bytecode: the suite runs unmutated code and the result is a phantom
+   (a fake survivor, or a fake kill — either way the mutant NEVER RAN). Both this repo's
+   local sweep and the CIVerd engine probe manufactured false findings this way on the same
+   day. Before EVERY mutant run: delete `__pycache__` in the mutated tree (or run with
+   `PYTHONDONTWRITEBYTECODE=1` from a clean tree). A mutation result from a run without
+   cache-busting is UNMEASURED, not evidence.
    **Killing-suite visibility — collection AND binding:** if the tool uses a dedicated mutation
    suite (mutmut's `tests_mutation/`), confirm it actually COLLECTS the kill tests you're counting
    on (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
