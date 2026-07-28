@@ -22,5 +22,9 @@ upgrade (§13 verifier-strength policy). **A plant surviving to a clean verdict 
 failure** — fix the agent (or the harness), never the plant. Results append to
 `docs/calibration/history.md` — the public scoreboard.
 
-Run: `python3 calibration/run_calibration.py [--agent NAME] [--dry-run]`
-(`--dry-run` validates scenarios/fixture/corpus without spending model calls — used in CI.)
+Run: `python3 calibration/run_calibration.py [--agent NAME] [--repeat K] [--dry-run]`
+(`--dry-run` validates scenarios/fixture/corpus + the R2 pairing invariant without spending
+model calls — used in CI.) Each scenario runs `--repeat` times (default 3, §5a): `PASS` only
+at k/k, `AMBER` on a partial catch (nonzero exit — no `--strict` flag to remember; AMBER on
+consecutive runs promotes to BLOCKING mechanically), `**BLOCKING FAIL**` at 0/k. The run
+header reports recall (plants) and FP (controls) as separate numbers.

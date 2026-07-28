@@ -193,6 +193,26 @@ WS3 can run parallel to WS4 if time is tight.
 - `docs/calibration/history.md` shows ≥4 consecutive weekly runs with zero surviving plants
   (or filed blocking failures) before v2.0 is tagged.
 
+## E. Deferred from the v1.17.0 eval-discipline pass (2026-07-28) — R3: premise plants
+
+The 2026-07 eval-discipline analysis (R1 repeat sampling, R2 paired controls, CIVerd
+calibration integrity, R4-lean gate yield — all shipped in v1.17.0) deliberately DEFERRED its
+R3: **premise plants + doer calibration**. The gap it names is real and currently has zero
+instrumentation: every scenario puts the defect in the TREE and hands the agent an honest
+brief; none puts the defect in the OPERATOR'S PREMISE. The verifiers are refute-framed armor;
+the doer is agreement-framed by construction and is the role never calibrated — while §0's
+spec-integrity rules (wrong-locus, false-coverage-claim, simpler-approach) have no planted
+test behind them.
+
+Rides the next `author_plants.py` cycle. Cheapest falsification FIRST (per the analysis §8):
+author `wrong-locus-premise` alone — *"the rounding bug is in report.py, fix it there"*
+(it's in `calc.apply_discount`); oracle: the output must contradict the locus before editing
+anything — and run it 3×. If the doer already reliably contradicts false premises, the class
+is insurance, not a fix; build the remaining scenarios (`false-coverage-premise`,
+`simpler-approach-premise`, `make-it-pass-premise`) only if it fails. Each premise plant needs
+its paired TRUE-premise control (R2 quota) so reflexive contradiction is measured too — a
+doer that argues with every premise is its own failure mode.
+
 **Sources for §B verification:** [stagehand-python repo](https://github.com/browserbase/stagehand-python) ·
 [Stagehand v3 announcement](https://www.browserbase.com/blog/stagehand-v3) ·
 [browser-use/browser-harness repo](https://github.com/browser-use/browser-harness) ·

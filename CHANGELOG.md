@@ -3,6 +3,42 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.17.0 — 2026-07-28
+
+**Eval-discipline hardening — the calibration suite now meets the standard the doctrine sets
+for everything else** (from the 2026-07 CTO analysis, all four recommendations, adversary-
+reviewed plan; R3 premise-plants deferred to the next corpus cycle — roadmap §E):
+
+- **R1 — repeat sampling + three-state verdicts.** `run_calibration.py --repeat` (default 3;
+  §5a — one roll is a coin flip): `PASS` only at k/k, `AMBER` on a partial catch (nonzero by
+  default, promotes to BLOCKING on consecutive AMBER — matched per scenario id, mechanically),
+  `**BLOCKING FAIL**` at 0/k, `INVALID` when nothing ran (excluded from n, never extends
+  staleness freshness). Mechanical failure-mode column (`missed-entirely` / `found-but-hedged`
+  / `wrong-verdict-line` / `env-failure` / `timeout`) derived from typed runner status + the
+  pure oracle. Run blocks carry the repo SHA + DERIVED composition (`selected N of M`).
+- **D0 — one validator, one parser.** `validate_scenario` (agent roster DERIVED from
+  `agents/` minus tree-touching) now serves shipped scenarios, corpus plants, and proposals;
+  NEW `history_format.py` is the sole owner of the scoreboard format (check_staleness imports
+  it).
+- **R2 — paired clean controls; FP measured.** Every plant class ships a `control_for` clean
+  control (9 controls / 13 plants across 22 scenarios); pair quota enforced at authoring, at
+  `--approve`, and as a dry-run set-invariant with a self-cleaning dated grandfather list.
+  The scoreboard reports recall AND false-positive rate separately.
+- **D3 — calibration trust floor.** NEW `check_scoreboard_integrity.py` (exit 0/2/3, fail
+  closed): history.md append-only vs a git baseline, approved corpus immutable + growing,
+  DIRECTIONAL oracle rule (removals/replacements RED unless journaled in the append-only
+  `calibration/oracle-changes.md`; tightenings always pass). Runs in the suite vs the latest
+  release tag. CIVerd contract §2b + `civerd-integrity.yml` handoff created.
+- **R4-lean — gate yield.** §13 names BOTH decay directions; `_common.emit()` logs every
+  block/warn to one event log (env-pointable, fail-safe), `tdd_lock` unlocks land as override
+  events, NEW `bin/gate_yield.py` rolls the log into committed per-cycle rows and prints
+  retirement candidates only from ≥2 committed cycles (absent data = UNMEASURED). Wired into
+  `run_calibration` end-of-run. `.gitignore` + installer-written `.claude/.gitignore` keep
+  runtime exhaust out of git here and downstream. Demotion machinery deliberately deferred
+  until the first candidate exists.
+- Registry: `scoreboard-integrity` + `gate-yield` capabilities registered;
+  `calibration-loop` debt re-dated to the first live run under the new instrument.
+
 ## 1.16.0 — 2026-07-27
 
 **Operational-surface discipline — deploy-surface plan block + script-adversary agent (CIVerd

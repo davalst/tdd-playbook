@@ -120,9 +120,13 @@ The **agents** are calibrated behaviorally on a schedule — planted defects a l
 catch (`calibration/`, results in `docs/calibration/`):
 ```bash
 python3 calibration/check_staleness.py             # deterministic: is the scoreboard stale? (F5)
-python3 calibration/run_calibration.py --dry-run   # free validation (CI)
-python3 calibration/run_calibration.py             # weekly, cheap model, hard caps
+python3 calibration/run_calibration.py --dry-run   # free validation (CI) + R2 pairing invariant
+python3 calibration/run_calibration.py             # weekly, cheap model, hard caps, 3 reps/scenario
 ```
+Since v1.17 each scenario runs 3× (one roll is a coin flip, not a measurement): `PASS` only at
+k/k, `AMBER` on a partial catch (nonzero; consecutive AMBER promotes to BLOCKING), and the run
+header reports **recall and false-positive rate separately** — every plant class ships with a
+paired clean control the verifier must stay quiet on.
 `check_staleness.py` makes the 14-day cadence mechanical instead of a memory: it fails loudly when
 `docs/calibration/history.md`'s latest run is missing or stale. It runs in the release gate and as a
 CIVerd `staleness` check, so decay is flagged off-box on the engine's daily timer.

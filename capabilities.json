@@ -8,7 +8,7 @@
       "activation": {"default": "on"},
       "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "scripts/install_into_repo.py::_merge_hooks"],
       "exercised_by": ["plugins/tdd-playbook/tests/test_hooks.py", "plugins/tdd-playbook/tests/test_installer.py"],
-      "emits": [{"topic": "hook.block_events", "consumers": ["learning-loop (unlock journal via /grade)"]}],
+      "emits": [{"topic": "hook.block_events", "consumers": ["gate_yield.py (per-cycle rollups + retirement candidates, R4)", "learning-loop (unlock journal via /grade)"]}],
       "liveness": {"max_quiet_days": 90, "probe": "calibration/run_calibration.py exercises guards through the real seam"}
     },
     {
@@ -18,7 +18,7 @@
       "activation": {"default": "off", "switch": "/tdd-lock after committing red tests (doctrine default for feature work)"},
       "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "plugins/tdd-playbook/commands/tdd-lock.md"],
       "exercised_by": ["plugins/tdd-playbook/tests/test_tdd_lock.py"],
-      "emits": [{"topic": "tdd_lock.journal", "consumers": ["learning-loop (/grade reads unlock reasons)"]}]
+      "emits": [{"topic": "tdd_lock.journal", "consumers": ["learning-loop (/grade reads unlock reasons)", "gate_yield.py (journaled unlocks land as override events — the adjudicated false-positive signal)"]}]
     },
     {
       "id": "citation-gate",
@@ -51,15 +51,39 @@
       "activation": {"default": "off", "switch": "python3 calibration/run_calibration.py (weekly, David-run or scheduled; --dry-run is CI-only validation)"},
       "wired_by": ["calibration/run_calibration.py", "calibration/author_plants.py"],
       "exercised_by": ["calibration/test_harness.py"],
-      "emits": [{"topic": "docs/calibration/history.md", "consumers": ["public scoreboard (WS5)", "v2.0 release gate"]}],
-      "liveness": {"max_quiet_days": 14, "probe": "calibration/check_staleness.py — mechanical history.md staleness gate (F5), run in the release gate and as a CIVerd check"},
+      "emits": [{"topic": "docs/calibration/history.md (run blocks: repo SHA + derived composition + recall AND FP since v1.17)", "consumers": ["public scoreboard (WS5)", "v2.0 release gate", "check_scoreboard_integrity.py (append-only proof)"]}],
+      "liveness": {"max_quiet_days": 14, "probe": "calibration/check_staleness.py — mechanical history.md staleness gate (F5, INVALID rows never extend freshness), run in the release gate and as a CIVerd check"},
       "integration_debt": [
         {
-          "what": "first live run landed 2026-07-10 (4/4 after two fix rounds); v2.0 remains gated on >=1 month of sustained live cadence",
+          "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it — due ~2026-08-10 — must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence",
           "owner": "david",
-          "expires": "2026-08-10"
+          "expires": "2026-08-17"
         }
       ]
+    },
+    {
+      "id": "scoreboard-integrity",
+      "summary": "check_scoreboard_integrity.py — history.md append-only, approved corpus immutable+growing, directional oracle rule with the append-only oracle-changes.md journal (D3; exit 0/2/3, fail closed).",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "on"},
+      "wired_by": ["calibration/test_harness.py (runs it vs the latest release tag on every suite run)", "CLAUDE.md::release discipline", "docs/plans/civerd-trust-floor-2026-07.md §2b (calibration_integrity check)"],
+      "exercised_by": ["calibration/test_harness.py"],
+      "integration_debt": [
+        {
+          "what": "engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract §2b + §1.3 hard-floor listing) not yet implemented on srv1621832",
+          "owner": "david",
+          "expires": "2026-09-15"
+        }
+      ]
+    },
+    {
+      "id": "gate-yield",
+      "summary": "gate_yield.py — §13's second decay direction (more expensive than the risk): per-cycle rollups of the hooks' event log into docs/calibration/gate_yield.md; retirement candidates only from >=2 committed cycles, absent data UNMEASURED never zero (R4-lean).",
+      "surfaces": ["local", "cloud"],
+      "activation": {"default": "on"},
+      "wired_by": ["plugins/tdd-playbook/hooks/scripts/_common.py::emit (single logging seam)", "calibration/run_calibration.py (end-of-run rollup + candidate report)", "scripts/install_into_repo.py (vendors bin/ + .claude/.gitignore)"],
+      "exercised_by": ["plugins/tdd-playbook/tests/test_gate_yield.py", "plugins/tdd-playbook/tests/test_hooks.py"],
+      "emits": [{"topic": "docs/calibration/gate_yield.md (committed rollups)", "consumers": ["calibration cycle review (retirement decisions, R4.3 demotion shape when the first candidate appears)"]}]
     },
     {
       "id": "nudge-anti-tax",

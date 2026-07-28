@@ -17,6 +17,9 @@ run itself still needs a real `claude` binary (below).
 ```bash
 python3 calibration/check_staleness.py            # deterministic: is the scoreboard stale? (F5)
 python3 calibration/run_calibration.py            # cheap model, hard caps; appends history
+                                                  # (3 reps/scenario by default since v1.17 —
+                                                  # PASS only at k/k; AMBER is nonzero and
+                                                  # promotes to BLOCKING on a repeat)
 ```
 - A plant surviving to a clean verdict is a **BLOCKING failure** — fix the agent, never the
   plant. File it, fix it, re-run before anything else ships.
@@ -24,17 +27,26 @@ python3 calibration/run_calibration.py            # cheap model, hard caps; appe
 - Run as a NON-root user — the very first attempt logged INVALID because it ran under root, where
   the headless doer couldn't run (see `TDD_PLAYBOOK_CALIBRATION_ARGS` in `run_calibration.py`'s
   header for the sandbox-args env knob).
-- Status as of 2026-07-27: **seeded and clean.** Last live run 2026-07-27 — the full 9-scenario
-  suite on haiku: 8/9 on the first pass, then 9/9 after ONE agent fix (a `vacuous-mutation-scope`
-  BLOCKING FAIL — the model hand-analyzed a real function when the scope named a typo; the
-  `mutation-runner` vacuity guard now resolves-the-scope-first and re-ran to PASS). Every scenario
-  added through v1.9 validated live. Next run due ~2026-08-10 (14-day cadence). If
-  `docs/calibration/history.md` is missing or its last entry is stale >14 days, raise it with David
-  proactively — but READ `history.md` first; do not repeat the stale-status error of claiming it was
-  never seeded.
+- Status as of 2026-07-28: last live run 2026-07-27 on haiku — 9/9 on the shipped suite after ONE
+  agent fix (a `vacuous-mutation-scope` BLOCKING FAIL; the `mutation-runner` vacuity guard now
+  resolves-the-scope-first), and — stated because the old summary rounded toward green (§13:
+  that pattern is the loudest signal there is) — the same-day CORPUS rows show
+  `csv-escape-fixed-at-call-site` failing twice and `shadowed-import-vacuous-suite` three times
+  before their terminal passes. Under N=1 nothing distinguished "fixed" from "lucky roll"; v1.17's
+  repeat sampling + AMBER verdict exists precisely because of those rows, and the NEXT run
+  (~2026-08-10) is the first under the new instrument — it must land recall AND FP numbers.
+  If `docs/calibration/history.md` is missing or its last entry is stale >14 days, raise it with
+  David proactively — but READ `history.md` first; do not repeat the stale-status error of
+  claiming it was never seeded.
 - **Corpus: seeded 2026-07-27** — first co-evolution cycle complete: 4 adversary-authored plants
   (by `claude-fable-5`, David-approved) in `calibration/corpus/approved/`, so live runs now cover
-  13 scenarios (9 shipped + 4 corpus). Keep the cycle going each calibration period
+  the shipped + corpus suite. (Never write the scenario COUNT down here — hand-maintained
+  counts drift silently; the harness derives the composition into every history.md run header,
+  and `run_calibration.py` prints `selected N of M` live. That is the source of truth.)
+  Since v1.17 every plant class carries a PAIRED CLEAN CONTROL (`control_for`) so false
+  positives are measured, not just recall; the pair quota is mechanical — unpaired proposals
+  are rejected at authoring, at `--approve`, and by the dry-run pairing invariant. Keep the
+  cycle going each calibration period
   (`author_plants.py` below); the corpus only grows. Known pipeline limitation: plants can only
   MODIFY existing fixture files (`apply_edits` cannot create files — 4 of 6 first-batch candidates
   were mechanically rejected for that; a `create` capability is a possible future enhancement).
@@ -137,8 +149,11 @@ Local-machine plugin installs update separately (no prompt needed):
   `capabilities.json` (we eat the §6a dogfood — enforced MECHANICALLY by
   `test_capability_registry.py::test_own_registry` on every suite run with the real date,
   so expired integration debt fails the tests, not just the checklist),
+  `calibration/check_scoreboard_integrity.py --baseline-rev <previous release tag>` exits 0
+  (D3 — history append-only, corpus immutable, oracles never weakened unjournaled; ALSO
+  enforced mechanically: `test_harness.py` runs it against the latest tag on every suite run),
   and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
-  present, `${CLAUDE_PLUGIN_ROOT}` rewritten).
+  present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.claude/.gitignore` written).
 - Version bumps update BOTH `plugins/tdd-playbook/.claude-plugin/plugin.json` and
   `.claude-plugin/marketplace.json`, plus CHANGELOG.md.
 - **CIVerd release gate (audit finding F4).** The release TAG is created ONLY by
