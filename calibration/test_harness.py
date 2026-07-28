@@ -252,6 +252,108 @@ def _d1_repeat_tests(d):
           "AMBER×2" not in txt and "AMBER" in txt, txt)
 
 
+def _d2_control_tests():
+    """PLANTED (D2/R2): a suite with one clean control measures recall and calls it quality —
+    a verifier that flags everything scores 13/14. Controls must be structurally enforced:
+    schema rules in THE validator, pairing as a set-level invariant on the release-gate path
+    (a plant hand-dropped into scenarios.json or corpus/approved/ must be caught there, not
+    only at --approve)."""
+    print("\n[D2 paired controls]")
+    import run_calibration as rc
+
+    plant = {"id": "d2-plant", "agent": "claims-verifier", "plant": "p", "task": "t",
+             "must_match": ["REFUTED"]}
+    control = {"id": "d2-control", "agent": "claims-verifier", "plant": "clean control",
+               "task": "t", "must_match": ["CONFIRMED"], "must_not_match": ["REFUTED"],
+               "control_for": "d2-plant"}
+
+    check("control: valid pair member validates",
+          rc.validate_scenario(control, set()) == [], rc.validate_scenario(control, set()))
+    no_alarm = {k: v for k, v in control.items() if k != "must_not_match"}
+    check("control missing must_not_match (alarm verdict) rejected",
+          any("must_not_match" in p for p in rc.validate_scenario(no_alarm, set())),
+          rc.validate_scenario(no_alarm, set()))
+    selfref = dict(control, control_for="d2-control")
+    check("control_for self-reference rejected",
+          any("self" in p for p in rc.validate_scenario(selfref, set())),
+          rc.validate_scenario(selfref, set()))
+
+    if not hasattr(rc, "pairing_problems"):
+        check("run_calibration.pairing_problems exists (set-level invariant)", False, "missing")
+        return
+    check("pairing: unpaired non-grandfathered plant flagged",
+          any("unpaired" in p for p in rc.pairing_problems([plant])),
+          rc.pairing_problems([plant]))
+    check("pairing: paired plant clean", rc.pairing_problems([plant, control]) == [],
+          rc.pairing_problems([plant, control]))
+    orphan = dict(control, id="d2-orphan", control_for="no-such-plant")
+    check("pairing: control referencing unknown plant flagged",
+          any("unknown" in p for p in rc.pairing_problems([orphan])),
+          rc.pairing_problems([orphan]))
+
+    # the grandfather list is SELF-CLEANING: every entry must be a real plant that still
+    # lacks a control — a paired or vanished id left in the list fails here, so the list
+    # can only shrink as the backfill lands
+    all_real = rc.load_scenarios() + rc.load_corpus()
+    real_ids = {s["id"] for s in all_real}
+    paired_ids = {s.get("control_for") for s in all_real if s.get("control_for")}
+    stale_gf = [i for i in rc.GRANDFATHERED_PLANT_IDS
+                if i not in real_ids or i in paired_ids]
+    check("grandfather list self-cleaning (entries exist and are still unpaired)",
+          stale_gf == [], stale_gf)
+    check("shipped suite passes the pairing invariant (grandfather covers the rest)",
+          rc.pairing_problems(all_real) == [], rc.pairing_problems(all_real))
+    check("activation: good-fix-single-source is control_for band-aid-parallel-list",
+          any(s["id"] == "good-fix-single-source"
+              and s.get("control_for") == "band-aid-parallel-list"
+              for s in rc.load_scenarios()))
+
+    # dry_run carries the invariant (release-gate path) even for a synthetic corpus
+    orig_ls, orig_lc = rc.load_scenarios, rc.load_corpus
+    try:
+        rc.load_scenarios = lambda: [dict(plant)]
+        rc.load_corpus = lambda: []
+        code = rc.dry_run([dict(plant)])
+    finally:
+        rc.load_scenarios, rc.load_corpus = orig_ls, orig_lc
+    check("PLANTED unpaired plant fails dry-run (set-level, release-gate path)", code == 1,
+          code)
+
+    # the adversary brief demands pairs and documents the field
+    import author_plants as ap
+    prompt = ap.adversary_prompt(None)
+    check("adversary brief demands plant+control pairs",
+          "control_for" in prompt and "pair" in prompt.lower(), prompt[:400])
+    check("CATEGORIES gained the script/runtime-safety class (script-adversary pairable)",
+          "script" in ap.CATEGORIES, ap.CATEGORIES)
+
+
+def _d2_fp_scoreboard_tests(d):
+    """PLANTED (D2): a control the verifier wrongly flags must surface as FP, not vanish."""
+    def run_ctrl(claude_bin, hist):
+        return subprocess.run(
+            [sys.executable, RUNNER, "--scenario", "good-fix-single-source",
+             "--claude-bin", claude_bin, "--history", hist],
+            capture_output=True, text=True, timeout=300)
+
+    trigger_happy = make_stub(d, "Verdict: BAND-AID (1) -- this still isn't a per-tool "
+                                 "attribute.\nRecommendation: refactor to attributes.")
+    hp = os.path.join(d, "h-fp.md")
+    p = run_ctrl(trigger_happy, hp)
+    txt = open(hp).read()
+    check("PLANTED trigger-happy verifier on a control -> FP 1/1, exit nonzero",
+          p.returncode == 1 and "FP 1/1" in txt and "recall 0/0" in txt, (p.returncode, txt))
+
+    quiet_right = make_stub(d, "The fix unifies audit.py to derive from tools -- a single "
+                               "source of truth, root-fixed at the right seam.\n"
+                               "Verdict: ARCHITECTURAL\nRecommendation: none.")
+    hp = os.path.join(d, "h-fp0.md")
+    p = run_ctrl(quiet_right, hp)
+    txt = open(hp).read()
+    check("correctly quiet on the control -> FP 0/1, exit 0",
+          p.returncode == 0 and "FP 0/1" in txt, (p.returncode, txt))
+
+
 def _unified_validator_tests():
     """PLANTED (D0): two disagreeing validators were the parallel-list bug one level up —
     run_calibration must own ONE validate_scenario, with KNOWN_AGENTS derived from the
@@ -322,8 +424,11 @@ def main():
     _history_format_tests()
     _staleness_invalid_tests()
     _unified_validator_tests()
+    _d2_control_tests()
     with tempfile.TemporaryDirectory() as d1d:
         _d1_repeat_tests(d1d)
+    with tempfile.TemporaryDirectory() as d2d:
+        _d2_fp_scoreboard_tests(d2d)
 
     # dry-run over the real shipped scenarios must validate
     p = subprocess.run([sys.executable, RUNNER, "--dry-run"],
@@ -537,25 +642,56 @@ def test_author_plants():
         ap.PROPOSED = os.path.join(d, "proposed")
         ap.APPROVED = os.path.join(d, "approved")
 
-        # end-to-end author with a stub adversary emitting one good + one bad plant
-        stub_out = json.dumps([good, bad_agent])
+        # end-to-end author with a stub adversary emitting a PAIR + one bad plant (D2: the
+        # pair quota — a proposal without its clean control never reaches human review)
+        good_control = {
+            "id": "corpus-test-good-ctl", "agent": "claims-verifier",
+            "plant": "clean control: the header claim is true", "edits": [],
+            "task": "Verify: 'export_csv emits a header row.'",
+            "must_match": ["CONFIRMED"], "must_not_match": ["REFUTED"],
+            "control_for": "corpus-test-good",
+        }
+        stub_out = json.dumps([good, good_control, bad_agent])
         stub = make_stub(d, stub_out.replace("\\", "\\\\"))
         rc = ap.main(["--model", "stub-model", "--claude-bin", stub])
-        proposed = os.listdir(ap.PROPOSED)
-        check("author: good plant proposed, bad rejected",
-              rc == 0 and proposed == ["corpus-test-good.json"], (rc, proposed))
+        proposed = sorted(os.listdir(ap.PROPOSED))
+        check("author: paired plant+control proposed, bad rejected",
+              rc == 0 and proposed == ["corpus-test-good-ctl.json", "corpus-test-good.json"],
+              (rc, proposed))
         with open(os.path.join(ap.PROPOSED, "corpus-test-good.json")) as fh:
             meta = json.load(fh)["_meta"]
         check("author: model + date metadata recorded",
               meta["authored_by_model"] == "stub-model" and meta["status"] == "proposed", meta)
 
-        # approve is review-gated (moves, re-validates)
+        # PLANTED (D2): an author run emitting ONLY an unpaired plant is rejected wholesale
+        lone = dict(good, id="corpus-test-lone")
+        stub_lone = make_stub(d, json.dumps([lone]).replace("\\", "\\\\"), )
+        rc = ap.main(["--model", "stub-model", "--claude-bin", stub_lone])
+        check("author: PLANTED unpaired proposal rejected before human review",
+              rc == 1 and not os.path.isfile(
+                  os.path.join(ap.PROPOSED, "corpus-test-lone.json")), rc)
+
+        # approve is review-gated (moves, re-validates); a control still in proposed/
+        # satisfies the plant's pairing
         rc = ap.main(["--approve", "corpus-test-good"])
-        check("approve moves to approved/", rc == 0
-              and os.listdir(ap.APPROVED) == ["corpus-test-good.json"]
+        check("approve moves to approved/ (proposed control counts as pairing)", rc == 0
+              and os.listdir(ap.APPROVED) == ["corpus-test-good.json"], rc)
+        rc = ap.main(["--approve", "corpus-test-good-ctl"])
+        check("approve: the paired control follows", rc == 0
+              and sorted(os.listdir(ap.APPROVED)) == ["corpus-test-good-ctl.json",
+                                                      "corpus-test-good.json"]
               and not os.listdir(ap.PROPOSED), rc)
         rc = ap.main(["--approve", "corpus-test-good"])
         check("re-approving a moved plant refuses", rc == 1, rc)
+
+        # PLANTED (D2): a hand-dropped unpaired plant in proposed/ is refused at approve
+        hand = dict(good, id="corpus-test-hand",
+                    _meta={"authored_by_model": "x", "authored_at": "2026-07-28",
+                           "status": "proposed"})
+        with open(os.path.join(ap.PROPOSED, "corpus-test-hand.json"), "w") as fh:
+            json.dump(hand, fh)
+        rc = ap.main(["--approve", "corpus-test-hand"])
+        check("approve: PLANTED unpaired plant refused (pairing echo)", rc == 1, rc)
 
 
 if __name__ == "__main__":
