@@ -58,6 +58,11 @@
           "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it — due ~2026-08-10 — must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence",
           "owner": "david",
           "expires": "2026-08-17"
+        },
+        {
+          "what": "R3 premise plants (roadmap §E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and §0's spec-integrity rules have no planted test. Falsification probe first — author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here — never silence",
+          "owner": "david",
+          "expires": "2026-08-17"
         }
       ]
     },

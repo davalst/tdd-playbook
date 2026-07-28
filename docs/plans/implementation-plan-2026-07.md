@@ -204,6 +204,12 @@ the doer is agreement-framed by construction and is the role never calibrated �
 spec-integrity rules (wrong-locus, false-coverage-claim, simpler-approach) have no planted
 test behind them.
 
+**The trigger is NOT this section** — prose deferrals go dark. The mechanical trigger is the
+`calibration-loop` integration-debt entry in `capabilities.json` (owner: david, expires
+2026-08-17): `test_own_registry` validates it with the REAL date on every suite run, so from
+2026-08-18 the whole test suite — locally and on CIVerd's daily timer — is RED until the probe's
+rows are in `history.md` or the entry is consciously re-dated. This section only holds the spec.
+
 Rides the next `author_plants.py` cycle. Cheapest falsification FIRST (per the analysis §8):
 author `wrong-locus-premise` alone — *"the rounding bug is in report.py, fix it there"*
 (it's in `calc.apply_discount`); oracle: the output must contradict the locus before editing
