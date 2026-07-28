@@ -29,6 +29,8 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import history_format  # noqa: E402  (the ONE owner of the scoreboard format — D0)
 REPO = os.path.dirname(HERE)
 FIXTURE = os.path.join(HERE, "fixture")
 SCENARIOS = os.path.join(HERE, "scenarios.json")
@@ -36,6 +38,52 @@ AGENTS_DIR = os.path.join(REPO, "plugins", "tdd-playbook", "agents")
 DEFAULT_HISTORY = os.path.join(REPO, "docs", "calibration", "history.md")
 MAX_TURNS = "25"
 TIMEOUT_S = 600
+DEFAULT_REPEAT = 3  # §5a applied to ourselves: one roll of a probabilistic verifier is a
+                    # coin flip, not a measurement (R1 — the 2026-07-27 lucky-roll rows)
+
+# Tree-touching agents need revert-safety discipline and stay OUT of headless calibration.
+# Everything else in plugins/tdd-playbook/agents/ is calibratable — the roster is DERIVED,
+# never a second hand-maintained list (the origin freeze: a hardcoded set stuck at four
+# while the roster grew to nine; §6a old-blind-to-new).
+TREE_TOUCHING_AGENTS = {"planted-error-probe", "ux-probe-calibrator"}
+
+
+def known_agents():
+    try:
+        names = {fn[:-3] for fn in os.listdir(AGENTS_DIR) if fn.endswith(".md")}
+    except OSError:
+        return set()
+    return names - TREE_TOUCHING_AGENTS
+
+
+def validate_scenario(sc, taken_ids, agents=None):
+    """THE scenario validator (D0) — shipped scenarios, corpus plants, and adversary proposals
+    all pass through here; there is deliberately no second copy. Returns problem strings."""
+    problems = []
+    for key in ("id", "agent", "plant", "task", "must_match"):
+        if not sc.get(key):
+            problems.append("missing/empty field: " + key)
+    agents = known_agents() if agents is None else agents
+    if sc.get("agent") not in agents:
+        problems.append("unknown agent: {}".format(sc.get("agent")))
+    if sc.get("id") in taken_ids:
+        problems.append("duplicate id: {}".format(sc.get("id")))
+    for rx in sc.get("must_match", []) + sc.get("must_not_match", []):
+        try:
+            re.compile(rx)
+        except re.error as e:
+            problems.append("bad regex /{}/: {}".format(rx, e))
+    if not problems:
+        root = tempfile.mkdtemp(prefix="scn-val-")
+        try:
+            shutil.copytree(FIXTURE, root, dirs_exist_ok=True,
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            apply_edits(root, sc.get("edits", []))
+        except Exception as e:
+            problems.append("edits do not apply to fixture: {}".format(e))
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    return problems
 
 
 def load_scenarios():
@@ -114,15 +162,30 @@ def stage(scenario):
 
 
 def oracle(scenario, output):
-    """Deterministic verdict: (passed, problems)."""
-    problems = []
+    """Deterministic verdict: (passed, problems, mode). PURE — knows nothing about the runner
+    (timeouts/env failures are classified at the run_agent seam from the returncode it holds,
+    never re-derived here by string-sniffing). Mode is the closed R1.3 vocabulary's oracle
+    slice: wrong-verdict-line > found-but-hedged > missed-entirely."""
+    problems, matched_some = [], False
     for rx in scenario.get("must_match", []):
-        if not re.search(rx, output, re.IGNORECASE):
+        if re.search(rx, output, re.IGNORECASE):
+            matched_some = True
+        else:
             problems.append("expected /{}/ — NOT found (plant survived?)".format(rx))
+    wrong_line = False
     for rx in scenario.get("must_not_match", []):
         if re.search(rx, output, re.IGNORECASE):
+            wrong_line = True
             problems.append("forbidden /{}/ — FOUND".format(rx))
-    return (not problems), problems
+    if not problems:
+        return True, [], None
+    if wrong_line:
+        mode = "wrong-verdict-line"
+    elif matched_some:
+        mode = "found-but-hedged"
+    else:
+        mode = "missed-entirely"
+    return False, problems, mode
 
 
 def turns_for(scenario):
@@ -137,71 +200,84 @@ def turns_for(scenario):
 
 
 def run_agent(scenario, root, claude_bin, model):
+    """One rep. Returns (status, output), status in {ok, timeout, env_failure} — typed at the
+    seam that HOLDS the returncode/exception (arch-F4). env_failure = nonzero exit with empty
+    stdout: the doer never ran (the 2026-07-09 root-permission case); it is not an agent
+    failure and is excluded from n. FileNotFoundError propagates (fatal, short-circuits)."""
     prompt = (agent_body(scenario["agent"])
               + "\n\n# TASK (work in the current directory; it is a git repo)\n"
               + scenario["task"])
     cmd = [claude_bin, "-p", prompt, "--model", model, "--max-turns", turns_for(scenario)]
     extra = os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split()
     cmd.extend(extra)
-    p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=TIMEOUT_S)
-    return p.stdout + ("\n[stderr]\n" + p.stderr if p.returncode != 0 else "")
+    try:
+        p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        return "timeout", "[TIMEOUT after {}s]".format(TIMEOUT_S)
+    if p.returncode != 0 and not p.stdout.strip():
+        return "env_failure", "[env failure rc={}]\n{}".format(p.returncode, p.stderr[-800:])
+    return "ok", p.stdout + ("\n[stderr]\n" + p.stderr if p.returncode != 0 else "")
 
 
 def dry_run(scenarios):
-    """Validate everything that doesn't need a model. Exit non-zero on any problem."""
+    """Validate everything that doesn't need a model — through THE validator (D0), so shipped
+    scenarios obey the same rules as corpus proposals. Exit non-zero on any problem."""
     problems = []
     # fixture must be green unplanted
     p = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests"],
                        cwd=FIXTURE, capture_output=True, text=True, timeout=120)
     if p.returncode != 0:
         problems.append("fixture tests FAIL unplanted:\n" + p.stderr[-800:])
+    seen = set()
     for sc in scenarios:
-        if not os.path.isfile(os.path.join(AGENTS_DIR, sc["agent"] + ".md")):
-            problems.append("{}: unknown agent {}".format(sc["id"], sc["agent"]))
-        for rx in sc.get("must_match", []) + sc.get("must_not_match", []):
-            try:
-                re.compile(rx)
-            except re.error as e:
-                problems.append("{}: bad regex /{}/: {}".format(sc["id"], rx, e))
-        try:
-            root = stage(sc)
-            shutil.rmtree(root, ignore_errors=True)
-        except Exception as e:
-            problems.append("{}: plant does not apply: {}".format(sc["id"], e))
-        if not sc.get("must_match"):
-            problems.append("{}: no must_match oracle — scenario cannot fail".format(sc["id"]))
+        for msg in validate_scenario(sc, seen):
+            problems.append("{}: {}".format(sc.get("id"), msg))
+        seen.add(sc.get("id"))
     for msg in problems:
         print("DRY-RUN PROBLEM: " + msg)
     print("dry-run: {} scenario(s), {} problem(s)".format(len(scenarios), len(problems)))
     return 1 if problems else 0
 
 
-def append_history(history_path, model, results):
+def repo_sha():
+    p = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
+                       capture_output=True, text=True, timeout=30)
+    return p.stdout.strip() if p.returncode == 0 and p.stdout.strip() else "unknown"
+
+
+def append_history(history_path, model, results, meta):
+    """Append one run block via history_format. results: dicts {sc, runs, mode, verdict};
+    meta: selected/total/shipped/corpus/controls/recall/fp (date/model/repo_sha filled here).
+    The run header carries the repo SHA (R1.4 fix-traceability) and the DERIVED composition —
+    counts are computed, never hand-written (the CLAUDE.md '13 scenarios' drift class)."""
     if not history_path:
         return
-    os.makedirs(os.path.dirname(history_path), exist_ok=True)
-    new = not os.path.isfile(history_path)
-    with open(history_path, "a") as fh:
-        if new:
-            fh.write("# Calibration history\n\n"
-                     "| date | model | scenario | agent | verdict |\n"
-                     "|---|---|---|---|---|\n")
-        today = datetime.date.today().isoformat()
-        for sc, passed, _problems in results:
-            # F3 — surface the verifier-vs-adversary tier: `<verifier> vs <plant-author>` for
-            # corpus plants so a verifier weaker than the model that authored the plant is
-            # VISIBLE on the scoreboard (the §13 ratio, not just prose).
-            author = (sc.get("_meta") or {}).get("authored_by_model")
-            model_cell = "{} vs {}".format(model, author) if author else model
-            fh.write("| {} | {} | {} | {} | {} |\n".format(
-                today, model_cell, sc["id"], sc["agent"],
-                "PASS" if passed else "**BLOCKING FAIL**"))
+    today = datetime.date.today().isoformat()
+    rows = []
+    for r in results:
+        sc = r["sc"]
+        # F3 — surface the verifier-vs-adversary tier: `<verifier> vs <plant-author>` for
+        # corpus plants so a verifier weaker than the model that authored the plant is
+        # VISIBLE on the scoreboard (the §13 ratio, not just prose).
+        author = (sc.get("_meta") or {}).get("authored_by_model")
+        model_cell = "{} vs {}".format(model, author) if author else model
+        rows.append({"date": today, "model_cell": model_cell, "scenario": sc["id"],
+                     "agent": sc["agent"], "runs": r["runs"], "mode": r["mode"],
+                     "verdict": r["verdict"]})
+    hf_meta = dict(meta)
+    hf_meta.setdefault("date", today)
+    hf_meta.setdefault("model", model)
+    hf_meta.setdefault("repo_sha", repo_sha())
+    history_format.append_run_block(history_path, hf_meta, rows)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Run planted-defect calibration of the agents.")
     ap.add_argument("--agent", help="only scenarios for this agent")
     ap.add_argument("--scenario", help="only this scenario id")
+    ap.add_argument("--repeat", type=int, default=DEFAULT_REPEAT, metavar="K",
+                    help="reps per scenario (default {}; one roll is a coin flip, not a "
+                         "measurement — §5a)".format(DEFAULT_REPEAT))
     ap.add_argument("--dry-run", action="store_true", help="validate without model calls")
     ap.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
     ap.add_argument("--model", default=os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "haiku"))
@@ -209,8 +285,17 @@ def main(argv=None):
                     help='history file to append ("" to suppress)')
     args = ap.parse_args(argv)
 
+    if args.repeat < 1:
+        print("--repeat must be >= 1")
+        return 2
+
     corpus = load_corpus()
-    scenarios = load_scenarios() + corpus
+    shipped = load_scenarios()
+    # Composition is computed PRE-filter (arch-F8): a --scenario rerun records
+    # "selected 1 of N", never itself as the whole suite.
+    all_scenarios = shipped + corpus
+    controls_total = sum(1 for s in all_scenarios if s.get("control_for"))
+    scenarios = all_scenarios
     stale = catalog_staleness()
     if stale is not None and stale > 100:
         print("DECAY WARNING: docs/HACK_CATALOG.md last refreshed ~{} days ago — the "
@@ -225,33 +310,98 @@ def main(argv=None):
     if args.dry_run:
         return dry_run(scenarios)
 
+    # Prior verdicts for the mechanical AMBER×2 promotion — matched per SCENARIO ID, never
+    # "the previous run block" (blocks are filter-scoped; arch-F5).
+    prior_rows = []
+    if args.history and os.path.isfile(args.history):
+        with open(args.history) as fh:
+            prior_rows = history_format.parse_rows(fh.read())
+
+    def last_kind(sid):
+        for r in reversed(prior_rows):
+            if r["scenario"] == sid:
+                return r["kind"]
+        return None
+
+    mode_precedence = ("timeout", "env-failure", "wrong-verdict-line",
+                       "found-but-hedged", "missed-entirely")
     results, failed = [], 0
     for sc in scenarios:
         print("\n=== {} [{}] — plant: {}".format(sc["id"], sc["agent"], sc["plant"]))
-        root = stage(sc)
-        try:
-            out = run_agent(sc, root, args.claude_bin, args.model)
-        except FileNotFoundError:
-            print("FATAL: claude binary not found ({}) — set TDD_PLAYBOOK_CLAUDE_BIN "
-                  "or use --dry-run".format(args.claude_bin))
-            return 2
-        except subprocess.TimeoutExpired:
-            out = "[TIMEOUT after {}s]".format(TIMEOUT_S)
-        finally:
-            shutil.rmtree(root, ignore_errors=True)
-        passed, problems = oracle(sc, out)
-        results.append((sc, passed, problems))
-        if passed:
-            print("PASS — the agent caught the plant")
+        reps = []
+        for _rep in range(args.repeat):
+            root = stage(sc)
+            try:
+                status, out = run_agent(sc, root, args.claude_bin, args.model)
+            except FileNotFoundError:
+                print("FATAL: claude binary not found ({}) — set TDD_PLAYBOOK_CLAUDE_BIN "
+                      "or use --dry-run".format(args.claude_bin))
+                return 2
+            finally:
+                shutil.rmtree(root, ignore_errors=True)
+            if status == "ok":
+                passed, problems, mode = oracle(sc, out)
+                reps.append({"passed": passed, "mode": mode, "problems": problems,
+                             "out": out, "env": False})
+            else:
+                mode = "timeout" if status == "timeout" else "env-failure"
+                reps.append({"passed": False, "mode": mode, "problems": ["[{}]".format(mode)],
+                             "out": out, "env": status == "env_failure"})
+        counted = [r for r in reps if not r["env"]]  # env failures never poison n
+        k = sum(1 for r in counted if r["passed"])
+        n = len(counted)
+        fail_modes = [r["mode"] for r in reps if r["mode"]]
+        mode = next((m for m in mode_precedence if m in fail_modes), None)
+        if n == 0:
+            verdict = "INVALID — env failure on all reps"
+        elif k == n:
+            verdict = "PASS"
+        elif k == 0:
+            verdict = "**BLOCKING FAIL**"
+        elif last_kind(sc["id"]) == "AMBER":
+            verdict = "**BLOCKING FAIL** (AMBER×2)"
         else:
-            failed += 1
-            print("BLOCKING FAIL — the plant survived:")
-            for pr in problems:
-                print("  - " + pr)
-            print("--- agent output (tail) ---\n" + out[-1500:])
-    append_history(args.history, args.model, results)
-    print("\nCalibration: {}/{} caught · corpus size {} (only grows)".format(
-        len(results) - failed, len(results), len(corpus)))
+            verdict = "AMBER"
+        results.append({"sc": sc, "runs": "{}/{}".format(k, n), "mode": mode,
+                        "verdict": verdict})
+        if verdict == "PASS":
+            print("PASS — the agent caught the plant ({}/{})".format(k, n))
+            continue
+        failed += 1
+        if verdict.startswith("INVALID"):
+            print("INVALID — environment failure on every rep; nothing was measured")
+        elif verdict.endswith("(AMBER×2)"):
+            print("BLOCKING FAIL — AMBER on consecutive runs, promoted mechanically "
+                  "(caught {}/{}, mode: {})".format(k, n, mode))
+        elif verdict == "AMBER":
+            print("AMBER — caught only {}/{} (mode: {}); a terminal pass no longer closes "
+                  "a failure".format(k, n, mode))
+        else:
+            print("BLOCKING FAIL — the plant survived ({}/{}, mode: {}):".format(k, n, mode))
+        worst = next((r for r in reps if not r["passed"]), reps[-1])
+        for pr in worst["problems"]:
+            print("  - " + pr)
+        print("--- agent output (tail) ---\n" + worst["out"][-1500:])
+
+    plants = [r for r in results if not r["sc"].get("control_for")]
+    controls = [r for r in results if r["sc"].get("control_for")]
+
+    def measured(rs):
+        return [r for r in rs if not r["verdict"].startswith("INVALID")]
+
+    recall = (sum(1 for r in measured(plants) if r["verdict"] == "PASS"),
+              len(measured(plants)))
+    fp = (sum(1 for r in measured(controls) if r["verdict"] != "PASS"),
+          len(measured(controls)))
+    meta = {"selected": len(scenarios), "total": len(all_scenarios),
+            "shipped": len(shipped), "corpus": len(corpus), "controls": controls_total,
+            "recall": recall, "fp": fp}
+    append_history(args.history, args.model, results, meta)
+    print("\nCalibration: {}/{} caught · selected {} of {} ({} shipped + {} corpus · {} "
+          "controls) · recall {}/{} · FP {}/{} · corpus size {} (only grows)".format(
+              len(results) - failed, len(results), len(scenarios), len(all_scenarios),
+              len(shipped), len(corpus), controls_total, recall[0], recall[1],
+              fp[0], fp[1], len(corpus)))
     return 1 if failed else 0
 
 

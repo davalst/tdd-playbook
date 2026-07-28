@@ -15,26 +15,18 @@ prints the finding but exits 0 (advisory use inside a release gate that shouldn'
 """
 import argparse
 import os
-import re
 import sys
 from datetime import date
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+# The ONE owner of the scoreboard format (D0) — this gate previously carried its own date
+# regex, and that private copy would have read a run of INVALID rows as "fresh". The shared
+# parser skips INVALID: a run where nothing was calibrated never extends freshness.
+from history_format import latest_run_date  # noqa: E402
+
 DEFAULT_HISTORY = os.path.join(REPO, "docs", "calibration", "history.md")
-_DATE_ROW = re.compile(r"^\s*\|\s*(\d{4})-(\d{2})-(\d{2})\s*\|")
-
-
-def latest_run_date(text):
-    """Return the most recent YYYY-MM-DD found in leading table cells, or None if there are none."""
-    dates = []
-    for line in text.splitlines():
-        m = _DATE_ROW.match(line)
-        if m:
-            try:
-                dates.append(date(int(m.group(1)), int(m.group(2)), int(m.group(3))))
-            except ValueError:
-                continue
-    return max(dates) if dates else None
 
 
 def evaluate(history_path, as_of, max_age_days):

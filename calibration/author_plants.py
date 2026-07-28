@@ -20,31 +20,24 @@ import argparse
 import datetime
 import json
 import os
-import re
-import shutil
 import subprocess
 import sys
-import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(HERE, "fixture")
 PROPOSED = os.path.join(HERE, "corpus", "proposed")
 APPROVED = os.path.join(HERE, "corpus", "approved")
-# The READ-ONLY verdict agents (calibratable headlessly with a regex oracle). Tree-touching
-# agents (planted-error-probe, ux-probe-calibrator, mutation-runner's Edit mode) are excluded
-# from CORPUS authoring — their scenarios need revert-safety discipline, so they stay
-# hand-written. Keep this in sync with plugins/tdd-playbook/agents/ (origin: this set froze at
-# the original four while the roster grew to nine — the corpus could not target the two newest
-# agents, including the only one to produce a live BLOCKING FAIL; §6a old-blind-to-new).
-KNOWN_AGENTS = {"red-first-verifier", "tripwire-auditor", "claims-verifier",
-                "edge-case-adversary", "mutation-runner", "architecture-adversary",
-                "integration-adversary", "script-adversary"}
 CATEGORIES = ("faked red-first · unwired deliverable · false negative claim · missing edge "
               "coverage · vacuous/unmeasured mutation gate · band-aid fix at the wrong seam · "
               "island/dark-by-default plan")
 
 sys.path.insert(0, HERE)
-from run_calibration import apply_edits, load_scenarios  # noqa: E402
+# Scenario validity lives in ONE place (D0): run_calibration.validate_scenario, with the
+# agent roster DERIVED from plugins/tdd-playbook/agents/ minus the tree-touching exclusion
+# (planted-error-probe, ux-probe-calibrator — their scenarios need revert-safety discipline
+# and stay hand-written). The previous hardcoded set here froze at the original four while
+# the roster grew to nine (§6a old-blind-to-new); a derived roster cannot re-freeze.
+from run_calibration import known_agents, load_scenarios, validate_scenario  # noqa: E402
 
 
 def corpus_scenarios(which=("approved",)):
@@ -62,32 +55,11 @@ def corpus_scenarios(which=("approved",)):
 
 
 def validate(sc):
-    """Mechanical acceptance: returns a list of problems (empty = valid)."""
-    problems = []
-    for key in ("id", "agent", "plant", "task", "must_match"):
-        if not sc.get(key):
-            problems.append("missing/empty field: " + key)
-    if sc.get("agent") not in KNOWN_AGENTS:
-        problems.append("unknown agent: {}".format(sc.get("agent")))
+    """Mechanical acceptance — a thin wrapper over THE validator (D0) that supplies the
+    corpus's id universe. No second rule copy lives here."""
     existing = {s["id"] for s in load_scenarios()} | {s["id"] for s in
                 corpus_scenarios(("proposed", "approved"))}
-    if sc.get("id") in existing:
-        problems.append("duplicate id: {}".format(sc.get("id")))
-    for rx in sc.get("must_match", []) + sc.get("must_not_match", []):
-        try:
-            re.compile(rx)
-        except re.error as e:
-            problems.append("bad regex /{}/: {}".format(rx, e))
-    if not problems:
-        root = tempfile.mkdtemp(prefix="plant-val-")
-        try:
-            shutil.copytree(FIXTURE, root, dirs_exist_ok=True)
-            apply_edits(root, sc.get("edits", []))
-        except Exception as e:
-            problems.append("edits do not apply to fixture: {}".format(e))
-        finally:
-            shutil.rmtree(root, ignore_errors=True)
-    return problems
+    return validate_scenario(sc, existing)
 
 
 def extract_json_array(text):
@@ -135,7 +107,7 @@ def adversary_prompt(category):
         "must_not_match (regexes a fooled verdict would contain). The oracle is these "
         "regexes — make them deterministic and specific.\n\n"
         "Return ONLY a JSON array of scenarios.\n\nFIXTURE:\n{fixture}"
-    ).format(agents=", ".join(sorted(KNOWN_AGENTS)), n=2, cats=CATEGORIES,
+    ).format(agents=", ".join(sorted(known_agents())), n=2, cats=CATEGORIES,
              cat_line=(" Focus on category: {}.".format(category) if category else ""),
              known=known, fixture="\n".join(fixture_listing))
 
