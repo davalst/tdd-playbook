@@ -249,9 +249,94 @@ def test_own_registry():
     check("--as-of garbage -> exit 2 (usage), distinct from expiry's exit 1", rc == 2)
 
 
+def test_probe_survivor_gaps():
+    """CIVerd's engine-owned planted-error probe, FIRST live firing (2026-07-28), planted
+    flip_compare and constant_return mutants into capability_registry.py and this suite
+    stayed GREEN — the probe named this suite partly theater, with evidence. A local sweep
+    reproduced the survivors: doctor's debt-state classification, doctor's _consume_topic,
+    validate's schema branch, and find_registry's explicit path were all unasserted. These
+    tests kill those classes; each was verified to FAIL under its mutant before shipping
+    (mutation red-first — the probe, not the author, chose these targets)."""
+    import datetime as dt
+    mod = load_tool()
+    today = dt.date(2026, 7, 28)
+
+    def cap(cid, **kw):
+        base = {"id": cid, "summary": "s", "surfaces": ["local"],
+                "activation": {"default": "on"},
+                "wired_by": ["w.py"], "exercised_by": ["t.py"]}
+        base.update(kw)
+        return base
+
+    # doctor debt states: EXPIRED strictly-before today, "due soon" within DEBT_WARN_DAYS,
+    # "open" beyond — a flipped comparison misclassifies at least one of these
+    reg = {"version": 1, "capabilities": [
+        cap("exp-cap", integration_debt=[
+            {"what": "w", "owner": "o", "expires": "2026-07-20"}]),
+        cap("soon-cap", integration_debt=[
+            {"what": "w", "owner": "o", "expires": "2026-08-05"}]),
+        cap("open-cap", integration_debt=[
+            {"what": "w", "owner": "o", "expires": "2027-06-01"}]),
+    ]}
+    out = mod.doctor(reg, today=today)
+
+    def state_of(cid):
+        for ln in out.splitlines():
+            if cid in ln and "[" in ln:
+                return ln.split("[", 1)[1].split("]", 1)[0]
+        return None
+    check("doctor: past-expiry debt classified EXPIRED", state_of("exp-cap") == "EXPIRED",
+          state_of("exp-cap"))
+    check("doctor: within-warn-window debt classified 'due soon'",
+          state_of("soon-cap") == "due soon", state_of("soon-cap"))
+    check("doctor: far-future debt classified 'open'", state_of("open-cap") == "open",
+          state_of("open-cap"))
+    # boundary: expires exactly today is NOT expired (strictly-before), but IS due soon
+    reg_edge = {"version": 1, "capabilities": [cap("today-cap", integration_debt=[
+        {"what": "w", "owner": "o", "expires": "2026-07-28"}])]}
+    out = mod.doctor(reg_edge, today=today)
+    check("doctor: expires-today is 'due soon', not EXPIRED",
+          "due soon" in out and "EXPIRED" not in out, out)
+
+    # doctor consumed-orphans: both consume shapes (bare string + emits-style dict) must be
+    # resolved — a gutted _consume_topic drops the dict form and undercounts
+    reg = {"version": 1, "capabilities": [
+        cap("consumer-cap", consumes=["ghost.topic", {"topic": "dict.topic"}]),
+    ]}
+    out = mod.doctor(reg, today=today)
+    check("doctor: consumed-but-never-emitted counts BOTH consume shapes",
+          "consumed but never emitted (check the seam): 2" in out
+          and "ghost.topic" in out and "dict.topic" in out, out)
+
+    # validate schema branch: a registry with no capability list must return the R-SCHEMA
+    # violation LIST (a constant/None return silently passes garbage registries)
+    for bad in ({"capabilities": []}, {"capabilities": "not-a-list"}, {}):
+        out = mod.validate(bad, today)
+        check("validate: schema violation is a real R-SCHEMA list for %r" % (bad,),
+              isinstance(out, list) and len(out) == 1 and "R-SCHEMA" in out[0]
+              and "non-empty list" in out[0], out)
+
+    # find_registry explicit path: honored when present, None when missing (an explicit
+    # --registry that is missing must NOT silently fall back to the base registry)
+    with tempfile.TemporaryDirectory() as d:
+        explicit = os.path.join(d, "somewhere", "caps.json")
+        os.makedirs(os.path.dirname(explicit))
+        with open(explicit, "w") as fh:
+            json.dump({"version": 1, "capabilities": []}, fh)
+        with open(os.path.join(d, "capabilities.json"), "w") as fh:
+            json.dump({"version": 1, "capabilities": []}, fh)
+        check("find_registry: explicit existing path returned",
+              mod.find_registry(d, explicit) == explicit)
+        check("find_registry: explicit MISSING path -> None (no silent fallback to base)",
+              mod.find_registry(d, os.path.join(d, "nope.json")) is None)
+        check("find_registry: no explicit -> base fallback still works",
+              mod.find_registry(d) == os.path.join(d, "capabilities.json"))
+
+
 def main():
     print("capability_registry planted-input calibration")
-    for fn in (test_validate, test_doctor, test_cli, test_own_registry):
+    for fn in (test_validate, test_doctor, test_cli, test_own_registry,
+               test_probe_survivor_gaps):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
