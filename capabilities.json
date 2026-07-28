@@ -12,7 +12,7 @@
       "liveness": {"max_quiet_days": 90, "probe": "calibration/run_calibration.py exercises guards through the real seam"},
       "integration_debt": [
         {
-          "what": "2026-07-28 sweep, engine-side closures still pending on srv1621832 (contract sections 1, 1.3-ext, 1.5, 1.4): diff_integrity (closes H2-via-shell on UNLOCKED files — assertion-count regression vs last green is write-path-independent), guard_env (settings env demotion becomes a ratifiable signed signal; local counters are visibility-only: suppressed yield events, doctor STANDING DEMOTION, planted settings test), extended hard floor covering agents/*.md brief softening, and the ratification store (makes self-journaled oracle weakening need a human token)",
+          "what": "OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green — closes H2-via-shell, `planted_probe` — first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract §1.5 — settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the §1.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists — floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far)",
           "owner": "david",
           "expires": "2026-09-15"
         }

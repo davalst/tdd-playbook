@@ -205,7 +205,16 @@ floor is trusted for exactly what it delivers.
 
 Each check — `diff_integrity`, `calibration_integrity`, `guard_env`, `venv`, `deps`, `tests`,
 `dryrun`, `registry`, `staleness`, and the
-periodic `planted_probe` — is a **separate engine-run command whose EXIT CODE is the signal**. The
+periodic `planted_probe` — is a **separate engine-run command whose EXIT CODE is the signal**.
+
+> **Engine implementation note (verified 2026-07-28, against the engine source):** the shipped
+> check names differ from this contract's working names — grep the engine for THESE:
+> `integrity` (the §1.3 floor: declared meta-files exist, non-empty, non-symlink; exit 116),
+> `integrity_baseline` (§1 diff-integrity, shrink-vs-last-green; exits 117/118/119),
+> `planted_probe` (§2; exits 114 vacuous / 115 survivor — first live firing caught a real
+> `capability_registry.py` gap, fixed at `2c350e1`). Ratification is a root-owned PIPELINE
+> (`read_ratifications`, `/etc/civerd/ratifications`), not a check name. **Not yet built:**
+> `calibration_integrity` (§2b) and `guard_env` (§1.5) — both tracked as dated registry debt. The
 verdict's `checks[]` records each command's name + exit code (engine-owned decomposition), never a
 `name=pass` string parsed out of attacker-controlled stdout. Stdout is captured only as a
 **hard-truncated advisory blob** (cap it BEFORE the spool boundary) that never affects pass/fail — so
