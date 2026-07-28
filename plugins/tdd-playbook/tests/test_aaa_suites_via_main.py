@@ -22,7 +22,11 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SELF = os.path.basename(__file__)
-REPO = os.path.dirname(os.path.dirname(HERE))
+# dirname^3: tests -> tdd-playbook -> plugins -> REPO ROOT. The original dirname^2 pointed
+# at plugins/, so the calibration/test_harness.py append below resolved to a nonexistent
+# path and the isfile guard SILENTLY skipped it — the harness was never in SUITES at all
+# (found 2026-07-28 via the engine probe's calibration-gate false-green).
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 
 # Every script-style suite: the sibling test_*.py files (except this one) + the calibration harness.
 SUITES = sorted(f for f in glob.glob(os.path.join(HERE, "test_*.py"))
@@ -97,3 +101,24 @@ def test_civerd_gate_script_is_the_real_gate():
             fh.write("import sys\nsys.exit(1)\n")
         r = subprocess.run(["sh", gate, d], capture_output=True, text=True, timeout=60)
         assert r.returncode != 0, "PLANTED failing suite not caught — the gate script is theater"
+
+
+if __name__ == "__main__":
+    # Standalone runner (2026-07-28): without this the file was INERT under `python3 file.py`
+    # — the exact vehicle of the calibration/-gate false-green. Runs the cheap guards; the
+    # expensive every-suite pass is exactly what the invoking gate loop already is, and
+    # civerd_gate.sh runs calibration/test_harness.py explicitly. Failure propagates via a
+    # bare assert (uncaught -> exit 1) — deliberately NO exit call, per the H5 guard: an
+    # assert cannot fake a passing suite, an exit call can.
+    failures = []
+    for fn in (test_guard_can_detect_a_failing_suite,
+               test_no_pytest_uncollectable_test_functions,
+               test_civerd_gate_script_is_the_real_gate):
+        try:
+            fn()
+            print("  ok   - " + fn.__name__)
+        except AssertionError as e:
+            failures.append("{}: {}".format(fn.__name__, e))
+            print("  FAIL - " + fn.__name__)
+    assert not failures, "\n".join(failures)
+    print("aaa guards green (every-suite pass is the invoking gate loop itself)")

@@ -229,10 +229,15 @@ A failing build must never be able to erase its own verdict.
 
 ## 4. What this repo hands over vs what the engine owns
 
-- **Repo provides:** `civerd-integrity.yml` (critical-module paths + the real `suite_cmd` — the
-  `python3 test_*.py` loop that has no pytest false-green, NOT bare pytest; **shipped at repo
-  root since v1.17**) and the `check_scoreboard_integrity.py` reference implementation (§2b).
-  Nothing else.
+- **Repo provides:** `civerd-integrity.yml` (critical-module paths + the real `suite_cmd`,
+  **which since v1.21 is `sh scripts/civerd_gate.sh` — the ONE blessed entrypoint**: the
+  plugins loop + the calibration harness. Probe run 2 (2026-07-28) proved the prose-loop
+  era wrong three ways at once — pytest collects ~0 items from script-style suites, the
+  loop never included calibration/, and the aaa-guard's harness path was wrong AND inert
+  under `python3` — so the gate false-greened every calibration-side module while its 110
+  checks sat unexecuted. The engine's `tests` check and `planted_probe` MUST exec this
+  script, nothing else) and the `check_scoreboard_integrity.py` reference implementation
+  (§2b). Nothing else.
 - **Engine owns:** the last-green baseline, the plant-recipe library, the ratification store, the
   hard-floor list, and the decomposition — all root-owned, no agent write path.
 - **This repo will also provide** (on request) a reference `planted-error-probe` recipe set and a

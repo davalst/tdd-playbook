@@ -149,13 +149,13 @@ def main():
     finally:
         V._jcs = orig
 
-    test_probe_survivor_gaps(d)
+    probe_survivor_gaps(d)
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
 
 
-def test_probe_survivor_gaps(d):
+def probe_survivor_gaps(d):
     """CIVerd probe run 2 (2026-07-28) planted flip_boolop + constant_return here and this
     suite stayed green. Local sweep triage: malformed-TYPE guards (non-list records,
     non-dict snapshot/claimed_report — the or->and flip lets truthy wrong-typed values

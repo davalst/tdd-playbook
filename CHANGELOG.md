@@ -3,6 +3,32 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.21.0 — 2026-07-28
+
+**The gate itself was theater over `calibration/` — probe run 2's deepest catch.** CIVerd's
+planted-error probe reported `check_scoreboard_integrity` "essentially untested"; local
+sweeps killed 7/7 vs the harness. Both were right: the module's 110-check harness existed
+but the GATE never ran it — four stacked failures (pytest collects ~0 items from
+script-style suites; the python3 loop never included `calibration/`; `test_aaa`'s harness
+path was `dirname²` off, so the isfile guard silently skipped it since the file was
+written; and `test_aaa` was inert under `python3` — no `__main__` runner). The v1.15
+false-green class, one layer up, caught only because an engine-owned probe measured the
+gate from outside.
+
+- NEW `scripts/civerd_gate.sh` — THE blessed gate entrypoint (plugins loop + calibration
+  harness); `civerd-integrity.yml` `suite_cmd` now execs it; planted-tested (a failing
+  suite must fail it). CIVerd's `tests` check and `planted_probe` point here.
+- `test_aaa`: REPO path fixed (harness genuinely in SUITES, 13 suites), standalone
+  `__main__` runner added (failure via bare assert — the H5 guard correctly BLOCKED a
+  `sys.exit` form first, live), and a new guard: pytest-collectable `test_*` functions
+  must need zero args (the fixture-error class that had the gate RED at `5abe347` — my
+  own bug, fixed by renaming the offender).
+- Kernel probe survivors killed (run-2): `_ed25519_verify` — non-bytes inputs now proven
+  to fail CLOSED (the or→and mutants raised TypeError; contract says never raise);
+  `verify_verdict` — non-list records / non-dict snapshot/claimed_report refuse as
+  `malformed` (reason strings are contractual), `_cache_dir` + `fetch_ledger` asserted
+  offline. Re-sweeps: 12/12, 18/18, 7/7 killed.
+
 ## 1.20.0 — 2026-07-28
 
 **H8 — the guards' own RUNNING leg.** Live incident: plugin enablement is USER-scope, and a

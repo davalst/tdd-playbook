@@ -8,5 +8,8 @@ plant_targets:
   - path: plugins/tdd-playbook/bin/_ed25519_verify.py
   - path: plugins/tdd-playbook/bin/capability_registry.py
   - path: calibration/check_scoreboard_integrity.py
-# The no-pytest-false-green loop (v1.15.0 proof), NOT bare pytest:
-suite_cmd: "for t in plugins/tdd-playbook/tests/test_*.py; do python3 \"$t\" || exit 1; done"
+# THE blessed gate entrypoint (v1.21.0) — runs the plugins loop AND the calibration
+# harness. Never bare pytest (v1.15.0 false-green: pytest collects ~0 items from the
+# script-style suites), never a prose shell loop (2026-07-28 probe run 2: the loop and
+# the real gate had silently diverged and calibration/ was untested by the gate).
+suite_cmd: "sh scripts/civerd_gate.sh"

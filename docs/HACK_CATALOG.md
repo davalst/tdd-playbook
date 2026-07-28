@@ -55,7 +55,11 @@ re-approval (`-u` / `--update-snapshots`); introspecting the grader for expected
 - Defense: verifier surface is locked with the tests (§1 TEST-LOCK covers conftest/config);
   exit-call and snapshot-update detection; harness files owned by the harness, never the agent.
 - Guards: `test_weakening_guard.py` exit-call check (H5), `test_lock_guard.py` verifier-surface
-  lock (H5), `snapshot_guard.py` (H5).
+  lock (H5), `snapshot_guard.py` (H5). Gate-command drift variant (2026-07-28, probe run 2:
+  the gate ran pytest/a diverged loop and calibration/'s 110 checks never executed —
+  false-green over three modules): `scripts/civerd_gate.sh` is the ONE blessed gate
+  entrypoint (planted-tested: a failing suite must fail it), plus the aaa-guard's
+  pytest-uncollectable-test-function check and its standalone `__main__` runner.
 
 ### H6 — Architectural fakery at long horizon
 Not a single hack but a strategy: over a long autonomous run, structure the code so visible

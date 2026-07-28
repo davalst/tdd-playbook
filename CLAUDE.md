@@ -142,7 +142,11 @@ Local-machine plugin installs update separately (no prompt needed):
 
 - Every mechanical change ships with a planted-input test (a planted violation that slips
   past a check is a failure). Suites: `plugins/tdd-playbook/tests/test_*.py` +
-  `calibration/test_harness.py`; scenario sanity: `calibration/run_calibration.py --dry-run`.
+  `calibration/test_harness.py` — run them ONLY via `sh scripts/civerd_gate.sh`, the ONE
+  blessed gate entrypoint (probe run 2, 2026-07-28: the prose loop and the engine's gate
+  command silently diverged and calibration/'s 110 checks never ran in the gate; a script
+  can be probed and planted-tested, a prose command cannot). Scenario sanity:
+  `calibration/run_calibration.py --dry-run`.
 - Release gate before any version bump: all suites green, `calibration/check_staleness.py
   --warn-only` run (F5 — surfaces a stale scoreboard loudly), `hooks.json`/`plugin.json`/
   `marketplace.json` parse, `capability_registry.py validate` passes on this repo's own
