@@ -695,6 +695,74 @@ def _lift_ratchet_scenario_tests(d):
           p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
 
 
+def _wilson_tests():
+    """PLANTED (D4): `recall 9/9` implies certainty we don't have — at 3 reps, 3/3 is
+    consistent with a true rate from ~0.44 to 1.0. wilson() is a pure statistic (the
+    format module only RENDERS it); both the file header and the stdout summary carry it."""
+    print("\n[wilson intervals]")
+    import history_format as hfmt
+    if not hasattr(hfmt, "wilson"):
+        check("history_format.wilson exists", False, "missing")
+        return
+    lo, hi = hfmt.wilson(3, 3)
+    check("wilson(3,3): wide at n=3 (certainty not implied)",
+          0.40 < lo < 0.50 and hi == 1.0, (lo, hi))
+    lo, hi = hfmt.wilson(0, 10)
+    check("wilson(0,10): lower bound 0", lo == 0.0 and 0.20 < hi < 0.35, (lo, hi))
+    check("wilson(0,0): undefined -> None (renders as [—])", hfmt.wilson(0, 0) is None)
+    lo, hi = hfmt.wilson(13, 14)
+    check("wilson(13,14) sane", 0.60 < lo < 0.75 and 0.95 < hi <= 1.0, (lo, hi))
+
+    with tempfile.TemporaryDirectory() as d:
+        hp = os.path.join(d, "history.md")
+        hfmt.append_run_block(hp, {"date": "2026-08-10", "model": "haiku",
+                                   "repo_sha": "abc1234", "selected": 1, "total": 30,
+                                   "shipped": 26, "corpus": 4, "controls": 13,
+                                   "recall": (3, 3), "fp": (0, 0)},
+                              [{"date": "2026-08-10", "model_cell": "haiku",
+                                "scenario": "s", "agent": "a", "runs": "3/3",
+                                "mode": None, "verdict": "PASS"}])
+        txt = open(hp).read()
+        check("header renders recall interval", "recall 3/3 [" in txt, txt)
+        check("zero-denominator FP renders [—]", "FP 0/0 [—]" in txt, txt)
+        check("rows still parse (format compat)",
+              len(hfmt.parse_rows(txt)) == 1 and hfmt.parse_rows(txt)[0]["kind"] == "PASS",
+              txt)
+
+
+def _quarterly_clock_tests():
+    """PLANTED (D6): the quarterly bundle (catalog refresh · lift read · cross-tier row)
+    gets a REAL clock — a dated record checked by the existing staleness gate — replacing
+    the draft's print-string clause (a reminder inside a run David must remember to run is
+    decoration, and refreshing the catalog would have silenced an unrelated reminder)."""
+    print("\n[quarterly clock]")
+    import run_calibration as rc
+    cs = os.path.join(HERE, "check_staleness.py")
+    q = os.path.join(os.path.dirname(HERE), "docs", "calibration", "quarterly.md")
+    check("docs/calibration/quarterly.md exists and is dated",
+          os.path.isfile(q) and __import__("history_format").latest_run_date(
+              open(q).read()) is not None, q)
+
+    def run_q(as_of):
+        return subprocess.run([sys.executable, cs, "--history", q, "--as-of", as_of,
+                               "--max-age-days", "100"],
+                              capture_output=True, text=True, timeout=30).returncode
+    check("quarterly: fresh within 100d -> 0", run_q("2026-08-30") == 0,
+          run_q("2026-08-30"))
+    check("quarterly: PLANTED stale past 100d -> 1", run_q("2026-11-15") == 1,
+          run_q("2026-11-15"))
+
+    # catalog_staleness gains an injectable today (G4: was real-clock-only, untestable)
+    try:
+        stale_at = rc.catalog_staleness(today=__import__("datetime").date(2026, 11, 15))
+        fresh_at = rc.catalog_staleness(today=__import__("datetime").date(2026, 8, 1))
+        check("catalog_staleness(today=...) injectable: fires past 100d, silent before",
+              stale_at is not None and stale_at > 100
+              and fresh_at is not None and fresh_at <= 100, (stale_at, fresh_at))
+    except TypeError as e:
+        check("catalog_staleness accepts today=", False, e)
+
+
 def _weak_plant_flag_tests(d):
     """PLANTED (2026-07-28 sweep): a plant that has NEVER failed across recorded live runs
     teaches nothing — an adversary authoring easy plants inflates recall while the gate
@@ -935,6 +1003,8 @@ def main():
     with tempfile.TemporaryDirectory() as dwf:
         _weak_plant_flag_tests(dwf)
     _coverage_invariant_tests()
+    _wilson_tests()
+    _quarterly_clock_tests()
     with tempfile.TemporaryDirectory() as dlr:
         _lift_ratchet_scenario_tests(dlr)
     with tempfile.TemporaryDirectory() as d2d:

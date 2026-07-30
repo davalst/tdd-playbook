@@ -91,6 +91,7 @@ def main():
               (len(before), len(after)))
 
     test_doctor()
+    test_vendoring_containment()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
@@ -190,6 +191,38 @@ def test_doctor():
                   mod.main(["--doctor", target]) == 0)
         finally:
             os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
+
+
+def test_vendoring_containment():
+    """PLANTED (lift/ratchet D5, R2): calibration/lift data must never reach a vendored
+    tree — asserted on the FACT (containment inside PLUGIN), not the directory name (F6:
+    a name-based check is literally true while describing something other than what's
+    needed). Red-first proof: a deliberately escaping COPY_TREES entry must be DETECTED."""
+    print("\n[vendoring containment (R2)]")
+    mod = load_installer()
+    for src_rel, _dest in mod.COPY_TREES:
+        rel = os.path.relpath(os.path.join(mod.PLUGIN, src_rel), mod.PLUGIN)
+        check("COPY_TREES contained in PLUGIN: {}".format(src_rel),
+              not rel.startswith(".."), rel)
+
+    # calibrate-the-checker: an escaping entry (the way calibration/ COULD ride in) is
+    # detected by the same rule — the pin can fail, so it isn't theater
+    escaped = os.path.relpath(os.path.join(mod.PLUGIN, "..", "..", "calibration"),
+                              mod.PLUGIN)
+    check("PLANTED escaping entry ../../calibration is detected",
+          escaped.startswith(".."), escaped)
+
+    # behavioral: a real scratch install vendors nothing calibration-shaped
+    with tempfile.TemporaryDirectory() as target:
+        mod.main([target])
+        offenders = []
+        for root, _dirs, files in os.walk(os.path.join(target, ".claude")):
+            for f in files:
+                p = os.path.join(root, f)
+                if "calibration" in os.path.relpath(p, target).lower():
+                    offenders.append(p)
+        check("scratch install: no calibration-shaped path vendored", offenders == [],
+              offenders)
 
 
 if __name__ == "__main__":
