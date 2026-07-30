@@ -20,6 +20,11 @@ python3 calibration/run_calibration.py            # cheap model, hard caps; appe
                                                   # (3 reps/scenario by default since v1.17 —
                                                   # PASS only at k/k; AMBER is nonzero and
                                                   # promotes to BLOCKING on a repeat)
+python3 plugins/tdd-playbook/bin/capability_registry.py doctor   # bundle check (v1.23, David's
+                                                  # ships-on-or-triggered rule): capture must
+                                                  # read ON on this machine, and dark-inventory
+                                                  # shows if plan-authoring still awaits the
+                                                  # repos.yml arming — OFF here is a due task
 ```
 - A plant surviving to a clean verdict is a **BLOCKING failure** — fix the agent, never the
   plant. File it, fix it, re-run before anything else ships.

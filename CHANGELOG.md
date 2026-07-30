@@ -3,6 +3,61 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.23.0 — 2026-07-30
+
+**The two ratified CIVerd briefs: plans-in-repo + deliberation capture** (built in a
+worktree during the live calibration run; plan adversaried twice + CIVerd-CTO amendments
+folded; David's ships-on-or-triggered directive applied to every OFF state).
+
+- **Runs-guard (D0, arch-F9):** in check()-style suites a `def test_*` that main() never
+  calls satisfies the engine's `test_passes` (exists + unskipped + gate-green) while never
+  running. New AST guard in test_aaa: every module-level test_ function must be REFERENCED
+  in its own module — upgrades every current and future `test_passes` predicate in this
+  repo from "exists" to "runs". Planted-orphan test proves the guard can fail.
+- **plans-in-repo (D1):** `bin/plan_block.py` — `scaffold` writes
+  `docs/plans/gated/<slug>.md` with exactly one engine-conformant `civerd-plan` block
+  (`--repo` REQUIRED — a dirname default from the mandated worktree is an instant
+  MALFORMED); `validate` re-parses strictly, requires byte-identical re-emission for
+  active plans, and shells to `civerd plan-check` when on PATH. `satisfied`/`abandoned`
+  are structurally unemittable (no argument path). Slug boundary tested AT 59/60
+  ("plan."+slug ≤ 64). **Engine-blessed conformance corpus** (19 cases; verdicts from the
+  engine's own parse path via `civerd plan-hash`; stamped `blessed_by_engine_version`):
+  its FIRST replay caught 4 live unsafe drifts — our charset regex accepted `/etc/passwd`
+  and `../` escapes the engine refuses; fixed by mirroring `_safe_relpath` exactly. The
+  path-escape cases stay in the corpus as permanent plants. `/tdd-plan` now closes with
+  the land-approved-plans-in-repo section (weaker-truth semantics table, permanent slugs,
+  prose section for research/docs, never gate small work).
+- **Deliberation capture (D2+D3):** the capture plan itself is the dogfood — authored by
+  the new tool at `docs/plans/gated/2026-07-30-deliberation-capture.md` (4 predicates).
+  `hooks/scripts/capture.py` (UserPromptSubmit + Stop, explicit `--event` args in
+  hooks.json = the registration is the fact): append-only per-day JSONL store (dir 0700,
+  files 0600, single-os.write lines), 10-field whitelist with deliberately NO status
+  field, v1 redaction with sha256 over POST-redaction text only (no crackable residue of
+  redacted credentials), backward chunked transcript scan for long assistant finals with
+  `truncated: true` never a silent partial, O_EXCL+TTL sentinel dedupe (plugin+vendored
+  double registration collapses to one record; a deliberately repeated identical prompt
+  is still captured), fail open always exit 0 never stdout, sidecar error log.
+  `bin/deliberation.py close/stats` — the ONLY emitter of the closure shape
+  (event-sourced; conveyed ≠ ratified; only David closes). 38 planted-input tests.
+- **Answer-key exclusion:** `calibration/child_env.py` pins `TDD_PLAYBOOK_HOOK_CAPTURE=off`
+  for BOTH nested-claude spawn sites (`run_calibration.run_agent` AND
+  `author_plants.cmd_author` — the plant-authoring adversary's output IS the answer key),
+  proven by hostile-parent env-dump stubs; env `off` BEATS the enrollment marker by a
+  named test.
+- **Activation (David's nothing-ships-dark directive):** enrollment marker
+  `<store>/ENABLED` written BY THE BUILD on David's machines; doctor gains the
+  informational `capture: ON/OFF` line; the weekly calibration bundle now includes the
+  doctor check. Every OFF state carries an ARMED dated trigger: engine-side plan arming
+  (debt 2026-09-15), enrollment sweep (2026-08-31), store consumer (2026-10-31) — all
+  string-pinned by --as-of boundary tests that name their debt in the violation (an exit
+  code alone passes for the wrong reason once earlier debts expire).
+- **Registry:** `plan-authoring` (deploy_surface mirroring the release gate's: divergence
+  = plans land inert) + `deliberation-capture` (emits → named consumers; v2 shingle
+  matcher is the PRIMARY candidate with the label constraint binding NOW: unmatched spans
+  are "unattributed", never "David's own words"). Docs:
+  `docs/plan-gating-and-deliberation-capture.md` (no-README brick hazard, store posture
+  with honest labels, guard_env hand-off).
+
 ## 1.22.0 — 2026-07-30
 
 **The deletion ratchet, dismantled — lift/ratchet proposal set A** (three review passes +
