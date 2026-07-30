@@ -248,6 +248,20 @@ def test_own_registry():
     rc = mod.main(["validate", "--base", repo_root, "--as-of", "not-a-date"])
     check("--as-of garbage -> exit 2 (usage), distinct from expiry's exit 1", rc == 2)
 
+    # PLANTED (lift/ratchet D7, G2): the quarterly trigger proof must name ITS debt in the
+    # violation STRING — a bare exit-code assert at 2026-11-02 is vacuous (earlier debts
+    # already expire by then; nonzero-for-the-wrong-reason is the class this repo was
+    # burned by, twice). Boundary: expires 2026-11-01 -> violating strictly AFTER.
+    import datetime as _dt
+    reg = mod.load_registry(mod.find_registry(repo_root))
+    v_after = mod.validate(reg, _dt.date(2026, 11, 2))
+    v_on = mod.validate(reg, _dt.date(2026, 11, 1))
+    check("quarterly debt: violation string present at 2026-11-02",
+          any("quarterly" in v for v in v_after),
+          [v for v in v_after][:3])
+    check("quarterly debt: NOT expired on its own expiry day (strictly-after rule)",
+          not any("quarterly" in v for v in v_on), [v for v in v_on][:3])
+
 
 def test_probe_survivor_gaps():
     """CIVerd's engine-owned planted-error probe, FIRST live firing (2026-07-28), planted
