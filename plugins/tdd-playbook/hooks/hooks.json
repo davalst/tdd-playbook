@@ -85,6 +85,11 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/intent_nudge.py\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/capture.py\" --event UserPromptSubmit",
+            "timeout": 10
           }
         ]
       }
@@ -97,6 +102,11 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/build_completion_reminder.py\"",
             "timeout": 15,
             "statusMessage": "TDD: Tripwire reminder"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/capture.py\" --event Stop",
+            "timeout": 15
           }
         ]
       }

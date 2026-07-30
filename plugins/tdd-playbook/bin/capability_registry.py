@@ -220,6 +220,23 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
     lines.append("\n[consumed but never emitted (check the seam): %d]" % len(orphans))
     for cid, topic in orphans:
         lines.append("  %-28s consumes '%s' — no registered emitter" % (cid, topic))
+
+    # Deliberation capture (briefs D3): informational, NON-demoting — capture is not a
+    # finding-bearing guard, so an off state is a fact to surface, never a muzzled-gate
+    # event. This line exists so "is it recording?" is always answerable on any machine.
+    lines.append("\n[deliberation capture]")
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "..", "hooks", "scripts"))
+        import capture as _capture
+        on, store, n = _capture.status()
+        if on:
+            lines.append("  capture: ON (store: %s, %d records today)" % (store, n))
+        else:
+            lines.append("  capture: OFF (opt-in: touch %s)"
+                         % os.path.join(store, "ENABLED"))
+    except Exception:
+        lines.append("  capture: UNKNOWN (capture.py not vendored alongside this registry)")
     return "\n".join(lines)
 
 
