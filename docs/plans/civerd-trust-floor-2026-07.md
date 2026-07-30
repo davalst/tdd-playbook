@@ -69,7 +69,9 @@ refactor. Keep the list in root config, not the repo.
 baseline inventory (§1) and the hard floor should also cover, for this repo:
 `plugins/tdd-playbook/agents/*.md` (a SOFTENED verifier brief keeps its verdict lines while
 losing its rules — between live calibrations nothing else sees the edit), `calibration/
-scenarios.json` + `calibration/oracle-changes.md` + `corpus/approved/` (§2b),
+scenarios.json` + `calibration/oracle-changes.md` + `calibration/gate-changes.md` (the
+v1.22 gate-surface removal journal — same append-only, authorization-bearing class) +
+`corpus/approved/` (§2b),
 `civerd-integrity.yml`, `check_scoreboard_integrity.py`, and `hooks/hooks.json`. Agent-brief
 *changes* are ratifiable (briefs legitimately evolve); *deletion/emptying* is hard-floor RED.
 

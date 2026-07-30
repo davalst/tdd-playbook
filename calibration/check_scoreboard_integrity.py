@@ -38,6 +38,13 @@ HISTORY = "docs/calibration/history.md"
 SCENARIOS = "calibration/scenarios.json"
 CORPUS_DIR = "calibration/corpus/approved"
 JOURNAL = "calibration/oracle-changes.md"
+# Gate-surface protection (rule (d), lift/ratchet D3): removal of these names vs baseline
+# requires a GATE_JOURNAL entry; additions are always free (R1's asymmetry — removal costs
+# what addition costs, addition never pays the removal toll).
+GATE_JOURNAL = "calibration/gate-changes.md"
+SKILL = "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
+AGENTS_DIR = "plugins/tdd-playbook/agents"
+COMMANDS_DIR = "plugins/tdd-playbook/commands"
 
 
 class BaselineUnreadable(Exception):
@@ -85,23 +92,24 @@ def check(repo, rev):
         raise BaselineUnreadable("baseline rev not resolvable: {}".format(rev))
     violations = []
 
-    # (a) append-only files: baseline is a byte-prefix of the candidate
-    journal_added = ""
-    for path in (HISTORY, JOURNAL):
+    # (a) append-only files: baseline is a byte-prefix of the candidate. `added` carries
+    # each file's appended-since-baseline text — the journals authorize ONLY through it,
+    # so a rewritten journal can never retro-authorize (and no per-file special cases).
+    added = {}
+    for path in (HISTORY, JOURNAL, GATE_JOURNAL):
         base = baseline_bytes(repo, rev, path)
-        if base is None:
-            if path == JOURNAL:
-                cur = current_bytes(repo, path)
-                journal_added = (cur or b"").decode("utf-8", "replace")
-            continue
         cur = current_bytes(repo, path)
+        if base is None:
+            added[path] = (cur or b"").decode("utf-8", "replace")
+            continue
         if cur is None or not cur.startswith(base):
             violations.append("{}: baseline content is not a byte-prefix of the candidate "
                               "(append-only violated — edited, truncated, or deleted)"
                               .format(path))
+            added[path] = ""
             continue
-        if path == JOURNAL:
-            journal_added = cur[len(base):].decode("utf-8", "replace")
+        added[path] = cur[len(base):].decode("utf-8", "replace")
+    journal_added = added[JOURNAL]
 
     # (b) the approved corpus only grows, and approved plants are immutable
     p = _git(repo, "ls-tree", "-r", "--name-only", rev, CORPUS_DIR)
@@ -145,6 +153,43 @@ def check(repo, rev):
                     violations.append(
                         "{}: {} regex removed/replaced without an oracle-changes.md entry: "
                         "{}".format(sid, label, "; ".join("/{}/".format(rx) for rx in lost)))
+    # (d) gate-surface removals (lift/ratchet D3): SKILL `## ` headings, agent briefs, and
+    # command files present at baseline and absent at candidate are RED unless named in
+    # gate-changes.md's added-since-baseline text. Additions are FREE — no pin to edit, so
+    # new doctrine never pays the removal toll (the deletion ratchet, inverted on purpose).
+    gate_added = added[GATE_JOURNAL]
+
+    def removed_names(base_names, cur_names):
+        return sorted(set(base_names) - set(cur_names))
+
+    base_skill = baseline_bytes(repo, rev, SKILL)
+    if base_skill is not None:
+        cur_skill = current_bytes(repo, SKILL) or b""
+
+        def headings(blob):
+            return [ln.strip() for ln in blob.decode("utf-8", "replace").splitlines()
+                    if ln.startswith("## ")]
+        for h in removed_names(headings(base_skill), headings(cur_skill)):
+            if h not in gate_added:
+                violations.append(
+                    "{}: section '{}' removed without a gate-changes.md entry "
+                    "(gate removal costs what addition costs)".format(SKILL, h))
+
+    for dir_rel, kind in ((AGENTS_DIR, "agent brief"), (COMMANDS_DIR, "command")):
+        p = _git(repo, "ls-tree", "--name-only", rev, dir_rel + "/")
+        if p.returncode != 0:
+            continue  # directory absent at baseline — nothing to protect yet
+        base_files = [os.path.basename(x) for x in p.stdout.decode("utf-8").splitlines()
+                      if x.endswith(".md")]
+        cur_dir = os.path.join(repo, dir_rel)
+        cur_files = ([f for f in os.listdir(cur_dir) if f.endswith(".md")]
+                     if os.path.isdir(cur_dir) else [])
+        for name in removed_names(base_files, cur_files):
+            if name not in gate_added:
+                violations.append(
+                    "{}/{}: {} removed without a gate-changes.md entry "
+                    "(gate removal costs what addition costs)".format(dir_rel, name, kind))
+
     return violations, journal_added
 
 
@@ -172,7 +217,8 @@ def main(argv=None):
             print("INTEGRITY RED: " + v)
         return 2
     print("scoreboard integrity CLEAN vs {} (history append-only, corpus immutable+growing, "
-          "oracles never weakened unjournaled)".format(args.baseline_rev))
+          "oracles never weakened unjournaled, gate surfaces never removed unjournaled)"
+          .format(args.baseline_rev))
     return 0
 
 
