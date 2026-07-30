@@ -82,6 +82,51 @@ def test_no_pytest_uncollectable_test_functions():
                      "under pytest while main() passes): " + "; ".join(bad))
 
 
+def _uninvoked_test_functions(source):
+    """Module-level `def test_*` names never referenced elsewhere in their own module —
+    the check()-style orphan: present for the AST (and for the engine's `test_passes`
+    predicate) but never called by main(), so it never runs."""
+    import ast
+    tree = ast.parse(source)
+    defs = {n.name for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")}
+    refs = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Store):
+            refs.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            refs.add(node.attr)
+    return sorted(defs - refs)
+
+
+def test_every_test_function_is_invoked():
+    """lift/ratchet-briefs D0 (arch-F9): in check()-style suites a `def test_*` that
+    main() never calls satisfies the engine's `test_passes` predicate (AST presence +
+    unskipped + gate-green) while NEVER RUNNING — the third recurrence of the
+    pytest-false-green class. Every module-level test_ function must be referenced inside
+    its own module. This upgrades every current and future `test_passes` predicate in this
+    repo from "exists" to "runs"."""
+    orphans = []
+    for suite in SUITES:
+        if not os.path.isfile(suite):
+            continue
+        with open(suite) as fh:
+            for name in _uninvoked_test_functions(fh.read()):
+                orphans.append("{}::{}".format(os.path.basename(suite), name))
+    assert not orphans, ("test functions that EXIST but are never invoked (they satisfy "
+                         "test_passes while never running): " + "; ".join(orphans))
+
+
+def test_runs_guard_can_detect_an_orphan():
+    """§13 calibrate-the-checker: a PLANTED orphaned test_ function must be flagged."""
+    planted = ("def test_real():\n    pass\n\n"
+               "def test_orphan():\n    pass\n\n"
+               "def main():\n    test_real()\n\n"
+               "if __name__ == '__main__':\n    main()\n")
+    found = _uninvoked_test_functions(planted)
+    assert found == ["test_orphan"], found
+
+
 def test_civerd_gate_script_is_the_real_gate():
     """The v1.15 class recurred one layer up: the aaa-guard made pytest honest about THESE
     suites, but the engine's gate command never ran calibration/'s script-style suites at
@@ -113,6 +158,8 @@ if __name__ == "__main__":
     failures = []
     for fn in (test_guard_can_detect_a_failing_suite,
                test_no_pytest_uncollectable_test_functions,
+               test_every_test_function_is_invoked,
+               test_runs_guard_can_detect_an_orphan,
                test_civerd_gate_script_is_the_real_gate):
         try:
             fn()
