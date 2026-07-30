@@ -738,6 +738,114 @@ def _weak_plant_flag_tests(d):
           p.returncode == 0 and "WEAK-PLANT" not in p.stdout, p.stdout[-300:])
 
 
+def _rule_d_gate_surface_tests():
+    """PLANTED (D3, lift/ratchet): gate removal must cost what addition costs — SKILL.md
+    `## ` headings, agents/*.md, and commands/*.md removed vs baseline are RED unless named
+    in gate-changes.md's added-since-baseline text. Additions stay FREE (R1's asymmetry:
+    the draft's exact-set pin taxed new doctrine at the removal rate — wrong). Closes the
+    live 7-of-11 hole: most command files were silently deletable."""
+    print("\n[D3 gate-surface removal rule (d)]")
+    ck = os.path.join(HERE, "check_scoreboard_integrity.py")
+
+    def scratch(d):
+        os.makedirs(os.path.join(d, "docs", "calibration"))
+        os.makedirs(os.path.join(d, "calibration", "corpus", "approved"))
+        os.makedirs(os.path.join(d, "plugins", "tdd-playbook", "skills", "tdd-playbook"))
+        os.makedirs(os.path.join(d, "plugins", "tdd-playbook", "agents"))
+        os.makedirs(os.path.join(d, "plugins", "tdd-playbook", "commands"))
+        with open(os.path.join(d, "docs", "calibration", "history.md"), "w") as fh:
+            fh.write("# Calibration history\n")
+        with open(os.path.join(d, "calibration", "scenarios.json"), "w") as fh:
+            json.dump({"scenarios": [{"id": "s1", "agent": "a1", "plant": "p", "task": "t",
+                                      "must_match": ["X"]}]}, fh)
+        with open(os.path.join(d, "calibration", "oracle-changes.md"), "w") as fh:
+            fh.write("# Oracle change journal\n")
+        with open(os.path.join(d, "calibration", "gate-changes.md"), "w") as fh:
+            fh.write("# Gate change journal (append-only)\n")
+        skill = os.path.join(d, "plugins", "tdd-playbook", "skills", "tdd-playbook",
+                             "SKILL.md")
+        with open(skill, "w") as fh:
+            fh.write("# T\n## 1. Loop\nbody\n## 2. Edges\nbody\n## 13. Learning\nbody\n")
+        for a in ("alpha-agent.md", "beta-agent.md"):
+            with open(os.path.join(d, "plugins", "tdd-playbook", "agents", a), "w") as fh:
+                fh.write("---\nname: x\n---\nbrief\n")
+        for c in ("edge.md", "mutate.md"):
+            with open(os.path.join(d, "plugins", "tdd-playbook", "commands", c), "w") as fh:
+                fh.write("command\n")
+
+        def git(*a):
+            subprocess.run(["git", "-C", d, *a], capture_output=True, text=True, timeout=30)
+        git("init", "-q")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        git("add", "-A")
+        git("commit", "-qm", "baseline")
+        return d
+
+    def run_ck(repo):
+        return subprocess.run([sys.executable, ck, "--repo", repo, "--baseline-rev", "HEAD"],
+                              capture_output=True, text=True, timeout=60)
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch(d)
+        check("rule d: unchanged gate surfaces -> 0", run_ck(d).returncode == 0,
+              (run_ck(d).returncode, run_ck(d).stdout, run_ck(d).stderr))
+
+        skill = os.path.join(d, "plugins", "tdd-playbook", "skills", "tdd-playbook",
+                             "SKILL.md")
+        # additions are FREE — new doctrine must never pay the removal toll
+        with open(skill, "a") as fh:
+            fh.write("## 14. New doctrine\nbody\n")
+        with open(os.path.join(d, "plugins", "tdd-playbook", "agents", "new-agent.md"),
+                  "w") as fh:
+            fh.write("---\nname: n\n---\nbrief\n")
+        check("rule d: heading + agent ADDED -> 0 (asymmetry preserved)",
+              run_ck(d).returncode == 0, run_ck(d).stdout)
+
+        # PLANTED: SKILL heading removed, unjournaled -> RED
+        body = open(skill).read().replace("## 2. Edges\nbody\n", "")
+        with open(skill, "w") as fh:
+            fh.write(body)
+        p = run_ck(d)
+        check("rule d: PLANTED heading removed unjournaled -> 2",
+              p.returncode == 2 and "2. Edges" in p.stdout, (p.returncode, p.stdout))
+        # journaled -> authorized
+        with open(os.path.join(d, "calibration", "gate-changes.md"), "a") as fh:
+            fh.write("- 2026-07-30 · SKILL section '## 2. Edges' folded into '## 1. Loop' "
+                     "· dedupe\n")
+        check("rule d: journaled heading removal -> 0", run_ck(d).returncode == 0,
+              run_ck(d).stdout)
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch(d)
+        # PLANTED: agent brief deleted unjournaled -> RED
+        os.remove(os.path.join(d, "plugins", "tdd-playbook", "agents", "beta-agent.md"))
+        p = run_ck(d)
+        check("rule d: PLANTED agent file removed unjournaled -> 2",
+              p.returncode == 2 and "beta-agent" in p.stdout, (p.returncode, p.stdout))
+        with open(os.path.join(d, "calibration", "gate-changes.md"), "a") as fh:
+            fh.write("- 2026-07-30 · beta-agent.md retired · superseded by gamma\n")
+        check("rule d: journaled agent removal -> 0", run_ck(d).returncode == 0,
+              run_ck(d).stdout)
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch(d)
+        # PLANTED: command deleted unjournaled -> RED (the 7-of-11 hole, closed)
+        os.remove(os.path.join(d, "plugins", "tdd-playbook", "commands", "mutate.md"))
+        p = run_ck(d)
+        check("rule d: PLANTED command file removed unjournaled -> 2",
+              p.returncode == 2 and "mutate" in p.stdout, (p.returncode, p.stdout))
+
+    with tempfile.TemporaryDirectory() as d:
+        scratch(d)
+        # PLANTED: gate-changes.md truncated (retro-authorization) -> RED via rule (a)
+        with open(os.path.join(d, "calibration", "gate-changes.md"), "w") as fh:
+            fh.write("- rewritten\n")
+        p = run_ck(d)
+        check("rule d: PLANTED truncated gate journal -> 2", p.returncode == 2,
+              (p.returncode, p.stdout))
+
+
 def _unified_validator_tests():
     """PLANTED (D0): two disagreeing validators were the parallel-list bug one level up —
     run_calibration must own ONE validate_scenario, with KNOWN_AGENTS derived from the
@@ -821,6 +929,7 @@ def main():
     _unified_validator_tests()
     _d2_control_tests()
     _d3_integrity_tests()
+    _rule_d_gate_surface_tests()
     with tempfile.TemporaryDirectory() as d1d:
         _d1_repeat_tests(d1d)
     with tempfile.TemporaryDirectory() as dwf:
