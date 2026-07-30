@@ -24,3 +24,5 @@
 {"ts": "2026-07-30T18:52:58+00:00", "event": "unlock", "reason": "test defect: slug-boundary cases omit a predicate so they hit the empty-list refusal instead of the boundary \u2014 adding suite_min:1 to isolate the cap; relocking after", "files": ["plugins/tdd-playbook/tests/test_plan_block.py"]}
 {"ts": "2026-07-30T18:52:58+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_plan_block.py"]}
 {"ts": "2026-07-30T19:07:43+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_capture.py"]}
+{"ts": "2026-07-30T19:21:12+00:00", "event": "unlock", "reason": "live demo found a gap: a Stop fired mid-tool-turn captured an EMPTY final (last assistant line was tool_use-only). Adding a regression test \u2014 the last TEXT-bearing assistant message is the final; no existing assertion touched or weakened", "files": ["plugins/tdd-playbook/tests/test_capture.py", "plugins/tdd-playbook/tests/test_plan_block.py"]}
+{"ts": "2026-07-30T19:22:02+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_capture.py", "plugins/tdd-playbook/tests/test_plan_block.py"]}

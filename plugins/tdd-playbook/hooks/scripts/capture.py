@@ -227,7 +227,9 @@ def last_assistant_text(path, cap):
                 if not ln.strip():
                     continue
                 text = _assistant_text_of(ln)
-                if text is not None:
+                # tool_use-only assistant lines concat to "" — not a final (live-found
+                # 2026-07-30: a Stop mid-tool-turn stored an empty-string "final")
+                if text:
                     return text, False
     if pos == 0:
         return None, False  # whole file scanned: genuinely no assistant line

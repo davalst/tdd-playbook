@@ -243,6 +243,33 @@ def test_stop_truncation_is_flagged_never_silent():
               len(recs) == 1 and recs[0].get("truncated") is True, recs)
 
 
+def test_stop_skips_tool_use_only_lines():
+    """LIVE-FOUND (2026-07-30, first real-transcript demo): a Stop that fires while the
+    turn's last assistant line is tool_use-only captured an EMPTY final — the empty-string
+    sha256 in a store that promises the assistant's words. The final is the last
+    TEXT-BEARING assistant message; tool_use-only lines are not a final."""
+    with tempfile.TemporaryDirectory() as d:
+        store = os.path.join(d, "store")
+        tr = os.path.join(d, "t.jsonl")
+        with open(tr, "w") as fh:
+            fh.write(assistant_line("the real final words") + "\n")
+            fh.write(assistant_line("", blocks=[{"type": "tool_use", "name": "Bash",
+                                                "input": {"command": "ls"}}]) + "\n")
+        run_cap("Stop", stop_payload(tr), store, ON)
+        recs = records(store)
+        check("stop: tool_use-only assistant line skipped — last TEXT-bearing message wins",
+              len(recs) == 1 and recs[0].get("text") == "the real final words", recs)
+        store2 = os.path.join(d, "store2")
+        tr2 = os.path.join(d, "t2.jsonl")
+        with open(tr2, "w") as fh:
+            fh.write(assistant_line("", blocks=[{"type": "tool_use", "name": "Bash",
+                                                "input": {}}]) + "\n")
+        p = run_cap("Stop", stop_payload(tr2), store2, ON)
+        check("stop: transcript with NO text-bearing assistant line -> exit 0, no record "
+              "(never an empty-string final)",
+              p.returncode == 0 and not records(store2), records(store2))
+
+
 def test_stop_reentry_guard():
     with tempfile.TemporaryDirectory() as d:
         store = os.path.join(d, "store")
@@ -386,6 +413,7 @@ def main():
              test_stop_captures_assistant_final,
              test_stop_backward_scan_recovers_a_long_final,
              test_stop_truncation_is_flagged_never_silent,
+             test_stop_skips_tool_use_only_lines,
              test_stop_reentry_guard,
              test_event_mismatch_writes_nothing,
              test_double_registration_dedupe_but_not_repeats,
