@@ -126,7 +126,10 @@ python3 calibration/run_calibration.py             # weekly, cheap model, hard c
 Since v1.17 each scenario runs 3× (one roll is a coin flip, not a measurement): `PASS` only at
 k/k, `AMBER` on a partial catch (nonzero; consecutive AMBER promotes to BLOCKING), and the run
 header reports **recall and false-positive rate separately** — every plant class ships with a
-paired clean control the verifier must stay quiet on.
+paired clean control the verifier must stay quiet on. Since v1.22 both numbers carry 95%
+Wilson intervals, every calibratable agent must have a plant (the coverage invariant), and
+removing any gate surface — a SKILL section, an agent brief, a command — costs a journaled
+`gate-changes.md` entry while adding one stays free: gate removal costs what addition costs.
 `check_staleness.py` makes the 14-day cadence mechanical instead of a memory: it fails loudly when
 `docs/calibration/history.md`'s latest run is missing or stale. It runs in the release gate and as a
 CIVerd `staleness` check, so decay is flagged off-box on the engine's daily timer.

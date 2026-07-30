@@ -3,9 +3,17 @@
 **A design decision on how to measure whether the playbook's gates earn their keep — without
 building a mechanism that erodes them.**
 
-Date: 2026-07-30 · Repo: `davalst/tdd-playbook` · Status: **proposal, review complete —
-awaiting David's ratification.** Reviewer recommendation: greenlight items 1 + 2 for the
-~2026-08-10 calibration cycle; item 3 rides the next authoring cycle; item 4 stays gated.
+Date: 2026-07-30 · Repo: `davalst/tdd-playbook` · Status: **RATIFIED — set A implemented in
+v1.22.0** (items 1, 2, 5 + the quarterly clock; two further plan-adversary passes reshaped
+the mechanics — see the implementation plan's fold notes and CHANGELOG v1.22.0). Deferred
+set (holdout · lift · cross-tier) is tracked as the `calibration-loop` QUARTERLY BUNDLE
+debt (expires 2026-11-01) + the `docs/calibration/quarterly.md` staleness clock — dated
+triggers, never prose.
+**Implementation correction (G8):** §2.4's "Deleting it today is silent" row was REFUTED at
+build time — `test_agents.py`'s `AGENT_CONTRACTS` exact-set REDs on agent deletion through
+the blessed gate. The REAL uncovered surface was behavioral (no live plant → a softened
+brief goes unseen between calibrations), which is what the coverage invariant + island pair
+actually close. Recorded per the review-history-honest-both-ways rule.
 Revision: **v3** — v2 incorporated peer review; v3 folds the third review pass (stub-freeze
 rule, meta-plant framing, cross-verified counts); see §9 for what changed and why
 Prompted by: review of arXiv:2607.21627, *Do Modules Stay in Their Lane? Role Drift in Compound

@@ -23,8 +23,15 @@ failure** — fix the agent (or the harness), never the plant. Results append to
 `docs/calibration/history.md` — the public scoreboard.
 
 Run: `python3 calibration/run_calibration.py [--agent NAME] [--repeat K] [--dry-run]`
-(`--dry-run` validates scenarios/fixture/corpus + the R2 pairing invariant without spending
-model calls — used in CI.) Each scenario runs `--repeat` times (default 3, §5a): `PASS` only
+(`--dry-run` validates scenarios/fixture/corpus + the R2 pairing invariant + the R1 agent-
+coverage invariant — every calibratable agent needs a plant — without spending model calls;
+used in CI.)
+
+**Wall-clock budget (know it before a live run):** the loop is serial; the CAP is
+scenarios × repeats × 600 s — at 30 × 3 that is ~15 h worst case (typical runs are far
+below the cap, but investigation-heavy plants raise `max_turns`). History is written ONCE
+at run end, so an interrupted run lands nothing: for long runs, chunk by agent
+(`--agent mutation-runner`, then the next) so each chunk commits its own block. Each scenario runs `--repeat` times (default 3, §5a): `PASS` only
 at k/k, `AMBER` on a partial catch (nonzero exit — no `--strict` flag to remember; AMBER on
 consecutive runs promotes to BLOCKING mechanically), `**BLOCKING FAIL**` at 0/k. The run
 header reports recall (plants) and FP (controls) as separate numbers.

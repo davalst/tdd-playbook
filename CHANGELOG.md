@@ -3,6 +3,37 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.22.0 — 2026-07-30
+
+**The deletion ratchet, dismantled — lift/ratchet proposal set A** (three review passes +
+two plan-adversary passes; 18 findings folded, three of them refuting the plan's own
+premises before build):
+
+- **Coverage invariant (R1 part 1):** every calibratable agent needs a PLANT — controls
+  prove restraint, not coverage. Landed RED on `integration-adversary` (the agent whose job
+  is finding uncovered things was itself uncovered — §6a at the meta level) and turned
+  green with the `island-write-only-plan` pair. The authoring loop consumes it: uncovered
+  agents become priority targets in the adversary brief.
+- **House output contracts:** `integration-adversary` gains `Verdict: CONNECTED/ISLANDS`,
+  `edge-case-adversary` gains `Coverage: ADEQUATE/GAPS` — AGENT_CONTRACTS-pinned, so
+  calibration oracles anchor on shipped contracts, never task-invented formats.
+  `TREE_TOUCHING_AGENTS` → `NOT_HEADLESS_CALIBRATABLE`, pinned exactly (the post-invariant
+  exemption list is the darkness hatch).
+- **Symmetric-harness-break plants:** `red-first-symmetric-break` (fails-both-sides proves
+  nothing → NOT VERIFIED) and `mutation-phantom-run` (the 2026-07-28 stale-pyc twin
+  incident, designed in → UNMEASURED), each with a clean control. Suite 24 → 30; all six +
+  both amended briefs live-calibrate at the ~2026-08-10 run.
+- **Gate-surface removal rule (d):** SKILL `##` sections, agent briefs, and command files
+  removed vs baseline are integrity-RED unless journaled in the new append-only
+  `calibration/gate-changes.md`; additions stay free. Gate removal now costs what addition
+  costs — and the rule closed a live hole: 7 of 11 command files were silently deletable.
+- **Wilson intervals** on recall AND FP, header + stdout (`3/3 [0.44–1.00]` — what a point
+  estimate at three reps hides). **Vendoring containment** pinned on the fact (COPY_TREES
+  can never escape the plugin). **The quarterly clock**: `docs/calibration/quarterly.md` on
+  the existing staleness gate (100 days, release-gate loud) carries the deferred
+  lift/cross-tier bundle; the QUARTERLY BUNDLE registry debt (expires 2026-11-01, trigger
+  proven by violation-string, never exit-code) is the backstop. Nothing deferred is prose.
+
 ## 1.21.0 — 2026-07-28
 
 **The gate itself was theater over `calibration/` — probe run 2's deepest catch.** CIVerd's

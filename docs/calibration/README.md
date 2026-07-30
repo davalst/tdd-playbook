@@ -4,7 +4,9 @@ Public record of the Playbook's own planted-defect calibration (see `calibration
 harness). Each run appends a **run block** to `history.md`: a header with the repo SHA, the
 DERIVED suite composition (`selected N of M — shipped + corpus · controls`), and **two
 numbers, not one** — recall (plants caught) and false-positive rate (clean controls wrongly
-flagged) — followed by one row per scenario with its `k/n` repeat count, failure mode, and a
+flagged) — **each with a 95% Wilson interval** (v1.22: `recall 3/3 [0.44–1.00]` says
+honestly what a point estimate at three reps hides; `[—]` marks an empty denominator) —
+followed by one row per scenario with its `k/n` repeat count, failure mode, and a
 three-state verdict (`PASS` at k/k, `AMBER` on a partial catch, `**BLOCKING FAIL**` at 0/k;
 `INVALID` rows mean nothing was measured and never extend freshness).
 

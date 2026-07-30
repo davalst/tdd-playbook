@@ -154,8 +154,13 @@ Local-machine plugin installs update separately (no prompt needed):
   `test_capability_registry.py::test_own_registry` on every suite run with the real date,
   so expired integration debt fails the tests, not just the checklist),
   `calibration/check_scoreboard_integrity.py --baseline-rev <previous release tag>` exits 0
-  (D3 — history append-only, corpus immutable, oracles never weakened unjournaled; ALSO
-  enforced mechanically: `test_harness.py` runs it against the latest tag on every suite run),
+  (history append-only, corpus immutable, oracles never weakened unjournaled, and — v1.22
+  rule (d) — gate surfaces [SKILL `##` sections, agents/*.md, commands/*.md] never removed
+  without a `calibration/gate-changes.md` entry; ALSO enforced mechanically:
+  `test_harness.py` runs it against the latest tag on every suite run),
+  `python3 calibration/check_staleness.py --history docs/calibration/quarterly.md
+  --max-age-days 100 --warn-only` (the quarterly-bundle clock: catalog refresh · lift read ·
+  cross-tier — lapsed quarters are loud on every release),
   and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
   present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.claude/.gitignore` written), plus
   `python3 scripts/install_into_repo.py --doctor .` on THIS repo (H8 guards-liveness:

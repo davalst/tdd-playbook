@@ -62,9 +62,14 @@
       "liveness": {"max_quiet_days": 14, "probe": "calibration/check_staleness.py — mechanical history.md staleness gate (F5, INVALID rows never extend freshness), run in the release gate and as a CIVerd check"},
       "integration_debt": [
         {
-          "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it — due ~2026-08-10 — must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence",
+          "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it — due ~2026-08-10 — must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence. v1.22.0 grew the suite to 30 (island pair closing the integration-adversary coverage gap, red-first symmetric-break + mutation-phantom-run pairs) and amended two agent contracts (Verdict:/Coverage: lines) — the 08-10 run live-calibrates ALL of it (§13: scenario/brief changes validated live before trusted)",
           "owner": "david",
           "expires": "2026-08-17"
+        },
+        {
+          "what": "QUARTERLY BUNDLE (lift/ratchet set B — the delay-proofing David demanded): each ~quarter, land a dated row in docs/calibration/quarterly.md (the check_staleness --max-age-days 100 clock, release-gate --warn-only) covering: (a) HACK_CATALOG refresh ritual; (b) the LIFT diagnostic read — HARD-BLOCKED until the dev/holdout split lands (approve-time pair/class assignment + burn-on-failure via an append-only side-ledger — burns COLLIDE with corpus immutability, so it needs its own red-first design pass, due before the first post-08-10 authoring batch) and the frozen contract-stub exists (stub = journal-protected measurement apparatus; the vendored lift-sentinel content scan joins that build); (c) the cross-tier calibration row once budgeted. A lapsed quarter = stale clock on every release AND this entry REDs the suite at expiry — an individually dropped set-A deliverable converts to a dated line here in the same commit, never to 'opportunistic'",
+          "owner": "david",
+          "expires": "2026-11-01"
         },
         {
           "what": "R3 premise plants (roadmap §E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and §0's spec-integrity rules have no planted test. Falsification probe first — author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here — never silence",
