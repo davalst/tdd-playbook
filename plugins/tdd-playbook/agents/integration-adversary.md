@@ -53,6 +53,12 @@ Skipping you there is skipping the one guard built for the author's own blind sp
 Output a prioritized gap list (worst first). Do not edit code or the plan — surface what the
 plan owes. Flag any check you could not ground in code as UNVERIFIED rather than asserting it.
 
-End with a single forced line: `Recommendation: <the one integration gap to fix first>
+End with TWO forced lines (v1.22 house contract — calibration oracles anchor on these;
+never improvise a different format):
+`Verdict: CONNECTED` — every emitted surface names a live consumer and nothing ships dark —
+or `Verdict: ISLANDS (<n>)` where n counts the write-only emitters / dark surfaces found.
+Then `Recommendation: <the one integration gap to fix first>
 because <names the specific seam/file in THIS repo that goes dark without it>`. A generic
 justification ("better integration is good") is rejected — it must name a concrete seam.
+A clean plan gets `Verdict: CONNECTED`, not invented islands — restraint on clean work is
+measured (paired controls), exactly like vigilance on broken work.

@@ -37,8 +37,8 @@ sys.path.insert(0, HERE)
 # (planted-error-probe, ux-probe-calibrator — their scenarios need revert-safety discipline
 # and stay hand-written). The previous hardcoded set here froze at the original four while
 # the roster grew to nine (§6a old-blind-to-new); a derived roster cannot re-freeze.
-from run_calibration import (known_agents, load_scenarios, pairing_problems,  # noqa: E402
-                             validate_scenario)
+from run_calibration import (agent_coverage_problems, known_agents,  # noqa: E402
+                             load_scenarios, pairing_problems, validate_scenario)
 
 
 def corpus_scenarios(which=("approved",)):
@@ -95,7 +95,14 @@ def adversary_prompt(category):
                 fixture_listing.append("--- {} ---\n{}".format(rel, fh.read()))
     known = sorted({s["id"] for s in load_scenarios()}
                    | {s["id"] for s in corpus_scenarios(("proposed", "approved"))})
-    return (
+    # R1 coverage: the authoring loop is the invariant's natural consumer — uncovered
+    # agents are named as priority targets so the next cycle closes gaps, not just grows.
+    uncovered = [p.split(":", 1)[0] for p in agent_coverage_problems(
+        load_scenarios() + corpus_scenarios(("proposed", "approved")))]
+    priority = ("\nPRIORITY — these agents are currently UNCOVERED (no plant exercises "
+                "them): {}. Author their pairs FIRST.\n".format(", ".join(uncovered))
+                if uncovered else "")
+    return (priority +
         "You are the ADVERSARY that keeps a verification system honest. Below is a small "
         "fixture repo used to calibrate verifier agents ({agents}). Author {n} NEW "
         "plant+control PAIRS (categories: {cats}).{cat_line} Each pair is TWO scenarios:\n"
@@ -193,6 +200,10 @@ def cmd_approve(args):
     if pair_probs:
         print("REFUSING approval — " + "; ".join(pair_probs))
         return 1
+    # R1 coverage echo — informational, never a refusal (roster-wide coverage isn't this
+    # plant's fault; refusing a good plant for someone else's gap would be wrong):
+    for prob in agent_coverage_problems(universe):
+        print("coverage note: " + prob)
     sc["_meta"]["status"] = "approved"
     sc["_meta"]["approved_at"] = datetime.date.today().isoformat()
     os.makedirs(APPROVED, exist_ok=True)

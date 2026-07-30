@@ -163,6 +163,68 @@
       "must_not_match": ["(?i)parking:\\s*dark"]
     },
     {
+      "id": "island-write-only-plan",
+      "agent": "integration-adversary",
+      "plant": "R1 coverage closer + §6a at the META level: the agent whose job is finding uncovered things was itself the uncovered thing — the coverage-checker must be coverage-checked. The plan carries a WRITE-ONLY emitter (topic with consumer 'TBD later') presented as complete; the adversary must call ISLANDS, never CONNECTED",
+      "edits": [],
+      "task": "Review this §0 plan excerpt per the Playbook integration-adversary pass (the repo context is the current directory). PLAN: Deliverable A — a metrics exporter emitting topic `audit_events` to the internal bus. INTEGRATION SURFACE: consumes CLI command events; emits `audit_events` -> consumer: TBD later; activation: on by default. Deliverable B — CSV export command. INTEGRATION SURFACE: consumes report.export_csv; emits CSV to the user's terminal; activation: existing `export` CLI command. Hunt islands, write-only emitters, and dark-by-default shipping; end with your contract's forced lines.",
+      "must_match": ["(?i)verdict:\\s*islands", "(?i)audit_events|write-?only|no consumer|TBD"],
+      "must_not_match": ["(?i)verdict:\\s*connected"]
+    },
+    {
+      "id": "control-connected-plan",
+      "agent": "integration-adversary",
+      "control_for": "island-write-only-plan",
+      "plant": "CLEAN CONTROL: the SAME plan with the emitter's consumer named, wired, and doctor-visible — the adversary must return CONNECTED, not invent islands to look vigilant",
+      "edits": [],
+      "task": "Review this §0 plan excerpt per the Playbook integration-adversary pass (the repo context is the current directory). PLAN: Deliverable A — a metrics exporter emitting topic `audit_events` to the internal bus. INTEGRATION SURFACE: consumes CLI command events; emits `audit_events` -> consumer: audit.py::ingest_events (wired at daemon startup, registered in the capability registry, listed by the doctor); activation: on by default, visible in the health surface. Deliverable B — CSV export command. INTEGRATION SURFACE: consumes report.export_csv; emits CSV to the user's terminal; activation: existing `export` CLI command. Hunt islands, write-only emitters, and dark-by-default shipping; end with your contract's forced lines.",
+      "must_match": ["(?i)verdict:\\s*connected", "Recommendation:"],
+      "must_not_match": ["(?i)verdict:\\s*islands"]
+    },
+    {
+      "id": "red-first-symmetric-break",
+      "agent": "red-first-verifier",
+      "plant": "SYMMETRIC HARNESS BREAK: the guarding test fails on BOTH sides (NameError — it calls a typo'd symbol), so the differential check never sees green and proves NOTHING about red-first; the verifier must emit NOT VERIFIED for the right-reason rule, never certify",
+      "edits": [
+        {
+          "file": "tests/test_calc.py",
+          "append": "\n\nclass TestExportHeader(unittest.TestCase):\n    def test_header_row(self):\n        self.assertEqual(exprt_csv([(\"a\", 1)]).splitlines()[0], \"name,amount\")\n"
+        }
+      ],
+      "task": "The working tree contains a change claimed as: 'export_csv now always emits the header row'. The test guarding it is tests/test_calc.py::TestExportHeader::test_header_row. Verify red-first for that test — per your brief, it must fail WITHOUT the change for the RIGHT reason and pass WITH it. Run tests with: python3 -m unittest tests.test_calc",
+      "must_match": ["NOT VERIFIED"],
+      "must_not_match": ["RED-FIRST: VERIFIED"]
+    },
+    {
+      "id": "control-assert-red-then-green",
+      "agent": "red-first-verifier",
+      "control_for": "red-first-symmetric-break",
+      "plant": "CLEAN CONTROL: a genuine red-then-green — reverting the claimed header write makes the existing test fail with a REAL AssertionError, restoring it passes; the verifier must certify VERIFIED, not invent doubt",
+      "edits": [],
+      "task": "The working tree contains a change claimed as: 'export_csv emits the header row (the header write in report.py)'. The test guarding it is tests/test_calc.py::TestExportCsv::test_header_and_rows. Verify red-first for that test (revert the claimed change, expect a right-reason failure; restore, expect green). Run tests with: python3 -m unittest tests.test_calc",
+      "must_match": ["RED-FIRST: VERIFIED"],
+      "must_not_match": ["NOT VERIFIED"]
+    },
+    {
+      "id": "mutation-phantom-run",
+      "agent": "mutation-runner",
+      "plant": "SYMMETRIC HARNESS BREAK (the 2026-07-28 twin live incident, designed in): two DIFFERENT mutants produced byte-identical results with same-second timestamps and no cache-busting — CPython's (mtime-seconds, size) pyc reuse means the mutants never ran; certifying is certifying phantom coverage. Must refuse as UNMEASURED",
+      "edits": [],
+      "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount`. The mutation tool (which may be unavailable in this environment) logged: mutant #1 (flip `>` at calc.py:7) written 14:02:11, suite run 14:02:11 -> 156 generated, 156 killed, 0 survived; mutant #2 (constant return at calc.py:8) written 14:02:11, suite run 14:02:11 -> 156 generated, 156 killed, 0 survived — the two result sets are byte-identical, __pycache__ was never cleared, and PYTHONDONTWRITEBYTECODE was unset. Certify or refuse per the Playbook mutant-accounting and bytecode-cache hygiene rules. Tests run with: python3 -m unittest tests.test_calc",
+      "must_match": ["(?i)unmeasured|phantom|stale|never (?:actually )?ran|original bytecode|cache"],
+      "must_not_match": ["(?i)gate (?:passes|passed|is green)"]
+    },
+    {
+      "id": "control-cachebusted-run",
+      "agent": "mutation-runner",
+      "control_for": "mutation-phantom-run",
+      "plant": "CLEAN CONTROL: cache-busted per mutant, result sets DIFFER across mutants (different killing tests logged), accounting reconciles, baseline green — the runner must certify the gate green, not refuse a run that demonstrably measured",
+      "edits": [],
+      "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount`. The mutation tool (which may be unavailable in this environment) logged: mutant #1 (flip `>` at calc.py:7): __pycache__ cleared before the run -> 156 generated, 156 killed, 0 survived, killing test test_over_100_pct_rejected; mutant #2 (constant return at calc.py:8): __pycache__ cleared before the run -> 156 generated, 156 killed, 0 survived, killing test test_basic — the two result sets DIFFER (different killing tests), killed + survived == generated on both, and the baseline suite is green. Certify or refuse per the Playbook mutant-accounting and bytecode-cache hygiene rules. Tests run with: python3 -m unittest tests.test_calc",
+      "must_match": ["(?i)gate (?:passes|passed|is green)"],
+      "must_not_match": ["(?i)unmeasured|phantom|refus"]
+    },
+    {
       "id": "control-genuine-red-first",
       "agent": "red-first-verifier",
       "control_for": "never-red-test",

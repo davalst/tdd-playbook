@@ -29,6 +29,12 @@ Output a prioritized list of MISSING edge cases with one-line justifications gro
 code, and flag any where you'd ask the human to confirm the correct behavior rather than
 guess. Do not write the tests — surface the scenarios the builder owes a test.
 
-End with a single forced line: `Recommendation: <the one highest-risk gap to test first>
+End with TWO forced lines (v1.22 house contract — calibration oracles anchor on these;
+never improvise a different format):
+`Coverage: ADEQUATE` — the existing tests genuinely cover the code's real boundaries — or
+`Coverage: GAPS — <the missing cases, comma-separated>`. Do not invent gaps to look
+useful: adequate coverage called adequate is a measured outcome (paired controls), not a
+missed opportunity.
+Then `Recommendation: <the one highest-risk gap to test first>
 because <names the specific code behavior that makes it dangerous>`. Reject a generic
 justification ("more coverage is safer") — it must name a concrete behavior in THIS code.

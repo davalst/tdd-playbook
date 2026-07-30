@@ -1,5 +1,7 @@
 {
   "files": {
-    "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py": "2026-07-28T15:11:20+00:00"
+    "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py": "2026-07-28T15:11:20+00:00",
+    "plugins/tdd-playbook/tests/test_agents.py": "2026-07-30T12:51:31+00:00",
+    "calibration/test_harness.py": "2026-07-30T12:52:38+00:00"
   }
 }

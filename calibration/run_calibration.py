@@ -41,11 +41,15 @@ TIMEOUT_S = 600
 DEFAULT_REPEAT = 3  # §5a applied to ourselves: one roll of a probabilistic verifier is a
                     # coin flip, not a measurement (R1 — the 2026-07-27 lucky-roll rows)
 
-# Tree-touching agents need revert-safety discipline and stay OUT of headless calibration.
-# Everything else in plugins/tdd-playbook/agents/ is calibratable — the roster is DERIVED,
-# never a second hand-maintained list (the origin freeze: a hardcoded set stuck at four
-# while the roster grew to nine; §6a old-blind-to-new).
-TREE_TOUCHING_AGENTS = {"planted-error-probe", "ux-probe-calibrator"}
+# Agents that cannot run headless calibration (their scenarios need revert-safety
+# discipline, so they stay hand-exercised via their commands). Named for the FACT it
+# encodes — the old TREE_TOUCHING_AGENTS name collided with test_agents.py's different,
+# disagreeing TREE_TOUCHING set (which means "carries the with_snapshot block"). Post-D1
+# this set is the coverage invariant's ONLY exemption, so it is PINNED exactly in
+# test_harness.py (shrink-only): adding a name here silently deletes a coverage
+# requirement, and that edit must be conscious. Everything else in the agents/ roster is
+# calibratable — the roster stays DERIVED, never a second hand-maintained list.
+NOT_HEADLESS_CALIBRATABLE = {"planted-error-probe", "ux-probe-calibrator"}
 
 
 def known_agents():
@@ -53,7 +57,7 @@ def known_agents():
         names = {fn[:-3] for fn in os.listdir(AGENTS_DIR) if fn.endswith(".md")}
     except OSError:
         return set()
-    return names - TREE_TOUCHING_AGENTS
+    return names - NOT_HEADLESS_CALIBRATABLE
 
 
 # Pre-quota plants without a paired clean control (R2 grandfather, dated 2026-07-28).
@@ -233,6 +237,20 @@ def pairing_problems(scenarios):
     return problems
 
 
+def agent_coverage_problems(scenarios, agents=None):
+    """Set-level R1-part-1 invariant (lift/ratchet plan): every headless-calibratable agent
+    has >=1 PLANT. Controls don't count — plants define coverage; a control proves
+    restraint, not that the agent's rules are exercised. This is the behavioral half of
+    gate-removal protection: the test_agents roster pin catches DELETING an agent, this
+    catches the agent nobody can see decay — a softened brief keeps its verdict lines
+    while losing its rules, and without a live plant nothing notices between calibrations."""
+    agents = known_agents() if agents is None else agents
+    covered = {s.get("agent") for s in scenarios if not s.get("control_for")}
+    return ["{}: no plant covers this agent — a softened brief goes unseen between "
+            "calibrations (R1 coverage invariant; author a plant+control pair)".format(a)
+            for a in sorted(agents - covered)]
+
+
 def turns_for(scenario):
     """Per-scenario turn budget: `max_turns` (int) overrides the default hard cap.
     Investigation-heavy plants (e.g. static analysis under a ceremony-heavy brief on a
@@ -278,10 +296,12 @@ def dry_run(scenarios):
         for msg in validate_scenario(sc, seen):
             problems.append("{}: {}".format(sc.get("id"), msg))
         seen.add(sc.get("id"))
-    # R2 pairing is a corpus-level invariant — evaluated over the FULL suite even when
-    # dry_run was invoked on a filtered selection (a --scenario run must not false-flag
-    # its plant's control as missing, nor mask a real gap).
-    problems.extend(pairing_problems(load_scenarios() + load_corpus()))
+    # R2 pairing and R1 coverage are corpus-level invariants — evaluated over the FULL
+    # suite even when dry_run was invoked on a filtered selection (a --scenario run must
+    # not false-flag its plant's control as missing, nor mask a real gap).
+    full = load_scenarios() + load_corpus()
+    problems.extend(pairing_problems(full))
+    problems.extend(agent_coverage_problems(full))
     for msg in problems:
         print("DRY-RUN PROBLEM: " + msg)
     print("dry-run: {} scenario(s), {} problem(s)".format(len(scenarios), len(problems)))
