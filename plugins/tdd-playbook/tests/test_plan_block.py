@@ -71,17 +71,17 @@ def main():
               (v.returncode, v.stdout, v.stderr))
 
         # brief test 6 + boundary AT the limit (their mutation lesson): "plan."+slug <= 64
-        ok59 = scaffold(d, "s" * 59)
-        at60 = scaffold(d, "s" * 60)
+        ok59 = scaffold(d, "s" * 59, "--predicate", "suite_min:1")
+        at60 = scaffold(d, "s" * 60, "--predicate", "suite_min:1")
         check("slug boundary: 59 accepted (plan.+59 == 64)", ok59.returncode == 0,
               (ok59.returncode, ok59.stderr))
         check("slug boundary: 60 refused AT the limit", at60.returncode != 0
               and "64" in (at60.stderr + at60.stdout), (at60.returncode, at60.stderr))
 
         # charset + collision
-        bad = scaffold(d, "bad slug!")
+        bad = scaffold(d, "bad slug!", "--predicate", "suite_min:1")
         check("slug charset violation refused", bad.returncode != 0, bad.returncode)
-        dup = scaffold(d, "2026-07-30-demo")
+        dup = scaffold(d, "2026-07-30-demo", "--predicate", "suite_min:1")
         check("slug collision with existing plan refused", dup.returncode != 0,
               dup.returncode)
 
