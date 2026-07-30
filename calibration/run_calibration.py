@@ -126,9 +126,11 @@ def load_corpus():
     return out
 
 
-def catalog_staleness():
+def catalog_staleness(today=None):
     """Days since the newest HACK_CATALOG refresh-log entry, or None if unparseable.
-    The decay principle (§13): a stale catalog is itself a finding."""
+    The decay principle (§13): a stale catalog is itself a finding. `today` is injectable
+    (D6/G4 — a clock nobody can test is a clock nobody trusts); the quarterly bundle's
+    REAL trigger is docs/calibration/quarterly.md on check_staleness (see CLAUDE.md)."""
     path = os.path.join(REPO, "docs", "HACK_CATALOG.md")
     try:
         with open(path) as fh:
@@ -139,7 +141,7 @@ def catalog_staleness():
         return None
     y, m = max((int(a), int(b)) for a, b in dates)
     newest = datetime.date(y, m, 1)
-    return (datetime.date.today() - newest).days
+    return ((today or datetime.date.today()) - newest).days
 
 
 def agent_body(agent):
@@ -495,10 +497,11 @@ def main(argv=None):
                   "authoring cycle (the corpus grows, it never dilutes).".format(
                       sc["id"], len(prior) + 1))
     print("\nCalibration: {}/{} caught · selected {} of {} ({} shipped + {} corpus · {} "
-          "controls) · recall {}/{} · FP {}/{} · corpus size {} (only grows)".format(
+          "controls) · recall {}/{} {} · FP {}/{} {} · corpus size {} (only grows)".format(
               len(results) - failed, len(results), len(scenarios), len(all_scenarios),
-              len(shipped), len(corpus), controls_total, recall[0], recall[1],
-              fp[0], fp[1], len(corpus)))
+              len(shipped), len(corpus), controls_total,
+              recall[0], recall[1], history_format.interval_cell(*recall),
+              fp[0], fp[1], history_format.interval_cell(*fp), len(corpus)))
     # R4 — the retirement-candidate mirror of the DECAY WARNING (§13's second decay
     # direction: more expensive than the risk). This run IS the cycle: roll the raw yield
     # exhaust into the committed record, then report. NEVER fails the calibration run.

@@ -18,3 +18,5 @@
 {"ts": "2026-07-30T12:57:03+00:00", "event": "unlock", "reason": "D0-D2 implemented to green (harness 129/129, agents 234/234, dry-run 30/30); committing boundary, will re-lock for D3 reds", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_agents.py"]}
 {"ts": "2026-07-30T12:59:17+00:00", "event": "lock", "files": ["calibration/test_harness.py"]}
 {"ts": "2026-07-30T13:01:56+00:00", "event": "unlock", "reason": "D3 green (harness 137/137, real-repo integrity CLEAN vs v1.21.0 with rule (d) active); boundary commit, will re-lock for D4-D6 reds", "files": ["calibration/test_harness.py"]}
+{"ts": "2026-07-30T13:03:41+00:00", "event": "lock", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_installer.py"]}
+{"ts": "2026-07-30T13:06:44+00:00", "event": "unlock", "reason": "D4-D6 green (harness 148/148, installer 27/27): wilson + quarterly clock + containment pin implemented; boundary commit", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_installer.py"]}

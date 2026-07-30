@@ -12,6 +12,7 @@ Freshness rule: INVALID rows never extend freshness — an INVALID run is a run 
 was calibrated, and a cadence gate satisfied by one is asleep (§13).
 """
 import datetime
+import math
 import os
 import re
 
@@ -64,6 +65,26 @@ def latest_run_date(text):
     return max(dates) if dates else None
 
 
+def wilson(k, n, z=1.96):
+    """95% Wilson score interval for k successes in n trials — a pure STATISTIC (the
+    format functions below only render it; consumers like the lift report re-derive from
+    here, never from regexing the file). None when n == 0 (renders as [—]). At n=3, 3/3
+    is consistent with a true rate from ~0.44 to 1.0 — the honesty the point estimate
+    `recall 9/9` was hiding (lift/ratchet D4)."""
+    if n == 0:
+        return None
+    p = k / n
+    denom = 1 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    margin = (z / denom) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return (max(0.0, round(center - margin, 2)), min(1.0, round(center + margin, 2)))
+
+
+def interval_cell(k, n):
+    ci = wilson(k, n)
+    return "[—]" if ci is None else "[{:.2f}–{:.2f}]".format(ci[0], ci[1])
+
+
 def append_run_block(path, meta, rows):
     """Append one run block. meta: date, model, repo_sha, selected, total, shipped, corpus,
     controls, recall=(caught, plants), fp=(flagged, controls). rows: dicts with date,
@@ -78,9 +99,11 @@ def append_run_block(path, meta, rows):
         fh.write(
             "\n### Run {date} — model {model} · repo {repo_sha} · selected {selected} of "
             "{total} ({shipped} shipped + {corpus} corpus · {controls} controls) · "
-            "recall {r0}/{r1} · FP {f0}/{f1}\n".format(
+            "recall {r0}/{r1} {rci} · FP {f0}/{f1} {fci}\n".format(
                 r0=meta["recall"][0], r1=meta["recall"][1],
-                f0=meta["fp"][0], f1=meta["fp"][1], **{
+                rci=interval_cell(*meta["recall"]),
+                f0=meta["fp"][0], f1=meta["fp"][1],
+                fci=interval_cell(*meta["fp"]), **{
                     k: meta[k] for k in ("date", "model", "repo_sha", "selected", "total",
                                          "shipped", "corpus", "controls")}))
         fh.write(HEADER_7 + "\n" + SEP_7 + "\n")
