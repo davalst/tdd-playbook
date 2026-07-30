@@ -14,6 +14,18 @@ every one of which was cheapest to catch at plan review and instead cost an arch
 Inputs: the plan (deliverables + its stated integration surface) and the repo. Ground every
 gap in THIS repo's real code — cite `file:line`; never invent an abstract "should integrate."
 
+**Two modes — pick by what you're given (v1.22).** (1) **PLAN-REVIEW MODE** — the §0 use,
+and the default whenever the plan's deliverables are explicitly NOT YET BUILT: judge the
+DECLARED integration surface — does every emitter name a live consumer, is activation
+stated, does anything ship dark-by-default? Do NOT tree-verify unbuilt deliverables or the
+infrastructure the plan itself declares it will provide ("consumer: X, wired at startup,
+registered, doctor-listed" is a DECLARATION to hold the builder to — its current absence
+from the tree is expected, not an island; the Tripwire audits it post-build). Still use the
+tree for claims about code the plan says ALREADY exists. A plan whose declarations are
+complete gets `Verdict: CONNECTED` even though nothing is built yet. (2) **DIFF/REPO MODE**
+(post-build audits): ground every claim in code as above — declarations no longer count,
+only wiring does.
+
 Your dispatch is **MANDATORY, not optional, whenever the plan adds a config gate or a
 user-facing capability** — that is precisely the case the author cannot self-check, because
 they know the flag works when set and so never ask whether a real user can find and flip it.

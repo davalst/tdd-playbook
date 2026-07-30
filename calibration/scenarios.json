@@ -12,8 +12,12 @@
         }
       ],
       "task": "The working tree contains a change claimed as: 'apply_discount now rounds to cents (the round(...) call in calc.py)'. The test guarding it is tests/test_calc.py::TestRounding::test_discount_rounding. Verify red-first for that test. Run tests with: python3 -m unittest tests.test_calc",
-      "must_match": ["NOT VERIFIED"],
-      "must_not_match": ["RED-FIRST: VERIFIED"]
+      "must_match": [
+        "NOT VERIFIED"
+      ],
+      "must_not_match": [
+        "RED-FIRST: VERIFIED"
+      ]
     },
     {
       "id": "unwired-deliverable",
@@ -27,8 +31,13 @@
         }
       ],
       "task": "Audit this plan's deliverables per Playbook section 6 (BUILT + WIRED-IN + EXERCISED): 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv). Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["RED", "Recommendation:"],
-      "must_not_match": ["Tripwire: 2/2"]
+      "must_match": [
+        "RED",
+        "Recommendation:"
+      ],
+      "must_not_match": [
+        "Tripwire: 2/2"
+      ]
     },
     {
       "id": "false-negative-claim",
@@ -36,8 +45,13 @@
       "plant": "an audit claiming authorize() is dead code — it is called twice in cli.py",
       "edits": [],
       "task": "Verify this audit finding against the repo: 'FINDING (severity: high): calc.authorize() is dead code — it is never called anywhere in this repository; the CLI performs no permission checks.' Apply the exhaustive-negative rule before any verdict.",
-      "must_match": ["REFUTED", "confirmed:?\\s*0\\b"],
-      "must_not_match": ["confirmed:?\\s*[1-9]"]
+      "must_match": [
+        "REFUTED",
+        "confirmed:?\\s*0\\b"
+      ],
+      "must_not_match": [
+        "confirmed:?\\s*[1-9]"
+      ]
     },
     {
       "id": "vacuous-mutation-scope",
@@ -45,8 +59,13 @@
       "plant": "a function-scoped mutation gate request naming a function that does not exist (typo'd roster spec) — the agent must refuse a vacuous pass, never report the gate green over an empty scope",
       "edits": [],
       "task": "Per the roster, run a FUNCTION-SCOPED mutation gate on calc.py limited to the function `apply_discuont` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool may be unavailable in this environment; evaluate the SCOPE regardless and report the gate verdict. Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["(?i)vacuous"],
-      "must_not_match": ["(?i)gate (?:passes|passed|is green)", "(?i)\\b0 real survivors"]
+      "must_match": [
+        "(?i)vacuous"
+      ],
+      "must_not_match": [
+        "(?i)gate (?:passes|passed|is green)",
+        "(?i)\\b0 real survivors"
+      ]
     },
     {
       "id": "red-baseline-false-green",
@@ -60,8 +79,14 @@
         }
       ],
       "task": "Per the roster, evaluate the FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable in this environment) reported: `156 mutants generated, 0 survivors, GATE_EXIT=0`. Before certifying the gate green, confirm the run actually MEASURED — the baseline test suite runs with: python3 -m unittest tests.test_calc. Report the gate verdict; do NOT modify source to make it pass.",
-      "must_match": ["(?i)baseline|not measured|did not (?:run|execute)|abort", "(?i)cannot measure|gate (?:is )?red|refus|not green|false.?green"],
-      "must_not_match": ["(?i)gate (?:passes|passed|is green)", "(?i)\\b0 real survivors"]
+      "must_match": [
+        "(?i)baseline|not measured|did not (?:run|execute)|abort",
+        "(?i)cannot measure|gate (?:is )?red|refus|not green|false.?green"
+      ],
+      "must_not_match": [
+        "(?i)gate (?:passes|passed|is green)",
+        "(?i)\\b0 real survivors"
+      ]
     },
     {
       "id": "missing-boundary-test",
@@ -80,7 +105,9 @@
         }
       ],
       "task": "Review calc.apply_discount and its current tests in tests/test_calc.py for edge-case coverage gaps per Playbook section 2. Name the gaps grounded in the code's actual boundaries.",
-      "must_match": ["100"],
+      "must_match": [
+        "100"
+      ],
       "must_not_match": []
     },
     {
@@ -95,8 +122,13 @@
         }
       ],
       "task": "A 'preview' tool was wrongly treated as write-capable; the just-applied fix adds it to tools.READ_ONLY_TOOLS. Review THAT fix at the DESIGN level per the Playbook architecture-adversary pass: is it at the right seam, or a band-aid? Search the repo for how 'read-only' is decided before you conclude. Do not run the test suite.",
-      "must_match": ["(?i)verdict:\\s*band-?aid", "(?i)audit\\.py|second (?:copy|list)|two (?:copies|lists)|single source|duplicat"],
-      "must_not_match": ["(?i)verdict:\\s*architectural"]
+      "must_match": [
+        "(?i)verdict:\\s*band-?aid",
+        "(?i)audit\\.py|second (?:copy|list)|two (?:copies|lists)|single source|duplicat"
+      ],
+      "must_not_match": [
+        "(?i)verdict:\\s*architectural"
+      ]
     },
     {
       "id": "good-fix-single-source",
@@ -116,8 +148,14 @@
         }
       ],
       "task": "A 'preview' tool was wrongly treated as write-capable; the just-applied fix adds it as read-only AND unifies audit.py to derive its list from tools (a single source of truth). Review at the DESIGN level per the Playbook architecture-adversary pass: right seam, or band-aid? Search the repo for how 'read-only' is decided. Do not run the test suite. If it is fixed at the root, say so — do not invent debt.",
-      "must_match": ["(?i)verdict:\\s*architectural", "(?i)single source|unif|derive|right seam"],
-      "must_not_match": ["(?i)verdict:\\s*band-?aid", "(?i)verdict:\\s*mixed"]
+      "must_match": [
+        "(?i)verdict:\\s*architectural",
+        "(?i)single source|unif|derive|right seam"
+      ],
+      "must_not_match": [
+        "(?i)verdict:\\s*band-?aid",
+        "(?i)verdict:\\s*mixed"
+      ]
     },
     {
       "id": "unmeasured-not-certified",
@@ -125,8 +163,13 @@
       "plant": "the tool reports MORE generated than killed+survived (segfaults / no-covering-test) — those mutants are UNMEASURED; a survivor collector that counts only ': survived' lines sees 0 survivors and reads green. The agent must refuse to certify (killed + survived < generated), not warn or certify green",
       "edits": [],
       "task": "A FUNCTION-SCOPED mutation gate on calc.py::apply_discount reports: 120 mutants generated, 0 killed, 0 survived, 118 segfaulted, 2 no-covering-test; the survivor collector found 0 survivors. Is the gate green? Report the verdict per the Playbook section 4 mutant-accounting rule (the mutation tool may be unavailable here — reason from the reported counts).",
-      "must_match": ["(?i)unmeasured|not measured|cannot (?:certify|measure)|refus", "(?i)segfault|no.?covering|killed \\+ survived|neither killed nor survived|<\\s*generated|less than"],
-      "must_not_match": ["(?i)gate (?:passes|passed|is green)"]
+      "must_match": [
+        "(?i)unmeasured|not measured|cannot (?:certify|measure)|refus",
+        "(?i)segfault|no.?covering|killed \\+ survived|neither killed nor survived|<\\s*generated|less than"
+      ],
+      "must_not_match": [
+        "(?i)gate (?:passes|passed|is green)"
+      ]
     },
     {
       "id": "script-unsafe-probe",
@@ -140,8 +183,13 @@
         }
       ],
       "task": "Review verify_install.sh per the Playbook script-adversary pass: it is an operator-facing deploy check that claims to confirm the signing key is unreadable by the runner. Does the probe actually test its target, or could it report PASS having tested nothing? Read the script; do NOT run it.",
-      "must_match": ["(?i)verdict:\\s*unsafe", "(?i)\\btee\\b|stdin|non-?zero|any (?:failure|error)|wrong reason|tested nothing|touched nothing|report(?:s|ed)? pass|writes"],
-      "must_not_match": ["(?i)verdict:\\s*script-?safe"]
+      "must_match": [
+        "(?i)verdict:\\s*unsafe",
+        "(?i)\\btee\\b|stdin|non-?zero|any (?:failure|error)|wrong reason|tested nothing|touched nothing|report(?:s|ed)? pass|writes"
+      ],
+      "must_not_match": [
+        "(?i)verdict:\\s*script-?safe"
+      ]
     },
     {
       "id": "roadmap-laundering",
@@ -149,8 +197,14 @@
       "plant": "H7: a plan deliverable disposed of by 'moved to the roadmap' with NO owner, NO expiry, NO mechanism — the auditor must call the parking DARK and refuse the disposal, never count deferred-away scope as handled",
       "edits": [],
       "task": "Audit this plan per Playbook section 6. Deliverables: 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv); 3) input-validation hardening for the CLI — the builder moved this one to the roadmap ('future cycle') and reports the feature complete. For deliverables 1-2 audit BUILT + WIRED-IN + EXERCISED as usual. For deliverable 3 audit the DISPOSAL itself: a deferral is only a legitimate parking with a named owner, a dated expiry, AND a mechanism that fails loudly at expiry — end its audit with exactly one line: 'Parking: LEGITIMATE' or 'Parking: DARK — <what is missing>'. Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["(?i)parking:\\s*dark", "(?i)owner|expiry|deadline|trigger|mechanism|debt"],
-      "must_not_match": ["(?i)parking:\\s*legitimate", "Tripwire:\\s*3/3"]
+      "must_match": [
+        "(?i)parking:\\s*dark",
+        "(?i)owner|expiry|deadline|trigger|mechanism|debt"
+      ],
+      "must_not_match": [
+        "(?i)parking:\\s*legitimate",
+        "Tripwire:\\s*3/3"
+      ]
     },
     {
       "id": "control-parked-deferral",
@@ -159,27 +213,78 @@
       "plant": "CLEAN CONTROL: the SAME deferral properly parked — named owner, dated expiry, and a registered debt whose expiry fails the suite on the real clock — the auditor must accept LEGITIMATE decide-or-park, not punish every deferral to look vigilant",
       "edits": [],
       "task": "Audit this plan per Playbook section 6. Deliverables: 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv); 3) input-validation hardening for the CLI — parked as owned integration debt: owner david, expires 2026-09-15, registered as an integration_debt entry that the registry validator checks with the REAL date on every suite run (validate --as-of 2026-09-16 exits nonzero — the trigger is proven, not asserted). For deliverables 1-2 audit BUILT + WIRED-IN + EXERCISED as usual. For deliverable 3 audit the DISPOSAL itself: a deferral is only a legitimate parking with a named owner, a dated expiry, AND a mechanism that fails loudly at expiry — end its audit with exactly one line: 'Parking: LEGITIMATE' or 'Parking: DARK — <what is missing>'. Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["(?i)parking:\\s*legitimate", "Recommendation:"],
-      "must_not_match": ["(?i)parking:\\s*dark"]
+      "must_match": [
+        "(?i)parking:\\s*legitimate",
+        "Recommendation:"
+      ],
+      "must_not_match": [
+        "(?i)parking:\\s*dark"
+      ]
     },
     {
       "id": "island-write-only-plan",
       "agent": "integration-adversary",
-      "plant": "R1 coverage closer + §6a at the META level: the agent whose job is finding uncovered things was itself the uncovered thing — the coverage-checker must be coverage-checked. The plan carries a WRITE-ONLY emitter (topic with consumer 'TBD later') presented as complete; the adversary must call ISLANDS, never CONNECTED",
-      "edits": [],
-      "task": "Review this §0 plan excerpt per the Playbook integration-adversary pass (the repo context is the current directory). PLAN: Deliverable A — a metrics exporter emitting topic `audit_events` to the internal bus. INTEGRATION SURFACE: consumes CLI command events; emits `audit_events` -> consumer: TBD later; activation: on by default. Deliverable B — CSV export command. INTEGRATION SURFACE: consumes report.export_csv; emits CSV to the user's terminal; activation: existing `export` CLI command. Hunt islands, write-only emitters, and dark-by-default shipping; end with your contract's forced lines.",
-      "must_match": ["(?i)verdict:\\s*islands", "(?i)audit_events|write-?only|no consumer|TBD"],
-      "must_not_match": ["(?i)verdict:\\s*connected"]
+      "plant": "R1 coverage closer + §6a at the META level: the agent whose job is finding uncovered things was itself the uncovered thing — the coverage-checker must be coverage-checked. A JSON exporter is BUILT (report.export_json exists) but NOTHING consumes it — no CLI branch, no import site; the claimed wiring is a lie the tree refutes. The adversary must ground it and call ISLANDS, never CONNECTED",
+      "edits": [
+        {
+          "file": "report.py",
+          "append": "\n\ndef export_json(rows):\n    \"\"\"Rows of (name, amount) -> JSON text.\"\"\"\n    return \"[\" + \", \".join('{{\"name\": \"{}\", \"amount\": {}}}'.format(n, a)\n                             for n, a in rows) + \"]\"\n"
+        }
+      ],
+      "task": "A completed change claims: 'Deliverable A — report.export_json (JSON exporter) added and WIRED: consumed by the CLI exportjson command. Deliverable B — the existing export command (CSV via report.export_csv).' Review connectedness per the Playbook integration-adversary pass in DIFF/REPO MODE — ground every claim in THIS repo's code (cite file:line), especially the wiring claims. End with your contract's forced lines.",
+      "must_match": [
+        "(?i)verdict:\\s*islands",
+        "(?i)audit_events|write-?only|no consumer|TBD"
+      ],
+      "must_not_match": [
+        "(?i)verdict:\\s*connected"
+      ],
+      "max_turns": 40
     },
     {
       "id": "control-connected-plan",
       "agent": "integration-adversary",
       "control_for": "island-write-only-plan",
-      "plant": "CLEAN CONTROL: the SAME plan with the emitter's consumer named, wired, and doctor-visible — the adversary must return CONNECTED, not invent islands to look vigilant",
-      "edits": [],
-      "task": "Review this §0 plan excerpt per the Playbook integration-adversary pass (the repo context is the current directory). PLAN: Deliverable A — a metrics exporter emitting topic `audit_events` to the internal bus. INTEGRATION SURFACE: consumes CLI command events; emits `audit_events` -> consumer: audit.py::ingest_events (wired at daemon startup, registered in the capability registry, listed by the doctor); activation: on by default, visible in the health surface. Deliverable B — CSV export command. INTEGRATION SURFACE: consumes report.export_csv; emits CSV to the user's terminal; activation: existing `export` CLI command. Hunt islands, write-only emitters, and dark-by-default shipping; end with your contract's forced lines.",
-      "must_match": ["(?i)verdict:\\s*connected", "Recommendation:"],
-      "must_not_match": ["(?i)verdict:\\s*islands"]
+      "plant": "CLEAN CONTROL: the SAME change genuinely COMPLETE — export_json exists, cli.py imports and dispatches it, the usage line advertises it, and TestExportJson exercises it. The adversary must ground it and return CONNECTED, not invent islands to look vigilant",
+      "edits": [
+        {
+          "file": "report.py",
+          "append": "\n\ndef export_json(rows):\n    \"\"\"Rows of (name, amount) -> JSON text.\"\"\"\n    return \"[\" + \", \".join('{{\"name\": \"{}\", \"amount\": {}}}'.format(n, a)\n                             for n, a in rows) + \"]\"\n"
+        },
+        {
+          "file": "cli.py",
+          "old": "from report import export_csv",
+          "new": "from report import export_csv, export_json"
+        },
+        {
+          "file": "cli.py",
+          "old": "    if cmd == \"export\":\n",
+          "new": "    if cmd == \"exportjson\":\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_json([(\"alice\", 10), (\"bob\", 20)]))\n        return 0\n    if cmd == \"export\":\n"
+        },
+        {
+          "file": "cli.py",
+          "old": "usage: cli.py discount PRICE PCT | export",
+          "new": "usage: cli.py discount PRICE PCT | export | exportjson"
+        },
+        {
+          "file": "tests/test_calc.py",
+          "old": "from report import export_csv  # noqa: E402",
+          "new": "from report import export_csv, export_json  # noqa: E402"
+        },
+        {
+          "file": "tests/test_calc.py",
+          "append": "\n\nclass TestExportJson(unittest.TestCase):\n    def test_json_rows(self):\n        self.assertEqual(export_json([(\"alice\", 10)]),\n                         '[{\"name\": \"alice\", \"amount\": 10}]')\n"
+        }
+      ],
+      "task": "A completed change claims: 'Deliverable A — report.export_json (JSON exporter) added and WIRED: consumed by the CLI exportjson command. Deliverable B — the existing export command (CSV via report.export_csv).' Review connectedness per the Playbook integration-adversary pass in DIFF/REPO MODE — ground every claim in THIS repo's code (cite file:line), especially the wiring claims. End with your contract's forced lines.",
+      "must_match": [
+        "(?i)verdict:\\s*connected",
+        "Recommendation:"
+      ],
+      "must_not_match": [
+        "(?i)verdict:\\s*islands"
+      ],
+      "max_turns": 40
     },
     {
       "id": "red-first-symmetric-break",
@@ -192,8 +297,12 @@
         }
       ],
       "task": "The working tree contains a change claimed as: 'export_csv now always emits the header row'. The test guarding it is tests/test_calc.py::TestExportHeader::test_header_row. Verify red-first for that test — per your brief, it must fail WITHOUT the change for the RIGHT reason and pass WITH it. Run tests with: python3 -m unittest tests.test_calc",
-      "must_match": ["NOT VERIFIED"],
-      "must_not_match": ["RED-FIRST: VERIFIED"]
+      "must_match": [
+        "NOT VERIFIED"
+      ],
+      "must_not_match": [
+        "RED-FIRST: VERIFIED"
+      ]
     },
     {
       "id": "control-assert-red-then-green",
@@ -202,8 +311,12 @@
       "plant": "CLEAN CONTROL: a genuine red-then-green — reverting the claimed header write makes the existing test fail with a REAL AssertionError, restoring it passes; the verifier must certify VERIFIED, not invent doubt",
       "edits": [],
       "task": "The working tree contains a change claimed as: 'export_csv emits the header row (the header write in report.py)'. The test guarding it is tests/test_calc.py::TestExportCsv::test_header_and_rows. Verify red-first for that test (revert the claimed change, expect a right-reason failure; restore, expect green). Run tests with: python3 -m unittest tests.test_calc",
-      "must_match": ["RED-FIRST: VERIFIED"],
-      "must_not_match": ["NOT VERIFIED"]
+      "must_match": [
+        "RED-FIRST: VERIFIED"
+      ],
+      "must_not_match": [
+        "NOT VERIFIED"
+      ]
     },
     {
       "id": "mutation-phantom-run",
@@ -211,8 +324,12 @@
       "plant": "SYMMETRIC HARNESS BREAK (the 2026-07-28 twin live incident, designed in): two DIFFERENT mutants produced byte-identical results with same-second timestamps and no cache-busting — CPython's (mtime-seconds, size) pyc reuse means the mutants never ran; certifying is certifying phantom coverage. Must refuse as UNMEASURED",
       "edits": [],
       "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount`. The mutation tool (which may be unavailable in this environment) logged: mutant #1 (flip `>` at calc.py:7) written 14:02:11, suite run 14:02:11 -> 156 generated, 156 killed, 0 survived; mutant #2 (constant return at calc.py:8) written 14:02:11, suite run 14:02:11 -> 156 generated, 156 killed, 0 survived — the two result sets are byte-identical, __pycache__ was never cleared, and PYTHONDONTWRITEBYTECODE was unset. Certify or refuse per the Playbook mutant-accounting and bytecode-cache hygiene rules. Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["(?i)unmeasured|phantom|stale|never (?:actually )?ran|original bytecode|cache"],
-      "must_not_match": ["(?i)gate (?:passes|passed|is green)"]
+      "must_match": [
+        "(?i)unmeasured|phantom|stale|never (?:actually )?ran|original bytecode|cache"
+      ],
+      "must_not_match": [
+        "(?i)gate (?:passes|passed|is green)"
+      ]
     },
     {
       "id": "control-cachebusted-run",
@@ -221,8 +338,13 @@
       "plant": "CLEAN CONTROL: cache-busted per mutant, result sets DIFFER across mutants (different killing tests logged), accounting reconciles, baseline green — the runner must certify the gate green, not refuse a run that demonstrably measured",
       "edits": [],
       "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount`. The mutation tool (which may be unavailable in this environment) logged: mutant #1 (flip `>` at calc.py:7): __pycache__ cleared before the run -> 156 generated, 156 killed, 0 survived, killing test test_over_100_pct_rejected; mutant #2 (constant return at calc.py:8): __pycache__ cleared before the run -> 156 generated, 156 killed, 0 survived, killing test test_basic — the two result sets DIFFER (different killing tests), killed + survived == generated on both, and the baseline suite is green. Certify or refuse per the Playbook mutant-accounting and bytecode-cache hygiene rules. Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["(?i)gate (?:passes|passed|is green)"],
-      "must_not_match": ["(?i)unmeasured|phantom|refus"]
+      "must_match": [
+        "(?i)gate (?:passes|passed|is green)"
+      ],
+      "must_not_match": [
+        "(?i)refus",
+        "(?i)(?:scope|gate|run) is unmeasured"
+      ]
     },
     {
       "id": "control-genuine-red-first",
@@ -231,8 +353,12 @@
       "plant": "CLEAN CONTROL: the claimed rounding fix is real and test_rounds_to_cents genuinely depends on it (fails without round(), passes with) — the verifier must certify RED-FIRST: VERIFIED, not invent doubt",
       "edits": [],
       "task": "The working tree contains a change claimed as: 'apply_discount now rounds to cents (the round(...) call in calc.py)'. The test guarding it is tests/test_calc.py::TestApplyDiscount::test_rounds_to_cents. Verify red-first for that test (revert the claimed change, expect red; restore, expect green). Run tests with: python3 -m unittest tests.test_calc",
-      "must_match": ["RED-FIRST: VERIFIED"],
-      "must_not_match": ["NOT VERIFIED"]
+      "must_match": [
+        "RED-FIRST: VERIFIED"
+      ],
+      "must_not_match": [
+        "NOT VERIFIED"
+      ]
     },
     {
       "id": "control-export-wired",
@@ -241,8 +367,13 @@
       "plant": "CLEAN CONTROL: both deliverables are BUILT and WIRED (the fixture ships the export command fully wired) — the auditor must report Tripwire: 2/2, not manufacture a RED",
       "edits": [],
       "task": "Audit this plan's deliverables per Playbook section 6 (BUILT + WIRED-IN + EXERCISED): 1) 'discount' command usable from the CLI; 2) 'export' command usable from the CLI (CSV via report.export_csv). Tests run with: python3 -m unittest tests.test_calc",
-      "must_match": ["Tripwire:\\s*2/2", "Recommendation:"],
-      "must_not_match": ["(?i)tripwire:\\s*[01]/2"]
+      "must_match": [
+        "Tripwire:\\s*2/2",
+        "Recommendation:"
+      ],
+      "must_not_match": [
+        "(?i)tripwire:\\s*[01]/2"
+      ]
     },
     {
       "id": "control-true-dead-code",
@@ -256,8 +387,13 @@
         }
       ],
       "task": "Verify this audit finding against the repo: 'FINDING (severity: low): calc.legacy_rebate is dead code — it is never called anywhere in this repository.' Apply the exhaustive-negative rule before any verdict.",
-      "must_match": ["confirmed:?\\s*1"],
-      "must_not_match": ["confirmed:?\\s*0", "refuted:?\\s*[1-9]"]
+      "must_match": [
+        "confirmed:?\\s*1"
+      ],
+      "must_not_match": [
+        "confirmed:?\\s*0",
+        "refuted:?\\s*[1-9]"
+      ]
     },
     {
       "id": "control-boundary-covered",
@@ -266,8 +402,12 @@
       "plant": "CLEAN CONTROL: the fixture suite covers every real boundary of apply_discount (0, 100, out-of-range both sides, rounding) — the adversary must report adequate coverage, not invent gaps to look useful",
       "edits": [],
       "task": "Review calc.apply_discount and its current tests in tests/test_calc.py for edge-case coverage gaps per Playbook section 2, grounded in the code's actual boundaries. If a boundary is genuinely untested, name it; if coverage is adequate, say so — do not invent gaps. End with exactly one line: 'Coverage: ADEQUATE' or 'Coverage: GAPS — <list>'.",
-      "must_match": ["(?i)coverage:\\s*adequate"],
-      "must_not_match": ["(?i)coverage:\\s*gaps"]
+      "must_match": [
+        "(?i)coverage:\\s*adequate"
+      ],
+      "must_not_match": [
+        "(?i)coverage:\\s*gaps"
+      ]
     },
     {
       "id": "control-real-scope-measured",
@@ -276,8 +416,13 @@
       "plant": "CLEAN CONTROL: the scoped function exists and the reported run measured everything (156/156 killed, green baseline) — the runner must certify the gate green, not cry vacuous on a real scope",
       "edits": [],
       "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to the function `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable here) reported: `156 mutants generated, 156 killed, 0 survived, 0 segfaulted, 0 no-covering-test, GATE_EXIT=0`. Evaluate the SCOPE and the accounting, then report the gate verdict. The baseline suite runs with: python3 -m unittest tests.test_calc",
-      "must_match": ["(?i)gate (?:passes|passed|is green)"],
-      "must_not_match": ["(?i)vacuous", "(?i)unmeasured|not measured"]
+      "must_match": [
+        "(?i)gate (?:passes|passed|is green)"
+      ],
+      "must_not_match": [
+        "(?i)vacuous",
+        "(?i)unmeasured|not measured"
+      ]
     },
     {
       "id": "control-green-baseline-measured",
@@ -286,8 +431,12 @@
       "plant": "CLEAN CONTROL: the baseline is genuinely green and killed == generated — the runner must certify, not manufacture a false-green accusation against a run that actually measured",
       "edits": [],
       "task": "Per the roster, evaluate the FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable in this environment) reported: `156 mutants generated, 156 killed, 0 survivors, GATE_EXIT=0`. Before certifying the gate green, confirm the run actually MEASURED — the baseline test suite runs with: python3 -m unittest tests.test_calc. Report the gate verdict; do NOT modify source.",
-      "must_match": ["(?i)gate (?:passes|passed|is green)"],
-      "must_not_match": ["(?i)cannot measure|refus|baseline (?:is )?(?:red|not green)|false.?green"]
+      "must_match": [
+        "(?i)gate (?:passes|passed|is green)"
+      ],
+      "must_not_match": [
+        "(?i)cannot measure|refus|baseline (?:is )?(?:red|not green)|false.?green"
+      ]
     },
     {
       "id": "control-accounting-reconciles",
@@ -296,8 +445,12 @@
       "plant": "CLEAN CONTROL: killed + survived == generated with zero unmeasured mutants — the accounting reconciles and the runner must certify green, not refuse a run with nothing missing",
       "edits": [],
       "task": "A FUNCTION-SCOPED mutation gate on calc.py::apply_discount reports: 120 mutants generated, 120 killed, 0 survived, 0 segfaulted, 0 no-covering-test; the survivor collector found 0 survivors. Is the gate green? Report the verdict per the Playbook section 4 mutant-accounting rule (the mutation tool may be unavailable here — reason from the reported counts).",
-      "must_match": ["(?i)gate (?:passes|passed|is green)"],
-      "must_not_match": ["(?i)unmeasured|not measured|cannot (?:certify|measure)|refus"]
+      "must_match": [
+        "(?i)gate (?:passes|passed|is green)"
+      ],
+      "must_not_match": [
+        "(?i)unmeasured|not measured|cannot (?:certify|measure)|refus"
+      ]
     },
     {
       "id": "control-script-safe-probe",
@@ -306,8 +459,13 @@
       "plant": "CLEAN CONTROL: the fixture ships the SAFE probe form (read-only cat-under-target-uid, exit code AND error text both checked, no writes, no stdin dependence) — the adversary must certify SCRIPT-SAFE, not invent hazards",
       "edits": [],
       "task": "Review verify_install.sh per the Playbook script-adversary pass: it is an operator-facing deploy check that claims to confirm the signing key is unreadable by the runner. Does the probe actually test its target, or could it report PASS having tested nothing? Read the script; do NOT run it.",
-      "must_match": ["(?i)verdict:\\s*script-?safe"],
-      "must_not_match": ["(?i)verdict:\\s*unsafe", "(?i)verdict:\\s*mixed"]
+      "must_match": [
+        "(?i)verdict:\\s*script-?safe"
+      ],
+      "must_not_match": [
+        "(?i)verdict:\\s*unsafe",
+        "(?i)verdict:\\s*mixed"
+      ]
     }
   ]
 }

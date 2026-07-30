@@ -12,3 +12,4 @@ retro-authorize a weakening is an integrity RED. Entry format, one line each:
 `- <YYYY-MM-DD> · <scenario-id> · <what changed, old -> new> · <reason>`
 
 ## Entries
+- 2026-07-30 · control-cachebusted-run · must_not_match ["(?i)unmeasured|phantom|refus"] -> ["(?i)refus", "(?i)(?:scope|gate|run) is unmeasured"] · the bare word 'unmeasured' false-fired on the agent's CORRECT negated checklist prose ("no unmeasured segfaults ✓") — the confirmed-as-a-count class again; forbid refusal VERDICTS, not vocabulary. Found in live shakeout, first probe roll.
