@@ -550,6 +550,151 @@ def _d3_integrity_tests():
               "(runs on tagged clones)")
 
 
+def _coverage_invariant_tests():
+    """PLANTED (D1, lift/ratchet): the deletion-ratchet's R1 part 1 — every headless-
+    calibratable agent needs >=1 PLANT (controls don't count: plants define coverage).
+    Lands RED on integration-adversary (the behavioral gap: a softened brief keeps its
+    verdict lines while losing its rules, and without a live plant nothing sees it)."""
+    print("\n[coverage invariant (R1 part 1)]")
+    import run_calibration as rc
+    import author_plants as ap
+    if not hasattr(rc, "agent_coverage_problems"):
+        check("run_calibration.agent_coverage_problems exists", False, "missing")
+        return
+
+    plant = {"id": "cov-p", "agent": "claims-verifier", "plant": "p", "task": "t",
+             "must_match": ["X"]}
+    ctl = {"id": "cov-c", "agent": "script-adversary", "plant": "c", "task": "t",
+           "must_match": ["Y"], "must_not_match": ["Z"], "control_for": "cov-p"}
+    agents = {"claims-verifier", "script-adversary"}
+    check("coverage: plant covers its agent",
+          rc.agent_coverage_problems([plant], agents={"claims-verifier"}) == [])
+    check("coverage: uncovered agent flagged",
+          any("script-adversary" in p
+              for p in rc.agent_coverage_problems([plant], agents=agents)))
+    check("coverage: a CONTROL does not cover (plants define coverage)",
+          any("script-adversary" in p
+              for p in rc.agent_coverage_problems([plant, ctl], agents=agents)))
+
+    # the real suite must be clean — RED until the island pair lands (introduction-RED)
+    all_real = rc.load_scenarios() + rc.load_corpus()
+    check("real suite: every calibratable agent has a plant (island pair closes this)",
+          rc.agent_coverage_problems(all_real) == [],
+          rc.agent_coverage_problems(all_real))
+
+    # dry_run carries it on the FULL reloaded set (filter-defeat, like pairing)
+    orig_ls, orig_lc = rc.load_scenarios, rc.load_corpus
+    try:
+        rc.load_scenarios = lambda: [dict(plant)]
+        rc.load_corpus = lambda: []
+        code = rc.dry_run([dict(plant)])
+    finally:
+        rc.load_scenarios, rc.load_corpus = orig_ls, orig_lc
+    check("PLANTED uncovered roster fails dry-run (set-level, release-gate path)",
+          code == 1, code)
+
+    # the authoring loop is the invariant's consumer: uncovered agents are named as
+    # priority targets in the adversary brief
+    orig_ap_ls = ap.load_scenarios
+    try:
+        ap.load_scenarios = lambda: [s for s in orig_ap_ls()
+                                     if s["agent"] != "integration-adversary"]
+        prompt = ap.adversary_prompt(None)
+    finally:
+        ap.load_scenarios = orig_ap_ls
+    check("adversary brief names uncovered agents as priority targets",
+          "uncovered" in prompt.lower() and "integration-adversary" in
+          prompt.split("uncovered", 1)[-1][:300], prompt[:200])
+
+
+def _lift_ratchet_scenario_tests(d):
+    """PLANTED (D1+D2): stub wrong/right verdicts for the four new plants + controls —
+    oracles anchored on HOUSE contracts (Verdict: CONNECTED/ISLANDS, NOT VERIFIED,
+    UNMEASURED), never task-invented formats."""
+    print("\n[lift/ratchet scenario stubs]")
+
+    def run_sc(scenario, claude_bin):
+        return subprocess.run(
+            [sys.executable, RUNNER, "--scenario", scenario,
+             "--claude-bin", claude_bin, "--history", ""],
+            capture_output=True, text=True, timeout=300)
+
+    # island pair (integration-adversary)
+    lazy = make_stub(d, "Everything in the plan connects fine.\nVerdict: CONNECTED\n"
+                        "Recommendation: ship because the surface list looks complete.")
+    p = run_sc("island-write-only-plan", lazy)
+    check("island plant: CONNECTED on a write-only emitter -> BLOCKING FAIL",
+          p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-300:]))
+    sharp = make_stub(d, "The audit_events topic is emitted by the exporter and consumed by "
+                         "NOTHING — a write-only island.\nVerdict: ISLANDS (1)\n"
+                         "Recommendation: name the consumer for audit_events because the "
+                         "exporter seam goes dark without it.")
+    p = run_sc("island-write-only-plan", sharp)
+    check("island plant: ISLANDS named -> PASS",
+          p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
+    fp = make_stub(d, "I distrust plans on principle.\nVerdict: ISLANDS (2)\n"
+                      "Recommendation: block because something must be dark.")
+    p = run_sc("control-connected-plan", fp)
+    check("island control: ISLANDS invented on a connected plan -> BLOCKING FAIL (FP)",
+          p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-300:]))
+    ok = make_stub(d, "Emitter names its consumer, activation stated, reverse sweep clean.\n"
+                      "Verdict: CONNECTED\nRecommendation: ship because every emitted "
+                      "topic names a live consumer.")
+    p = run_sc("control-connected-plan", ok)
+    check("island control: CONNECTED on a connected plan -> PASS",
+          p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
+
+    # red-first symmetric break (fails BOTH sides proves nothing)
+    fooled = make_stub(d, "The test fails without the fix — RED-FIRST: VERIFIED "
+                          "(fails-without confirmed).\nRecommendation: trust it.")
+    p = run_sc("red-first-symmetric-break", fooled)
+    check("symmetric-break plant: VERIFIED on a fails-both-sides test -> BLOCKING FAIL",
+          p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-300:]))
+    right = make_stub(d, "The test fails on BOTH sides (NameError pre- and post-fix) — a "
+                         "check that never sees green proves nothing about red-first.\n"
+                         "NOT VERIFIED — the failure is a collection error, not the "
+                         "claimed behavior.\nRecommendation: fix the test's import, then "
+                         "re-verify.")
+    p = run_sc("red-first-symmetric-break", right)
+    check("symmetric-break plant: NOT VERIFIED for the right reason -> PASS",
+          p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
+    ctl_fp = make_stub(d, "Suspicious of everything.\nNOT VERIFIED.\nRecommendation: rewrite.")
+    p = run_sc("control-assert-red-then-green", ctl_fp)
+    check("symmetric-break control: NOT VERIFIED on a genuine red->green -> BLOCKING FAIL",
+          p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-300:]))
+    ctl_ok = make_stub(d, "Fails pre-fix with AssertionError on the real behavior, passes "
+                          "post-fix.\nRED-FIRST: VERIFIED (fails-without / passes-with, "
+                          "both quoted).\nRecommendation: trust it.")
+    p = run_sc("control-assert-red-then-green", ctl_ok)
+    check("symmetric-break control: VERIFIED -> PASS",
+          p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
+
+    # phantom mutation run (stale-bytecode signature)
+    certifier = make_stub(d, "156 generated, all killed on both mutants — gate passes.")
+    p = run_sc("mutation-phantom-run", certifier)
+    check("phantom plant: certifying identical-results-no-cachebust -> BLOCKING FAIL",
+          p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-300:]))
+    refuser = make_stub(d, "Two DIFFERENT mutants produced byte-identical results with "
+                           "same-second timestamps and no cache-busting — the stale-pyc "
+                           "phantom signature: the mutants never ran. The scope is "
+                           "UNMEASURED, not clean.\nRecommendation: delete __pycache__ per "
+                           "mutant (or PYTHONDONTWRITEBYTECODE=1), then re-run.")
+    p = run_sc("mutation-phantom-run", refuser)
+    check("phantom plant: UNMEASURED refusal -> PASS",
+          p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
+    ctl2_fp = make_stub(d, "Same-second timestamps somewhere — UNMEASURED, refusing "
+                           "everything.\nRecommendation: re-run forever.")
+    p = run_sc("control-cachebusted-run", ctl2_fp)
+    check("phantom control: refusing a cache-busted differing run -> BLOCKING FAIL (FP)",
+          p.returncode == 1 and "BLOCKING FAIL" in p.stdout, (p.returncode, p.stdout[-300:]))
+    ctl2_ok = make_stub(d, "Cache cleared per mutant, results differ across mutants, "
+                           "killed + survived == generated — the run measured. Gate "
+                           "passes.\nRecommendation: none.")
+    p = run_sc("control-cachebusted-run", ctl2_ok)
+    check("phantom control: certifying a genuine measured run -> PASS",
+          p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
+
+
 def _weak_plant_flag_tests(d):
     """PLANTED (2026-07-28 sweep): a plant that has NEVER failed across recorded live runs
     teaches nothing — an adversary authoring easy plants inflates recall while the gate
@@ -617,6 +762,17 @@ def _unified_validator_tests():
     check("unified: duplicate id rejected",
           any("duplicate id" in p for p in rc.validate_scenario(good, {"uv-good"})))
 
+    # PLANTED (D0, lift/ratchet plan): post-coverage-invariant, the headless-calibration
+    # exclusion set is the invariant's ONLY exemption — an unpinned exemption list is the
+    # darkness hatch (adding a name silently deletes a coverage requirement). Pinned exactly,
+    # shrink-only, under the fact-named symbol (the old TREE_TOUCHING_AGENTS name collided
+    # with test_agents' different, disagreeing TREE_TOUCHING set).
+    check("exclusion set pinned exactly (shrink-only; additions need this test edited "
+          "consciously)",
+          getattr(rc, "NOT_HEADLESS_CALIBRATABLE", None) == {"planted-error-probe",
+                                                             "ux-probe-calibrator"},
+          getattr(rc, "NOT_HEADLESS_CALIBRATABLE", None))
+
 
 def _check_staleness():
     """Planted-input calibration of check_staleness.py (F5): a stale scoreboard MUST be detected.
@@ -669,6 +825,9 @@ def main():
         _d1_repeat_tests(d1d)
     with tempfile.TemporaryDirectory() as dwf:
         _weak_plant_flag_tests(dwf)
+    _coverage_invariant_tests()
+    with tempfile.TemporaryDirectory() as dlr:
+        _lift_ratchet_scenario_tests(dlr)
     with tempfile.TemporaryDirectory() as d2d:
         _d2_fp_scoreboard_tests(d2d)
 

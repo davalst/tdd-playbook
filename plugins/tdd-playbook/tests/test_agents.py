@@ -65,8 +65,13 @@ AGENT_CONTRACTS = {
     "red-first-verifier": (False, [r"RED-FIRST: VERIFIED", r"NOT VERIFIED"]),
     "tripwire-auditor": (False, [r"Recommendation:"]),
     "claims-verifier": (False, [r"Recommendation:"]),
-    "edge-case-adversary": (False, [r"Recommendation:"]),
-    "integration-adversary": (False, [r"Recommendation:"]),
+    # v1.22 (lift/ratchet D0): verdict lines are HOUSE contracts, never task-invented —
+    # calibration oracles anchor on these, so a scenario-local format would be a second,
+    # unpinned copy of "the agent's contract" (gate-by-proxy, arch-F5).
+    "edge-case-adversary": (False, [r"Recommendation:", r"Coverage:\s*ADEQUATE",
+                                    r"Coverage:\s*GAPS"]),
+    "integration-adversary": (False, [r"Recommendation:", r"Verdict:\s*CONNECTED",
+                                      r"Verdict:\s*ISLANDS"]),
     "architecture-adversary": (False, [r"Recommendation:"]),
     "script-adversary": (False, [r"Recommendation:"]),
     "mutation-runner": (True, []),
