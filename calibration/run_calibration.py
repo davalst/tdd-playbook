@@ -276,7 +276,10 @@ def run_agent(scenario, root, claude_bin, model):
     extra = os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split()
     cmd.extend(extra)
     try:
-        p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=TIMEOUT_S)
+        # child_env: capture OFF for the nested claude — its turns ARE the answer key
+        from child_env import child_env
+        p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=TIMEOUT_S,
+                           env=child_env())
     except subprocess.TimeoutExpired:
         return "timeout", "[TIMEOUT after {}s]".format(TIMEOUT_S)
     if p.returncode != 0 and not p.stdout.strip():

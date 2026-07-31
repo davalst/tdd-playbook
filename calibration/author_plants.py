@@ -132,7 +132,10 @@ def cmd_author(args):
     cmd = [args.claude_bin, "-p", prompt, "--model", args.model]
     cmd.extend(os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split())
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        # child_env: capture OFF for the adversary — its plant output IS the answer key
+        from child_env import child_env
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=600,
+                           env=child_env())
     except FileNotFoundError:
         print("FATAL: claude binary not found ({})".format(args.claude_bin))
         return 2

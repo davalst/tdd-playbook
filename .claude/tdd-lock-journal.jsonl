@@ -20,3 +20,9 @@
 {"ts": "2026-07-30T13:01:56+00:00", "event": "unlock", "reason": "D3 green (harness 137/137, real-repo integrity CLEAN vs v1.21.0 with rule (d) active); boundary commit, will re-lock for D4-D6 reds", "files": ["calibration/test_harness.py"]}
 {"ts": "2026-07-30T13:03:41+00:00", "event": "lock", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_installer.py"]}
 {"ts": "2026-07-30T13:06:44+00:00", "event": "unlock", "reason": "D4-D6 green (harness 148/148, installer 27/27): wilson + quarterly clock + containment pin implemented; boundary commit", "files": ["calibration/test_harness.py", "plugins/tdd-playbook/tests/test_installer.py"]}
+{"ts": "2026-07-30T18:51:05+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_plan_block.py"]}
+{"ts": "2026-07-30T18:52:58+00:00", "event": "unlock", "reason": "test defect: slug-boundary cases omit a predicate so they hit the empty-list refusal instead of the boundary \u2014 adding suite_min:1 to isolate the cap; relocking after", "files": ["plugins/tdd-playbook/tests/test_plan_block.py"]}
+{"ts": "2026-07-30T18:52:58+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_plan_block.py"]}
+{"ts": "2026-07-30T19:07:43+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_capture.py"]}
+{"ts": "2026-07-30T19:21:12+00:00", "event": "unlock", "reason": "live demo found a gap: a Stop fired mid-tool-turn captured an EMPTY final (last assistant line was tool_use-only). Adding a regression test \u2014 the last TEXT-bearing assistant message is the final; no existing assertion touched or weakened", "files": ["plugins/tdd-playbook/tests/test_capture.py", "plugins/tdd-playbook/tests/test_plan_block.py"]}
+{"ts": "2026-07-30T19:22:02+00:00", "event": "lock", "files": ["plugins/tdd-playbook/tests/test_capture.py", "plugins/tdd-playbook/tests/test_plan_block.py"]}

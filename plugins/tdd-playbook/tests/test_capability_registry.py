@@ -262,6 +262,30 @@ def test_own_registry():
     check("quarterly debt: NOT expired on its own expiry day (strictly-after rule)",
           not any("quarterly" in v for v in v_on), [v for v in v_on][:3])
 
+    # STRING-PINNED boundary proofs for the v1.23 briefs debts (David's ships-on-or-
+    # triggered rule, 2026-07-30: anything shipped OFF must carry an ARMED trigger).
+    # Violation STRINGS, never bare exit codes — by each of these dates OTHER debts have
+    # already expired, so an exit code alone passes for the wrong reason (same class).
+    def _fires(day, needle):
+        return [v for v in mod.validate(reg, _dt.date.fromisoformat(day))
+                if "EXPIRED" in v and needle in v]
+
+    check("enrollment-sweep debt (2026-08-31): silent on its expiry day, fires 09-01 "
+          "naming deliberation-capture",
+          not _fires("2026-08-31", "ENROLLMENT SWEEP")
+          and any("deliberation-capture" in v for v in _fires("2026-09-01", "ENROLLMENT SWEEP")),
+          _fires("2026-09-01", "ENROLLMENT SWEEP")[:2])
+    check("engine-arming debt (2026-09-15): silent on its expiry day, fires 09-16 "
+          "naming plan-authoring",
+          not _fires("2026-09-15", "ENGINE-SIDE ARMING")
+          and any("plan-authoring" in v for v in _fires("2026-09-16", "ENGINE-SIDE ARMING")),
+          _fires("2026-09-16", "ENGINE-SIDE ARMING")[:2])
+    check("consumer debt (2026-10-31): silent on its expiry day, fires 11-01 — a recorder "
+          "nobody reads does not run forever",
+          not _fires("2026-10-31", "CONSUMER: the store")
+          and any("deliberation-capture" in v for v in _fires("2026-11-01", "CONSUMER: the store")),
+          _fires("2026-11-01", "CONSUMER: the store")[:2])
+
 
 def test_probe_survivor_gaps():
     """CIVerd's engine-owned planted-error probe, FIRST live firing (2026-07-28), planted

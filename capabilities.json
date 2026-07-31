@@ -4,15 +4,37 @@
     {
       "id": "integrity-guards",
       "summary": "PreToolUse hooks that BLOCK test weakening, snapshot auto-updates, and locked-test edits (H2/H3/H5).",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "on"},
-      "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "scripts/install_into_repo.py::_merge_hooks"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_hooks.py", "plugins/tdd-playbook/tests/test_installer.py"],
-      "emits": [{"topic": "hook.block_events", "consumers": ["gate_yield.py (per-cycle rollups + retirement candidates + suppressed-findings alarms, R4)", "learning-loop (unlock journal via /grade)"]}],
-      "liveness": {"max_quiet_days": 90, "probe": "calibration/run_calibration.py exercises guards through the real seam"},
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "scripts/install_into_repo.py::_merge_hooks"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_hooks.py",
+        "plugins/tdd-playbook/tests/test_installer.py"
+      ],
+      "emits": [
+        {
+          "topic": "hook.block_events",
+          "consumers": [
+            "gate_yield.py (per-cycle rollups + retirement candidates + suppressed-findings alarms, R4)",
+            "learning-loop (unlock journal via /grade)"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 90,
+        "probe": "calibration/run_calibration.py exercises guards through the real seam"
+      },
       "integration_debt": [
         {
-          "what": "OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green — closes H2-via-shell, `planted_probe` — first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract §1.5 — settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the §1.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 — same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists — floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications — harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed — blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion — a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
+          "what": "OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green \u2014 closes H2-via-shell, `planted_probe` \u2014 first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract \u00a71.5 \u2014 settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the \u00a71.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 \u2014 same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists \u2014 floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications \u2014 harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed \u2014 blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion \u2014 a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
           "owner": "david",
           "expires": "2026-09-15"
         }
@@ -21,58 +43,130 @@
     {
       "id": "test-lock",
       "summary": "Mechanical red-test lock: /tdd-lock makes committed red tests read-only until a journaled /tdd-unlock.",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "off", "switch": "/tdd-lock after committing red tests (doctrine default for feature work)"},
-      "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "plugins/tdd-playbook/commands/tdd-lock.md"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_tdd_lock.py"],
-      "emits": [{"topic": "tdd_lock.journal", "consumers": ["learning-loop (/grade reads unlock reasons)", "gate_yield.py (journaled unlocks land as override events — the adjudicated false-positive signal)"]}]
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "/tdd-lock after committing red tests (doctrine default for feature work)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "plugins/tdd-playbook/commands/tdd-lock.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_tdd_lock.py"
+      ],
+      "emits": [
+        {
+          "topic": "tdd_lock.journal",
+          "consumers": [
+            "learning-loop (/grade reads unlock reasons)",
+            "gate_yield.py (journaled unlocks land as override events \u2014 the adjudicated false-positive signal)"
+          ]
+        }
+      ]
     },
     {
       "id": "citation-gate",
-      "summary": "verify_citations.py — mechanical check that findings' file:line citations resolve and quotes match.",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "on"},
-      "wired_by": ["plugins/tdd-playbook/commands/claims.md", "plugins/tdd-playbook/commands/integration-audit.md", "plugins/tdd-playbook/agents/claims-verifier.md"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_verify_citations.py"]
+      "summary": "verify_citations.py \u2014 mechanical check that findings' file:line citations resolve and quotes match.",
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/commands/claims.md",
+        "plugins/tdd-playbook/commands/integration-audit.md",
+        "plugins/tdd-playbook/agents/claims-verifier.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_verify_citations.py"
+      ]
     },
     {
       "id": "capability-registry",
-      "summary": "capability_registry.py — validate/doctor/init over capabilities.json; makes darkness enumerable (§6a).",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "on"},
-      "wired_by": ["plugins/tdd-playbook/commands/tripwire.md", "plugins/tdd-playbook/commands/integration-audit.md", "plugins/tdd-playbook/agents/integration-adversary.md"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_capability_registry.py"]
+      "summary": "capability_registry.py \u2014 validate/doctor/init over capabilities.json; makes darkness enumerable (\u00a76a).",
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/commands/tripwire.md",
+        "plugins/tdd-playbook/commands/integration-audit.md",
+        "plugins/tdd-playbook/agents/integration-adversary.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py"
+      ]
     },
     {
       "id": "telemetry-grading",
-      "summary": "grade_from_otel.py — /grade's telemetry seam; grades the cycle from tool logs, never self-narration.",
-      "surfaces": ["local"],
-      "activation": {"default": "off", "switch": "enable Claude Code OTel export, then /grade (docs/telemetry.md)"},
-      "wired_by": ["plugins/tdd-playbook/commands/grade.md"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_grade_from_otel.py"]
+      "summary": "grade_from_otel.py \u2014 /grade's telemetry seam; grades the cycle from tool logs, never self-narration.",
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "enable Claude Code OTel export, then /grade (docs/telemetry.md)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/commands/grade.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_grade_from_otel.py"
+      ]
     },
     {
       "id": "calibration-loop",
-      "summary": "Planted-error calibration of the verification agents on a live model (§13); scoreboard in docs/calibration/.",
-      "surfaces": ["local"],
-      "activation": {"default": "off", "switch": "python3 calibration/run_calibration.py (weekly, David-run or scheduled; --dry-run is CI-only validation)"},
-      "wired_by": ["calibration/run_calibration.py", "calibration/author_plants.py"],
-      "exercised_by": ["calibration/test_harness.py"],
-      "emits": [{"topic": "docs/calibration/history.md (run blocks: repo SHA + derived composition + recall AND FP since v1.17)", "consumers": ["public scoreboard (WS5)", "v2.0 release gate", "check_scoreboard_integrity.py (append-only proof)"]}],
-      "liveness": {"max_quiet_days": 14, "probe": "calibration/check_staleness.py — mechanical history.md staleness gate (F5, INVALID rows never extend freshness), run in the release gate and as a CIVerd check"},
+      "summary": "Planted-error calibration of the verification agents on a live model (\u00a713); scoreboard in docs/calibration/.",
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "python3 calibration/run_calibration.py (weekly, David-run or scheduled; --dry-run is CI-only validation)"
+      },
+      "wired_by": [
+        "calibration/run_calibration.py",
+        "calibration/author_plants.py"
+      ],
+      "exercised_by": [
+        "calibration/test_harness.py"
+      ],
+      "emits": [
+        {
+          "topic": "docs/calibration/history.md (run blocks: repo SHA + derived composition + recall AND FP since v1.17)",
+          "consumers": [
+            "public scoreboard (WS5)",
+            "v2.0 release gate",
+            "check_scoreboard_integrity.py (append-only proof)"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 14,
+        "probe": "calibration/check_staleness.py \u2014 mechanical history.md staleness gate (F5, INVALID rows never extend freshness), run in the release gate and as a CIVerd check"
+      },
       "integration_debt": [
         {
-          "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it — due ~2026-08-10 — must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence. v1.22.0 grew the suite to 30 (island pair closing the integration-adversary coverage gap, red-first symmetric-break + mutation-phantom-run pairs) and amended two agent contracts (Verdict:/Coverage: lines) — the 08-10 run live-calibrates ALL of it (§13: scenario/brief changes validated live before trusted)",
+          "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it \u2014 due ~2026-08-10 \u2014 must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence. v1.22.0 grew the suite to 30 (island pair closing the integration-adversary coverage gap, red-first symmetric-break + mutation-phantom-run pairs) and amended two agent contracts (Verdict:/Coverage: lines) \u2014 the 08-10 run live-calibrates ALL of it (\u00a713: scenario/brief changes validated live before trusted)",
           "owner": "david",
           "expires": "2026-08-17"
         },
         {
-          "what": "QUARTERLY BUNDLE (lift/ratchet set B — the delay-proofing David demanded): each ~quarter, land a dated row in docs/calibration/quarterly.md (the check_staleness --max-age-days 100 clock, release-gate --warn-only) covering: (a) HACK_CATALOG refresh ritual; (b) the LIFT diagnostic read — HARD-BLOCKED until the dev/holdout split lands (approve-time pair/class assignment + burn-on-failure via an append-only side-ledger — burns COLLIDE with corpus immutability, so it needs its own red-first design pass, due before the first post-08-10 authoring batch) and the frozen contract-stub exists (stub = journal-protected measurement apparatus; the vendored lift-sentinel content scan joins that build); (c) the cross-tier calibration row once budgeted. A lapsed quarter = stale clock on every release AND this entry REDs the suite at expiry — an individually dropped set-A deliverable converts to a dated line here in the same commit, never to 'opportunistic'",
+          "what": "QUARTERLY BUNDLE (lift/ratchet set B \u2014 the delay-proofing David demanded): each ~quarter, land a dated row in docs/calibration/quarterly.md (the check_staleness --max-age-days 100 clock, release-gate --warn-only) covering: (a) HACK_CATALOG refresh ritual; (b) the LIFT diagnostic read \u2014 HARD-BLOCKED until the dev/holdout split lands (approve-time pair/class assignment + burn-on-failure via an append-only side-ledger \u2014 burns COLLIDE with corpus immutability, so it needs its own red-first design pass, due before the first post-08-10 authoring batch) and the frozen contract-stub exists (stub = journal-protected measurement apparatus; the vendored lift-sentinel content scan joins that build); (c) the cross-tier calibration row once budgeted. A lapsed quarter = stale clock on every release AND this entry REDs the suite at expiry \u2014 an individually dropped set-A deliverable converts to a dated line here in the same commit, never to 'opportunistic'",
           "owner": "david",
           "expires": "2026-11-01"
         },
         {
-          "what": "R3 premise plants (roadmap §E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and §0's spec-integrity rules have no planted test. Falsification probe first — author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here — never silence",
+          "what": "R3 premise plants (roadmap \u00a7E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and \u00a70's spec-integrity rules have no planted test. Falsification probe first \u2014 author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here \u2014 never silence",
           "owner": "david",
           "expires": "2026-08-17"
         }
@@ -80,14 +174,25 @@
     },
     {
       "id": "scoreboard-integrity",
-      "summary": "check_scoreboard_integrity.py — history.md append-only, approved corpus immutable+growing, directional oracle rule with the append-only oracle-changes.md journal (D3; exit 0/2/3, fail closed).",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "on"},
-      "wired_by": ["calibration/test_harness.py (runs it vs the latest release tag on every suite run)", "CLAUDE.md::release discipline", "docs/plans/civerd-trust-floor-2026-07.md §2b (calibration_integrity check)"],
-      "exercised_by": ["calibration/test_harness.py"],
+      "summary": "check_scoreboard_integrity.py \u2014 history.md append-only, approved corpus immutable+growing, directional oracle rule with the append-only oracle-changes.md journal (D3; exit 0/2/3, fail closed).",
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "calibration/test_harness.py (runs it vs the latest release tag on every suite run)",
+        "CLAUDE.md::release discipline",
+        "docs/plans/civerd-trust-floor-2026-07.md \u00a72b (calibration_integrity check)"
+      ],
+      "exercised_by": [
+        "calibration/test_harness.py"
+      ],
       "integration_debt": [
         {
-          "what": "engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract §2b + §1.3 hard-floor listing) not yet implemented on srv1621832",
+          "what": "engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract \u00a72b + \u00a71.3 hard-floor listing) not yet implemented on srv1621832",
           "owner": "david",
           "expires": "2026-09-15"
         }
@@ -95,36 +200,87 @@
     },
     {
       "id": "gate-yield",
-      "summary": "gate_yield.py — §13's second decay direction (more expensive than the risk): per-cycle rollups of the hooks' event log into docs/calibration/gate_yield.md; retirement candidates only from >=2 committed cycles, absent data UNMEASURED never zero (R4-lean).",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "on"},
-      "wired_by": ["plugins/tdd-playbook/hooks/scripts/_common.py::emit (single logging seam)", "calibration/run_calibration.py (end-of-run rollup + candidate report)", "scripts/install_into_repo.py (vendors bin/ + .claude/.gitignore)"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_gate_yield.py", "plugins/tdd-playbook/tests/test_hooks.py"],
-      "emits": [{"topic": "docs/calibration/gate_yield.md (committed rollups)", "consumers": ["calibration cycle review (retirement decisions, R4.3 demotion shape when the first candidate appears)"]}]
+      "summary": "gate_yield.py \u2014 \u00a713's second decay direction (more expensive than the risk): per-cycle rollups of the hooks' event log into docs/calibration/gate_yield.md; retirement candidates only from >=2 committed cycles, absent data UNMEASURED never zero (R4-lean).",
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py::emit (single logging seam)",
+        "calibration/run_calibration.py (end-of-run rollup + candidate report)",
+        "scripts/install_into_repo.py (vendors bin/ + .claude/.gitignore)"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_gate_yield.py",
+        "plugins/tdd-playbook/tests/test_hooks.py"
+      ],
+      "emits": [
+        {
+          "topic": "docs/calibration/gate_yield.md (committed rollups)",
+          "consumers": [
+            "calibration cycle review (retirement decisions, R4.3 demotion shape when the first candidate appears)"
+          ]
+        }
+      ]
     },
     {
       "id": "nudge-anti-tax",
-      "summary": "intent_nudge sentinel dedupe + per-session damping + meta-question exclusion — one reminder per working stretch on any install topology, never two per message.",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "on"},
-      "wired_by": ["plugins/tdd-playbook/hooks/hooks.json", "scripts/install_into_repo.py::_merge_hooks"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_hooks.py"]
+      "summary": "intent_nudge sentinel dedupe + per-session damping + meta-question exclusion \u2014 one reminder per working stretch on any install topology, never two per message.",
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "scripts/install_into_repo.py::_merge_hooks"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_hooks.py"
+      ]
     },
     {
       "id": "install-doctor",
-      "summary": "install_into_repo.py --doctor — loud version-skew check across canonical plugin, vendored copy, and plugin cache (stale-hook outages become visible).",
-      "surfaces": ["local"],
-      "activation": {"default": "off", "switch": "python3 scripts/install_into_repo.py --doctor <repo> (run after any plugin release; vendor stamps are written automatically)"},
-      "wired_by": ["scripts/install_into_repo.py::doctor"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_installer.py"]
+      "summary": "install_into_repo.py --doctor \u2014 loud version-skew check across canonical plugin, vendored copy, and plugin cache (stale-hook outages become visible).",
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "python3 scripts/install_into_repo.py --doctor <repo> (run after any plugin release; vendor stamps are written automatically)"
+      },
+      "wired_by": [
+        "scripts/install_into_repo.py::doctor"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_installer.py"
+      ]
     },
     {
       "id": "civerd-release-gate",
       "summary": "verify_verdict.py (+ stdlib pure-Python _ed25519_verify) checks a signed CIVerd memproof-2 run verdict for a SHA; release_verify.py creates the release tag only on a green verdict (F4). No bypass flag.",
-      "surfaces": ["local", "cloud"],
-      "activation": {"default": "off", "switch": "scripts/release_verify.py --wait-s <n> at release time; verify side (bin/verify_verdict.py) vendors on and runs anywhere with plain python3"},
-      "wired_by": ["scripts/release_verify.py", "CLAUDE.md::CIVerd release gate"],
-      "exercised_by": ["plugins/tdd-playbook/tests/test_verify_verdict.py", "plugins/tdd-playbook/tests/test_ed25519_verify.py", "plugins/tdd-playbook/tests/test_release_verify.py"],
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "scripts/release_verify.py --wait-s <n> at release time; verify side (bin/verify_verdict.py) vendors on and runs anywhere with plain python3"
+      },
+      "wired_by": [
+        "scripts/release_verify.py",
+        "CLAUDE.md::CIVerd release gate"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_verify_verdict.py",
+        "plugins/tdd-playbook/tests/test_ed25519_verify.py",
+        "plugins/tdd-playbook/tests/test_release_verify.py"
+      ],
       "deploy_surface": {
         "runs_on": "srv1621832 (Hostinger VPS, civerd engine)",
         "gets_there_by": "deploy/update.sh on the VPS (git ff-only + verify_install.sh); the engine watches this repo via root-owned /etc/civerd/repos.yml",
@@ -136,6 +292,84 @@
           "what": "verify_verdict.py shipped IN v1.12.0, so the tag-gate is only the standing control from v1.13.0 on; v1.12.0 is dogfooded live against CIVerd's verdict for its own SHA. P3 rollout to downstream repos (cheliped, MemStruct) still pending.",
           "owner": "david",
           "expires": "2026-09-15"
+        }
+      ]
+    },
+    {
+      "id": "plan-authoring",
+      "summary": "plan_block.py scaffolds/validates docs/plans/gated/<slug>.md carrying an engine-conformant civerd-plan block (corpus-pinned, strict-superset drift only); /tdd-plan lands approved plans IN-REPO so the engine can hold releases to their predicates.",
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "arm plan_globs + integrity_globs for docs/plans/gated/*.md in /etc/civerd/repos.yml on srv1621832 (root-owned; the playbook session hands David the exact two lines to paste)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/plan_block.py",
+        "plugins/tdd-playbook/commands/tdd-plan.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_plan_block.py",
+        "docs/plans/gated/2026-07-30-deliberation-capture.md"
+      ],
+      "deploy_surface": {
+        "runs_on": "srv1621832 (Hostinger VPS \u2014 the CIVerd engine evaluates plan predicates at the judged sha)",
+        "gets_there_by": "the plan .md rides ordinary git push; ENFORCEMENT arms only when root-owned /etc/civerd/repos.yml names plan_globs (David pastes the two lines; cross-repo authorship rule)",
+        "running_version_probe": "tests/fixtures/plan_block_corpus.json is stamped blessed_by_engine_version \u2014 conformance staleness is detectable against the engine sha; author-side `validate` shells to civerd plan-check when on PATH",
+        "divergence": "if repos.yml is never armed, plans land INERT: release_verify keeps consuming verdicts with no plan predicate \u2014 the pipeline reads as live while enforcing nothing; owner: david (VPS admin)"
+      },
+      "integration_debt": [
+        {
+          "what": "ENGINE-SIDE ARMING: docs/plans/gated/*.md is not yet named in /etc/civerd/repos.yml, so plan predicates are authored but never enforced \u2014 a dark pipeline the doctor must show as dark until the box enforces it. By expiry: armed (David pastes the two lines on srv1621832) or consciously re-dated. (David's ships-on-or-triggered rule, 2026-07-30: OFF is only ever a scheduled state.)",
+          "owner": "david",
+          "expires": "2026-09-15"
+        }
+      ]
+    },
+    {
+      "id": "deliberation-capture",
+      "summary": "UserPromptSubmit/Stop hooks append human turns + assistant finals to an append-only per-day JSONL store (env-or-default ~/.claude/deliberation; dir 0700, files 0600; v1 redaction, sha256 over POST-redaction text; NO status field). Conveyed != ratified; only David closes (bin/deliberation.py).",
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "enrollment marker <store>/ENABLED \u2014 written BY THE BUILD on David's machines (consent is the commission; a stranger's marketplace install ships OFF, never a silent always-on recorder) \u2014 or TDD_PLAYBOOK_HOOK_CAPTURE=on; env `off` BEATS the marker (the calibration answer-key exclusion, pinned by a named test)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "plugins/tdd-playbook/hooks/scripts/capture.py",
+        "calibration/child_env.py"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_capture.py",
+        "docs/plans/gated/2026-07-30-deliberation-capture.md"
+      ],
+      "emits": [
+        {
+          "topic": "deliberation store (per-day JSONL: human turns, assistant finals, closure records)",
+          "consumers": [
+            "bin/deliberation.py stats/close (David's verbs \u2014 the v1 reader)",
+            "v2 shingle matcher (PRIMARY named candidate \u2014 see consumer debt)"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 14,
+        "probe": "capability_registry.py doctor prints `capture: ON (store, N records today)` / OFF \u2014 informational, non-demoting; the 14-day calibration cycle checklist re-checks it (David's ships-on-or-triggered rule: the calibration bundle carries the capture-ON verification)"
+      },
+      "integration_debt": [
+        {
+          "what": "ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30): every machine David works on must show capture: ON in the doctor line. This build enrolls THIS machine (writes <store>/ENABLED); the vendored-refresh prompt enrolls other machines as they are touched; cloud sandboxes are honest no-ops (stated, ephemeral). By expiry: all working machines enrolled, or consciously re-dated \u2014 never silently dark.",
+          "owner": "david",
+          "expires": "2026-08-31"
+        },
+        {
+          "what": "CONSUMER: the store is read only by deliberation.py stats \u2014 a recorder nobody reads does not get to run forever. By expiry either code reads it or capture is turned off. The v2 shingle matcher is the PRIMARY named candidate (motivating incident: a store distinguishing courier-carried assistant text from David's own words would have shown 'approved as stated' originated in a recommender's draft; v1 schema already suffices \u2014 full text + sha256 stored, shingles backfillable). v2 LABEL CONSTRAINT, binding now: unmatched spans are 'unattributed', NEVER 'David's own words' \u2014 under partial coverage (un-enrolled machines, cloud, Cheli/GLM) no-match must not imply human authorship; that failure direction is exactly what the store exists to prevent.",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ]
     }

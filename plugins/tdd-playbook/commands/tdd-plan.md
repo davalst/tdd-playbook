@@ -54,3 +54,30 @@ reject it with a reason.
 Report `Loop closed: yes (integration-adversary — <top island>; architecture-adversary — <top
 band-aid or "clean">)` or `Loop closed: NO — <why>`. Then stop — this plan is the single upstream
 spec; let me review before writing code.
+
+**Once APPROVED — land the plan IN THE REPO it governs (CIVerd plans-in-repo brief):** for
+feature/multi-deliverable work in a CIVerd-watched repo, write the approved plan via
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/bin/plan_block.py" scaffold --slug YYYY-MM-DD-<workstream> \
+    --repo <the ENGINE'S repos.yml name — never a dirname guess> \
+    --predicate TYPE:ARG [--predicate ...]
+```
+
+then paste the plan prose into the skeleton, `plan_block.py validate` it, and commit it with
+the work. Rules that keep the block honest:
+- **Slugs are permanent** (abandonment keys on the slug hash forever) — namespace by
+  date + workstream; a collision means pick a NEW slug, never reuse.
+- **Predicates state the weaker truth, write against it:** `test_passes path::name` = the
+  function EXISTS at the judged sha, unskipped, gate green — NOT "the engine watched it run"
+  (the repo's runs-guard in test_aaa closes the exists-vs-runs gap on our side);
+  `symbol_referenced` is weak both ways — for config-wired deliverables use `file_exists` on
+  the config + `test_passes` on a wiring test; `suite_min` counts AST test FUNCTIONS —
+  near-useless in check()-style repos, prefer `test_passes`.
+- **Research/docs/decision deliverables go in the "Unenforceable deliverables (prose)"
+  section** — never faked with a weak `file_exists`.
+- **Status is `active`, always.** `satisfied` is cosmetic to the engine; `abandoned` is
+  David's word alone through the root-owned store on the box — the tool has no argument
+  path that can emit either.
+- **Never gate small work** — a one-liner or a mechanical chore does not need a plan block;
+  the gate is for the work the §0 plan discipline already applies to.

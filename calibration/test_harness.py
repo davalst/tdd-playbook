@@ -989,9 +989,55 @@ def _check_staleness():
           run(rows, "not-a-date").returncode == 2)
 
 
+def _child_env_capture_exclusion_tests():
+    """Briefs D3 (arch-F1/G2): deliberation capture must be OFF for every NESTED claude the
+    calibration pipeline spawns — the doer's turns AND the plant-authoring adversary's output
+    ARE the answer key; a store that captures them defeats the planted-error anchor. The
+    exclusion is the shared child_env() helper, proven AT BOTH SPAWN SITES with an
+    env-dumping stub, with the parent env deliberately set 'on' (the hostile direction)."""
+    import child_env as ce
+    env = ce.child_env()
+    check("child_env(): helper exists and pins TDD_PLAYBOOK_HOOK_CAPTURE=off",
+          env.get("TDD_PLAYBOOK_HOOK_CAPTURE") == "off", env.get("TDD_PLAYBOOK_HOOK_CAPTURE"))
+    check("child_env(): inherits the rest of the parent environment (PATH survives)",
+          env.get("PATH") == os.environ.get("PATH"), "PATH mismatch")
+
+    def dump_stub(d, tail_output):
+        dump = os.path.join(d, "env-dump.txt")
+        path = os.path.join(d, "claude-envdump")
+        with open(path, "w") as fh:
+            fh.write("#!/bin/sh\nprintf '%s\\n' \"${{TDD_PLAYBOOK_HOOK_CAPTURE:-unset}}\" "
+                     ">> \"{}\"\ncat <<'EOF'\n{}\nEOF\n".format(dump, tail_output))
+        os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
+        return path, dump
+
+    prior = os.environ.get("TDD_PLAYBOOK_HOOK_CAPTURE")
+    os.environ["TDD_PLAYBOOK_HOOK_CAPTURE"] = "on"
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            stub, dump = dump_stub(d, OUT_RIGHT)
+            run(stub)
+            seen = set(open(dump).read().split()) if os.path.isfile(dump) else {"never ran"}
+            check("run_calibration.run_agent: nested claude sees capture OFF even when the "
+                  "parent says on", seen == {"off"}, seen)
+        with tempfile.TemporaryDirectory() as d:
+            import author_plants as ap
+            stub, dump = dump_stub(d, "[]")
+            ap.main(["--model", "stub-model", "--claude-bin", stub])
+            seen = set(open(dump).read().split()) if os.path.isfile(dump) else {"never ran"}
+            check("author_plants.cmd_author: the plant-authoring adversary (its output IS "
+                  "the answer key) sees capture OFF", seen == {"off"}, seen)
+    finally:
+        if prior is None:
+            os.environ.pop("TDD_PLAYBOOK_HOOK_CAPTURE", None)
+        else:
+            os.environ["TDD_PLAYBOOK_HOOK_CAPTURE"] = prior
+
+
 def main():
     print("Calibration-harness calibration")
     _check_staleness()
+    _child_env_capture_exclusion_tests()
     _history_format_tests()
     _staleness_invalid_tests()
     _unified_validator_tests()
