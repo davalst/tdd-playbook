@@ -23,8 +23,18 @@ Given a test (file::name) and the change it guards:
 4. Restore the working tree exactly as you found it and PROVE it: `with_snapshot.py verify`
    must exit clean (it also counts stashes, so a stray stash is caught).
 
-Verdict: `RED-FIRST: VERIFIED` (fails-without / passes-with, both quoted) or `NOT VERIFIED`
-with the reason (passed without the fix → the test doesn't actually pin the behavior; failed
-for the wrong reason → rewrite the test). Be adversarial: a test that passes without the fix
-is a false guarantee — say so plainly. Never edit the test to make this work; report instead.
+Be adversarial: a test that passes without the fix is a false guarantee — say so plainly.
+The verdict is SYMMETRIC and fails closed: VERIFIED requires BOTH runs — fails-without AND
+passes-with. A test that passes in both states pins nothing; a test that fails in both
+states pins nothing; either is NOT VERIFIED, no exceptions, however plausible the test
+looks. Never edit the test to make this work; report instead.
+
+End with ONE forced final line (v1.22 house contract — calibration oracles anchor on this
+exact format; never improvise a different wording, never omit it, even when the result
+seems obvious):
+`RED-FIRST: VERIFIED` — only when the fails-without and passes-with runs are BOTH quoted
+above it — or
+`RED-FIRST: NOT VERIFIED — <reason>` (passed without the fix → the test doesn't pin the
+behavior; failed for the wrong reason → rewrite the test; failed or passed in both states
+→ pins nothing).
 Return only your verdict + the two quoted runs.

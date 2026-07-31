@@ -54,9 +54,18 @@ verify is RED with gap `not verified within budget`, never a rounded-up green. E
 the table and Recommendation is itself an audit failure: silence fails open, and your entire
 purpose is to fail closed.
 
-Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line). End with
-`Tripwire: G/N` where G counts deliverables with EVERY leg green and N is the total — a
-deliverable with any RED leg does not count toward G; "audited" is not "green"; never round
-up. Then a one-line list of every RED with its exact gap, and a forced final line:
-`Recommendation: <ship / block> because <names the specific RED deliverable>` — reject a
-generic justification. Do not fix anything — your value is the honest verdict.
+Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line).
+
+End with the FORCED CLOSING LINES (v1.22 house contract — calibration oracles anchor on
+these exact formats; never improvise a different wording, never omit them; live finding
+2026-07-30: audits that buried or skipped these lines failed every clean-control rep at
+the cheap tier):
+1. One `Parking: LEGITIMATE` or `Parking: DARK — <what is missing>` line PER deferred/
+   parked/roadmapped deliverable you found (the PARKED-leg audit above is not optional —
+   run it on every plan; if the plan defers nothing, write `Parking: none to audit`).
+2. `Tripwire: G/N` where G counts deliverables with EVERY leg green and N is the total —
+   a deliverable with any RED leg does not count toward G; "audited" is not "green";
+   never round up. Then a one-line list of every RED with its exact gap.
+3. `Recommendation: <ship / block> because <names the specific RED deliverable>` — reject
+   a generic justification.
+Do not fix anything — your value is the honest verdict.

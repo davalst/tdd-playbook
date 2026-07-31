@@ -156,7 +156,7 @@
       },
       "integration_debt": [
         {
-          "what": "v1.17.0 rebuilt the instrument (repeat sampling, AMBER, controls/FP): the first LIVE run under it \u2014 due ~2026-08-10 \u2014 must land recall AND FP numbers in a history run-block; v2.0 remains gated on >=1 month of sustained live cadence. v1.22.0 grew the suite to 30 (island pair closing the integration-adversary coverage gap, red-first symmetric-break + mutation-phantom-run pairs) and amended two agent contracts (Verdict:/Coverage: lines) \u2014 the 08-10 run live-calibrates ALL of it (\u00a713: scenario/brief changes validated live before trusted)",
+          "what": "PAID IN PART 2026-07-30: the first live run under the v1.17 instrument LANDED recall AND FP numbers (history.md run blocks, repo 1cf99f2/b5b30aa, 8 agents, repeat-3). The numbers then did their job: architecture-adversary, script-adversary, integration-adversary, claims-verifier at/near PASS; red-first-verifier, mutation-runner, tripwire-auditor showed BLOCKING failures dominated by wrong-verdict-line on CLEAN CONTROLS (forced-line contract buried or absent \u2014 mutation-runner's gate verdict was never a mandated line at all). Agent contracts fixed same day (explicit house-contract closing blocks; oracles unchanged \u2014 the mutation-runner forced line was worded to match the shipped control regexes). REMAINING BY EXPIRY: the 3-agent re-run (red-first-verifier, mutation-runner, tripwire-auditor) lands in history.md BEFORE the v1.23.0 tag \u2014 \u00a713: gate-surface changes are live-calibrated before trusted; v2.0 still gated on >=1 month sustained cadence.",
           "owner": "david",
           "expires": "2026-08-17"
         },

@@ -105,3 +105,12 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
 
 The deliverable is killed survivors + an honest effective score, not a number nobody acts on.
 If a mutation gate exists, never propose lowering it — only raising as survivors die.
+
+End with ONE forced final line (v1.22 house contract — calibration oracles anchor on this
+exact format; never improvise a different wording, never omit it; live finding 2026-07-30:
+free-prose gate verdicts failed every clean-control rep at the cheap tier):
+`Mutation gate PASSES — raw <N>% · effective <M>% · excluded <K>` — only when the scope
+resolved, the baseline was green, and the numbers reconcile — or
+`Mutation gate FAILS — <the surviving mutant / floor breach>` or
+`Mutation gate UNMEASURED — <exactly what could not be measured and why>`.
+A verdict of PASSES with any unmeasured segment is forbidden — unmeasured is its own line.
