@@ -734,6 +734,68 @@ def test_v124_planted_fixtures():
                                     "+ FLOWS M/M", "proven at the OUTPUT end")))
 
 
+def test_v124_gate_surfaces():
+    """v1.24 Phase 2 (D7–D9): the commands/agents ADOPT §6c — the reverse sweep the plan
+    owed. /integration-audit gains the FIFTH darkness class (with a partition boundary so
+    D6's repeat-class metric stays uncorrupted); integration-adversary hunts a SIXTH island
+    pattern (dangling flows) with its forced verdict lines UNTOUCHED; /tdd-plan renders the
+    scale-gated flow table + the migration old-seam enumeration."""
+    with open(os.path.join(COMMANDS, "integration-audit.md")) as fh:
+        audit = fh.read()
+    fm = frontmatter(audit) or {}
+    for label, needle, text in [
+        ("/integration-audit: fifth class named", "Dangling dataflow", audit),
+        ("/integration-audit: description names five classes", "dangling dataflow",
+         fm.get("description", "")),
+        ("/integration-audit: T1–T7 hunt list", "T1–T7", audit),
+        ("/integration-audit: partition boundary stated", "stays class 4", audit),
+        ("/integration-audit: ghost gates in the hunt list", "ghost gates", audit),
+        ("/integration-audit: absence-blind monitors in the hunt list", "absence-blind",
+         audit),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "integration-adversary.md")) as fh:
+        adversary = fh.read()
+    for label, needle in [
+        ("integration-adversary: six island patterns", "Hunt the six island patterns"),
+        ("integration-adversary: dangling-flows pattern named", "Dangling flows"),
+        ("integration-adversary: template-key refute prompt",
+         "a template key with no placeholder"),
+        ("integration-adversary: old-seam refute prompt", "old seam"),
+    ]:
+        check(label, needle in adversary, "needle {!r} missing".format(needle))
+    # the forced-line contract is FROZEN (calibration oracles anchor on it) — assert the
+    # v1.22 wording survived the v1.24 edit verbatim, not just that some verdict exists
+    check("integration-adversary: forced-line contract untouched",
+          "never improvise a different format" in adversary
+          and "`Verdict: CONNECTED` — every emitted surface names a live consumer" in adversary)
+
+    with open(os.path.join(COMMANDS, "tdd-plan.md")) as fh:
+        plan = fh.read()
+    for label, needle in [
+        ("/tdd-plan: flow-table columns", "flow · producer · consumer · liveness test"),
+        ("/tdd-plan: migration old-seam enumeration", "replaced seam"),
+    ]:
+        check(label, needle in plan, "needle {!r} missing".format(needle))
+
+
+def test_v124_gate_surfaces_planted():
+    """The Phase 2 pins must be able to FAIL (§13 calibrate-the-checker)."""
+    stripped = ("an audit command with four darkness classes and an adversary that hunts "
+                "five island patterns; plans answer Emits in prose.\n")
+    check("planted: missing fifth-class needle detected", "Dangling dataflow" not in stripped)
+    check("planted: missing sixth-pattern needle detected",
+          "Hunt the six island patterns" not in stripped)
+    check("planted: missing flow-table needle detected",
+          "flow · producer · consumer · liveness test" not in stripped)
+    intact = ("**Dangling dataflow** joins; Hunt the six island patterns; "
+              "flow · producer · consumer · liveness test.\n")
+    check("planted: intact gate-surface doctrine passes the same needles",
+          all(n in intact for n in ("Dangling dataflow", "Hunt the six island patterns",
+                                    "flow · producer · consumer · liveness test")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -745,7 +807,8 @@ def main():
                test_verifier_model_pins, test_verifier_pin_planted,
                test_v114_doctrine, test_v114_planted_fixtures,
                test_v116_doctrine, test_v116_planted_fixtures,
-               test_v124_doctrine, test_v124_planted_fixtures):
+               test_v124_doctrine, test_v124_planted_fixtures,
+               test_v124_gate_surfaces, test_v124_gate_surfaces_planted):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
