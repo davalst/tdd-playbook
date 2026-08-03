@@ -85,10 +85,15 @@ the output end. Contents:
   mandatory where the flow kind exists, blocking; Tier 2 heuristic (storage pairing ·
   telemetry pairing · enum-value readers · ghost gates) — adopted with an FP budget,
   yield-instrumented, promoted from pilot data;
-- **sweep governance:** every sweep exemption is dated + owner-carrying; an exemption
-  naming a user-facing flow FAILS the suite (§6a companion rule, verbatim); the excluded
-  share is audited over time exactly like §4's equivalent-mutant filter — a growing
-  exemption list under a green sweep means the list is doing the tests' work;
+- **sweep governance:** sweep exemptions REUSE the house debt-entry shape
+  (`{what/target, owner, expires}` — the registry's R-DEBT contract; an EXPIRED
+  exemption REDs the sweep, provable via `--as-of`), never a new sibling format; an
+  exemption naming a user-facing flow FAILS the suite — by CROSS-REFERENCE to §6a's
+  companion rule (one canonical statement, no drift-prone verbatim copy), keyed on the
+  registry's new audience attribute (D12), not a proxy; the excluded share is audited
+  MECHANICALLY via committed per-cycle rows + a trend check (D13) — §4's
+  equivalent-mutant filter-audit rule, with the same teeth: a growing exemption list
+  under a green sweep means the list is doing the tests' work;
 - **migration consumer-parity DoD:** a strangler/migration is done when every consumer
   the OLD seam fed is enumerated in the diff and each is fed / retired-with-deletion /
   dated debt; a seam-parity test pins the enumeration; leftover references to the deleted
@@ -142,10 +147,15 @@ deferral.
 
 **D7 — `/integration-audit`: fifth darkness class.** "**Dangling dataflow**" joins the
 four classes — hunt list = T1–T7 (+ ghost gates, absence-blind monitors, exemption
-prose), each with its one-line signature. §12 rules already in the command govern the
-findings (every one is a negative). Happy path: an audit on a repo with a
-written-never-read table files it under the fifth class with the storage-pairing sweep
-named as the standing mechanism (step 5 of the command already demands this closure).
+prose), each with its one-line signature. **With an explicit partition boundary**, so
+the class taxonomy stays disjoint and D6's repeat-class metric isn't corrupted by
+double-homing: capability/topic-level write-only stays class 4 (R-WRITE-ONLY's
+granularity); field/value/event-instance-level goes to class 5; exemption-PROSE
+inconsistency is class 5, exemption-AS-HATCH stays class 2. §12 rules already in the
+command govern the findings (every one is a negative). Happy path: an audit on a repo
+with a written-never-read table files it under the fifth class with the storage-pairing
+sweep named as the standing mechanism (step 5 of the command already demands this
+closure).
 
 **D8 — `integration-adversary`: flow-granularity refute prompts.** The five island
 patterns gain a sixth: **dangling flows** — "name a flow this plan writes that nothing
@@ -189,11 +199,17 @@ reference implementations, config-driven so repos tailor rather than fork). Subc
   stated) · `%`-style OUT of v1 (stated in `--help`, not silently unhandled) · dynamic
   templates → named dated exemption, never a silent skip · **vacuity: zero call sites /
   zero templates scanned → REFUSE ("refusing a vacuous pass"), exit 2**.
-- **`ghost-gates`** — near-decidable undeclared-gate detection.
+- **`ghost-gates`** — near-decidable undeclared-gate detection. **TIER 2 — ships in
+  the tool but ADVISORY by default** (reports findings, exits 0; `--strict` flips it
+  blocking), promoted to blocking only when the D19 pilot's promote verdict lands —
+  the subcommand set must match the tier table it ships under (D1 classifies ghost
+  gates Tier 2: its `*_enabled`/`*_mode` name-globs are a scoping proxy — an undeclared
+  `use_cache` gate escapes them — tolerable only under FP/FN-budget governance).
+  `--help` and D12's registry entry both state the tier.
   Happy path: AST-scan `getattr(obj, "NAME", default)` / `.get("NAME", default)` where
   NAME matches configured gate patterns (default `*_enabled`, `*_mode`); resolve NAME
   against the declared-fields source (config: a module/class path, or capabilities.json
-  activation entries). Undeclared → RED. Edge cases: dynamic attr names → reported
+  activation entries). Undeclared → finding. Edge cases: dynamic attr names → reported
   UNRESOLVABLE (a count in the summary, never a silent pass) · default-`True` ghosts
   flagged at higher severity (an undeclared always-on gate is invisible AND live) ·
   zero-sites vacuity refusal.
@@ -203,39 +219,84 @@ reference implementations, config-driven so repos tailor rather than fork). Subc
   `activation.default`, or a named config file); mismatch → RED. Edge: referenced
   artifact missing → RED (fail closed), never skip.
 - **Common contract (all subcommands):** machine-readable summary
-  (`checked N · violations N · exempted N · unresolvable N`) so the excluded share is
-  auditable per cycle; exemptions live in a dated owner-carrying file; **the companion
-  rule is mechanical** — an exemption whose target matches a user-facing capability
-  (capabilities.json surfaces) FAILS; exit 0 clean / 1 violation / 2 usage-or-vacuous
-  (the `check_staleness.py` convention); exit codes and output are asserted by the tests,
-  never discarded (§4a).
+  (`checked N · violations N · exempted N · unresolvable N` — house `·`-separated
+  style) so the excluded share is auditable per cycle; exemptions use the house
+  debt-entry schema `{what/target, owner, expires}` — an EXPIRED exemption REDs the
+  sweep, `--as-of` makes the trigger provable (reusing/extracting the registry's
+  R-DEBT date logic into a small shared helper — one debt shape, not a fourth);
+  **the companion rule is mechanical** — an exemption whose target is a capability
+  marked `user_facing` in the registry (the new D12 attribute — `surfaces` is
+  deployment hosts, NOT an audience fact; keying on it would fire on everything or
+  nothing) FAILS; **exit codes: 0 clean / 1 violation / 2 usage ONLY / 3
+  vacuous-refusal** (the scoreboard-integrity multi-code precedent; "exit 2 is usage,
+  never proof" is standing doctrine, and a vacuous scan is a REAL blocking verdict a
+  mechanical consumer must be able to distinguish from a fat-fingered flag); exit codes
+  and output are asserted by the tests, never discarded (§4a).
 
 Red-first tests (`plugins/tdd-playbook/tests/test_dataflow_sweeps.py`), all planted with
 paired clean controls: template-key-no-placeholder → RED / paired pass → GREEN ·
-placeholder-no-supplier → RED · ghost `getattr(cfg, "x_enabled", True)` → RED / declared
-twin → GREEN · exemption claiming always-on over a default-off artifact → RED ·
-user-facing exemption → suite FAILS · zero-scope → exit 2 with the refusal string ·
-summary-line format pinned (a consumer parses it — see flow table).
+placeholder-no-supplier → RED · ghost `getattr(cfg, "x_enabled", True)` → reported
+(advisory default) and RED under `--strict` / declared twin → clean in both modes ·
+exemption claiming always-on over a default-off artifact → RED · EXPIRED exemption →
+RED via `--as-of expiry+1` · user-facing exemption → suite FAILS · zero-scope → exit 3
+with the refusal string, distinct from exit 2 usage · summary-line format pinned (a
+consumer parses it — see flow table).
 
 **D11 — Installer + content markers.** `install_into_repo.py` vendors
-`dataflow_sweeps.py`; the scratch-repo parity check (release gate) asserts its presence;
-`test_installer` gains: (a) vendored-bin presence, (b) canonical AND vendored SKILL
-contain the "Dataflow Liveness" heading + doctrine line (marker deleted in fixture →
-RED). CLAUDE.md refresh-prompt VERIFY step adds both.
+`dataflow_sweeps.py` (by the existing COPY_TREES `bin/` rule — construction, verified);
+the scratch-repo parity check (release gate) asserts its presence. Content pins land at
+the HOUSE seams, not a second home: the canonical "Dataflow Liveness" heading +
+doctrine-line needle goes in `test_agents.py` (the established doctrine-pin suite, with
+its paired planted-stripped fixture); `test_installer` gains ONE rewrite-aware equality
+assertion — vendored SKILL == canonical modulo the `${CLAUDE_PLUGIN_ROOT}` rewrite —
+which subsumes this marker and every future one (no per-marker treadmill). CLAUDE.md
+refresh prompt: the VERIFY step adds `dataflow_sweeps.py` + the §6c mention, AND the
+ADOPT block gains one §6c bullet ("plans carry a flow table for feature/migration work;
+wire Tier-1 sweeps where the flow kind exists; migrations prove consumer parity") — the
+ADOPT block is the canonical downstream mechanism-adoption surface, and without this
+line every non-Cheliped vendored repo receives a runnable bin with no operational
+instruction to use it (ACTIVATED-unstated, the exact §6 trap).
 
-**D12 — Registry entry.** `capabilities.json` += `dataflow-sweeps`: activation default
-ON (the bin ships and runs anywhere; per-repo sweep CONFIG is the tailoring, not a dark
-switch); `wired_by`: installer `_merge`/vendor list + `commands/integration-audit.md`
-(step-5 standing-mechanism closure names it) + SKILL §6c; `exercised_by`:
+**D12 — Registry entry + schema attribute + engine handoff.** Three parts, one seam
+each:
+(a) `capabilities.json` += `dataflow-sweeps`: activation default ON (the bin ships and
+runs anywhere; per-repo sweep CONFIG is the tailoring, not a dark switch; ghost-gates'
+Tier-2/advisory status stated in the summary); `wired_by`: installer vendor rule +
+`commands/integration-audit.md` (step-5 standing-mechanism closure names it) + SKILL
+§6c + `scripts/civerd_gate.sh` (the D13 self-sweep invocation); `exercised_by`:
 `tests/test_dataflow_sweeps.py`; `emits`: sweep summary lines → consumers: suite
-assertions + the calibration-cycle excluded-share audit (D13). `validate` green in the
-same commit.
+assertions + the D13 committed rollup + trend check.
+(b) **`capability_registry.py` schema gains an optional capability-level `user_facing`
+(audience) attribute** — the ground truth the companion rule keys on (`surfaces` is
+deployment hosts; grep confirms no audience fact exists anywhere in the schema today).
+Capability-granular, so the "no per-field flows in the registry" rule holds. This also
+gives §6a's existing companion-test doctrine its first machine-readable fact.
+Mechanical change → planted tests: entry marked `user_facing` + exempted → RED;
+internal entry exempted → GREEN. Existing entries annotated in the same commit.
+(c) **`civerd-integrity.yml` `plant_targets` += `dataflow_sweeps.py`** — owned HERE so
+it carries a Tripwire row (previously an unowned "Phase 5 mention"): the new checker
+joins the engine-side plant coverage every other shipped checker in that file carries.
+`validate` green in the same commit.
 
-**D13 — CLAUDE.md cycle checklist.** The weekly/cycle block gains one line: read the
-sweep summaries' exempted/unresolvable counts; a growing excluded share under green
-sweeps is a due task (the §4 filter-audit rule applied to sweeps). This is the named
-consumer of the summary flow — without it the summaries are themselves a written-never-
-read flow (T2 on our own tooling).
+**D13 — Self-sweep + mechanical excluded-share audit.** Two halves, both mechanical
+(the first draft had this as a CLAUDE.md prose line — that failed BOTH adversaries at
+once: a consumer reading summaries nothing produced, at an evidence tier below the
+plan's own ladder, re-creating the pre-F5 "David remembers" class the repo already
+mechanized once):
+(a) **The repo sweeps ITSELF.** A repo-local sweep config + a Tier-1 invocation added
+to `scripts/civerd_gate.sh` (the ONE blessed entrypoint), blocking — this repo's own
+shipped bins carry literal `.format(` render sites (`verify_citations.py`,
+`plan_block.py`, …), so under D1's "mandatory where the flow kind exists" the flow kind
+exists HERE and the doctrine would be violated on day one without this. Dogfood is the
+deliverable, not a hope.
+(b) **Committed rollup + trend check.** Each calibration cycle appends one committed
+row per sweep (`date | sweep | checked | violations | exempted | unresolvable`) to the
+gate-yield record (reusing `gate_yield.py`'s parse/rollup machinery — same instrument,
+not a sibling), and a mechanical trend check flags an excluded share that grows N
+consecutive cycles. The CLAUDE.md cycle-checklist line becomes a POINTER to that check
+("read the trend check's output"), not the check itself. "A growing excluded share" is
+a trend claim — undetectable from one run's summary line; it needs committed rows and a
+comparator, exactly like F5 needed `check_staleness.py`, not a reminder.
 
 *Integration surface (Phase 3):* Consumes: installer vendor list, capabilities.json,
 test suite via `civerd_gate.sh` (the ONLY entrypoint — the tests are ordinary
@@ -244,10 +305,11 @@ build time that the gate's collection actually picks the new file up — §4a
 collection-check, planted by temporarily breaking the filename in a fixture run).
 Emits → named consumers: per the flow table (§D). Surface parity: local + cloud
 (vendored) — parity proven by the scratch-repo release-gate check. Reverse sweep:
-`civerd-integrity.yml` — the new tool joins `plant_targets` so engine-side plants cover
-it (one-line diff, this plan, Phase 5); the engine-side `dataflow` check-class proposal
-goes to CIVerd (separate doc, `docs/recommendations/civerd-dataflow-liveness-upgrades-
-2026-08.md`) — cross-repo, not deferrable-silently: it is a named deliverable there.
+`civerd-integrity.yml` `plant_targets` — owned by D12(c), Tripwire row included; this
+repo's OWN bins — owned by D13(a), the self-sweep; the engine-side `dataflow`
+check-class proposal goes to CIVerd (separate doc,
+`docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md`) — cross-repo, its
+forwarding tracked by the D19 dated line.
 
 ### Phase 4 — Calibration (§13 — the plan is not done when the code lands)
 
@@ -286,12 +348,18 @@ new steps invented here):** `sh scripts/civerd_gate.sh` green · `check_stalenes
 **D19 — Cheliped pilot dispatch (CROSS-REPO).** Send the standing refresh prompt (the
 stale vendored copy is itself a finding) PLUS the pilot addendum: Tier-1 sweeps blocking
 immediately; Tier-2 (storage/telemetry/enum/ghost in their stack) with an explicit FP
-budget and per-sweep summary counts; run the 6b.5 plants at adoption; build the two
-missing platforms into the assembly suite (T7 stays open until the real build includes
-every platform); report yield at the next calibration cycle. **The promote/tune/retire
-decision for each Tier-2 sweep is a dated debt entry** on `dataflow-sweeps`
-(owner: david, expiry 2026-09-15) so the pilot cannot silently become the permanent
-state — the verdict lands in a successor doc to the review.
+budget, per-sweep summary counts, **and the summaries wired into that repo's gate-yield
+record from day one** (the review's §4/§8 clause, restored: promote/retire decisions
+come from committed telemetry, not vibes); run the 6b.5 plants at adoption; build the
+two missing platforms into the assembly suite (T7 stays open until the real build
+includes every platform); report yield at the next calibration cycle. **The
+promote/tune/retire decision for each Tier-2 sweep is a dated debt entry** on
+`dataflow-sweeps` (owner: david, expiry 2026-09-15) so the pilot cannot silently become
+the permanent state — the verdict lands in a successor doc to the review. The same debt
+entry carries one more dated line: **"CIVerd upgrade proposal forwarded: y/n"** — the
+proposal doc's handoff is a human step, and the documented rot case is a review doc
+that flagged a dead subsystem months before the audit re-found it; the line makes the
+handoff expire loudly instead of silently.
 
 ---
 
@@ -300,13 +368,13 @@ state — the verdict lands in a successor doc to the review.
 | flow (what moves) | producer | consumer (named) | liveness test |
 |---|---|---|---|
 | §6c doctrine text | SKILL.md | every session (plugin load); vendored repos (installer + refresh prompt VERIFY step) | D11 content-marker test (canonical + vendored) |
-| sweep summary lines (`checked/violations/exempted/unresolvable`) | `dataflow_sweeps.py` | suite assertions (test_dataflow_sweeps) + cycle checklist excluded-share audit (D13) | summary-format pin test; checklist line lands in CLAUDE.md in the same commit |
+| sweep summary lines (`checked/violations/exempted/unresolvable`) | `dataflow_sweeps.py` — run BLOCKING on this repo's own bins via `civerd_gate.sh` (D13a) | suite assertions (test_dataflow_sweeps) + committed per-cycle gate-yield rows + mechanical trend check (D13b) | summary-format pin test; planted grown-share fixture → trend check flags |
 | sweep exemption files | repo maintainers | companion check (user-facing → FAIL) + excluded-share audit | planted user-facing exemption → suite RED |
 | fifth-class audit findings | `/integration-audit` runs | owners + expiries (registry debt / plan deliverables — existing §12 machinery) | D15 calibration scenario (plan-omits-consumer plant) |
 | escape-class rows | audits/excavations (§13 line) | next-cycle grade + mechanism decisions (quarterly bundle reads them) | quarterly.md clock already enforced (`check_staleness --max-age-days 100`) |
 | flow-granularity refute prompts | `integration-adversary` brief | plan authors at §0 close (mandatory dispatch, existing rule) | D16 live-calibration rows in history.md |
 | Cheliped pilot yield data | Cheliped Tier-2 sweeps | promote/tune/retire verdict (successor doc) | dated debt on `dataflow-sweeps`, expiry 2026-09-15, `--as-of` proven |
-| CIVerd upgrade proposals | `docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md` | David → CIVerd engine backlog (cross-repo) | tracked as proposal doc; adoption is CIVerd's call — NOT this repo's debt (stated, not implied) |
+| CIVerd upgrade proposals | `docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md` | David → CIVerd engine backlog (cross-repo) | forwarding tracked by the D19 dated debt line ("forwarded: y/n", expiry 2026-09-15); ADOPTION stays CIVerd's call — not this repo's debt (stated, not implied) |
 
 No row ships with an empty consumer cell.
 
@@ -335,9 +403,52 @@ engine echoes the release SHA — existing `R-DEPLOY` machinery covers it).
 
 ## G. Adversary loop closure (§0 mandatory — this plan adds gate surfaces)
 
-PENDING at first draft — both adversaries are dispatched fresh-context and refute-framed
-on this plan (plan-review mode); their verdicts and the fold-in record replace this
-placeholder before the plan is presented for approval.
+Both adversaries dispatched fresh-context, refute-framed, plan-review mode, at the
+doer's model tier (§13 verifier-strength: pins raised to match the doer). Verdicts on
+the FIRST draft; every finding below is folded into the deliverables above (none
+rejected):
+
+**integration-adversary — `Verdict: ISLANDS (3)`** (first draft):
+1. *Self-sweep island (worst):* Tier-1 declared "mandatory where the flow kind exists"
+   while no deliverable ran the sweeps on THIS repo — whose own bins carry literal
+   `.format(` render sites — so the D13 checklist consumer read summaries nothing
+   produced. **Folded → D13(a):** blocking self-sweep invocation in `civerd_gate.sh`.
+2. *Unowned engine-handoff edit:* the `civerd-integrity.yml` plant_targets line had no
+   owning deliverable and no Tripwire row. **Folded → D12(c).**
+3. *Vendored adoption gap:* the CLAUDE.md refresh prompt's ADOPT block (the canonical
+   downstream adoption surface) gained no §6c instruction — non-Cheliped repos would
+   receive the bin with ACTIVATED unstated. **Folded → D11.**
+   Minor: the CIVerd-proposal human handoff got a dated "forwarded y/n" line (→ D19).
+
+**architecture-adversary — `Verdict: MIXED (7)`** (first draft):
+1. *Wrong seam / reuse miss:* excluded-share audit as a CLAUDE.md prose line — the
+   pre-F5 "remembers" class, and the review's own gate_yield clause dropped. **Folded →
+   D13(b)** (committed rows via gate_yield machinery + mechanical trend check) and
+   **D19** (clause restored for the pilot).
+2. *Duplication:* a fourth dated-exemption shape with no expiry teeth. **Folded → D10**
+   (house `{what/target, owner, expires}` schema; expired → RED; `--as-of` provable).
+3. *Gate-by-proxy (their top recommendation):* companion rule keyed on
+   `capabilities.json` surfaces — which are deployment hosts, so the check fires on
+   everything or nothing. **Folded → D12(b):** new capability-level `user_facing`
+   attribute; the companion rule keys on the fact, not a proxy.
+4. *Tier mislabel:* ghost-gates shipped in the Tier-1 floor while classified Tier 2.
+   **Folded → D10:** advisory by default, `--strict` opt-in, promoted only on the D19
+   pilot verdict.
+5. *Overlapping taxonomy:* class 5 double-homed findings with classes 2 and 4,
+   corrupting D6's repeat-class metric. **Folded → D7:** explicit partition boundary.
+6. *Conflated exit code:* vacuous-refusal sharing exit 2 with usage errors, against
+   "exit 2 is usage, never proof". **Folded → D10:** 0/1/2/3, vacuous = 3, pinned in
+   D14 tests.
+7. *Marker home:* SKILL needles split into `test_installer` instead of the house
+   doctrine-pin suite. **Folded → D11:** needle in `test_agents.py`; ONE rewrite-aware
+   vendored-equality assertion in `test_installer`.
+   Lead folded: §6a companion rule cross-referenced, not restated verbatim (→ D1).
+
+`Loop closed: yes` — both adversaries dispatched; 10 findings + 2 minors, all folded
+above, none rejected. (Adversary-verified-clean, for the record: `dataflow_sweeps.py`
+has no prior art in the tree; §6c-as-new-section vs sharpening-§6a is correctly
+seamed; registry granularity holds; forced-line contracts untouched; the summary-line
+format matches house style.)
 
 ## H. What this plan explicitly does NOT do
 
