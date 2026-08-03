@@ -175,6 +175,7 @@ def main():
               (p.returncode, p.stdout[-400:]))
 
     test_dataflow_rollup_and_trend()
+    test_dataflow_producer_consumer_seam()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
@@ -241,6 +242,66 @@ def test_dataflow_rollup_and_trend():
         check("dataflow-trend: absent record -> unmeasured, exit 0, never zero",
               p.returncode == 0 and "unmeasured" in p.stdout.lower(),
               (p.returncode, p.stdout))
+
+
+def test_dataflow_producer_consumer_seam():
+    """v1.24 fold (arch-adversary F3 + tripwire D13b): the summary-line contract is
+    exercised at the JOINT — a REAL dataflow_sweeps run's stdout feeds a REAL
+    dataflow-rollup, and the run_calibration tail actually lands a committed row in
+    the (isolated) record. Four regex dialects with no producer->consumer test was the
+    drift surface; this closes it with live plumbing, not re-typed strings."""
+    print("\n[test_dataflow_producer_consumer_seam]")
+    ds = os.path.join(PLUGIN, "bin", "dataflow_sweeps.py")
+    with tempfile.TemporaryDirectory() as d:
+        # real producer run on a tiny fixture
+        src = os.path.join(d, "src")
+        os.makedirs(src)
+        with open(os.path.join(src, "clean.py"), "w") as fh:
+            fh.write('Z = "{k}".format(k=2)\n')
+        cfgp = os.path.join(d, "sweeps.json")
+        with open(cfgp, "w") as fh:
+            json.dump({"render_pairing": {"scan": ["src"]}}, fh)
+        p = subprocess.run([sys.executable, ds, "render-pairing", "--config", cfgp],
+                           capture_output=True, text=True, timeout=60)
+        lines = [ln for ln in p.stdout.splitlines()
+                 if ln.startswith("dataflow_sweeps ") and "checked" in ln]
+        check("seam: producer emitted exactly one summary line", len(lines) == 1,
+              (p.returncode, p.stdout))
+        md = os.path.join(d, "dataflow_yield.md")
+        p2 = run_gy("dataflow-rollup", "--md", md, "--date", "2026-08-03",
+                    "--line", lines[0] if lines else "<none>")
+        body = open(md).read() if os.path.isfile(md) else "<missing>"
+        check("seam: real producer line accepted by the real consumer, row landed",
+              p2.returncode == 0 and "| 2026-08-03 | render-pairing | 1 | 0 | 0 | 0 |" in body,
+              (p2.returncode, body, p2.stdout, p2.stderr))
+
+    # the run_calibration tail exercises the WHOLE seam: stub model run -> sweeps ->
+    # rollup row in the ISOLATED sibling record (never the repo's committed file)
+    with tempfile.TemporaryDirectory() as d:
+        stub = os.path.join(d, "claude-stub")
+        with open(stub, "w") as fh:
+            fh.write("#!/bin/sh\ncat <<'EOF'\n**VERDICT: REFUTED** — authorize() is called "
+                     "at cli.py:15 and cli.py:21.\nClaims checked: 1 · confirmed: 0 · "
+                     "refuted: 1\nRecommendation: revise.\nEOF\n")
+        os.chmod(stub, 0o755)
+        env = dict(os.environ)
+        env["TDD_PLAYBOOK_YIELD_MD"] = os.path.join(d, "gate_yield.md")
+        env["TDD_PLAYBOOK_YIELD_LOG"] = os.path.join(d, "no-raw.jsonl")
+        p = subprocess.run(
+            [sys.executable, os.path.join(REPO, "calibration", "run_calibration.py"),
+             "--scenario", "false-negative-claim", "--claude-bin", stub, "--history", "",
+             "--repeat", "1"],
+            capture_output=True, text=True, env=env, timeout=300)
+        sibling = os.path.join(d, "dataflow_yield.md")
+        check("seam: run_calibration tail lands a committed row in the isolated record",
+              p.returncode == 0 and os.path.isfile(sibling)
+              and "render-pairing" in open(sibling).read(),
+              (p.returncode, p.stdout[-400:], os.path.isfile(sibling)))
+        check("seam: run_calibration prints the dataflow yield section",
+              "dataflow" in p.stdout.lower(), p.stdout[-400:])
+        repo_record = os.path.join(REPO, "docs", "calibration", "dataflow_yield.md")
+        check("seam: the repo's real record was NOT touched by the test run",
+              not os.path.isfile(repo_record), repo_record)
 
 
 if __name__ == "__main__":

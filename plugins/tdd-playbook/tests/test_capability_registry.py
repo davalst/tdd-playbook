@@ -303,6 +303,19 @@ def test_own_registry():
           not _fires("2026-09-15", "CIVERD UPGRADE PROPOSAL")
           and any("dataflow-sweeps" in v for v in _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")),
           _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")[:2])
+    # tripwire-auditor (v1.24 fold): two deferrals were parked in PROSE ONLY — the exact
+    # H7 class the plan's §B rule bans. Now dated + string-pinned like every other loan:
+    check("v1.24 corpus-batch debt (2026-08-17): silent on its expiry day, fires 08-18 "
+          "naming calibration-loop — proposed plants nobody approves are a dark queue",
+          not _fires("2026-08-17", "V1.24 CORPUS BATCH")
+          and any("calibration-loop" in v for v in _fires("2026-08-18", "V1.24 CORPUS BATCH")),
+          _fires("2026-08-18", "V1.24 CORPUS BATCH")[:2])
+    check("v1.24 gate-surface calibration debt (2026-08-17): silent on its expiry day, "
+          "fires 08-18 — D7–D9 text is untrusted until its history.md rows land",
+          not _fires("2026-08-17", "V1.24 GATE-SURFACE CALIBRATION")
+          and any("calibration-loop" in v
+                  for v in _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")),
+          _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")[:2])
 
 
 def test_probe_survivor_gaps():

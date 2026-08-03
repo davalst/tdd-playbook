@@ -55,13 +55,20 @@ MOD = None
 
 
 def run(argv):
-    """Run the tool in-process; return (rc, combined stdout+stderr text)."""
+    """Run the tool in-process; return (rc, combined stdout+stderr text).
+
+    An unhandled exception maps to rc -1 (recorded as a failing check, never a crashed
+    suite) — a tool that RAISES on bad config instead of returning usage-2 is itself
+    the script-adversary F6 defect, and the suite must survive to report it."""
     out = io.StringIO()
     try:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             rc = MOD.main(argv)
     except SystemExit as e:  # argparse usage errors
         rc = e.code if isinstance(e.code, int) else 2
+    except Exception as e:  # noqa: BLE001 — the defect under test, surfaced not fatal
+        out.write("UNHANDLED {}: {}\n".format(type(e).__name__, e))
+        rc = -1
     return rc, out.getvalue()
 
 
@@ -342,6 +349,194 @@ def test_summary_format():
               SUMMARY_RX.search(out) is not None and "violations 1" in out, out)
 
 
+# ------------------------------------------------------------------ adversary-found modes (v1.24 fold)
+def test_fail_closed_scan():
+    """script-adversary F1 / arch-adversary F1 (both top recommendations): a scan whose
+    files all fail to parse/open must NEVER read as green — unreadable code is a
+    VIOLATION (fail closed), and vacuity is keyed on CHECKED alone (an unresolvable
+    site cannot vouch for the scan)."""
+    with tempfile.TemporaryDirectory() as td:
+        # PLANT: the only scanned file has a SyntaxError — the strongest evidence the
+        # scanner read nothing must fail the gate, not pass it
+        write(td, "src/broken.py", "def broken(:\n")
+        c = cfg(td, {"render_pairing": {"scan": ["src"]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("fail-closed: unparsable scanned file -> exit 1, violation names the file",
+              rc == 1 and "broken.py" in out and "fail closed" in out, (rc, out))
+        # CONTROL: the same scan with a parsable file is clean
+        write(td, "src/broken.py", 'Z = "{k}".format(k=2)\n')
+        rc2, out2 = run(["render-pairing", "--config", c])
+        check("fail-closed: parsable control -> exit 0", rc2 == 0, (rc2, out2))
+
+    with tempfile.TemporaryDirectory() as td:
+        # dynamic-only ghost scan: checked 0 -> vacuous refusal (unresolvable never
+        # converts a zero-checked scan into a pass)
+        write(td, "src/dyn.py", "v = getattr(cfg, name, True)\n")
+        write(td, "src/declared.py", "class Config:\n    a_enabled = True\n")
+        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+                                     "declared_fields": {"kind": "module",
+                                                         "path": "src/declared.py"}}})
+        rc, out = run(["ghost-gates", "--config", c])
+        check("fail-closed: zero-checked all-unresolvable scan -> vacuous refusal 3",
+              rc == 3 and "unresolvable 1" in out
+              and "refusing a vacuous pass" in out, (rc, out))
+
+
+def test_template_pair_earns_checked():
+    """script-adversary F2: a template_pairs entry earns `checked` only by DOING work —
+    a nothing-to-pair entry must not convert a vacuous config into a green one."""
+    with tempfile.TemporaryDirectory() as td:
+        # PLANT: placeholder-free template + inert supplier — manufactured coverage
+        write(td, "tpl.txt", "This file has no placeholders.")
+        write(td, "sup.py", "x = 1\n")
+        c = cfg(td, {"render_pairing": {
+            "scan": [], "template_pairs": [{"template": "tpl.txt", "supplier": "sup.py"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("pair: nothing-to-pair entry -> violation, not manufactured coverage",
+              rc == 1 and "nothing to pair" in out, (rc, out))
+        # CONTROL: a real pair still passes
+        write(td, "tpl2.txt", "Dear {name}.")
+        write(td, "sup2.py", 'b = T.format(name=n)\n')
+        c2 = cfg(td, {"render_pairing": {
+            "scan": [], "template_pairs": [{"template": "tpl2.txt", "supplier": "sup2.py"}]}})
+        rc2, out2 = run(["render-pairing", "--config", c2])
+        check("pair: real pair control -> exit 0", rc2 == 0, (rc2, out2))
+
+
+def test_prose_vocabulary_closed():
+    """script-adversary F3 / arch-adversary F6: unrecognized default-claim wording must
+    be its own violation — never silently reinterpreted as 'claims OFF'."""
+    reg = {"version": 1, "capabilities": [
+        {"id": "cap-on", "summary": "s", "surfaces": ["local"],
+         "activation": {"default": "on"}, "wired_by": ["w"], "exercised_by": ["e"]}]}
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "capabilities.json", json.dumps(reg))
+        # PLANT: paraphrase outside the vocabulary — must violate, not assert "off"
+        c = cfg(td, {"exemption_prose": {"claims": [
+            {"what": "paraphrased claim", "claim": "enabled by default",
+             "artifact": "capabilities.json", "capability": "cap-on"}]}})
+        rc, out = run(["exemption-prose", "--config", c])
+        check("prose: unrecognized vocabulary -> violation naming the wording",
+              rc == 1 and "not recognized" in out, (rc, out))
+        # CONTROL: the OFF vocabulary works symmetrically
+        reg_off = {"version": 1, "capabilities": [
+            dict(reg["capabilities"][0],
+                 activation={"default": "off", "switch": "s"})]}
+        write(td, "capabilities.json", json.dumps(reg_off))
+        c2 = cfg(td, {"exemption_prose": {"claims": [
+            {"what": "off claim", "claim": "off-by-default",
+             "artifact": "capabilities.json", "capability": "cap-on"}]}})
+        rc2, out2 = run(["exemption-prose", "--config", c2])
+        check("prose: off-by-default over default-off control -> exit 0",
+              rc2 == 0, (rc2, out2))
+
+
+def test_config_shape_and_containment():
+    """script-adversary F5/F6: scan entries must stay inside the config's base dir, and
+    malformed config SHAPES are usage (2) — never an AttributeError masquerading as a
+    violation exit."""
+    with tempfile.TemporaryDirectory() as td:
+        outside = tempfile.mkdtemp()
+        try:
+            with open(os.path.join(outside, "x.py"), "w") as fh:
+                fh.write('Z = "{k}".format(k=2)\n')
+            c = cfg(td, {"render_pairing": {"scan": [outside]}})
+            rc, out = run(["render-pairing", "--config", c])
+            check("containment: absolute scan entry outside base -> exit 2 usage",
+                  rc == 2, (rc, out))
+            c2 = cfg(td, {"render_pairing": {"scan": ["../" + os.path.basename(outside)]}})
+            rc2, out2 = run(["render-pairing", "--config", c2])
+            check("containment: ../ escape -> exit 2 usage", rc2 == 2, (rc2, out2))
+        finally:
+            import shutil
+            shutil.rmtree(outside, ignore_errors=True)
+    with tempfile.TemporaryDirectory() as td:
+        p = write(td, "sweeps.json", json.dumps([1, 2, 3]))
+        rc, out = run(["render-pairing", "--config", p])
+        check("shape: non-object config -> exit 2 usage", rc == 2, (rc, out))
+        write(td, "src/x.py", 'Z = "{k}".format(k=2)\n')
+        p2 = cfg(td, {"render_pairing": {"scan": ["src"],
+                                         "exemptions": {"not": "a list"}}})
+        rc2, out2 = run(["render-pairing", "--config", p2])
+        check("shape: non-list exemptions -> exit 2 usage", rc2 == 2, (rc2, out2))
+
+
+def test_all_subcommand():
+    """arch-adversary F2: 'which sweeps are armed' lives in the CONFIG, not in hardcoded
+    lists inside two callers — `all` derives the armed set from the sections present and
+    emits one pinned summary line per sweep."""
+    reg = {"version": 1, "capabilities": [
+        {"id": "cap-on", "summary": "s", "surfaces": ["local"],
+         "activation": {"default": "on"}, "wired_by": ["w"], "exercised_by": ["e"]}]}
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/clean.py", 'Z = "{k}".format(k=2)\n')
+        write(td, "capabilities.json", json.dumps(reg))
+        c = cfg(td, {"render_pairing": {"scan": ["src"]},
+                     "exemption_prose": {"claims": [
+                         {"what": "w", "claim": "always-on",
+                          "artifact": "capabilities.json", "capability": "cap-on"}]}})
+        rc, out = run(["all", "--config", c])
+        check("all: armed sections run, one summary line each, exit 0",
+              rc == 0 and "dataflow_sweeps render-pairing: checked" in out
+              and "dataflow_sweeps exemption-prose: checked" in out, (rc, out))
+        # PLANT: a violation in either armed sweep fails `all`
+        write(td, "src/clean.py", 'Z = "{k}".format(k=2, ghost=3)\n')
+        rc2, out2 = run(["all", "--config", c])
+        check("all: violation in an armed sweep -> exit 1", rc2 == 1, (rc2, out2))
+    with tempfile.TemporaryDirectory() as td:
+        c = cfg(td, {})
+        rc, out = run(["all", "--config", c])
+        check("all: zero armed sections -> vacuous refusal 3",
+              rc == 3 and "refusing a vacuous pass" in out, (rc, out))
+    with tempfile.TemporaryDirectory() as td:
+        # ghost-gates stays advisory under `all` (Tier 2), --strict flips it
+        write(td, "src/ghost.py", 'v = getattr(cfg, "x_enabled", True)\n')
+        write(td, "src/declared.py", "class Config:\n    z_enabled = False\n")
+        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+                                     "declared_fields": {"kind": "module",
+                                                         "path": "src/declared.py"}}})
+        rc, out = run(["all", "--config", c])
+        rc2, out2 = run(["all", "--config", c, "--strict"])
+        check("all: ghost finding advisory by default, blocking under --strict",
+              rc == 0 and rc2 == 1, (rc, rc2))
+
+
+def test_companion_unclassified_fails_closed():
+    """arch-adversary F5: an exemption naming a capability with NO user_facing
+    annotation must fail CLOSED — absence of the audience fact is not 'internal'."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/surplus.py", 'X = "hi {a}".format(a=1, ghost=2)\n')
+        reg = {"version": 1, "capabilities": [
+            {"id": "unclassified-thing", "summary": "s", "surfaces": ["local"],
+             "activation": {"default": "on"}, "wired_by": ["w"], "exercised_by": ["e"]}]}
+        write(td, "capabilities.json", json.dumps(reg))
+        c = cfg(td, {"registry": "capabilities.json", "render_pairing": {
+            "scan": ["src"], "exemptions": [
+                {"what": "w", "target": "src/surplus.py::ghost", "owner": "d",
+                 "expires": "2099-01-01", "capability": "unclassified-thing"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("companion: unclassified capability fails closed (annotate before exempting)",
+              rc == 1 and "user_facing" in out, (rc, out))
+
+
+def test_plant_target_handoff():
+    """tripwire-auditor D12(c): the civerd-integrity.yml handoff entry is pinned
+    mechanically — the engine-side plant rotation must be able to find the new checker.
+    (Engine-side pickup itself is EXTERNAL-STATE, covered by the integrity-guards
+    watchlist debt in capabilities.json.)"""
+    repo_root = os.path.dirname(os.path.dirname(ROOT))
+    with open(os.path.join(repo_root, "civerd-integrity.yml")) as fh:
+        manifest = fh.read()
+    check("handoff: dataflow_sweeps.py is a plant target",
+          "plugins/tdd-playbook/bin/dataflow_sweeps.py" in manifest, manifest)
+    check("handoff: the blessed gate is still the suite_cmd",
+          'suite_cmd: "sh scripts/civerd_gate.sh"' in manifest, manifest)
+    # planted-stripped twin: the pin can fail (§13)
+    stripped = "plant_targets:\n  - path: plugins/tdd-playbook/bin/verify_verdict.py\n"
+    check("handoff planted: manifest without the entry is detected",
+          "dataflow_sweeps.py" not in stripped)
+
+
 # ------------------------------------------------------------------ tool doc honesty
 def test_help_states_bounds():
     """`--help` states what v1 does NOT cover — silently unhandled classes are the trap."""
@@ -361,18 +556,20 @@ def main():
     except Exception as e:  # noqa: BLE001 — a missing/broken tool must read RED, not crash
         MOD = None
         check("tool loads", False, repr(e))
+    suite = (test_render_pairing, test_exit_codes_and_vacuity, test_exemptions,
+             test_ghost_gates, test_exemption_prose, test_summary_format,
+             test_fail_closed_scan, test_template_pair_earns_checked,
+             test_prose_vocabulary_closed, test_config_shape_and_containment,
+             test_all_subcommand, test_companion_unclassified_fails_closed,
+             test_plant_target_handoff, test_help_states_bounds)
     if MOD is not None:
-        for fn in (test_render_pairing, test_exit_codes_and_vacuity, test_exemptions,
-                   test_ghost_gates, test_exemption_prose, test_summary_format,
-                   test_help_states_bounds):
+        for fn in suite:
             print("\n[{}]".format(fn.__name__))
             fn()
     else:
         # name the suite's tests so the orphan guard sees them referenced even on the
         # tool-missing path: they run above whenever the tool loads
-        for fn in (test_render_pairing, test_exit_codes_and_vacuity, test_exemptions,
-                   test_ghost_gates, test_exemption_prose, test_summary_format,
-                   test_help_states_bounds):
+        for fn in suite:
             check("SKIPPED (tool missing): {}".format(fn.__name__), False)
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)

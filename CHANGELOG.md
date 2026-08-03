@@ -3,6 +3,53 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.24.0 — 2026-08-03
+
+**Dataflow Liveness (§6c) — nodes are necessary; edges are the truth.** Origin: the
+Cheliped excavation (2026-08-03) — the node-level wiring net caught 0 of 12 post-safeguard
+escapes because every one was an EDGE failure (flows with no live consumer, values with no
+reader, fixes verified at the supply end). Plan:
+`docs/plans/dataflow-liveness-implementation-plan-2026-08.md` (adversaried at plan stage —
+10 findings + 2 minors, all folded; upstream review doc never committed, T1–T7 grounded
+inline from the excavation table).
+
+- **SKILL §6c (D1–D6):** new section — flow-kinds checklist (incl. silent-default
+  boundaries + schedule overlap), the T1–T7 escape taxonomy, two decidability tiers,
+  sweep governance (exemptions = house debt shape; excluded share audited mechanically),
+  migration consumer-parity DoD. §0 gains the scale-gated flow table
+  (`flow · producer · consumer · liveness test`); §6 + /tripwire report
+  `Tripwire: N/N (+ FLOWS M/M)`; §6a sharpened (evidence-tier ladder
+  `config-read < import < runtime-probe < composition-root`, monitors record SUCCESS,
+  reachability through the real dispatch order — last-write-wins banned); §12 gains the
+  output-end proof rule; §13 tracks escapes BY CLASS.
+- **Gate surfaces (D7–D9):** /integration-audit gains the FIFTH darkness class
+  ("Dangling dataflow", T1–T7 hunt list, explicit partition boundary);
+  integration-adversary hunts a SIXTH island pattern (dangling flows — forced verdict
+  lines untouched); /tdd-plan renders the flow table + migration old-seam enumeration.
+- **`bin/dataflow_sweeps.py` (D10):** stdlib-only Tier-1 reference sweeps —
+  render-pairing (AST, both directions reported distinctly; blocking), ghost-gates
+  (Tier 2, ADVISORY by default, `--strict` opt-in, promoted only on pilot data),
+  exemption-prose (fail closed). Exit 0/1/2/3 (vacuous-refusal = 3, distinct from
+  usage 2); pinned summary line; exemptions in the house debt shape via the extracted
+  `bin/_debt.py` (capability_registry now shares the same date logic — one debt shape).
+- **Registry (D12):** capability-level `user_facing` audience attr (bool, R-SCHEMA);
+  all 14 entries annotated; `dataflow-sweeps` registered (activation ON) with the two
+  dated D19 debt lines; `civerd-integrity.yml` plant_targets += dataflow_sweeps.py.
+- **Self-sweep + trend (D13):** `civerd_gate.sh` runs a BLOCKING render-pairing sweep on
+  this repo's own bins (140 sites; planted-probe verified live);
+  `gate_yield.py dataflow-rollup`/`dataflow-trend` commit one row per sweep per
+  calibration cycle and flag a growing excluded share; run_calibration prints both.
+- **Installer (D11):** vendored-SKILL == canonical rewrite-aware equality assertion in
+  test_installer (subsumes all future content markers); refresh prompt VERIFY/ADOPT
+  carry §6c + dataflow_sweeps.py.
+- **Calibration (D14–D16):** 43-check planted/paired-control suite for the sweeps;
+  first §6c corpus batch authored (2 plants + 2 controls in `corpus/proposed/`, awaiting
+  human approval); `apply_edits` create-capability promoted to owned dated debt
+  (calibration-loop, 2026-09-15, trigger string-pinned). Changed gate surfaces are NOT
+  trusted until their live-calibration rows land (~2026-08-10 run).
+- Gated plan: `docs/plans/gated/2026-08-03-dataflow-liveness.md` (inert until the
+  existing repos.yml arming debt is paid).
+
 ## 1.23.0 — 2026-07-30
 
 **The two ratified CIVerd briefs: plans-in-repo + deliberation capture** (built in a
