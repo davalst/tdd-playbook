@@ -174,8 +174,73 @@ def main():
               p.returncode == 0 and "unmeasured" in p.stdout.lower(),
               (p.returncode, p.stdout[-400:]))
 
+    test_dataflow_rollup_and_trend()
+
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
+
+
+def test_dataflow_rollup_and_trend():
+    """v1.24 (D13b): the §6c sweep summaries join the SAME instrument — one committed row
+    per sweep per calibration cycle, and a mechanical trend check on the excluded share.
+    'A growing excluded share' is a TREND claim — undetectable from one run's summary line;
+    it needs committed rows and a comparator (exactly like F5 needed check_staleness.py,
+    not a reminder). Absent data is UNMEASURED, never zero."""
+    print("\n[test_dataflow_rollup_and_trend]")
+    line1 = ("dataflow_sweeps render-pairing: checked 40 · violations 0 · "
+             "exempted 2 · unresolvable 1")
+    line2 = ("dataflow_sweeps ghost-gates: checked 12 · violations 3 · "
+             "exempted 0 · unresolvable 0")
+    with tempfile.TemporaryDirectory() as d:
+        md = os.path.join(d, "dataflow_yield.md")
+        p = run_gy("dataflow-rollup", "--md", md, "--date", "2026-08-03",
+                   "--line", line1, "--line", line2)
+        body = open(md).read() if os.path.isfile(md) else "<missing>"
+        check("dataflow-rollup: appends one committed row per sweep",
+              p.returncode == 0
+              and "| 2026-08-03 | render-pairing | 40 | 0 | 2 | 1 |" in body
+              and "| 2026-08-03 | ghost-gates | 12 | 3 | 0 | 0 |" in body,
+              (p.returncode, body, p.stdout, p.stderr))
+        p = run_gy("dataflow-rollup", "--md", md, "--date", "2026-08-17", "--line", line1)
+        body = open(md).read() if os.path.isfile(md) else "<missing>"
+        check("dataflow-rollup: second cycle appends, first intact",
+              "| 2026-08-03 | render-pairing |" in body
+              and "| 2026-08-17 | render-pairing |" in body, body)
+        p = run_gy("dataflow-rollup", "--md", md, "--date", "2026-08-18",
+                   "--line", "not a summary line at all")
+        body = open(md).read() if os.path.isfile(md) else ""
+        check("dataflow-rollup: unparsable line REFUSED loudly, never a fabricated row",
+              p.returncode != 0 and "2026-08-18" not in body,
+              (p.returncode, p.stdout, p.stderr))
+
+    with tempfile.TemporaryDirectory() as d:
+        md = os.path.join(d, "dataflow_yield.md")
+        # PLANTED: excluded share grows 3 consecutive cycles -> the trend check flags
+        with open(md, "w") as fh:
+            fh.write("| date | sweep | checked | violations | exempted | unresolvable |\n"
+                     "|---|---|---|---|---|---|\n"
+                     "| 2026-08-03 | render-pairing | 40 | 0 | 1 | 0 |\n"
+                     "| 2026-08-17 | render-pairing | 40 | 0 | 3 | 0 |\n"
+                     "| 2026-08-31 | render-pairing | 40 | 0 | 6 | 0 |\n")
+        p = run_gy("dataflow-trend", "--md", md)
+        check("dataflow-trend: planted grown share -> flagged, nonzero exit",
+              p.returncode != 0 and "DATAFLOW TREND" in p.stdout
+              and "render-pairing" in p.stdout, (p.returncode, p.stdout, p.stderr))
+        # CONTROL: a held/shrinking share does not flag
+        with open(md, "w") as fh:
+            fh.write("| date | sweep | checked | violations | exempted | unresolvable |\n"
+                     "|---|---|---|---|---|---|\n"
+                     "| 2026-08-03 | render-pairing | 40 | 0 | 3 | 0 |\n"
+                     "| 2026-08-17 | render-pairing | 40 | 0 | 3 | 0 |\n"
+                     "| 2026-08-31 | render-pairing | 44 | 0 | 3 | 0 |\n")
+        p = run_gy("dataflow-trend", "--md", md)
+        check("dataflow-trend: held/shrinking share control -> no flag, exit 0",
+              p.returncode == 0 and "DATAFLOW TREND" not in p.stdout,
+              (p.returncode, p.stdout))
+        p = run_gy("dataflow-trend", "--md", os.path.join(d, "nope.md"))
+        check("dataflow-trend: absent record -> unmeasured, exit 0, never zero",
+              p.returncode == 0 and "unmeasured" in p.stdout.lower(),
+              (p.returncode, p.stdout))
 
 
 if __name__ == "__main__":

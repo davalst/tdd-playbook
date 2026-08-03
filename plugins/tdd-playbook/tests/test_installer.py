@@ -92,9 +92,42 @@ def main():
 
     test_doctor()
     test_vendoring_containment()
+    test_vendored_skill_equality()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
+
+
+def _rewritten_canonical(mod):
+    with open(os.path.join(mod.PLUGIN, "skills", "tdd-playbook", "SKILL.md")) as fh:
+        return fh.read().replace(mod.PLUGIN_ROOT_VAR, mod.PROJECT_ROOT_VAR)
+
+
+def test_vendored_skill_equality():
+    """v1.24 (D11): vendored SKILL == canonical modulo the ${CLAUDE_PLUGIN_ROOT} rewrite —
+    ONE rewrite-aware equality assertion that subsumes every per-marker content pin, now
+    and for every future doctrine addition (no per-needle treadmill in this suite)."""
+    print("\n[test_vendored_skill_equality]")
+    mod = load_installer()
+    with tempfile.TemporaryDirectory() as target:
+        rc = mod.main([target])
+        vendored_path = os.path.join(target, ".claude", "skills", "tdd-playbook", "SKILL.md")
+        check("vendored SKILL present", os.path.isfile(vendored_path), vendored_path)
+        with open(vendored_path) as fh:
+            vendored = fh.read()
+        expected = _rewritten_canonical(mod)
+        check("vendored SKILL == canonical modulo the plugin-root rewrite",
+              vendored == expected,
+              "first divergence at char {}".format(next(
+                  (i for i, (a, b) in enumerate(zip(vendored, expected)) if a != b),
+                  min(len(vendored), len(expected)))))
+
+        # PLANTED: a tampered vendored copy (a §6c heading stripped downstream) must be
+        # DETECTABLE by the same comparison — the pin can fail (§13 calibrate-the-checker)
+        tampered = vendored.replace("## 6c. Dataflow Liveness", "## (section removed)")
+        check("planted: stripped-§6c vendored copy detected by the equality check",
+              tampered != expected and "## 6c. Dataflow Liveness" in expected,
+              "plant did not change the text — is §6c in the canonical SKILL?")
 
 
 def test_doctor():

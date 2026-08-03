@@ -371,10 +371,41 @@ def test_probe_survivor_gaps():
               mod.find_registry(d) == os.path.join(d, "capabilities.json"))
 
 
+def test_user_facing():
+    """v1.24 (D12b): the optional capability-level `user_facing` audience attribute — the
+    ground truth §6c's companion rule keys on (`surfaces` is deployment hosts, NOT an
+    audience fact). Schema rule: if present it must be a BOOL; anything else is R-SCHEMA
+    (a string "yes" silently truthy would let the companion rule fire on garbage)."""
+    mod = load_tool()
+
+    # CONTROL: bool values (either way) are clean
+    good = copy.deepcopy(CLEAN)
+    good["capabilities"][0]["user_facing"] = True
+    good["capabilities"][1]["user_facing"] = False
+    check("user_facing: bool annotation is clean", mod.validate(good, today=TODAY) == [],
+          mod.validate(good, today=TODAY))
+
+    # PLANTED: non-bool user_facing must trip R-SCHEMA, never validate as truthy
+    bad = copy.deepcopy(CLEAN)
+    bad["capabilities"][0]["user_facing"] = "yes"
+    v = mod.validate(bad, today=TODAY)
+    check("planted non-bool user_facing trips R-SCHEMA",
+          any(s.startswith("R-SCHEMA") and "user_facing" in s for s in v), v)
+
+    # the repo's OWN registry annotates every entry explicitly (the audience fact is
+    # stated, never implied — same rule as activation)
+    repo_root = os.path.dirname(os.path.dirname(ROOT))
+    reg = mod.load_registry(os.path.join(repo_root, "capabilities.json"))
+    unannotated = [c.get("id") for c in reg.get("capabilities", [])
+                   if not isinstance(c.get("user_facing"), bool)]
+    check("own registry: every capability carries an explicit bool user_facing",
+          unannotated == [], unannotated)
+
+
 def main():
     print("capability_registry planted-input calibration")
     for fn in (test_validate, test_doctor, test_cli, test_own_registry,
-               test_probe_survivor_gaps):
+               test_probe_survivor_gaps, test_user_facing):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
