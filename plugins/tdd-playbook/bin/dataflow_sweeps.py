@@ -1,0 +1,565 @@
+#!/usr/bin/env python3
+"""dataflow_sweeps — the §6c Tier-1 reference sweeps (nodes are necessary; edges are the truth).
+
+Origin: the Cheliped excavation (2026-08-03) — 12/12 post-safeguard escapes were EDGE
+failures the node-level wiring net cannot see: flows produced with no live consumer, values
+accepted with no reader, fixes verified at the supply end (T5: a "wired" prompt layer whose
+key `str.format` silently dropped). These sweeps make the decidable slice of that class
+mechanical. Config-driven so repos tailor the pairing map rather than fork the scanner.
+
+Subcommands
+  render-pairing   Tier 1, BLOCKING. AST-scans literal `str.format(...)`/`format_map` call
+                   sites (same-file decidable, incl. module-level string constants) plus
+                   config-mapped template-file<->supplier-module pairs. Checks BOTH
+                   directions, reported distinctly:
+                     - a placeholder with no supplier  -> broken render (missing value)
+                     - a supplied key with no placeholder -> silently dropped value (T5)
+  ghost-gates      Tier 2 — ADVISORY BY DEFAULT (findings printed, exit 0); `--strict`
+                   flips it blocking. Its gate-name globs are a scoping proxy (an
+                   undeclared `use_cache` gate escapes `*_enabled`), tolerable only under
+                   FP/FN-budget governance — promotion to blocking is a pilot-data
+                   decision, never a default. Finds `getattr(obj, "NAME", default)` /
+                   `.get("NAME", default)` reads whose NAME matches the configured gate
+                   patterns but is declared NOWHERE (the declared-fields source). An
+                   undeclared default-True gate is flagged HIGH: invisible AND live.
+  exemption-prose  Tier 1. Prose default-claims ("always-on", "on-by-default") checked
+                   against the artifact of record (capabilities.json activation.default,
+                   or a dotted key path into a named JSON config). A missing artifact or
+                   capability fails CLOSED — never a skip.
+
+Stated bounds (silently unhandled classes are the trap):
+  - f-strings are SKIPPED — the compiler checks their names at parse time.
+  - %-style formatting is OUT of v1 (use render-pairing on .format sites only).
+  - dynamic receivers/**kwargs/computed names are counted UNRESOLVABLE in the summary —
+    a count, never a silent pass; cover them with a named dated exemption if intentional.
+
+Exemptions reuse the house debt shape `{what, target, owner, expires}` (the registry's
+R-DEBT contract via the shared `_debt` module — one debt shape, not a fourth): an EXPIRED
+exemption REDs the sweep (`--as-of` makes the trigger provable), and an exemption naming a
+`user_facing` registry capability FAILS outright (§6a's companion rule, keyed on the
+audience fact, not a proxy).
+
+Every run prints the pinned machine-readable summary (the D13b rollup parses it):
+  dataflow_sweeps <subcommand>: checked N · violations N · exempted N · unresolvable N
+
+Exit codes: 0 clean · 1 violation · 2 usage ONLY · 3 vacuous-refusal ("refusing a vacuous
+pass" — a scan of nothing is a REAL blocking verdict a mechanical consumer must be able to
+distinguish from a fat-fingered flag; exit 2 is usage, never proof).
+
+Config (JSON; all paths relative to the config file's directory):
+{
+  "registry": "capabilities.json",              // optional — companion-rule ground truth
+  "render_pairing": {
+    "scan": ["src", "bin/tool.py"],             // .py files/dirs for same-file call sites
+    "template_pairs": [{"template": "prompts/x.tmpl", "supplier": "src/render.py"}],
+    "exemptions": [{"what": "...", "target": "src/x.py::key",
+                    "owner": "me", "expires": "2026-09-15"}]
+  },
+  "ghost_gates": {
+    "scan": ["src"],
+    "gate_patterns": ["*_enabled", "*_mode"],
+    "declared_fields": {"kind": "module", "path": "src/config.py"},   // or kind: "capabilities"
+    "exemptions": [...]
+  },
+  "exemption_prose": {
+    "claims": [{"what": "...", "claim": "always-on",
+                "artifact": "capabilities.json", "capability": "x"},
+               {"what": "...", "claim": "on-by-default", "artifact": "settings.json",
+                "key_path": "features.x.default", "expected": "on"}]
+  }
+}
+
+Stdlib-only (house invariant for everything under bin/).
+"""
+from __future__ import annotations
+
+import argparse
+import ast
+import datetime as _dt
+import fnmatch
+import json
+import os
+import re
+import string
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _debt  # noqa: E402  (the ONE house debt-date implementation, vendored alongside)
+
+EXIT_CLEAN, EXIT_VIOLATION, EXIT_USAGE, EXIT_VACUOUS = 0, 1, 2, 3
+
+
+class Tally:
+    def __init__(self, sub):
+        self.sub = sub
+        self.checked = 0
+        self.unresolvable = 0
+        self.exempted = 0
+        self.violations = []  # (target, message)
+
+    def violate(self, target, message):
+        self.violations.append((target, message))
+
+    def summary(self):
+        return ("dataflow_sweeps {}: checked {} · violations {} · exempted {} · "
+                "unresolvable {}".format(self.sub, self.checked, len(self.violations),
+                                         self.exempted, self.unresolvable))
+
+
+# ------------------------------------------------------------------ shared plumbing
+def iter_py_files(base, scan):
+    for entry in scan:
+        path = os.path.join(base, entry)
+        if os.path.isfile(path) and path.endswith(".py"):
+            yield path
+        elif os.path.isdir(path):
+            for root, dirs, files in os.walk(path):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]
+                for fn in sorted(files):
+                    if fn.endswith(".py"):
+                        yield os.path.join(root, fn)
+
+
+def rel(base, path):
+    return os.path.relpath(path, base)
+
+
+def apply_exemptions(tally, exemptions, base, as_of, registry_path):
+    """Validate exemption entries (house debt shape) and suppress matching violations.
+
+    Order matters: entry-level violations (malformed / expired / user-facing) are REAL
+    violations and the entry never suppresses; only clean, live, internal exemptions do.
+    """
+    registry = None
+    suppress = {}
+    for ent in exemptions or []:
+        target = (ent or {}).get("target")
+        label = "exemption {}".format(target or "<no target>")
+        problems = list(_debt.debt_problems(ent, as_of, label))
+        if not target:
+            problems.append("{}: missing target (which violation does this cover?)"
+                            .format(label))
+        cap_id = (ent or {}).get("capability")
+        if cap_id:
+            if registry is None:
+                if not registry_path or not os.path.isfile(registry_path):
+                    problems.append("{}: names capability {!r} but no registry is "
+                                    "readable (fail closed)".format(label, cap_id))
+                    registry = {}
+                else:
+                    try:
+                        with open(registry_path) as fh:
+                            registry = json.load(fh)
+                    except ValueError:
+                        problems.append("{}: registry {} unreadable (fail closed)"
+                                        .format(label, registry_path))
+                        registry = {}
+            if isinstance(registry, dict) and registry:
+                cap = next((c for c in registry.get("capabilities", [])
+                            if isinstance(c, dict) and c.get("id") == cap_id), None)
+                if cap is None:
+                    problems.append("{}: capability {!r} not found in registry "
+                                    "(fail closed)".format(label, cap_id))
+                elif cap.get("user_facing") is True:
+                    problems.append(
+                        "{}: names a user_facing capability {!r} — §6a companion rule: "
+                        "exemptions are for internals, NEVER a darkness hatch on a "
+                        "user-facing flow".format(label, cap_id))
+        if problems:
+            for p in problems:
+                tally.violate(target or "<exemption>", p)
+        elif target:
+            suppress[target] = ent
+    kept = []
+    for target, message in tally.violations:
+        # entry-level exemption violations always survive; sweep violations whose target
+        # is covered by a clean live exemption are counted exempted instead
+        if target in suppress and not message.startswith("exemption "):
+            tally.exempted += 1
+        else:
+            kept.append((target, message))
+    tally.violations = kept
+
+
+# ------------------------------------------------------------------ render-pairing
+def _template_fields(template):
+    """(named_roots, auto_count, max_index) from a format template, or None if unparsable."""
+    named, auto, max_idx = set(), 0, -1
+    try:
+        for _lit, field, _spec, _conv in string.Formatter().parse(template):
+            if field is None:
+                continue
+            if field == "":
+                auto += 1
+                continue
+            root = re.split(r"[.\[]", field, maxsplit=1)[0]
+            if root.isdigit():
+                max_idx = max(max_idx, int(root))
+            else:
+                named.add(root)
+    except ValueError:
+        return None
+    return named, auto, max_idx
+
+
+def _module_str_constants(tree):
+    """Module-level NAME -> str constant, only for names assigned exactly once."""
+    consts, seen = {}, set()
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 \
+                and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+            if name in seen:
+                consts.pop(name, None)
+                continue
+            seen.add(name)
+            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                consts[name] = node.value.value
+    return consts
+
+
+def _check_pairing(tally, target_prefix, template, supplied_kw, supplied_pos,
+                   star_args=False, star_kwargs=False):
+    fields = _template_fields(template)
+    if fields is None:
+        tally.unresolvable += 1
+        return
+    named, auto, max_idx = fields
+    if star_args or star_kwargs:
+        tally.unresolvable += 1
+        return
+    needed_pos = max(auto, max_idx + 1)
+    for root in sorted(named - set(supplied_kw)):
+        tally.violate("{}::{}".format(target_prefix, root),
+                      "placeholder '{{{}}}' has no supplier — broken render"
+                      .format(root))
+    for kw in sorted(set(supplied_kw) - named):
+        tally.violate("{}::{}".format(target_prefix, kw),
+                      "supplied key '{}' has no placeholder — silently dropped value "
+                      "(the T5 escape)".format(kw))
+    if supplied_pos is not None:
+        if needed_pos > supplied_pos:
+            tally.violate("{}::<positional>".format(target_prefix),
+                          "positional placeholder(s) have no supplier: template needs {}, "
+                          "call supplies {}".format(needed_pos, supplied_pos))
+        elif supplied_pos > needed_pos:
+            tally.violate("{}::<positional>".format(target_prefix),
+                          "surplus positional argument(s): call supplies {}, template has "
+                          "{} — silently dropped value".format(supplied_pos, needed_pos))
+
+
+def sweep_render_pairing(cfg, base, tally):
+    section = cfg.get("render_pairing") or {}
+    for path in iter_py_files(base, section.get("scan") or []):
+        try:
+            with open(path) as fh:
+                tree = ast.parse(fh.read())
+        except (SyntaxError, ValueError, OSError):
+            tally.unresolvable += 1
+            continue
+        consts = _module_str_constants(tree)
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr in ("format", "format_map")):
+                continue
+            recv = node.func.value
+            if isinstance(recv, ast.JoinedStr):
+                continue  # f-string receiver — compiler-checked, stated bound
+            if isinstance(recv, ast.Constant) and isinstance(recv.value, str):
+                template = recv.value
+            elif isinstance(recv, ast.Name) and recv.id in consts:
+                template = consts[recv.id]
+            else:
+                tally.checked += 1
+                tally.unresolvable += 1
+                continue
+            tally.checked += 1
+            prefix = "{}:{}".format(rel(base, path), getattr(node, "lineno", "?"))
+            target_prefix = rel(base, path)
+            if node.func.attr == "format_map":
+                arg = node.args[0] if node.args else None
+                if (isinstance(arg, ast.Dict)
+                        and all(isinstance(k, ast.Constant) and isinstance(k.value, str)
+                                for k in arg.keys)):
+                    _check_pairing(tally, target_prefix, template,
+                                   [k.value for k in arg.keys], None)
+                else:
+                    tally.unresolvable += 1
+                continue
+            star_args = any(isinstance(a, ast.Starred) for a in node.args)
+            star_kwargs = any(kw.arg is None for kw in node.keywords)
+            supplied_kw = [kw.arg for kw in node.keywords if kw.arg is not None]
+            supplied_pos = sum(1 for a in node.args if not isinstance(a, ast.Starred))
+            _check_pairing(tally, target_prefix, template, supplied_kw, supplied_pos,
+                           star_args, star_kwargs)
+
+    for pair in section.get("template_pairs") or []:
+        tally.checked += 1
+        tpl_path = os.path.join(base, pair.get("template", ""))
+        sup_path = os.path.join(base, pair.get("supplier", ""))
+        pair_target = "{}<->{}".format(pair.get("template"), pair.get("supplier"))
+        if not os.path.isfile(tpl_path):
+            tally.violate(pair_target, "template file missing (fail closed)")
+            continue
+        if not os.path.isfile(sup_path):
+            tally.violate(pair_target, "supplier module missing (fail closed)")
+            continue
+        with open(tpl_path) as fh:
+            fields = _template_fields(fh.read())
+        if fields is None:
+            tally.unresolvable += 1
+            continue
+        named = fields[0]
+        try:
+            with open(sup_path) as fh:
+                sup_tree = ast.parse(fh.read())
+        except (SyntaxError, ValueError):
+            tally.unresolvable += 1
+            continue
+        supplied = set()
+        for node in ast.walk(sup_tree):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr in ("format", "format_map")):
+                supplied.update(kw.arg for kw in node.keywords if kw.arg is not None)
+                for a in node.args:
+                    if isinstance(a, ast.Dict):
+                        supplied.update(k.value for k in a.keys
+                                        if isinstance(k, ast.Constant)
+                                        and isinstance(k.value, str))
+        for root in sorted(named - supplied):
+            tally.violate("{}::{}".format(pair.get("template"), root),
+                          "template placeholder '{{{}}}' has no supplier in {} — broken "
+                          "render".format(root, pair.get("supplier")))
+        for kw in sorted(supplied - named):
+            tally.violate("{}::{}".format(pair.get("template"), kw),
+                          "supplied key '{}' has no placeholder in {} — silently dropped "
+                          "value (the T5 escape)".format(kw, pair.get("template")))
+    return section
+
+
+# ------------------------------------------------------------------ ghost-gates
+def _declared_names(base, declared_cfg):
+    kind = (declared_cfg or {}).get("kind")
+    path = os.path.join(base, (declared_cfg or {}).get("path", ""))
+    if not os.path.isfile(path):
+        return None
+    if kind == "capabilities":
+        try:
+            with open(path) as fh:
+                reg = json.load(fh)
+        except ValueError:
+            return None
+        return {c.get("id") for c in reg.get("capabilities", []) if isinstance(c, dict)}
+    if kind == "module":
+        try:
+            with open(path) as fh:
+                tree = ast.parse(fh.read())
+        except (SyntaxError, ValueError):
+            return None
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        names.add(t.id)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                names.add(node.target.id)
+        return names
+    return None
+
+
+def sweep_ghost_gates(cfg, base, tally, strict):
+    section = cfg.get("ghost_gates") or {}
+    patterns = section.get("gate_patterns") or ["*_enabled", "*_mode"]
+    declared = _declared_names(base, section.get("declared_fields"))
+    if declared is None:
+        print("dataflow_sweeps ghost-gates: declared_fields source unreadable — check "
+              "the config (usage)")
+        return None
+    print("dataflow_sweeps ghost-gates: Tier 2 — advisory by default, --strict makes it "
+          "blocking; promotion to blocking is a pilot-data decision (§6c).")
+    for path in iter_py_files(base, section.get("scan") or []):
+        try:
+            with open(path) as fh:
+                tree = ast.parse(fh.read())
+        except (SyntaxError, ValueError, OSError):
+            tally.unresolvable += 1
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name_arg = default_arg = None
+            if (isinstance(node.func, ast.Name) and node.func.id == "getattr"
+                    and len(node.args) == 3):
+                name_arg, default_arg = node.args[1], node.args[2]
+            elif (isinstance(node.func, ast.Attribute) and node.func.attr == "get"
+                  and node.args):
+                name_arg = node.args[0]
+                default_arg = node.args[1] if len(node.args) > 1 else None
+            else:
+                continue
+            if not (isinstance(name_arg, ast.Constant) and isinstance(name_arg.value, str)):
+                tally.unresolvable += 1  # dynamic name — counted, never a silent pass
+                continue
+            name = name_arg.value
+            if not any(fnmatch.fnmatch(name, p) for p in patterns):
+                continue
+            tally.checked += 1
+            if name in declared:
+                continue
+            always_on = isinstance(default_arg, ast.Constant) and default_arg.value is True
+            severity = ("HIGH: undeclared always-on gate (invisible AND live)"
+                        if always_on else "undeclared gate")
+            tally.violate("{}::{}".format(rel(base, path), name),
+                          "{} — '{}' matches {} but is declared nowhere in the "
+                          "declared-fields source".format(severity, name,
+                                                          "/".join(patterns)))
+    return section
+
+
+# ------------------------------------------------------------------ exemption-prose
+_DEFAULT_CLAIMS_ON = ("always-on", "on-by-default", "always on", "on by default")
+
+
+def sweep_exemption_prose(cfg, base, tally):
+    section = cfg.get("exemption_prose") or {}
+    for claim in section.get("claims") or []:
+        tally.checked += 1
+        what = claim.get("what", "<unnamed claim>")
+        artifact = os.path.join(base, claim.get("artifact", ""))
+        if not os.path.isfile(artifact):
+            tally.violate(what, "artifact {!r} missing — fail closed, never a skip"
+                          .format(claim.get("artifact")))
+            continue
+        try:
+            with open(artifact) as fh:
+                data = json.load(fh)
+        except ValueError:
+            tally.violate(what, "artifact {!r} unreadable (not JSON) — fail closed"
+                          .format(claim.get("artifact")))
+            continue
+        if claim.get("capability"):
+            cap = next((c for c in data.get("capabilities", [])
+                        if isinstance(c, dict) and c.get("id") == claim["capability"]),
+                       None)
+            if cap is None:
+                tally.violate(what, "capability {!r} not in {} — fail closed"
+                              .format(claim["capability"], claim.get("artifact")))
+                continue
+            actual = (cap.get("activation") or {}).get("default")
+            expected = "on" if str(claim.get("claim", "")).lower().startswith(
+                _DEFAULT_CLAIMS_ON) or claim.get("claim") in _DEFAULT_CLAIMS_ON else "off"
+            if actual != expected:
+                tally.violate(what,
+                              "prose claims {!r} but {} activation.default is {!r} for "
+                              "{!r} — the exemption prose contradicts the artifact of "
+                              "record".format(claim.get("claim"), claim.get("artifact"),
+                                              actual, claim["capability"]))
+        elif claim.get("key_path"):
+            node = data
+            missing = False
+            for key in str(claim["key_path"]).split("."):
+                if isinstance(node, dict) and key in node:
+                    node = node[key]
+                else:
+                    tally.violate(what, "key path {!r} not found in {} — fail closed"
+                                  .format(claim["key_path"], claim.get("artifact")))
+                    missing = True
+                    break
+            if not missing and node != claim.get("expected"):
+                tally.violate(what,
+                              "prose claims {!r} but {}:{} is {!r} (expected {!r})"
+                              .format(claim.get("claim"), claim.get("artifact"),
+                                      claim["key_path"], node, claim.get("expected")))
+        else:
+            tally.violate(what, "claim entry names neither a capability nor a key_path — "
+                          "nothing to check is not a pass")
+    return section
+
+
+# ------------------------------------------------------------------ CLI
+def main(argv=None):
+    ap = argparse.ArgumentParser(
+        prog="dataflow_sweeps",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "§6c Tier-1 dataflow-liveness sweeps: every flow names a live consumer.\n"
+            "render-pairing / exemption-prose are Tier 1 (blocking); ghost-gates is\n"
+            "Tier 2 (advisory by default, --strict to block)."),
+        epilog=(
+            "Stated bounds: f-strings are SKIPPED (compiler-checked at parse time);\n"
+            "%-style formatting is OUT of v1; dynamic names/**kwargs are counted\n"
+            "UNRESOLVABLE, never silently passed.\n"
+            "Exit codes: 0 clean · 1 violation · 2 usage ONLY · 3 vacuous-refusal\n"
+            "('refusing a vacuous pass' — a scan of nothing is a real blocking verdict,\n"
+            "distinct from a fat-fingered flag; exit 2 is usage, never proof)."))
+    ap.add_argument("subcommand",
+                    choices=["render-pairing", "ghost-gates", "exemption-prose"])
+    ap.add_argument("--config", required=True, help="JSON sweep config; paths inside are "
+                                                    "relative to its directory")
+    ap.add_argument("--as-of", default=None,
+                    help="YYYY-MM-DD injected as 'today' for exemption expiry (tests / "
+                         "trigger proofs)")
+    ap.add_argument("--strict", action="store_true",
+                    help="ghost-gates: exit 1 on findings (Tier-2 promotion is a "
+                         "pilot-data decision — see §6c)")
+    try:
+        args = ap.parse_args(argv)
+    except SystemExit as e:
+        raise e  # argparse already printed; --help exits 0, usage errors exit 2
+
+    as_of = _dt.date.today()
+    if args.as_of is not None:
+        as_of = _debt.parse_date(args.as_of)
+        if as_of is None:
+            print("dataflow_sweeps: --as-of {!r} is not YYYY-MM-DD (usage; exit 2 is "
+                  "usage, never proof)".format(args.as_of))
+            return EXIT_USAGE
+    if not os.path.isfile(args.config):
+        print("dataflow_sweeps: config {!r} not found (usage)".format(args.config))
+        return EXIT_USAGE
+    try:
+        with open(args.config) as fh:
+            cfg = json.load(fh)
+    except ValueError as e:
+        print("dataflow_sweeps: config {!r} is not valid JSON: {} (usage)"
+              .format(args.config, e))
+        return EXIT_USAGE
+    base = os.path.dirname(os.path.abspath(args.config))
+    registry_path = (os.path.join(base, cfg["registry"])
+                     if cfg.get("registry") else None)
+
+    tally = Tally(args.subcommand)
+    if args.subcommand == "render-pairing":
+        section = sweep_render_pairing(cfg, base, tally)
+    elif args.subcommand == "ghost-gates":
+        section = sweep_ghost_gates(cfg, base, tally, args.strict)
+        if section is None:
+            return EXIT_USAGE
+    else:
+        section = sweep_exemption_prose(cfg, base, tally)
+
+    vacuous = (tally.checked + tally.unresolvable) == 0
+    if not vacuous:
+        apply_exemptions(tally, section.get("exemptions"), base, as_of, registry_path)
+
+    for target, message in tally.violations:
+        print("  VIOLATION {}: {}".format(target, message))
+    print(tally.summary())
+
+    if vacuous:
+        print("dataflow_sweeps {}: refusing a vacuous pass — nothing was scanned "
+              "(0 sites, 0 pairs/claims); a gate that can pass by checking nothing is "
+              "not a gate".format(args.subcommand))
+        return EXIT_VACUOUS
+    if tally.violations:
+        if args.subcommand == "ghost-gates" and not args.strict:
+            print("dataflow_sweeps ghost-gates: {} finding(s) — ADVISORY (Tier 2); "
+                  "--strict to block".format(len(tally.violations)))
+            return EXIT_CLEAN
+        return EXIT_VIOLATION
+    return EXIT_CLEAN
+
+
+if __name__ == "__main__":
+    sys.exit(main())

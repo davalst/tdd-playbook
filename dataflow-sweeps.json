@@ -1,0 +1,12 @@
+{
+  "registry": "capabilities.json",
+  "render_pairing": {
+    "scan": [
+      "plugins/tdd-playbook/bin",
+      "plugins/tdd-playbook/hooks/scripts",
+      "scripts"
+    ],
+    "template_pairs": [],
+    "exemptions": []
+  }
+}

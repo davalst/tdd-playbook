@@ -25,6 +25,12 @@ python3 plugins/tdd-playbook/bin/capability_registry.py doctor   # bundle check 
                                                   # read ON on this machine, and dark-inventory
                                                   # shows if plan-authoring still awaits the
                                                   # repos.yml arming — OFF here is a due task
+                                                  # (v1.24) run_calibration's tail now prints the
+                                                  # §6c dataflow rollup + DATAFLOW TREND line —
+                                                  # READ IT: a flagged excluded-share trend means
+                                                  # the exemption list is doing the tests' work
+                                                  # (the check is gate_yield.py dataflow-trend;
+                                                  # this line is a pointer, not the check)
 ```
 - A plant surviving to a clean verdict is a **BLOCKING failure** — fix the agent, never the
   plant. File it, fix it, re-run before anything else ships.
@@ -88,9 +94,10 @@ mechanisms.
    non-playbook hooks must survive — verify that before committing.
 
 2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
-   and capability_registry.py; confirm .claude/settings.json has the PreToolUse guards;
-   confirm the vendored SKILL.md mentions TEST-LOCK, the decay principle, and the ACTIVATED
-   Tripwire leg (§6a wiring liveness).
+   capability_registry.py, and dataflow_sweeps.py (with its _debt.py sibling); confirm
+   .claude/settings.json has the PreToolUse guards; confirm the vendored SKILL.md mentions
+   TEST-LOCK, the decay principle, the ACTIVATED Tripwire leg (§6a wiring liveness), and
+   §6c Dataflow Liveness.
 
 3. SEED THE REGISTRY (if this repo has no capabilities.json yet — don't wait for the next
    feature; the existing features are the ones already dark): run
@@ -125,6 +132,12 @@ mechanisms.
    - Plans carry an INTEGRATION SURFACE per deliverable (consumes / emits→named consumer /
      surface parity / reverse sweep / activation) so features never ship as islands; a
      write-only loop becomes owned, dated integration debt, never a silent deferral.
+   - §6c Dataflow Liveness: plans carry a flow table (`flow · producer · consumer ·
+     liveness test`) for feature/migration work; wire the Tier-1 sweeps
+     (`.claude/bin/dataflow_sweeps.py` — render-pairing/exemption-prose blocking,
+     ghost-gates advisory) where the flow kind exists in this repo, with a repo-local
+     sweep config; migrations prove CONSUMER PARITY for the seam they replace (enumerate
+     what the old seam fed; each consumer fed / retired-with-deletion / dated debt).
    - The Tripwire has FOUR legs now: BUILT + WIRED + ACTIVATED + EXERCISED, with wiring
      proven through the PRODUCTION composition root (self-assembling fixtures don't count).
    - The registry only GROWS as features land; `validate` joins the release gate and

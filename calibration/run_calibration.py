@@ -520,6 +520,41 @@ def main(argv=None):
             print("yield: unmeasured (gate_yield.py not present)")
     except Exception as e:
         print("yield: unmeasured (gate_yield unavailable: {})".format(e))
+    # v1.24 (§6c D13b) — the dataflow half of the same instrument: run the configured
+    # sweeps, commit one row per sweep this cycle, then run the excluded-share trend
+    # check. The TREND flag is the consumer the CLAUDE.md checklist points at. NEVER
+    # fails the calibration run.
+    try:
+        ds = os.path.join(REPO, "plugins", "tdd-playbook", "bin", "dataflow_sweeps.py")
+        gy = os.path.join(REPO, "plugins", "tdd-playbook", "bin", "gate_yield.py")
+        ds_cfg = os.path.join(REPO, "dataflow-sweeps.json")
+        if os.path.isfile(ds) and os.path.isfile(ds_cfg) and os.path.isfile(gy):
+            lines = []
+            for sweep in ("render-pairing",):  # the sweeps this repo's config arms
+                p = subprocess.run([sys.executable, ds, sweep, "--config", ds_cfg],
+                                   capture_output=True, text=True, timeout=60)
+                for ln in p.stdout.splitlines():
+                    if ln.startswith("dataflow_sweeps {}:".format(sweep)) \
+                            and "checked" in ln:
+                        lines.append(ln)
+            if lines:
+                cmd = [sys.executable, gy, "dataflow-rollup",
+                       "--date", datetime.date.today().isoformat()]
+                for ln in lines:
+                    cmd += ["--line", ln]
+                p = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                if p.stdout.strip():
+                    print(p.stdout.strip())
+                p = subprocess.run([sys.executable, gy, "dataflow-trend"],
+                                   capture_output=True, text=True, timeout=60)
+                if p.stdout.strip():
+                    print(p.stdout.strip())
+            else:
+                print("dataflow yield: unmeasured (no sweep summary produced)")
+        else:
+            print("dataflow yield: unmeasured (sweeps/config not present)")
+    except Exception as e:
+        print("dataflow yield: unmeasured (dataflow sweeps unavailable: {})".format(e))
     return 1 if failed else 0
 
 

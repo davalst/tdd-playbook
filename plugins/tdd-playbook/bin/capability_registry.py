@@ -10,7 +10,10 @@ of what SHOULD run (`capabilities.json`), and enumerate FROM it, never from runt
 
 Subcommands:
   validate  — schema + wiring rules; exit 1 on any violation. Rules:
-                R-SCHEMA      required fields present and well-typed
+                R-SCHEMA      required fields present and well-typed; the optional
+                              capability-level `user_facing` AUDIENCE fact (v1.24 —
+                              §6c's companion rule keys on it; `surfaces` is deployment
+                              hosts, not an audience) must be a bool when present
                 R-DUP         capability ids are unique
                 R-DARK        activation.default=off REQUIRES a named user-reachable switch
                 R-WRITE-ONLY  every emitted topic names >=1 consumer ("nobody yet" is debt,
@@ -41,8 +44,11 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _debt  # noqa: E402  (the ONE house debt-date implementation, vendored alongside)
+
 REQUIRED_FIELDS = ("id", "summary", "surfaces", "activation", "wired_by", "exercised_by")
-DEBT_FIELDS = ("what", "owner", "expires")
+DEBT_FIELDS = _debt.DEBT_FIELDS
 # A capability whose execution host is NOT this repo/process (a VPS, a daemon, a vendored copy in
 # another repo) declares a deploy_surface. running_version_probe is load-bearing: without a way to
 # assert the deployed version == the intended one, the deliverable can drift (the "97-minutes-behind"
@@ -84,11 +90,7 @@ def load_registry(path: str) -> dict:
         return json.load(fh)
 
 
-def _parse_date(s):
-    try:
-        return _dt.date.fromisoformat(s)
-    except (TypeError, ValueError):
-        return None
+_parse_date = _debt.parse_date  # one debt shape, one date logic (v1.24 D10 extraction)
 
 
 def validate(reg: dict, today: _dt.date | None = None) -> list[str]:
@@ -145,18 +147,16 @@ def validate(reg: dict, today: _dt.date | None = None) -> list[str]:
 
         for j, debt in enumerate(cap.get("integration_debt") or []):
             label = "%s debt #%d" % (cid, j)
-            missing = [f for f in DEBT_FIELDS if not (debt or {}).get(f)]
-            if missing:
-                out.append("R-DEBT %s: missing %s" % (label, "/".join(missing)))
-                continue
-            exp = _parse_date(debt["expires"])
-            if exp is None:
-                out.append("R-DEBT %s: expires '%s' is not YYYY-MM-DD"
-                           % (label, debt["expires"]))
-            elif exp < today:
-                out.append("R-DEBT %s: EXPIRED %s (owner: %s) — '%s'; pay it down, "
-                           "re-date it with a reason, or park the capability loudly"
-                           % (label, debt["expires"], debt["owner"], debt["what"]))
+            out.extend("R-DEBT %s" % p for p in _debt.debt_problems(debt, today, label))
+
+        # v1.24 (D12b): optional capability-level AUDIENCE fact. §6c's companion rule keys
+        # on this ("an exemption naming a user-facing flow FAILS") — `surfaces` is
+        # deployment hosts, not an audience fact, so it can never carry that rule. If
+        # present it must be a real bool: a truthy string would make the companion rule
+        # fire on garbage.
+        if "user_facing" in cap and not isinstance(cap["user_facing"], bool):
+            out.append("R-SCHEMA %s: user_facing must be a bool (audience fact), got %r"
+                       % (cid, cap["user_facing"]))
     return out
 
 

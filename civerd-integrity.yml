@@ -8,6 +8,10 @@ plant_targets:
   - path: plugins/tdd-playbook/bin/_ed25519_verify.py
   - path: plugins/tdd-playbook/bin/capability_registry.py
   - path: calibration/check_scoreboard_integrity.py
+  # v1.24 (D12c): the §6c Tier-1 sweep joins the engine-side plant coverage every other
+  # shipped checker here carries — a checker outside the plant rotation is a net nobody
+  # has watched catch anything.
+  - path: plugins/tdd-playbook/bin/dataflow_sweeps.py
 # THE blessed gate entrypoint (v1.21.0) — runs the plugins loop AND the calibration
 # harness. Never bare pytest (v1.15.0 false-green: pytest collects ~0 items from the
 # script-style suites), never a prose shell loop (2026-07-28 probe run 2: the loop and

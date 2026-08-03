@@ -28,4 +28,10 @@ for t in plugins/tdd-playbook/tests/test_*.py; do
     python3 "$t" || exit 1
 done
 python3 calibration/test_harness.py || exit 1
-echo "civerd_gate: ALL suites green (plugins loop + calibration harness)"
+# v1.24 (§6c D13a): the repo sweeps ITSELF — this repo's own shipped bins carry literal
+# .format( render sites, so under "Tier 1 is mandatory where the flow kind exists" the
+# flow kind exists HERE. BLOCKING: exit 1 (violation) and 3 (vacuous — scanning nothing
+# is a real failure, not a pass) both fail the gate; only 0 proceeds.
+python3 plugins/tdd-playbook/bin/dataflow_sweeps.py render-pairing \
+    --config dataflow-sweeps.json || exit 1
+echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep)"
