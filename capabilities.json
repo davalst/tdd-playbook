@@ -180,6 +180,16 @@
           "what": "APPLY_EDITS CREATE capability (v1.24 §6c D15 — promoted from the corpus README's 'possible future enhancement' to owned deliverable-or-debt because it is now LOAD-BEARING: writer-with-no-reader plants naturally want NEW fixture files, and apply_edits can only modify existing ones — 4 of 6 first-batch candidates were mechanically rejected for exactly this). Done = run_calibration.apply_edits accepts a {file, create} edit shape with red-first tests + validate_scenario coverage, or a consciously re-dated entry here — never silence",
           "owner": "david",
           "expires": "2026-09-15"
+        },
+        {
+          "what": "V1.24 CORPUS BATCH (tripwire-fold — the proposed queue must not go dark): review and --approve/reject the four §6c proposals in corpus/proposed/ (plan-omits-summary-consumer + ghost-gate-undeclared-export-flag + their controls), and author the missing migration-without-parity plant once the create capability lands (or anchored in existing fixture files if feasible sooner). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-08-17"
+        },
+        {
+          "what": "V1.24 GATE-SURFACE CALIBRATION (tripwire-fold, §13: gate-surface text changes are live-calibrated before trusted): the D7–D9 v1.24 additions (integration-audit fifth class, integration-adversary dangling-flows pattern, tdd-plan flow table) are NOT trusted until their rows land in docs/calibration/history.md — sequence in the ~2026-08-10 run AFTER the owed 3-agent re-run. Done = v1.24-surface rows in history.md, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-08-17"
         }
       ]
     },

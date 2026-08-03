@@ -8,3 +8,4 @@ __pycache__/
 .claude/tdd-lock-journal.jsonl
 .claude/tdd-lock.json
 .claude/playbook-guards-heartbeat
+.claude/worktrees/

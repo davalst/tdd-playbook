@@ -529,14 +529,13 @@ def main(argv=None):
         gy = os.path.join(REPO, "plugins", "tdd-playbook", "bin", "gate_yield.py")
         ds_cfg = os.path.join(REPO, "dataflow-sweeps.json")
         if os.path.isfile(ds) and os.path.isfile(ds_cfg) and os.path.isfile(gy):
-            lines = []
-            for sweep in ("render-pairing",):  # the sweeps this repo's config arms
-                p = subprocess.run([sys.executable, ds, sweep, "--config", ds_cfg],
-                                   capture_output=True, text=True, timeout=60)
-                for ln in p.stdout.splitlines():
-                    if ln.startswith("dataflow_sweeps {}:".format(sweep)) \
-                            and "checked" in ln:
-                        lines.append(ln)
+            # `all` derives the armed sweeps from the config — no hardcoded list here
+            # (arch-F2); the strict line validation lives in dataflow-rollup, which
+            # imports the producer's own regex
+            p = subprocess.run([sys.executable, ds, "all", "--config", ds_cfg],
+                               capture_output=True, text=True, timeout=120)
+            lines = [ln for ln in p.stdout.splitlines()
+                     if ln.startswith("dataflow_sweeps ") and "checked" in ln]
             if lines:
                 cmd = [sys.executable, gy, "dataflow-rollup",
                        "--date", datetime.date.today().isoformat()]

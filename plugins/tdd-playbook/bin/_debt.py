@@ -39,10 +39,9 @@ def debt_problems(entry, today, label):
     missing = [f for f in DEBT_FIELDS if not (entry or {}).get(f)]
     if missing:
         return ["%s: missing %s" % (label, "/".join(missing))]
-    exp = parse_date(entry["expires"])
-    if exp is None:
+    if parse_date(entry["expires"]) is None:
         return ["%s: expires '%s' is not YYYY-MM-DD" % (label, entry["expires"])]
-    if exp < today:
+    if is_expired(entry["expires"], today):
         return ["%s: EXPIRED %s (owner: %s) — '%s'; pay it down, re-date it with a "
                 "reason, or park the capability loudly"
                 % (label, entry["expires"], entry["owner"], entry["what"])]

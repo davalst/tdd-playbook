@@ -150,6 +150,34 @@ def test_render_pairing():
         rc2, out2 = run(["render-pairing", "--config", c2])
         check("render: template pair control -> exit 0", rc2 == 0, (rc2, out2))
 
+    with tempfile.TemporaryDirectory() as td:
+        # mutation-runner M7 kill: the CROSS-FILE surplus direction (the T5 escape on the
+        # seam downstream repos configure) — supplier supplies a key no placeholder takes
+        write(td, "tpl.txt", "Dear {name}.")
+        write(td, "sup.py", 'body = T.format(name=n, balance=b)\n')
+        c = cfg(td, {"render_pairing": {
+            "scan": [], "template_pairs": [{"template": "tpl.txt", "supplier": "sup.py"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("render: template pair SURPLUS supplied key -> T5 violation",
+              rc == 1 and "balance" in out and "no placeholder" in out, (rc, out))
+
+
+def test_duplicate_exemption_targets():
+    """mutation-runner M9 kill + hardening: the expired-exemption teeth must never be
+    silenceable by appending a fresh duplicate entry for the same target."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/surplus.py", 'X = "hi {a}".format(a=1, ghost=2)\n')
+        c = cfg(td, {"render_pairing": {"scan": ["src"], "exemptions": [
+            {"what": "stale", "target": "src/surplus.py::ghost", "owner": "david",
+             "expires": "2026-01-01"},
+            {"what": "fresh duplicate", "target": "src/surplus.py::ghost",
+             "owner": "david", "expires": "2027-01-01"}]}})
+        rc, out = run(["render-pairing", "--config", c, "--as-of", "2026-08-03"])
+        check("exemption: a clean duplicate cannot suppress its EXPIRED twin",
+              rc == 1 and "EXPIRED" in out, (rc, out))
+        check("exemption: duplicate targets are themselves rejected (fail closed)",
+              "duplicate" in out, out)
+
 
 # ------------------------------------------------------------------ exit codes + vacuity
 def test_exit_codes_and_vacuity():
@@ -559,6 +587,7 @@ def main():
     suite = (test_render_pairing, test_exit_codes_and_vacuity, test_exemptions,
              test_ghost_gates, test_exemption_prose, test_summary_format,
              test_fail_closed_scan, test_template_pair_earns_checked,
+             test_duplicate_exemption_targets,
              test_prose_vocabulary_closed, test_config_shape_and_containment,
              test_all_subcommand, test_companion_unclassified_fails_closed,
              test_plant_target_handoff, test_help_states_bounds)

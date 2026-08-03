@@ -184,7 +184,7 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
     for c in caps:
         for debt in (c.get("integration_debt") or []):
             exp = _parse_date((debt or {}).get("expires", ""))
-            state = ("EXPIRED" if exp and exp < today
+            state = ("EXPIRED" if _debt.is_expired((debt or {}).get("expires", ""), today)
                      else "due soon" if exp and (exp - today).days <= DEBT_WARN_DAYS
                      else "open")
             lines.append("  %-28s [%s] %s (owner: %s, expires: %s)"

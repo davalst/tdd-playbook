@@ -89,16 +89,23 @@ import _debt  # noqa: E402  (the ONE house debt-date implementation, vendored al
 EXIT_CLEAN, EXIT_VIOLATION, EXIT_USAGE, EXIT_VACUOUS = 0, 1, 2, 3
 
 
+# the ONE summary-line contract — gate_yield.py imports this (producer owns the format;
+# consumers import it, they never re-type it)
+SUMMARY_LINE_RX = re.compile(
+    r"dataflow_sweeps ([a-z-]+): checked (\d+) · violations (\d+) · "
+    r"exempted (\d+) · unresolvable (\d+)")
+
+
 class Tally:
     def __init__(self, sub):
         self.sub = sub
         self.checked = 0
         self.unresolvable = 0
         self.exempted = 0
-        self.violations = []  # (target, message)
+        self.violations = []  # (target, message, kind) — kind: "sweep" | "exemption"
 
-    def violate(self, target, message):
-        self.violations.append((target, message))
+    def violate(self, target, message, kind="sweep"):
+        self.violations.append((target, message, kind))
 
     def summary(self):
         return ("dataflow_sweeps {}: checked {} · violations {} · exempted {} · "
@@ -106,10 +113,42 @@ class Tally:
                                          self.exempted, self.unresolvable))
 
 
+class ConfigError(Exception):
+    """Malformed config SHAPE — usage (exit 2), never a violation exit or a traceback."""
+
+
+def _require(cond, msg):
+    if not cond:
+        raise ConfigError(msg)
+
+
+def check_shapes(cfg):
+    _require(isinstance(cfg, dict), "config root must be a JSON object")
+    for name in ("render_pairing", "ghost_gates", "exemption_prose"):
+        section = cfg.get(name)
+        if section is None:
+            continue
+        _require(isinstance(section, dict), "section {} must be an object".format(name))
+        for key in ("scan", "exemptions", "template_pairs", "claims", "gate_patterns"):
+            if key in section:
+                _require(isinstance(section[key], list),
+                         "{}.{} must be a list".format(name, key))
+        for key in ("exemptions", "template_pairs", "claims"):
+            for ent in section.get(key) or []:
+                _require(isinstance(ent, dict),
+                         "{}.{} entries must be objects".format(name, key))
+
+
 # ------------------------------------------------------------------ shared plumbing
 def iter_py_files(base, scan):
+    real_base = os.path.realpath(base)
     for entry in scan:
         path = os.path.join(base, entry)
+        # containment: a scan entry escaping the config's base dir can prove non-vacuity
+        # against the WRONG tree — refuse it as usage, never scan it
+        if not (os.path.realpath(path) + os.sep).startswith(real_base + os.sep):
+            raise ConfigError("scan entry {!r} resolves outside the config's base "
+                              "directory".format(entry))
         if os.path.isfile(path) and path.endswith(".py"):
             yield path
         elif os.path.isdir(path):
@@ -132,10 +171,17 @@ def apply_exemptions(tally, exemptions, base, as_of, registry_path):
     """
     registry = None
     suppress = {}
+    seen_targets = set()
     for ent in exemptions or []:
         target = (ent or {}).get("target")
         label = "exemption {}".format(target or "<no target>")
         problems = list(_debt.debt_problems(ent, as_of, label))
+        if target and target in seen_targets:
+            # a fresh duplicate must never silence its expired twin's teeth
+            problems.append("{}: duplicate target — one exemption per target, "
+                           "re-date the existing entry instead (fail closed)"
+                           .format(label))
+        seen_targets.add(target)
         if not target:
             problems.append("{}: missing target (which violation does this cover?)"
                             .format(label))
@@ -165,19 +211,29 @@ def apply_exemptions(tally, exemptions, base, as_of, registry_path):
                         "{}: names a user_facing capability {!r} — §6a companion rule: "
                         "exemptions are for internals, NEVER a darkness hatch on a "
                         "user-facing flow".format(label, cap_id))
+                elif not isinstance(cap.get("user_facing"), bool):
+                    # absence of the audience fact is NOT "internal" — fail closed
+                    problems.append(
+                        "{}: capability {!r} carries no user_facing audience fact — "
+                        "classify it (bool) before exempting (fail closed)"
+                        .format(label, cap_id))
         if problems:
             for p in problems:
-                tally.violate(target or "<exemption>", p)
+                tally.violate(target or "<exemption>", p, kind="exemption")
         elif target:
             suppress[target] = ent
     kept = []
-    for target, message in tally.violations:
-        # entry-level exemption violations always survive; sweep violations whose target
-        # is covered by a clean live exemption are counted exempted instead
-        if target in suppress and not message.startswith("exemption "):
+    for target, message, kind in tally.violations:
+        # entry-level exemption violations always survive (typed kind, not a string
+        # prefix proxy); sweep violations covered by a clean live exemption are counted
+        # AND PRINTED as exempted — visible, dated, expiring, never silent
+        if target in suppress and kind == "sweep":
             tally.exempted += 1
+            ent = suppress[target]
+            print("  EXEMPTED {}: {} (owner: {}, expires: {})".format(
+                target, ent.get("what"), ent.get("owner"), ent.get("expires")))
         else:
-            kept.append((target, message))
+            kept.append((target, message, kind))
     tally.violations = kept
 
 
@@ -254,8 +310,12 @@ def sweep_render_pairing(cfg, base, tally):
         try:
             with open(path) as fh:
                 tree = ast.parse(fh.read())
-        except (SyntaxError, ValueError, OSError):
-            tally.unresolvable += 1
+        except (SyntaxError, ValueError, OSError) as e:
+            # fail CLOSED: a file the sweep could not read/parse is a violation, never
+            # an "unresolvable" that vouches for the scan (script-adversary F1)
+            tally.violate(rel(base, path),
+                          "could not read/parse scanned file (fail closed): {}"
+                          .format(e))
             continue
         consts = _module_str_constants(tree)
         for node in ast.walk(tree):
@@ -294,7 +354,6 @@ def sweep_render_pairing(cfg, base, tally):
                            star_args, star_kwargs)
 
     for pair in section.get("template_pairs") or []:
-        tally.checked += 1
         tpl_path = os.path.join(base, pair.get("template", ""))
         sup_path = os.path.join(base, pair.get("supplier", ""))
         pair_target = "{}<->{}".format(pair.get("template"), pair.get("supplier"))
@@ -307,14 +366,15 @@ def sweep_render_pairing(cfg, base, tally):
         with open(tpl_path) as fh:
             fields = _template_fields(fh.read())
         if fields is None:
-            tally.unresolvable += 1
+            tally.violate(pair_target, "template unparsable (fail closed)")
             continue
         named = fields[0]
         try:
             with open(sup_path) as fh:
                 sup_tree = ast.parse(fh.read())
-        except (SyntaxError, ValueError):
-            tally.unresolvable += 1
+        except (SyntaxError, ValueError) as e:
+            tally.violate(pair_target,
+                          "supplier unparsable (fail closed): {}".format(e))
             continue
         supplied = set()
         for node in ast.walk(sup_tree):
@@ -326,6 +386,14 @@ def sweep_render_pairing(cfg, base, tally):
                         supplied.update(k.value for k in a.keys
                                         if isinstance(k, ast.Constant)
                                         and isinstance(k.value, str))
+        if not named and not supplied:
+            # `checked` is earned by doing work — an inert entry manufactures coverage
+            # and defeats the vacuity guard (script-adversary F2)
+            tally.violate(pair_target,
+                          "template pair has nothing to pair — no placeholders and no "
+                          "supplied keys (fail closed; remove the entry or fix the pair)")
+            continue
+        tally.checked += 1
         for root in sorted(named - supplied):
             tally.violate("{}::{}".format(pair.get("template"), root),
                           "template placeholder '{{{}}}' has no supplier in {} — broken "
@@ -382,8 +450,10 @@ def sweep_ghost_gates(cfg, base, tally, strict):
         try:
             with open(path) as fh:
                 tree = ast.parse(fh.read())
-        except (SyntaxError, ValueError, OSError):
-            tally.unresolvable += 1
+        except (SyntaxError, ValueError, OSError) as e:
+            tally.violate(rel(base, path),
+                          "could not read/parse scanned file (fail closed): {}"
+                          .format(e))
             continue
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
@@ -418,7 +488,14 @@ def sweep_ghost_gates(cfg, base, tally, strict):
 
 
 # ------------------------------------------------------------------ exemption-prose
-_DEFAULT_CLAIMS_ON = ("always-on", "on-by-default", "always on", "on by default")
+# CLOSED vocabulary — an unrecognized claim is its own violation, never silently
+# reinterpreted as a polarity (script-adversary F3: "enabled by default" used to be
+# read as claiming OFF)
+_CLAIM_POLARITY = {
+    "always-on": "on", "on-by-default": "on", "always on": "on", "on by default": "on",
+    "always-off": "off", "off-by-default": "off", "always off": "off",
+    "off by default": "off",
+}
 
 
 def sweep_exemption_prose(cfg, base, tally):
@@ -447,8 +524,13 @@ def sweep_exemption_prose(cfg, base, tally):
                               .format(claim["capability"], claim.get("artifact")))
                 continue
             actual = (cap.get("activation") or {}).get("default")
-            expected = "on" if str(claim.get("claim", "")).lower().startswith(
-                _DEFAULT_CLAIMS_ON) or claim.get("claim") in _DEFAULT_CLAIMS_ON else "off"
+            expected = _CLAIM_POLARITY.get(str(claim.get("claim", "")).strip().lower())
+            if expected is None:
+                tally.violate(what,
+                              "claim wording {!r} not recognized — state the expected "
+                              "default explicitly; nothing to check is not a pass"
+                              .format(claim.get("claim")))
+                continue
             if actual != expected:
                 tally.violate(what,
                               "prose claims {!r} but {} activation.default is {!r} for "
@@ -478,6 +560,46 @@ def sweep_exemption_prose(cfg, base, tally):
 
 
 # ------------------------------------------------------------------ CLI
+_SECTION_OF = {"render-pairing": "render_pairing", "ghost-gates": "ghost_gates",
+               "exemption-prose": "exemption_prose"}
+
+
+def run_one(sub, cfg, base, as_of, strict, registry_path):
+    """Run one sweep. Returns its exit code (0/1/2/3); prints violations + the pinned
+    summary line either way."""
+    tally = Tally(sub)
+    if sub == "render-pairing":
+        section = sweep_render_pairing(cfg, base, tally)
+    elif sub == "ghost-gates":
+        section = sweep_ghost_gates(cfg, base, tally, strict)
+        if section is None:
+            return EXIT_USAGE
+    else:
+        section = sweep_exemption_prose(cfg, base, tally)
+
+    # vacuity is keyed on CHECKED alone: an unresolvable site (or an unreadable file —
+    # which is a VIOLATION) can never vouch for the scan. Violations are judged first,
+    # so a fail-closed scan error exits 1, and a zero-checked clean scan refuses.
+    apply_exemptions(tally, section.get("exemptions"), base, as_of, registry_path)
+
+    for target, message, _kind in tally.violations:
+        print("  VIOLATION {}: {}".format(target, message))
+    print(tally.summary())
+
+    if tally.violations:
+        if sub == "ghost-gates" and not strict:
+            print("dataflow_sweeps ghost-gates: {} finding(s) — ADVISORY (Tier 2); "
+                  "--strict to block".format(len(tally.violations)))
+            return EXIT_CLEAN
+        return EXIT_VIOLATION
+    if tally.checked == 0:
+        print("dataflow_sweeps {}: refusing a vacuous pass — nothing was CHECKED "
+              "(0 sites/pairs/claims verified; unresolvable {}); a gate that can pass "
+              "by checking nothing is not a gate".format(sub, tally.unresolvable))
+        return EXIT_VACUOUS
+    return EXIT_CLEAN
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="dataflow_sweeps",
@@ -485,16 +607,19 @@ def main(argv=None):
         description=(
             "§6c Tier-1 dataflow-liveness sweeps: every flow names a live consumer.\n"
             "render-pairing / exemption-prose are Tier 1 (blocking); ghost-gates is\n"
-            "Tier 2 (advisory by default, --strict to block)."),
+            "Tier 2 (advisory by default, --strict to block). `all` runs every sweep\n"
+            "whose section is present in the config — the CONFIG is the single source\n"
+            "of which sweeps a repo arms; callers never hardcode the list."),
         epilog=(
             "Stated bounds: f-strings are SKIPPED (compiler-checked at parse time);\n"
             "%-style formatting is OUT of v1; dynamic names/**kwargs are counted\n"
-            "UNRESOLVABLE, never silently passed.\n"
+            "UNRESOLVABLE, never silently passed — but an UNREADABLE/UNPARSABLE scanned\n"
+            "file is a VIOLATION (fail closed), and a scan that CHECKED nothing refuses.\n"
             "Exit codes: 0 clean · 1 violation · 2 usage ONLY · 3 vacuous-refusal\n"
             "('refusing a vacuous pass' — a scan of nothing is a real blocking verdict,\n"
             "distinct from a fat-fingered flag; exit 2 is usage, never proof)."))
     ap.add_argument("subcommand",
-                    choices=["render-pairing", "ghost-gates", "exemption-prose"])
+                    choices=["render-pairing", "ghost-gates", "exemption-prose", "all"])
     ap.add_argument("--config", required=True, help="JSON sweep config; paths inside are "
                                                     "relative to its directory")
     ap.add_argument("--as-of", default=None,
@@ -525,40 +650,34 @@ def main(argv=None):
         print("dataflow_sweeps: config {!r} is not valid JSON: {} (usage)"
               .format(args.config, e))
         return EXIT_USAGE
-    base = os.path.dirname(os.path.abspath(args.config))
-    registry_path = (os.path.join(base, cfg["registry"])
-                     if cfg.get("registry") else None)
+    try:
+        check_shapes(cfg)
+        base = os.path.dirname(os.path.abspath(args.config))
+        registry_path = (os.path.join(base, cfg["registry"])
+                         if cfg.get("registry") else None)
 
-    tally = Tally(args.subcommand)
-    if args.subcommand == "render-pairing":
-        section = sweep_render_pairing(cfg, base, tally)
-    elif args.subcommand == "ghost-gates":
-        section = sweep_ghost_gates(cfg, base, tally, args.strict)
-        if section is None:
+        if args.subcommand != "all":
+            return run_one(args.subcommand, cfg, base, as_of, args.strict,
+                           registry_path)
+
+        armed = [sub for sub, sect in _SECTION_OF.items() if cfg.get(sect)]
+        if not armed:
+            print("dataflow_sweeps all: refusing a vacuous pass — no sweep section is "
+                  "present in the config; nothing armed is nothing checked")
+            return EXIT_VACUOUS
+        codes = {}
+        for sub in sorted(armed):
+            codes[sub] = run_one(sub, cfg, base, as_of, args.strict, registry_path)
+        if EXIT_USAGE in codes.values():
             return EXIT_USAGE
-    else:
-        section = sweep_exemption_prose(cfg, base, tally)
-
-    vacuous = (tally.checked + tally.unresolvable) == 0
-    if not vacuous:
-        apply_exemptions(tally, section.get("exemptions"), base, as_of, registry_path)
-
-    for target, message in tally.violations:
-        print("  VIOLATION {}: {}".format(target, message))
-    print(tally.summary())
-
-    if vacuous:
-        print("dataflow_sweeps {}: refusing a vacuous pass — nothing was scanned "
-              "(0 sites, 0 pairs/claims); a gate that can pass by checking nothing is "
-              "not a gate".format(args.subcommand))
-        return EXIT_VACUOUS
-    if tally.violations:
-        if args.subcommand == "ghost-gates" and not args.strict:
-            print("dataflow_sweeps ghost-gates: {} finding(s) — ADVISORY (Tier 2); "
-                  "--strict to block".format(len(tally.violations)))
-            return EXIT_CLEAN
-        return EXIT_VIOLATION
-    return EXIT_CLEAN
+        if EXIT_VIOLATION in codes.values():
+            return EXIT_VIOLATION
+        if EXIT_VACUOUS in codes.values():
+            return EXIT_VACUOUS
+        return EXIT_CLEAN
+    except ConfigError as e:
+        print("dataflow_sweeps: {} (usage; exit 2 is usage, never proof)".format(e))
+        return EXIT_USAGE
 
 
 if __name__ == "__main__":

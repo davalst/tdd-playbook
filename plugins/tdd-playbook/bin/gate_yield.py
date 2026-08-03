@@ -51,9 +51,12 @@ DATAFLOW_MD_HEADER = (
     "| date | sweep | checked | violations | exempted | unresolvable |\n"
     "|---|---|---|---|---|---|\n")
 
-SUMMARY_LINE_RX = re.compile(
-    r"dataflow_sweeps ([a-z-]+): checked (\d+) · violations (\d+) · "
-    r"exempted (\d+) · unresolvable (\d+)")
+# the summary-line contract is OWNED by the producer — import it, never re-type it
+# (arch-adversary F3: four independent regex dialects was the drift surface)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dataflow_sweeps as _ds  # noqa: E402  (sibling, vendored alongside)
+
+SUMMARY_LINE_RX = _ds.SUMMARY_LINE_RX
 
 MD_HEADER = ("# Gate yield record (R4 — derived from telemetry, never self-report)\n\n"
              "One committed row per gate per calibration cycle. blocks/warns = frictions "

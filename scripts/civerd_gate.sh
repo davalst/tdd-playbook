@@ -30,8 +30,9 @@ done
 python3 calibration/test_harness.py || exit 1
 # v1.24 (§6c D13a): the repo sweeps ITSELF — this repo's own shipped bins carry literal
 # .format( render sites, so under "Tier 1 is mandatory where the flow kind exists" the
-# flow kind exists HERE. BLOCKING: exit 1 (violation) and 3 (vacuous — scanning nothing
-# is a real failure, not a pass) both fail the gate; only 0 proceeds.
-python3 plugins/tdd-playbook/bin/dataflow_sweeps.py render-pairing \
+# flow kind exists HERE. `all` derives the armed sweeps from the CONFIG (the single
+# source of truth — no hardcoded sweep list here). BLOCKING: exit 1 (violation) and 3
+# (vacuous — scanning nothing is a real failure, not a pass) both fail the gate.
+python3 plugins/tdd-playbook/bin/dataflow_sweeps.py all \
     --config dataflow-sweeps.json || exit 1
 echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep)"
