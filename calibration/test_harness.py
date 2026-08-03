@@ -595,13 +595,18 @@ def _coverage_invariant_tests():
 
     # the authoring loop is the invariant's consumer: uncovered agents are named as
     # priority targets in the adversary brief
-    orig_ap_ls = ap.load_scenarios
+    # isolation covers BOTH coverage sources: since v1.24 the proposed corpus can also
+    # cover an agent (the first §6c authoring batch covers integration-adversary), so
+    # filtering shipped scenarios alone no longer creates uncoveredness
+    orig_ap_ls, orig_ap_cs = ap.load_scenarios, ap.corpus_scenarios
     try:
         ap.load_scenarios = lambda: [s for s in orig_ap_ls()
                                      if s["agent"] != "integration-adversary"]
+        ap.corpus_scenarios = lambda states=("proposed", "approved"): [
+            s for s in orig_ap_cs(states) if s["agent"] != "integration-adversary"]
         prompt = ap.adversary_prompt(None)
     finally:
-        ap.load_scenarios = orig_ap_ls
+        ap.load_scenarios, ap.corpus_scenarios = orig_ap_ls, orig_ap_cs
     check("adversary brief names uncovered agents as priority targets",
           "uncovered" in prompt.lower() and "integration-adversary" in
           prompt.split("uncovered", 1)[-1][:300], prompt[:200])
