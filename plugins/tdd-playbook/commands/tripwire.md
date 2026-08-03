@@ -32,6 +32,9 @@ For EACH deliverable, verify and report four things separately (don't round up):
   a hollow button or a skipped test must TRIP the Tripwire.
 
 Use the repo's own test runner/markers. Where a deliverable fails any of the four, mark
-it RED with the exact gap. Report `Tripwire: N/N` (green/total). It is a FLOOR — never add
-a hollow stub or a fake on-switch to go green. If a behavioral test is missing, write it
-(red-first) rather than reporting the deliverable green.
+it RED with the exact gap. Report `Tripwire: N/N` (green/total). If the plan carries a §0
+flow table (§6c), also verify each flow row's liveness test is named and GREEN and report
+`Tripwire: N/N (+ FLOWS M/M)` — a deliverable can be four-leg green while its flow
+dead-ends. It is a FLOOR — never add a hollow stub or a fake on-switch to go green. If a
+behavioral test is missing, write it (red-first) rather than reporting the deliverable
+green.

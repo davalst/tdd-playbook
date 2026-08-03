@@ -1,6 +1,6 @@
 ---
 name: tdd-playbook
-description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring-liveness discipline (assembly suite, darkness doctor, integration audits), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook".
+description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring-liveness discipline (assembly suite, darkness doctor, integration audits), dataflow liveness (flow tables, consumer parity), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook".
 ---
 
 # The TDD Playbook
@@ -52,7 +52,11 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
     hooks). "None" must be stated, never implied.
   - *Emits → named consumer:* everything this produces names WHO reads it. A write-only loop is not
     a design; "nobody yet" becomes an integration-debt entry with an OWNER and an EXPIRY (§7's
-    quarantine rules — a loan, not a landfill).
+    quarantine rules — a loan, not a landfill). For feature/multi-deliverable/migration work this
+    answer is a TABLE, not a sentence — `flow · producer · consumer · liveness test` — so an empty
+    consumer cell is visible, and it means dated debt or the flow doesn't ship (small diffs keep
+    the prose answer; the ceremony preamble governs). A MIGRATION deliverable must enumerate the
+    replaced seam's outputs here — §6c's consumer-parity DoD starts in the plan, not the diff.
   - *Surface parity:* which interfaces (web/Telegram/TUI/MCP/CLI) get this behavior. Divergence is
     STATED at plan time, not discovered by a user later.
   - *Reverse sweep:* which EXISTING features should now use this new capability. Each hit becomes a
@@ -471,7 +475,9 @@ target the feature). For each deliverable assert it is:
   that band-aids the architecture is exactly the failure this catches. Advisory like the
   integration-adversary, not a hard block, but its findings are specific enough to act on.
 - Author it red-first, drive to green; report `Tripwire: N/N`. It's a FLOOR, not a target — never add a
-  hollow button/stub to go green. Anchor it to the PLAN, not the implementation.
+  hollow button/stub to go green. Anchor it to the PLAN, not the implementation. A plan that
+  carries a §0 flow table reports `Tripwire: N/N (+ FLOWS M/M)` — each flow row's liveness test
+  named and GREEN (§6c); a deliverable can be four-leg green while its flow dead-ends.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral
   tests + a one-line wiring check suffice.
 
@@ -479,7 +485,11 @@ target the feature). For each deliverable assert it is:
 The Tripwire (§6) is a snapshot at build time; wiring ROTS as later work moves seams — §13's decay
 principle applies to wiring itself. And the meta-bug that lets rot hide: health surfaces that report
 only on what RAN make a dead feature indistinguishable from a quiet one ("healthy, no runs recorded
-yet"). Darkness is invisible by construction unless you enumerate from what SHOULD run:
+yet"). Darkness is invisible by construction unless you enumerate from what SHOULD run. And every
+health surface DECLARES its evidence tier — the ladder is
+`config-read < import < runtime-probe < composition-root` — because
+import-existence alone can never render OK (the §6c origin excavation found three health checks
+green-lighting ~1k LOC of provably unreachable code on import-success):
 - **The capability registry (`capabilities.json`)** — small, machine-readable, per repo: each
   capability's surfaces, activation default + named on-switch, production wiring site (`wired_by`),
   assembly-level test (`exercised_by`), emitted topics with NAMED consumers, and integration debt
@@ -517,12 +527,18 @@ yet"). Darkness is invisible by construction unless you enumerate from what SHOU
 - **The ASSEMBLY suite (`@pytest.mark.assembly`)** — the standing antidote to self-wired fixtures:
   build the real production object graph per platform (real daemon factory, real agent build) and
   assert every ENABLED registry capability is reachable in it, both directions (§6's symmetric rule).
-  Fast and deterministic → runs every CI push, not on a schedule.
+  Symmetric reachability is proven through the real dispatch order, not a membership list — a
+  membership test passes a shadowed handler forever (the §6c T6 escape: `/plan` registered twice,
+  the second registration silently winning); duplicate registration RAISES at load, and
+  last-write-wins is banned. Fast and deterministic → runs every CI push, not on a schedule.
 - **Liveness canaries + staleness sweep** — §13's planted-error rule applied to wiring, two layers:
   ACTIVE — on a schedule, plant a synthetic event through the PRODUCTION seam and assert the consumer
   processed it (a subscriber-count probe would have caught the dead-bus orchestrator months early);
   PASSIVE — "registered but zero runs in N days" from telemetry (`liveness.max_quiet_days`). Weekly
-  Routine, like the calibration scoreboard: a diffable line, not an annual dig.
+  Routine, like the calibration scoreboard: a diffable line, not an annual dig. Monitors
+  record SUCCESS as well as failure, and a standing check compares the SCHEDULED set against
+  observed rows — silence goes RED, because a job that stopped being scheduled leaves no failure
+  row and dead-and-quiet look identical from the run side (the §6c absence-blind-monitor class).
 - **Half-built-and-silent is the WORST state — decide-or-park.** A dormant package, an unactioned
   review finding, a "we'll wire it later": each gets an owner + expiry (debt entry) or gets parked
   LOUDLY (removed from the registry with a stated reason). Findings without owners rot; the registry
@@ -552,6 +568,59 @@ default-OFF.** A feature you can't watch is a feature you can't onboard, and shi
 shipping it into a silence you designed yourself. This section is the rollout MIRROR of §6a: §6a
 enumerates darkness that already happened; the onboarding contract prevents the default-OFF rollout
 that becomes it.
+
+## 6c. Dataflow Liveness — nodes are necessary; edges are the truth
+§6/§6a prove NODES: the feature is built, wired, activated, exercised. This section proves EDGES —
+because a wiring net can be perfect on its home turf and still leak: in the origin excavation
+(Cheliped, 2026-08-03) the node-level registry caught zero of 12 post-safeguard escapes, and every
+one was an EDGE failure — a flow produced with no live consumer, a value accepted with no reader, a
+fix verified at the supply end. The doctrine: **every flow names a live consumer, every migration
+proves parity for the seam it replaces, and every "wired" claim is proven at the output end.**
+- **The flow kinds — sweep them ALL, not just the ones that look like features:** persisted
+  rows/fields (incl. WHO PRUNES them — unbounded growth is a missing consumer) · queryable
+  telemetry (every event type emitted has a query consumer) · config fields AND each accepted enum
+  value (a value accepted but read by nothing is a silent no-op wearing a knob) · template/prompt
+  keys (every supplied key has a placeholder; every placeholder a supplier) · registry/dispatch
+  names + ORDER (a shadowed handler is dark despite registration) · lifecycle events per surface
+  (an event only one surface fires starves every consumer on the others) · queues/dirs/caches
+  incl. eviction · **silent-default boundaries** — `dict.get`/`getattr`/`**kwargs` sinks, the
+  general class where a misspelled or orphaned key degrades to a default instead of an error ·
+  **schedule overlap** for time-windowed flows (a producer and consumer whose windows never
+  intersect is a dead edge with two live ends).
+- **The escape taxonomy (report against it, §13):** **T1–T7** — T1 refactor orphaned a consumer ·
+  T2 written, never read · T3 built, never called · T4 accepted value, no reader · T5 render-seam
+  gap (key supplied, no placeholder — `str.format` drops it silently) · T6 registry collision /
+  interception · T7 event never fired on a surface. One successful strangler migration caused five
+  of the twelve origin escapes — migrations are the highest-yield hunting ground.
+- **Standing sweeps, in two decidability tiers.** Tier 1 EXACT (no false positives by
+  construction): render pairing (template keys ↔ placeholders, BOTH directions) · registration
+  uniqueness + dispatch-order reachability · exemption-prose consistency (a claim like "always-on"
+  checked against the artifact holding the real default). Tier 1 sweeps are MANDATORY where the
+  flow kind exists, and BLOCKING. Tier 2 HEURISTIC (name-glob / pattern scoped): storage pairing ·
+  telemetry pairing · enum-value readers · ghost gates (undeclared `*_enabled`-shaped reads).
+  Tier 2 ships with an explicit FP budget, yield-instrumented (per-sweep summary counts into the
+  gate-yield record), and is PROMOTED to blocking only on pilot data — never by default. The
+  Tier-1 reference tool is `plugins/tdd-playbook/bin/dataflow_sweeps.py` (config-driven: repos
+  tailor the pairing map, they don't fork the scanner).
+- **Sweep governance — exemptions are debt, not prose.** A sweep exemption REUSES the house debt
+  shape `{what, owner, expires}` (the registry's R-DEBT contract; an EXPIRED exemption REDs the
+  sweep, provable via `--as-of`) — never a new sibling format. An exemption naming a user-facing
+  flow FAILS the suite, by §6a's companion rule (one canonical statement — cross-reference, don't
+  restate), keyed on the registry's `user_facing` attribute, not a proxy. And the EXCLUDED SHARE is
+  audited mechanically — committed per-cycle summary rows (`checked · violations · exempted ·
+  unresolvable`) plus a trend check: a growing exemption list under a green sweep means the list
+  is doing the tests' work (§4's equivalent-mutant filter-audit rule, same teeth).
+- **Migration consumer-parity DoD.** A strangler/migration is DONE when every consumer the OLD
+  seam fed is enumerated in the diff and each one is fed by the new seam / retired WITH deletion /
+  a dated debt entry — and a seam-parity test pins the enumeration. "New path works" is half a
+  definition of done; the other half is what the old path FED. Leftover references to the deleted
+  mechanism (a stale exclusion comment, a config key nobody strips) are DEFECTS — they encode a
+  false model of the system — swept in §12's exhaustive-negatives pass.
+- Edge cases the sweeps must state, never silently skip: external/cross-repo consumers → named AND
+  probed (version-echo shape, §6a); dynamic templates → a NAMED dated exemption, never a silent
+  skip; values consumed outside the repo → a dated exemption naming the external reader.
+Happy path: an agent planning a migration reads this section and produces the old-seam output
+enumeration unprompted — the flow table in §0 is where it lands.
 
 ## 7. Determinism & flaky tests (zero tolerance)
 - Deterministic by construction: no `sleep`/hard waits (use auto-waiting/polling assertions); full test
@@ -673,6 +742,13 @@ unverified NEGATIVE about a file it never read.)
   must run something for the fix to land, that instruction ships in the SAME message as the fix, not a
   message later. (Origin: six "fixed" reports over a box running code from before any of them — "how have
   you fixed things if you didn't give me something to paste into the VPS terminal?")
+- **A "now wired" claim is proven at the OUTPUT end, or it is not proven.** Supply-side evidence —
+  the key added, the handler registered, the config set — is necessary-not-sufficient: the same
+  move as the remote-runtime rule above (a pushed commit is not a running process; a supplied key
+  is not a rendered value). The probe is ONE SENTINEL observed in the rendered / delivered /
+  persisted artifact. (Origin, §6c T5: a fix "wired" a prompt layer by supplying its key; the
+  template had no placeholder, `str.format` dropped it silently, and the claim was verified
+  entirely at the supply end.)
 - **Subagent/secondhand reports are UNVERIFIED claims.** Spot-check load-bearing ones before
   publishing (a subagent confidently reported a whole subsystem unreachable; one runtime probe
   killed it). When a cheap runtime check exists (`python -c` import/registration probe, hit the
@@ -724,6 +800,11 @@ visible — never "trust the agent more."
   human-caught / accidental is over-confidence to flag NOW, not at the next retro. (Reference ratio from
   the CIVerd build: 3 self / 3 accidental / 3 human / 1 peer — the 3 human-caught were the most
   consequential and all three were places already called green.)
+- **Track escapes BY CLASS, not just by count.** Audits and excavations report each escape against
+  the shared taxonomy (the §6 node classes + §6c's T1–T7 edge classes). A class that repeats
+  across cycles means its standing mechanism ISN'T REAL YET — the class row, not the instance
+  fix, is what the next retro acts on (the origin excavation's twelve escapes collapsed to seven
+  classes, five of them from one migration — one mechanism gap, not twelve bugs).
 - **Grader independent of doer:** fresh context, refute-framing, a different (cheap) model.
 - **Planted-error calibration is the ungameable anchor** — mutation testing for the verification
   loop itself. Two layers, different rot: (a) deterministic planted-false-claim / planted-wasteful-
