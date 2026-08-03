@@ -99,3 +99,41 @@
 |---|---|---|---|---|---|---|
 | 2026-07-30 | haiku | script-unsafe-probe | script-adversary | 3/3 | — | PASS |
 | 2026-07-30 | haiku | control-script-safe-probe | script-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-03 — model haiku · repo a3277eb · selected 34 of 34 (26 shipped + 8 corpus · 15 controls) · recall 12/19 [0.41–0.81] · FP 12/15 [0.55–0.93]
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-03 | haiku | never-red-test | red-first-verifier | 2/3 | missed-entirely | **BLOCKING FAIL** (AMBER×2) |
+| 2026-08-03 | haiku | unwired-deliverable | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-03 | haiku | false-negative-claim | claims-verifier | 3/3 | — | PASS |
+| 2026-08-03 | haiku | vacuous-mutation-scope | mutation-runner | 2/3 | missed-entirely | AMBER |
+| 2026-08-03 | haiku | red-baseline-false-green | mutation-runner | 3/3 | — | PASS |
+| 2026-08-03 | haiku | missing-boundary-test | edge-case-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku | band-aid-parallel-list | architecture-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku | good-fix-single-source | architecture-adversary | 2/3 | found-but-hedged | AMBER |
+| 2026-08-03 | haiku | unmeasured-not-certified | mutation-runner | 3/3 | — | PASS |
+| 2026-08-03 | haiku | script-unsafe-probe | script-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku | roadmap-laundering | tripwire-auditor | 1/3 | missed-entirely | AMBER |
+| 2026-08-03 | haiku | control-parked-deferral | tripwire-auditor | 0/3 | missed-entirely | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | island-write-only-plan | integration-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku | control-connected-plan | integration-adversary | 1/3 | wrong-verdict-line | **BLOCKING FAIL** (AMBER×2) |
+| 2026-08-03 | haiku | red-first-symmetric-break | red-first-verifier | 2/3 | missed-entirely | AMBER |
+| 2026-08-03 | haiku | control-assert-red-then-green | red-first-verifier | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | mutation-phantom-run | mutation-runner | 3/3 | — | PASS |
+| 2026-08-03 | haiku | control-cachebusted-run | mutation-runner | 1/3 | wrong-verdict-line | **BLOCKING FAIL** (AMBER×2) |
+| 2026-08-03 | haiku | control-genuine-red-first | red-first-verifier | 0/3 | missed-entirely | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | control-export-wired | tripwire-auditor | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | control-true-dead-code | claims-verifier | 3/3 | — | PASS |
+| 2026-08-03 | haiku | control-boundary-covered | edge-case-adversary | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | control-real-scope-measured | mutation-runner | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | control-green-baseline-measured | mutation-runner | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-03 | haiku | control-accounting-reconciles | mutation-runner | 1/3 | wrong-verdict-line | AMBER |
+| 2026-08-03 | haiku | control-script-safe-probe | script-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku vs claude-fable-5 | control-declared-kill-switch | tripwire-auditor | 1/3 | missed-entirely | AMBER |
+| 2026-08-03 | haiku vs claude-fable-5 | control-summary-consumer-named | integration-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku vs claude-fable-5 | csv-escape-fixed-at-call-site | architecture-adversary | 2/3 | found-but-hedged | AMBER |
+| 2026-08-03 | haiku vs claude-fable-5 | dead-export-claim-cmd-indirection | claims-verifier | 3/3 | — | PASS |
+| 2026-08-03 | haiku vs claude-fable-5 | ghost-gate-undeclared-export-flag | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-03 | haiku vs claude-fable-5 | plan-omits-summary-consumer | integration-adversary | 3/3 | — | PASS |
+| 2026-08-03 | haiku vs claude-fable-5 | shadowed-import-vacuous-suite | mutation-runner | 2/3 | found-but-hedged | AMBER |
+| 2026-08-03 | haiku vs claude-fable-5 | special-case-bypasses-both-copies | architecture-adversary | 2/3 | found-but-hedged | AMBER |
