@@ -665,6 +665,75 @@ def test_v116_planted_fixtures():
           all(n in intact for n in ("Deploy surface", "script-adversary", "TAKE ITS TARGET AS AN ARGUMENT")))
 
 
+def test_v124_doctrine():
+    """v1.24 Dataflow Liveness (§6c — the Cheliped excavation, 2026-08-03). The node-level
+    wiring net was perfect on its home turf while all 12 post-safeguard escapes were EDGE
+    failures — flows produced with no live consumer, values accepted with no reader, fixes
+    verified at the supply end. These pins keep the edge counter-rules present:
+      §6c the new section: doctrine line, decidability tiers, migration consumer-parity DoD,
+          the T1–T7 escape taxonomy, silent-default boundaries.
+      §0  the scale-gated flow table (flow · producer · consumer · liveness test).
+      §6  FLOWS join the Tripwire accounting (and /tripwire carries the same line).
+      §6a evidence tiers; monitors record SUCCESS; reachability through the REAL dispatch
+          order (last-write-wins banned).
+      §12 a "now wired" claim is proven at the OUTPUT end or it is not proven.
+      §13 escapes reported BY CLASS — a repeating class means its mechanism isn't real."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §6c: section exists", "## 6c. Dataflow Liveness"),
+        ("SKILL §6c: doctrine line", "nodes are necessary; edges are the truth"),
+        ("SKILL §6c: every flow names a live consumer", "every flow names a live consumer"),
+        ("SKILL §6c: two decidability tiers", "two decidability tiers"),
+        ("SKILL §6c: silent-default boundaries", "silent-default boundaries"),
+        ("SKILL §6c: migration consumer-parity DoD", "consumer-parity"),
+        ("SKILL §6c: T1–T7 escape taxonomy named", "T1–T7"),
+        ("SKILL §0: flow-table columns", "flow · producer · consumer · liveness test"),
+        ("SKILL §6: FLOWS in the Tripwire report", "+ FLOWS M/M"),
+        ("SKILL §6a: evidence-tier ladder",
+         "config-read < import < runtime-probe < composition-root"),
+        ("SKILL §6a: import-existence never renders OK",
+         "import-existence alone can never render OK"),
+        ("SKILL §6a: monitors record SUCCESS", "record SUCCESS as well as failure"),
+        ("SKILL §6a: reachability through the real dispatch order", "real dispatch order"),
+        ("SKILL §6a: last-write-wins banned", "last-write-wins is banned"),
+        ("SKILL §12: wired claims proven at the output end", "proven at the OUTPUT end"),
+        ("SKILL §12: supply-side evidence necessary-not-sufficient",
+         "necessary-not-sufficient"),
+        ("SKILL §13: escapes reported by class", "escapes BY CLASS"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    fm = frontmatter(text) or {}
+    desc = fm.get("description", "")
+    check("SKILL description names dataflow liveness", "dataflow liveness" in desc)
+    check("SKILL description within 1024-char budget", len(desc) <= 1024, len(desc))
+
+    with open(os.path.join(COMMANDS, "tripwire.md")) as fh:
+        check("/tripwire: carries the FLOWS accounting line", "+ FLOWS M/M" in fh.read())
+
+
+def test_v124_planted_fixtures():
+    """The v1.24 pins must be able to FAIL — doctrine stripped of the edge discipline must
+    be detected (§13 calibrate-the-checker)."""
+    stripped = ("SKILL with a perfect node-level wiring net and no flow discipline: "
+                "Tripwire reports N/N, migrations verified at the supply end.\n")
+    check("planted: missing §6c heading detected", "## 6c. Dataflow Liveness" not in stripped)
+    check("planted: missing doctrine-line needle detected",
+          "nodes are necessary; edges are the truth" not in stripped)
+    check("planted: missing FLOWS-report needle detected", "+ FLOWS M/M" not in stripped)
+    check("planted: missing output-end needle detected",
+          "proven at the OUTPUT end" not in stripped)
+    intact = ("## 6c. Dataflow Liveness — nodes are necessary; edges are the truth; "
+              "report Tripwire: N/N (+ FLOWS M/M); a wired claim is proven at the "
+              "OUTPUT end.\n")
+    check("planted: intact edge doctrine passes the same needles",
+          all(n in intact for n in ("## 6c. Dataflow Liveness",
+                                    "nodes are necessary; edges are the truth",
+                                    "+ FLOWS M/M", "proven at the OUTPUT end")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -675,7 +744,8 @@ def main():
                test_v19_doctrine, test_v19_planted_fixtures,
                test_verifier_model_pins, test_verifier_pin_planted,
                test_v114_doctrine, test_v114_planted_fixtures,
-               test_v116_doctrine, test_v116_planted_fixtures):
+               test_v116_doctrine, test_v116_planted_fixtures,
+               test_v124_doctrine, test_v124_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
