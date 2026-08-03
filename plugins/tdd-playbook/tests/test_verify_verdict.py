@@ -14,8 +14,11 @@ Self-contained, stdlib only. Run:  python3 tests/test_verify_verdict.py
 import copy
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -72,7 +75,16 @@ def main():
         exp = (c["expected"]["facts_ok"], c["expected"]["reason"])
         check("bundle case {}: {}".format(c["name"], exp), got == exp, got)
 
-    # 2. release-decision layer over the real ledger
+    # 2. release-decision layer over the real ledger.
+    # The v1.24 roster pin is POLICY layered on top of these decision mechanics; it has
+    # its own section (2b) exercising the REAL pin. Here the pin is scoped to the golden
+    # ledger's era so freshness/heartbeat/signature mechanics stay independently tested
+    # (the golden fixtures are signed — their rosters cannot be extended).
+    check("roster pin exists (EXPECTED_REQUIRED + EXPECTED_PRESENT)",
+          hasattr(V, "EXPECTED_REQUIRED") and hasattr(V, "EXPECTED_PRESENT"))
+    _pin = (getattr(V, "EXPECTED_REQUIRED", None), getattr(V, "EXPECTED_PRESENT", None))
+    V.EXPECTED_REQUIRED, V.EXPECTED_PRESENT = ("deps", "tests", "venv"), ()
+
     lines = open(LEDGER).readlines()
 
     def mr(ledger, sha, max_age=86400):
@@ -105,6 +117,46 @@ def main():
           V.may_release(lines, REAL_SHA, now=datetime(2020, 1, 1, tzinfo=timezone.utc),
                         max_age_s=86400) == (False, "stale"))
 
+    # restore the REAL pin for its own section
+    V.EXPECTED_REQUIRED, V.EXPECTED_PRESENT = _pin
+
+    # 2b. ROSTER PIN (2026-08-03 engine hand-off — verified engine-side: `required` is
+    # derived from what RAN, an echo not a contract, so a check silently dropped from
+    # root config yields a GREEN verdict with a shorter checks[] that still verifies and
+    # still evaluates ok. This pin is the ONLY release-side defense against roster
+    # shrink.) The plant is a REAL signed verdict: today's 03d7bc7d run — authentic,
+    # fresh, green, staleness present — judged minutes before the engine armed the
+    # dataflow check, so it is precisely 'otherwise valid but shorter'.
+    short_path = os.path.join(HERE, "fixtures", "civerd_verdict_roster_short.jsonl")
+    short_lines = open(short_path).readlines()
+    short_sha = json.loads(short_lines[0])["verdict"]["snapshot"]["commit"]
+    short_now = datetime(2026, 8, 3, 19, 0, 0, tzinfo=timezone.utc)
+    allowed, reason = V.may_release(short_lines, short_sha, now=short_now,
+                                    max_age_s=10 ** 9)
+    check("roster pin: a signed, fresh, GREEN verdict missing 'dataflow' is REFUSED",
+          allowed is False and reason.startswith("roster_shrink"), (allowed, reason))
+    check("roster pin: the refusal NAMES the missing check", "dataflow" in reason, reason)
+    check("roster pin: refusal is distinct from no-verdict and verdict_not_ok",
+          "no_verdict" not in reason and "verdict_not_ok" not in reason, reason)
+
+    # unit-level pin semantics over synthetic snapshots (no signatures involved)
+    full = {"required": ["dataflow", "deps", "dryrun", "registry", "tests", "venv",
+                         "integrity", "integrity_baseline"],
+            "checks": [{"name": n} for n in
+                       ("dataflow", "deps", "dryrun", "registry", "tests", "venv",
+                        "integrity", "integrity_baseline", "staleness")]}
+    check("roster pin: full roster (with engine extras) -> no gaps",
+          V.roster_gaps(full) == [], V.roster_gaps(full))
+    ran_not_required = {"required": ["deps", "dryrun", "registry", "tests", "venv"],
+                        "checks": full["checks"]}
+    check("roster pin: check RAN but demoted from required -> gap named",
+          V.roster_gaps(ran_not_required) == ["dataflow"],
+          V.roster_gaps(ran_not_required))
+    no_staleness = {"required": full["required"],
+                    "checks": [c for c in full["checks"] if c["name"] != "staleness"]}
+    check("roster pin: advisory staleness pinned presence-only — absence is a gap",
+          V.roster_gaps(no_staleness) == ["staleness"], V.roster_gaps(no_staleness))
+
     # 3. NO --force / --override exists — a bad release is unbuildable, not discouraged.
     # Check for an actual option DEFINITION (a mere comment mentioning it is fine, and intended).
     src = open(BIN).read()
@@ -120,9 +172,31 @@ def main():
 
     # 4. CLI plumbing (freshness made deterministic with a huge max-age; policy is tested above)
     huge = "999999999999"
+    # under the REAL pin the golden ledger's shorter roster must refuse THROUGH the CLI —
+    # the shipped binary has no override, so green plumbing is proven via a tmp mirror
+    # whose pin constant is scoped to the golden roster (no production bypass exists)
     p = subprocess.run([sys.executable, BIN, "--sha", REAL_SHA, "--ledger", LEDGER,
                         "--max-age-s", huge], capture_output=True, text=True, timeout=30)
-    check("CLI exit 0 for real SHA", p.returncode == 0, (p.returncode, p.stdout, p.stderr))
+    check("CLI: real pin refuses the golden ledger's short roster (exit 1, named)",
+          p.returncode == 1 and "roster_shrink" in p.stderr,
+          (p.returncode, p.stdout, p.stderr))
+    with tempfile.TemporaryDirectory() as td:
+        mirror = os.path.join(td, "bin")
+        shutil.copytree(os.path.dirname(BIN), mirror)
+        mbin = os.path.join(mirror, os.path.basename(BIN))
+        src = open(mbin).read()
+        assert "EXPECTED_REQUIRED" in src
+        src = re.sub(r"EXPECTED_REQUIRED = \([^)]*\)",
+                     'EXPECTED_REQUIRED = ("deps", "tests", "venv")', src, count=1)
+        src = re.sub(r"EXPECTED_PRESENT = \([^)]*\)", "EXPECTED_PRESENT = ()", src,
+                     count=1)
+        with open(mbin, "w") as fh:
+            fh.write(src)
+        p = subprocess.run([sys.executable, mbin, "--sha", REAL_SHA, "--ledger", LEDGER,
+                            "--max-age-s", huge], capture_output=True, text=True,
+                           timeout=30)
+        check("CLI exit 0 for real SHA (era-scoped mirror pin)", p.returncode == 0,
+              (p.returncode, p.stdout, p.stderr))
     p = subprocess.run([sys.executable, BIN, "--sha", "deadbeef", "--ledger", LEDGER,
                         "--max-age-s", huge], capture_output=True, text=True, timeout=30)
     check("CLI exit 1 + reason for unknown SHA",
