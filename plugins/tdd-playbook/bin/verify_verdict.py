@@ -56,6 +56,31 @@ import _ed25519_verify  # noqa: E402  (sibling stdlib verifier, vendored alongsi
 # closed, which looks identical to an engine outage. Single source, auto-vendored, format-tested.
 PINNED_ISSUER_KEY = "08c6913d3c2db56d00a9507a13677bf8b6b243bca2e59bfe3b5c986f43ed4fda"
 
+# ---- repo-side ROSTER PIN (2026-08-03 CIVerd hand-off; David's decisions same day) ----
+# Verified engine-side: the verdict's `required` set is derived from what RAN — an echo,
+# not a contract — so a check silently dropped from the engine's root config yields a
+# GREEN verdict with a shorter checks[] that still verifies and still evaluates ok. This
+# pin is the ONLY release-side defense against roster shrink. HARDCODED on purpose (no
+# config file, no CLI/env override — same posture as no --force): changing it is a loud
+# diff on exactly the surface the engine's integrity_globs should cover.
+# EXPECTED_REQUIRED members must appear in BOTH the snapshot's `required` list and its
+# checks[] (a check that ran but was demoted from required is also a shrink).
+# EXPECTED_PRESENT members are pinned PRESENCE-ONLY (advisory checks never block on
+# being red, but their silent DISAPPEARANCE is the absence-blind-monitor class §6c bans).
+EXPECTED_REQUIRED = ("dataflow", "deps", "dryrun", "registry", "tests", "venv")
+EXPECTED_PRESENT = ("staleness",)
+
+
+def roster_gaps(snapshot):
+    """Sorted names missing from the snapshot vs the pin. Empty = roster intact.
+    Engine-side EXTRA checks (integrity, integrity_baseline, ...) are always fine —
+    the pin is a floor, never an exact-set match."""
+    required = set(snapshot.get("required") or [])
+    ran = {c.get("name") for c in snapshot.get("checks") or [] if isinstance(c, dict)}
+    gaps = {n for n in EXPECTED_REQUIRED if n not in required or n not in ran}
+    gaps.update(n for n in EXPECTED_PRESENT if n not in ran)
+    return sorted(gaps)
+
 WIRE_VERSION = "memproof-2"      # signed domain-separation constant; NOT the product name
 VERDICTS_REPO = "davalst/civerd-verdicts"
 
@@ -314,7 +339,13 @@ def may_release(ledger_lines, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_K
         if not res["verdict_ok"]:
             run_hit = (False, "verdict_not_ok")
         else:
-            run_hit = (True, "ok")
+            gaps = roster_gaps(snap)
+            if gaps:
+                # roster shrink fails LOUD and NAMED on an otherwise-valid verdict —
+                # never "no verdict", never a pass
+                run_hit = (False, "roster_shrink:" + ",".join(gaps))
+            else:
+                run_hit = (True, "ok")
 
     if run_hit is None:
         return (False, "no_verdict_for_commit")

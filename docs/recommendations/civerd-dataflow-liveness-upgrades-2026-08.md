@@ -22,6 +22,21 @@ with no agent write path** (repos.yml, plant recipes, baselines, decomposition �
 floor contract). Every proposal below is read-only from the repo side: new *echoes* and
 *fields*, never new agent-writable inputs.
 
+**CORRECTIONS (2026-08-03, from the engine session's review — applied inline below):**
+(a) the cross-validation corpus path is
+`plugins/tdd-playbook/tests/fixtures/civerd_crossvalidation_corpus.json` (the original
+cited a wrong relative path); (b) the sweep's real path in this repo is
+`plugins/tdd-playbook/bin/dataflow_sweeps.py` (`.claude/bin/…` is only where downstream
+repos receive the vendored copy); (c) the engine reads NOTHING from this repo as
+configuration — root config only — so `civerd-integrity.yml` is this repo's DECLARATION
+of its gate/targets, mirrored into root config by David, never a live config seam. Item
+2's open question was answered engine-side with evidence (a dropped check yields a green,
+accepted verdict), making the repo-side roster pin the primary deliverable — shipped in
+this repo 2026-08-03 (`verify_verdict.py` EXPECTED_REQUIRED/EXPECTED_PRESENT). Item 5's
+`dataflow` check went LIVE in root config the same day. Items 1/2's engine-side transport
+(`snapshot.armed`, `checks_expected`) is explicitly NOT coming soon — the snapshot schema
+is closed by design; nothing in this repo may wait on those fields.
+
 ---
 
 ## 1. Armed-surfaces echo — output-end proof for `repos.yml` arming ⭐ highest value
@@ -65,7 +80,8 @@ that stops being scheduled leaves no row.
 
 Every field the engine signs into a verdict should have a **named consumer** in the
 reference verifier or the cross-validation corpus
-(`tests/fixtures/civerd_crossvalidation_corpus.json` / memrebel's golden bundle). A
+(`plugins/tdd-playbook/tests/fixtures/civerd_crossvalidation_corpus.json` / memrebel's
+golden bundle). A
 signed field nobody reads is a write-only flow with signature costs; worse, it *looks*
 load-bearing to the next maintainer. One-time sweep + a corpus rule ("new verdict field
 ⇒ new consumer case in the corpus, or a dated exemption naming the future consumer").
@@ -84,11 +100,13 @@ config-reads. Also a useful forcing function internally: a check that can only c
 
 ## 5. A `dataflow` check class on the engine timer
 
-The repo-side handoff already has the right seam: `civerd-integrity.yml` declares
-`suite_cmd` (and shrinking the manifest is itself a diff-integrity signal). Proposal:
-repos may declare Tier-1 dataflow sweep commands the same way (e.g.
-`dataflow_cmd: "python3 .claude/bin/dataflow_sweeps.py ..."` or simply folded into
-`suite_cmd`), and the engine runs them as a named `dataflow` check on its daily timer —
+The repo-side declaration already has the right shape: `civerd-integrity.yml` states the
+repo's gate + plant targets (a DECLARATION David mirrors into root config — the engine
+reads nothing from the repo as configuration; see CORRECTIONS above). Proposal: repos
+declare Tier-1 dataflow sweep commands the same way (in this repo:
+`python3 plugins/tdd-playbook/bin/dataflow_sweeps.py all --config dataflow-sweeps.json`;
+downstream repos run their vendored `.claude/bin/` copy), mirrored into root config as a
+named `dataflow` check on the engine's timer —
 so edge liveness is attested by the independent engine, not only by the working agent's
 own suite run. Cost: one config key + a runner slot; the sweeps themselves are repo-side
 and already exiting 0/1/2. (If folding into `suite_cmd` is judged sufficient, the named

@@ -316,6 +316,13 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")),
           _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")[:2])
+    check("integrity_globs arming debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 naming civerd-release-gate — the roster pin's own surface has no "
+          "engine-side shrink protection until David arms it",
+          not _fires("2026-09-15", "TDD-PLAYBOOK INTEGRITY_GLOBS")
+          and any("civerd-release-gate" in v
+                  for v in _fires("2026-09-16", "TDD-PLAYBOOK INTEGRITY_GLOBS")),
+          _fires("2026-09-16", "TDD-PLAYBOOK INTEGRITY_GLOBS")[:2])
 
 
 def test_probe_survivor_gaps():

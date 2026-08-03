@@ -318,6 +318,11 @@
           "what": "verify_verdict.py shipped IN v1.12.0, so the tag-gate is only the standing control from v1.13.0 on; v1.12.0 is dogfooded live against CIVerd's verdict for its own SHA. P3 rollout to downstream repos (cheliped, MemStruct) still pending.",
           "owner": "david",
           "expires": "2026-09-15"
+        },
+        {
+          "what": "TDD-PLAYBOOK INTEGRITY_GLOBS ARMING (2026-08-03 engine hand-off): the roster pin (verify_verdict.py EXPECTED_REQUIRED/EXPECTED_PRESENT) defends against ENGINE-CONFIG drift, but edits INSIDE this repo to the verifier/pin/test surface have no engine-side shrink protection — the engine's armed-surface coverage today spans only the two engine repos. David arms integrity_globs for tdd-playbook in root config covering at least: plugins/tdd-playbook/bin/verify_verdict.py, plugins/tdd-playbook/bin/_ed25519_verify.py, plugins/tdd-playbook/tests/test_verify_verdict.py, plugins/tdd-playbook/tests/test_release_verify.py, scripts/release_verify.py, scripts/civerd_gate.sh, civerd-integrity.yml, dataflow-sweeps.json. Done = the globs live in root config (next verdict's integrity check covers them), or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-09-15"
         }
       ]
     },

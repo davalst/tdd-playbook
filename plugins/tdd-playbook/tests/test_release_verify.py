@@ -34,6 +34,11 @@ def _mirror_with_era_pin():
     shutil.copy2(SCRIPT, os.path.join(td, "scripts", "release_verify.py"))
     shutil.copytree(os.path.join(REPO, "plugins", "tdd-playbook", "bin"),
                     os.path.join(td, "plugins", "tdd-playbook", "bin"))
+    os.makedirs(os.path.join(td, "plugins", "tdd-playbook", ".claude-plugin"))
+    shutil.copy2(os.path.join(REPO, "plugins", "tdd-playbook", ".claude-plugin",
+                              "plugin.json"),
+                 os.path.join(td, "plugins", "tdd-playbook", ".claude-plugin",
+                              "plugin.json"))
     vb = os.path.join(td, "plugins", "tdd-playbook", "bin", "verify_verdict.py")
     src = open(vb).read()
     assert "EXPECTED_REQUIRED" in src, "roster pin missing from verify_verdict.py"
