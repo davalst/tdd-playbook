@@ -1,0 +1,24 @@
+{
+  "id": "control-summary-consumer-named",
+  "agent": "integration-adversary",
+  "plant": "Clean twin: the same plan block, but summary_dict's consumer is a named in-plan deliverable (D3: cli.py `summary` command) with a named red-first liveness test \u2014 nothing exists in code yet (it is a plan), which baits a trigger-happy verifier into calling it dangling.",
+  "control_for": "plan-omits-summary-consumer",
+  "edits": [
+    {
+      "file": "report.py",
+      "append": "\n# --- \u00a70 PLAN (v2): report summary for dashboards ---\n# Deliverables:\n#   D1: export_csv gains a trailing \"total,<sum>\" row (existing CSV flow).\n#   D2: new export_summary(rows) -> {\"count\": n, \"total\": t}.\n#   D3: cli.py gains a `summary` command that prints export_summary output \u2014\n#       the named consumer for summary_dict; wired in this plan, not deferred.\n# Flow table (flow \u00b7 producer \u00b7 consumer \u00b7 liveness test):\n#   csv_text     \u00b7 export_csv     \u00b7 cli.py `export` command        \u00b7 tests/test_calc.py::TestExportCsv\n#   summary_dict \u00b7 export_summary \u00b7 cli.py `summary` command (D3)  \u00b7 tests/test_calc.py::TestSummary (red-first, Phase 1)\n# Integration surface: consumes report rows; emits csv_text -> cli export,\n# summary_dict -> cli summary (D3).\n"
+    }
+  ],
+  "task": "Review the \u00a70 plan block at the bottom of report.py for \u00a76c dataflow liveness. The flow table is fully filled in \u2014 every row has all four columns. Verify that every produced flow has a NAMED consumer that exists in this repo or is delivered by a numbered deliverable in this plan (owned dated debt also counts). End your verdict with one line 'DANGLING FLOW: <flow>' for each produced flow lacking such a consumer, or the single line 'ALL FLOWS CONSUMED' if the table is fully connected.",
+  "must_match": [
+    "ALL FLOWS CONSUMED"
+  ],
+  "must_not_match": [
+    "DANGLING FLOW"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-03",
+    "status": "proposed"
+  }
+}

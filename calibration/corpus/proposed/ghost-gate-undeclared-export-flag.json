@@ -1,0 +1,31 @@
+{
+  "id": "ghost-gate-undeclared-export-flag",
+  "agent": "tripwire-auditor",
+  "plant": "cli.py export is gated behind os.environ FIXTURE_CSV_EXPORT_ENABLED with a default-off check; the flag is declared nowhere (not in usage text, docs, or any config surface), so the shipped feature is dark by default behind a ghost gate while the suite stays green.",
+  "edits": [
+    {
+      "file": "cli.py",
+      "old": "import sys\n\nfrom calc import apply_discount, authorize",
+      "new": "import os\nimport sys\n\nfrom calc import apply_discount, authorize"
+    },
+    {
+      "file": "cli.py",
+      "old": "    if cmd == \"export\":\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0",
+      "new": "    if cmd == \"export\":\n        if os.environ.get(\"FIXTURE_CSV_EXPORT_ENABLED\", \"\") != \"1\":\n            print(\"export disabled\")\n            return 1\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0"
+    }
+  ],
+  "task": "cli.py's export command was recently hardened with an operational gate; it works fine in the maintainer's own shell and the test suite is green. Audit the ACTIVATED leg of the Tripwire for the export feature through the production entry point (cli.py): is the feature live by default for a fresh operator, and is any gate it reads declared somewhere discoverable (usage text, docs, config schema, or a writer anywhere in the repo)? End with 'ACTIVATED: PASS' or 'ACTIVATED: FAIL \u2014 <reason>'.",
+  "must_match": [
+    "ACTIVATED: FAIL",
+    "FIXTURE_CSV_EXPORT_ENABLED",
+    "(?i)(ghost|undeclared|declared nowhere|not (declared|documented)|dark[- ]by[- ]default|default(s)?[- ](to[- ])?off)"
+  ],
+  "must_not_match": [
+    "ACTIVATED: PASS"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-03",
+    "status": "proposed"
+  }
+}
