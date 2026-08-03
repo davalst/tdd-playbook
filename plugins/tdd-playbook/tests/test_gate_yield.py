@@ -276,7 +276,12 @@ def test_dataflow_producer_consumer_seam():
               (p2.returncode, body, p2.stdout, p2.stderr))
 
     # the run_calibration tail exercises the WHOLE seam: stub model run -> sweeps ->
-    # rollup row in the ISOLATED sibling record (never the repo's committed file)
+    # rollup row in the ISOLATED sibling record (never the repo's committed file).
+    # Isolation is proven by the real record being UNCHANGED (it legitimately exists
+    # since the first live calibration cycle, 2026-08-03 — absence was a fixture-era
+    # assumption, not the invariant).
+    repo_record = os.path.join(REPO, "docs", "calibration", "dataflow_yield.md")
+    record_before = open(repo_record).read() if os.path.isfile(repo_record) else None
     with tempfile.TemporaryDirectory() as d:
         stub = os.path.join(d, "claude-stub")
         with open(stub, "w") as fh:
@@ -299,9 +304,9 @@ def test_dataflow_producer_consumer_seam():
               (p.returncode, p.stdout[-400:], os.path.isfile(sibling)))
         check("seam: run_calibration prints the dataflow yield section",
               "dataflow" in p.stdout.lower(), p.stdout[-400:])
-        repo_record = os.path.join(REPO, "docs", "calibration", "dataflow_yield.md")
+        record_after = open(repo_record).read() if os.path.isfile(repo_record) else None
         check("seam: the repo's real record was NOT touched by the test run",
-              not os.path.isfile(repo_record), repo_record)
+              record_before == record_after, repo_record)
 
 
 if __name__ == "__main__":
