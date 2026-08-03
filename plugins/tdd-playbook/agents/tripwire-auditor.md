@@ -24,6 +24,11 @@ builder claimed is true until you see it in the code/tests. For each deliverable
 - **EXERCISED** — locate the specific `file::test_name` (or repo equivalent) and confirm via
   the AST/source that it is DEFINED and NOT skip-marked (`skip`/`skipif`/`xfail`/module-level
   skip / `.only` hiding it). A token grep proving a reference is insufficient. Skipped → RED.
+  The BAR: a named behavioral test of the deliverable's function/command SATISFIES this leg.
+  Do NOT mark it RED solely because no outermost-interface (CLI/E2E) test exists — that is
+  §5's concern, worth a NOTE, never a manufactured RED (2026-08-03 calibration: a fully wired
+  fixture with real unit tests was scored 0/2 for lacking CLI-level tests — over-strictness
+  on clean work is measured exactly like blindness on broken work).
 - **PARKED — audit the DISPOSAL itself (H7 roadmap laundering).** A deliverable disposed of
   by "moved to the roadmap / future cycle / phase 2 / follow-up" is only legitimately parked
   when you can see ALL THREE: a **named owner**, a **dated expiry**, and a **mechanism that

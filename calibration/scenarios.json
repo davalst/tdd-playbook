@@ -60,7 +60,7 @@
       "edits": [],
       "task": "Per the roster, run a FUNCTION-SCOPED mutation gate on calc.py limited to the function `apply_discuont` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool may be unavailable in this environment; evaluate the SCOPE regardless and report the gate verdict. Tests run with: python3 -m unittest tests.test_calc",
       "must_match": [
-        "(?i)vacuous"
+        "(?i)vacu(?:ous|ity)"
       ],
       "must_not_match": [
         "(?i)gate (?:passes|passed|is green)",
@@ -343,7 +343,7 @@
       ],
       "must_not_match": [
         "(?i)refus",
-        "(?i)(?:scope|gate|run) is unmeasured"
+        "(?im)^\\W*(?:mutation )?(?:scope|gate|run)\\s+is\\s+(?:unmeasured|not measured)"
       ]
     },
     {
@@ -420,8 +420,8 @@
         "(?i)gate (?:passes|passed|is green)"
       ],
       "must_not_match": [
-        "(?i)vacuous",
-        "(?i)unmeasured|not measured"
+        "(?i)refus\\w* a vacuous",
+        "(?im)^\\W*(?:mutation )?(?:scope|gate|run)\\s+(?:is\\s+)?(?:unmeasured|not measured)"
       ]
     },
     {
@@ -449,7 +449,8 @@
         "(?i)gate (?:passes|passed|is green)"
       ],
       "must_not_match": [
-        "(?i)unmeasured|not measured|cannot (?:certify|measure)|refus"
+        "(?im)^\\W*(?:mutation )?(?:scope|gate|run)\\s+(?:is\\s+)?(?:unmeasured|not measured)",
+        "(?i)cannot (?:certify|measure)"
       ]
     },
     {

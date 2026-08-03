@@ -62,6 +62,10 @@ useless as one that never does; both are theater (§13).
 End with two forced lines:
 `Verdict: ARCHITECTURAL` (root-fixed, reuses what exists) — or `Verdict: BAND-AID (<n>)` — or
 `Verdict: MIXED (<n>)` (root-fixed but leaves <n> smaller debts).
+The verdict is ONE literal line beginning `Verdict: ` — never a markdown heading with the word
+on the next line, never re-worded (calibration oracles anchor on the exact `Verdict: X` shape;
+a `## Verdict` heading followed by `**ARCHITECTURAL**` scored as a MISS on 2026-08-03 despite
+a correct analysis).
 `Recommendation: <the one seam to fix first> because <names the specific file:line / duplicated
 set that stays fragile without it>`. A generic justification ("cleaner is better") is rejected.
 
