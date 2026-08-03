@@ -286,6 +286,24 @@ def test_own_registry():
           and any("deliberation-capture" in v for v in _fires("2026-11-01", "CONSUMER: the store")),
           _fires("2026-11-01", "CONSUMER: the store")[:2])
 
+    # v1.24 (§6c) dated triggers — same string-pinned boundary discipline (H7: every
+    # deferral gets a mechanical trigger PROVEN in the landing commit, never prose):
+    check("create-capability debt (2026-09-15): silent on its expiry day, fires 09-16 "
+          "naming calibration-loop — writer-with-no-reader plants need new fixture files",
+          not _fires("2026-09-15", "APPLY_EDITS CREATE")
+          and any("calibration-loop" in v for v in _fires("2026-09-16", "APPLY_EDITS CREATE")),
+          _fires("2026-09-16", "APPLY_EDITS CREATE")[:2])
+    check("Cheliped Tier-2 pilot debt (2026-09-15): silent on its expiry day, fires 09-16 "
+          "naming dataflow-sweeps — the pilot must not silently become the permanent state",
+          not _fires("2026-09-15", "CHELIPED TIER-2 PILOT")
+          and any("dataflow-sweeps" in v for v in _fires("2026-09-16", "CHELIPED TIER-2 PILOT")),
+          _fires("2026-09-16", "CHELIPED TIER-2 PILOT")[:2])
+    check("CIVerd proposal-forwarding debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 naming dataflow-sweeps — a review doc nobody actioned is the documented rot",
+          not _fires("2026-09-15", "CIVERD UPGRADE PROPOSAL")
+          and any("dataflow-sweeps" in v for v in _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")),
+          _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")[:2])
+
 
 def test_probe_survivor_gaps():
     """CIVerd's engine-owned planted-error probe, FIRST live firing (2026-07-28), planted

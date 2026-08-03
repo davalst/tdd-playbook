@@ -175,6 +175,11 @@
           "what": "R3 premise plants (roadmap §E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and §0's spec-integrity rules have no planted test. Falsification probe first — author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here — never silence",
           "owner": "david",
           "expires": "2026-08-17"
+        },
+        {
+          "what": "APPLY_EDITS CREATE capability (v1.24 §6c D15 — promoted from the corpus README's 'possible future enhancement' to owned deliverable-or-debt because it is now LOAD-BEARING: writer-with-no-reader plants naturally want NEW fixture files, and apply_edits can only modify existing ones — 4 of 6 first-batch candidates were mechanically rejected for exactly this). Done = run_calibration.apply_edits accepts a {file, create} edit shape with red-first tests + validate_scenario coverage, or a consciously re-dated entry here — never silence",
+          "owner": "david",
+          "expires": "2026-09-15"
         }
       ]
     },

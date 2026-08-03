@@ -60,7 +60,10 @@ python3 plugins/tdd-playbook/bin/capability_registry.py doctor   # bundle check 
   cycle going each calibration period
   (`author_plants.py` below); the corpus only grows. Known pipeline limitation: plants can only
   MODIFY existing fixture files (`apply_edits` cannot create files — 4 of 6 first-batch candidates
-  were mechanically rejected for that; a `create` capability is a possible future enhancement).
+  were mechanically rejected for that; the `create` capability is now OWNED DATED DEBT on
+  `calibration-loop` (expires 2026-09-15, trigger string-pinned in test_capability_registry) —
+  v1.24 promoted it from "possible future enhancement" because §6c's writer-with-no-reader
+  plants need new fixture files, making the gap load-bearing).
 
 **Each cycle, grow the corpus (co-evolution — a frozen plant library is a static gate):**
 ```bash
