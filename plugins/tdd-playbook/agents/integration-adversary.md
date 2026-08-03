@@ -38,7 +38,7 @@ Skipping you there is skipping the one guard built for the author's own blind sp
    inventory). No registry → build a quick map from entry points: daemon/app factory,
    schedulers, tool registrations, event topics, config gates — and FLAG the missing registry
    itself as a gap.
-2. **Hunt the five island patterns** against that inventory:
+2. **Hunt the six island patterns** against that inventory:
    - **Consumes gaps** — existing seams (event bus, memory, telemetry, config UI, hooks,
      single-outbound-delivery gateways) this feature should plug into but the plan never mentions.
    - **Write-only emitters** — anything the plan produces whose CONSUMER is unnamed. "Captured
@@ -57,6 +57,16 @@ Skipping you there is skipping the one guard built for the author's own blind sp
      test via an exemption / ignore / allow-list entry. That hatch is for non-user-facing
      internals only; on a user-facing gate the SAME entry hides the feature from both surfaces
      at once — flag any exemption entry that points at a user-controllable capability.
+   - **Dangling flows** (§6c) — the EDGE-granularity refutes the five node patterns miss (a
+     plan can name a consumer for every capability while individual flows dead-end). Ask,
+     and demand the plan answer: name a flow this plan WRITES that nothing reads · a value
+     it ACCEPTS that no code compares · a template key with no placeholder (and a
+     placeholder with no supplier) · a surface whose lifecycle events the plan never fires ·
+     and for ANY migration/strangler deliverable: the old seam's outputs — if the plan does
+     not enumerate what the replaced seam FED, that enumeration is the first gap (the
+     origin's single worst event: one successful migration, five orphaned consumers). A plan
+     with a §0 flow table is judged row by row — an empty consumer cell is an island by
+     definition.
 3. For each gap: a CONCRETE one-liner grounded in code ("`daemon.py:88` starts server+cron+
    Telegram only — nothing starts the new adapter"), plus its disposition — **new deliverable
    in this plan** or **integration-debt entry (owner + expiry)**. Silent deferral is not a

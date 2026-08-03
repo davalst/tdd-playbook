@@ -24,11 +24,17 @@ Per deliverable:
   concurrency, failure/rollback, scale, second-order). One-line justification each; no padding.
 - **UX tests** — bullets: what the user does → what they should see, driven through the
   REAL interface (web/Telegram/TUI/MCP/CLI per this repo).
-- **Integration surface** (§0 — islands are cheapest to catch here). Four answers, each grounded
+- **Integration surface** (§0 — islands are cheapest to catch here). Five answers, each grounded
   in this repo (consult `capabilities.json` if the repo has one):
   - *Consumes:* which existing subsystems this plugs into — "none" stated, never implied.
   - *Emits → named consumer:* who READS everything this produces; "nobody yet" becomes an
-    integration-debt entry with an owner + expiry, never a silent write-only loop.
+    integration-debt entry with an owner + expiry, never a silent write-only loop. For
+    feature/multi-deliverable/migration work, render this as the §6c FLOW TABLE —
+    `flow · producer · consumer · liveness test`, one row per flow — so an empty consumer
+    cell is visible (it means dated debt, or the flow doesn't ship). A MIGRATION deliverable
+    must enumerate the replaced seam's outputs as rows: what the old seam fed, and whether
+    each consumer is fed / retired-with-deletion / dated debt. Small diffs keep the prose
+    answer.
   - *Surface parity:* which interfaces get the behavior; divergence stated, not discovered.
   - *Reverse sweep:* which existing features should now use this capability — each hit is a
     deliverable here or a dated debt entry.

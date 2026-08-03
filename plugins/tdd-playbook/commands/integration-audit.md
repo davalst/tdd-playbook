@@ -1,5 +1,5 @@
 ---
-description: Run the Playbook §6a/§12 integration audit — sweep the platform for the four darkness classes (broken wiring, dark-by-default, surface drift, old-blind-to-new), adversarially verify every negative, ship findings with owners and expiries.
+description: Run the Playbook §6a/§12 integration audit — sweep the platform for the five darkness classes (broken wiring, dark-by-default, surface drift, old-blind-to-new, dangling dataflow), adversarially verify every negative, ship findings with owners and expiries.
 argument-hint: [scope — default: the whole repo]
 ---
 
@@ -16,7 +16,7 @@ doctor` for the current dark inventory); else build the inventory from entry poi
 daemon/app factory, schedulers/cron registrations, tool/toolset registrations, event topics,
 config gates, per-surface adapters. **A missing registry is itself Finding #0.**
 
-**2. Sweep per subsystem (parallel subagents for a large repo), each hunting the four
+**2. Sweep per subsystem (parallel subagents for a large repo), each hunting the five
 darkness classes:**
 - **Broken wiring** — emitter and consumer on DIFFERENT seams (private vs global bus);
   components nothing ever starts; tools advertised in prompts/toolsets but never attached to
@@ -35,6 +35,24 @@ darkness classes:**
 - **Old-blind-to-new** — existing features never upgraded to consume a newer capability;
   WRITE-ONLY loops (produced from N places, read by nothing); allowlists/snapshots frozen
   before newer tools existed; telemetry aggregation that can't see the newest engines.
+- **Dangling dataflow** (§6c) — EDGE darkness the four node classes miss: a repo can be
+  100% wired at capability level while individual flows dead-end. Hunt list = the T1–T7
+  escape classes, one-line signatures: T1 a refactor orphaned a consumer (the new seam
+  never feeds what the old one fed) · T2 written, never read (a table/field/telemetry row
+  with no query site) · T3 built, never called (a pruner/cleaner nothing invokes —
+  unbounded growth) · T4 accepted value, no reader (an enum value you can set that no code
+  compares) · T5 render-seam gap (key supplied, no placeholder — `str.format` drops it
+  silently) · T6 registry collision/interception (a shadowed handler behind a passing
+  membership test) · T7 event never fired on a surface (consumers starve on the platforms
+  that never emit). Plus: ghost gates (undeclared `*_enabled`-shaped reads),
+  absence-blind monitors (dead and quiet look identical — no scheduled-vs-observed check),
+  and exemption PROSE contradicting the artifact of record ("always-on" over a default-off
+  config). **Partition boundary (keeps §13's repeat-class metric honest — never
+  double-home a finding):** capability/topic-level write-only stays class 4 (the
+  registry's R-WRITE-ONLY granularity); field/value/event-INSTANCE-level dangling goes
+  here; exemption-prose inconsistency is class 5, but an exemption used AS a darkness
+  hatch stays class 2. The standing mechanism to name in step 5 is the Tier-1 sweep
+  (`dataflow_sweeps.py`) or a Tier-2 pairing sweep with its FP budget.
 
 **3. Claims discipline (§12) — non-negotiable here, because every juicy finding is a NEGATIVE:**
 - "X is dead / never wired / never called" requires the EXHAUSTIVE sweep (all reference,
