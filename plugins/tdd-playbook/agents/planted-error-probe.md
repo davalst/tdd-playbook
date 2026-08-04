@@ -22,7 +22,10 @@ Protocol (be meticulous about cleanup):
    existing tests. Record the exact file + line you will mutate.
 2. **Plant ONE known-meaningful bug** — flip a comparison, off-by-one a boundary, drop a
    permission check, negate a condition, swap an operator. Something a correct suite MUST
-   catch. NOT a syntax error, NOT an equivalent mutant.
+   catch. NOT a syntax error, NOT an equivalent mutant. Prefer reconstructing a REAL
+   historical defect from git history over inventing a synthetic mutation when one exists
+   (`git log`/`git show <pre-fix-rev>:<file>` — the repo's own fixed bugs are the cheapest,
+   most realistic plants, and §13's guard-calibration rule makes them the canonical ones).
 3. Run the relevant tests (repo's runner). Expected: they go RED at the behavior you broke.
 4. **Verdict:**
    - tests FAIL → `SAFETY NET VERIFIED` — name the test that caught it.

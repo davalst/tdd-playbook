@@ -126,6 +126,16 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   source text GREPPED instead of parsed — each is the "route fired" trap wearing operational clothes.
   Exercise the effect. (Origin: `RuntimeMaxSec` is silently ignored for `Type=oneshot` — systemd said so
   in the journal and it was scrolled past for hours because the check read the directive, never the run.)
+  Assert the resulting STATE, not the action that should have produced it: the store CONTAINS the
+  grant, not "the recorder was called"; the port is FREE, not "kill returned 0". Proxies are locally
+  plausible at the moment of writing — knowing this rule did not stop four of them in one documented
+  session — so use the mechanical trigger below (the "what would still be true if this were broken?"
+  question), not vigilance.
+- **An `except` that hides a PROGRAMMING error is a proxy for "this worked".** Best-effort blocks log
+  at a level someone reads, and never wrap the line that establishes the guarantee (origin: a broad
+  `except Exception: pass` around a capability check swallowed a `TypeError` from a missing
+  constructor argument — a security classification silently never applied; the same
+  silence-over-error class as §6c's silent-default boundaries).
 - **Built ≠ wired-in ≠ usable.** Verify the user-visible outcome AND reachability (nav/button/CLI/tool)
   AND second-order effects (what list it leaves/joins; consistency across surfaces). Report "route
   exists + unit-tested" separately from "reachable + behaviorally verified." Don't round up.
@@ -148,6 +158,15 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
 - **Every new mock needs a one-line justification** — what real behavior it stands in for and
   where that behavior IS tested for real. Over-mocking is the most common agent weakening
   (H3: agents add mocks ~36% of test commits vs ~26% for humans); the `overmock` guard reminds.
+- **A double may narrow or fake BEHAVIOR; it must never supply an attribute, method, or seam the
+  production object lacks.** If the double needs it to work, the production code needs it to work
+  (origin: a fixture injected the very method production was missing — `to_state` on a
+  SimpleNamespace — converting an integration bug into a green test for months). Distinct from
+  over-mocking: that substitutes behavior, this substitutes EXISTENCE; §6's self-wired-fixtures
+  rule is the assembly-level twin. Mechanical check per stack: build doubles with
+  `create_autospec`/equivalent so a missing production attribute RAISES, or assert
+  `hasattr(ProductionType, seam)` for the seam under test; the `overmock` guard flags
+  fabricated-seam doubles.
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
   guarantee of test quality. The guarantee is §3–§4 (+ the TEST-LOCK above).
 - **Tests that cannot fail — the fixture-VALUE trap.** Red-first proves a test fails without the
@@ -170,8 +189,11 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
     True. (An earlier session blamed the test framework for the "unexplained" pass; it was the
     assertion, and a two-line experiment settled it. **A mystery in a test is usually the test** —
     spend the two minutes, don't ship a note that says "unexplained".)
-  The check, after writing any test: **what value would make this pass with the bug present?** If
-  such a value exists and your fixture uses it, change the fixture. Prefer EXACT values to orderings
+  The check, after writing any test — and its GENERAL form governs every assertion and every piece
+  of claimed evidence (§12): **what would still be true if this were broken?** If the assertion
+  survives the defect, it is a proxy. The fixture special case:
+  **what value would make this pass with the bug present?** If such a value exists and your
+  fixture uses it, change the fixture. Prefer EXACT values to orderings
   — `a > b` is satisfied by a dozen wrong implementations; `w == (h + 0.35*20)/(n + 20)` by one.
   This is the strongest argument for §4 as an OUTCOME gate, not a ritual: the mutation score is the
   only thing that reliably catches this whole class.
@@ -475,7 +497,10 @@ target the feature). For each deliverable assert it is:
   that band-aids the architecture is exactly the failure this catches. Advisory like the
   integration-adversary, not a hard block, but its findings are specific enough to act on.
 - Author it red-first, drive to green; report `Tripwire: N/N`. It's a FLOOR, not a target — never add a
-  hollow button/stub to go green. Anchor it to the PLAN, not the implementation. A plan that
+  hollow button/stub to go green. Anchor it to the PLAN, not the implementation. And a NEW
+  guard/check/tripwire a plan ships is itself subject to §13's guard-calibration rule — replayed
+  against the defect that motivated it before it is trusted (the documented escape is a tripwire
+  that excused exactly the code shape it was built to catch). A plan that
   carries a §0 flow table reports `Tripwire: N/N (+ FLOWS M/M)` — each flow row's liveness test
   named and GREEN (§6c); a deliverable can be four-leg green while its flow dead-ends.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral
@@ -602,7 +627,9 @@ proves parity for the seam it replaces, and every "wired" claim is proven at the
   gate-yield record), and is PROMOTED to blocking only on pilot data — never by default. The
   Tier-1 reference tool is `plugins/tdd-playbook/bin/dataflow_sweeps.py` (config-driven: repos
   tailor the pairing map, they don't fork the scanner).
-- **Sweep governance — exemptions are debt, not prose.** A sweep exemption REUSES the house debt
+- **Sweep governance — exemptions are debt, not prose.** A new sweep obeys §13's guard-calibration
+  rule first: replayed against the motivating defect (the pre-fix artifact) before it gates
+  anything — a sweep that reports zero offenders on the bug it was built for is decorative. A sweep exemption REUSES the house debt
   shape `{what, owner, expires}` (the registry's R-DEBT contract; an EXPIRED exemption REDs the
   sweep, provable via `--as-of`) — never a new sibling format. An exemption naming a user-facing
   flow FAILS the suite, by §6a's companion rule (one canonical statement — cross-reference, don't
@@ -729,6 +756,9 @@ For audit / review / diagnosis / "investigate X" work the deliverable is CLAIMS,
 anti-performative rules apply. TDD says no code before a failing test; this says **no claim before
 resolving evidence**. (Origin: a self-audit shipped 8 findings, 4 false — every false one was an
 unverified NEGATIVE about a file it never read.)
+- **§1's trigger question governs evidence too:** before citing, ask what would still be true if
+  the claim were false — evidence that survives the defect is a proxy, not proof (one canonical
+  statement lives in §1; this is the claims-side application, not a copy).
 - **Cite-or-refuse, and NEGATIVES need exhaustive search:** "X is never called / unreachable / not
   wired / dead" requires grepping ALL reference/assignment sites and citing the SWEEP. Citing one
   file where X *should* appear proves nothing — the refutation usually lives in a file you didn't
@@ -813,6 +843,18 @@ visible — never "trust the agent more."
   WIRED and engaged (config drift, aux-model swaps, intent rerouting; built ≠ wired applies to the
   loop itself). A planted error surviving to publication is a BLOCKING failure; the floor only
   rises. A verification loop that never fails a planted error is theater.
+- **Guard calibration — a guard born from a specific defect is not trusted until it has been
+  REPLAYED against the motivating artifact.** Red-first proves a test CAN fail; it does not prove
+  it fails for the reason it was built — the documented case (Cheliped, 2026-08) is a guard that
+  passed the pre-fix shape of the very bug it existed to catch: red-first in ritual, never failed
+  for the right reason. The replay is one command — `git show <pre-fix-rev>:<file>` through the
+  new guard; a sweep that reports zero offenders on the historical bug is decorative. Then §1's
+  regression iron rule applies with the GUARD as the code under test: freeze the defect shape as a
+  planted fixture, and cite the pre-fix rev/blob sha in the fixture's docstring — the sha is the
+  anchor that keeps repo fixtures, corpus plants, and any engine-side replay recipe pointing at
+  the SAME defect instead of three drifting transcriptions. This generalizes the planted-error
+  rule from the verification loop to every individual guard; the
+  cheapest plant is the bug already in git history.
 - **Verifier-strength policy (co-evolution made mechanical):** calibration measures verifier
   recall against the CURRENT doer model; new plants are authored by an adversary on ≥ the
   doer's model tier (`calibration/author_plants.py` — human-reviewed, corpus only grows, each

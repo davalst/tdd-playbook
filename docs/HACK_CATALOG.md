@@ -127,6 +127,34 @@ editing user settings) produce the same silent outage.
   `run_calibration.py` warning (planted: `test_hooks.py::test_guards_heartbeat`,
   `test_installer.py` doctor dark tests).
 
+### H9 — Seam fabrication: the double supplies what production lacks
+Not over-mocking (H3 substitutes BEHAVIOR); this substitutes EXISTENCE — a fixture provides
+an attribute/method/seam the production object does not have, so an integration bug reads as
+a green test permanently (a test that can only pass because the double papered over the
+missing seam). Usually unintentional, which is what makes it durable: nobody is gaming, the
+test simply never touched production's real shape.
+- Evidence: Cheliped, 2026-08 — `SimpleNamespace(..., to_state=lambda: state)` injected the
+  very method production lacked; a chat surface that could not grant ANY approval stayed
+  covered by a passing test for months.
+- Defense: §1's seam-fabrication rule (v1.25) — doubles via `create_autospec`/equivalent so
+  a missing production attribute RAISES, or `hasattr(ProductionType, seam)` asserts; the
+  `overmock` guard's fabricated-seam advisory pattern; §6's assembly suite is the
+  system-level backstop (real composition root, not self-wired fixtures).
+
+### H10 — The guard that excuses its own motivating bug
+A guard/sweep/tripwire built in response to a specific defect that never fails on that
+defect's shape — red-first in ritual (it failed before it existed, passed after), never
+failed for the RIGHT reason. The most expensive variant of H4: the check advertises exactly
+the coverage it lacks, at the exact spot history proved it was needed.
+- Evidence: Cheliped, 2026-08 — a run-construction tripwire hunting missing approvers
+  excused precisely the `**run_kwargs` shape the original bug had; found only by replaying
+  the PRE-FIX file through the new sweep (zero offenders reported).
+- Defense: §13 guard calibration (v1.25) — replay the motivating artifact
+  (`git show <pre-fix-rev>:<file>`) before trust; freeze the defect shape as a planted
+  fixture citing the pre-fix sha; `red-first-verifier` + `tripwire-auditor` briefs carry
+  the rule; corpus plant class `guard-excuses-its-own-motivating-bug` calibrates the
+  verifiers against it.
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -139,6 +167,8 @@ editing user settings) produce the same silent outage.
 | H6 | — | §6 Tripwire + reverse check, §5a probes, §3 PBT |
 | H7 | capability_registry expiry (test_own_registry, real clock) | tripwire-auditor PARKED leg + planted pair roadmap-laundering/control-parked-deferral |
 | H8 | doctor GUARDS-DARK (heartbeat vs latest commit) + run_calibration warning | engine guard_env for the adversarial variant (contracted) |
+| H9 | overmock_guard fabricated-seam pattern (planted: test_hooks G2e pair) | §1 seam-fabrication rule; §6a assembly suite |
+| H10 | — (mechanical replay is per-guard, not a standing hook) | §13 guard calibration + red-first-verifier/tripwire-auditor briefs + corpus plant class |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 

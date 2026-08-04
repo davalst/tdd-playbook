@@ -141,6 +141,13 @@ mechanisms.
      ghost-gates advisory) where the flow kind exists in this repo, with a repo-local
      sweep config; migrations prove CONSUMER PARITY for the seam they replace (enumerate
      what the old seam fed; each consumer fed / retired-with-deletion / dated debt).
+   - §13 guard calibration (v1.25): a NEW guard/sweep/tripwire born from a specific defect
+     is replayed against the motivating artifact (`git show <pre-fix-rev>:<file>`) before
+     it is trusted, then the defect shape is FROZEN as a planted fixture citing the
+     pre-fix sha in its docstring — red-first alone proves a guard can fail, not that it
+     fails for the reason it was built. And a test double may fake behavior but never
+     supply an attribute/method/seam production lacks (build doubles with
+     create_autospec/equivalent so a missing seam raises).
    - The Tripwire has FOUR legs now: BUILT + WIRED + ACTIVATED + EXERCISED, with wiring
      proven through the PRODUCTION composition root (self-assembling fixtures don't count).
    - The registry only GROWS as features land; `validate` joins the release gate and

@@ -29,6 +29,11 @@ builder claimed is true until you see it in the code/tests. For each deliverable
   §5's concern, worth a NOTE, never a manufactured RED (2026-08-03 calibration: a fully wired
   fixture with real unit tests was scored 0/2 for lacking CLI-level tests — over-strictness
   on clean work is measured exactly like blindness on broken work).
+  For a deliverable that IS a guard/check/sweep, EXERCISED additionally asks (§13 guard
+  calibration, v1.25): does its planted fixture include the motivating defect shape, pre-fix
+  rev/sha cited in the docstring? A guard that is red-first-in-ritual with no
+  motivating-defect fixture gets a NOTE — and a RED if the plan claimed guard calibration
+  (the documented escape is a guard that passed the pre-fix shape of its own motivating bug).
 - **PARKED — audit the DISPOSAL itself (H7 roadmap laundering).** A deliverable disposed of
   by "moved to the roadmap / future cycle / phase 2 / follow-up" is only legitimately parked
   when you can see ALL THREE: a **named owner**, a **dated expiry**, and a **mechanism that

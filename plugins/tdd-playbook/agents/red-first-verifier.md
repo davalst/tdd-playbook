@@ -23,6 +23,13 @@ Given a test (file::name) and the change it guards:
 4. Restore the working tree exactly as you found it and PROVE it: `with_snapshot.py verify`
    must exit clean (it also counts stashes, so a stray stash is caught).
 
+**Guard calibration (§13, v1.25):** when the test under verification IS a guard/sweep/tripwire
+born from a specific defect, "fails for the RIGHT reason" additionally means the PRE-FIX artifact
+fails it — locate or request the motivating rev and replay it (`git show <pre-fix-rev>:<file>`
+through the guard) before certifying. A guard that reports clean on the very bug it was built to
+catch is red-first in ritual only — NOT VERIFIED regardless of an ordinary red-then-green
+(the documented escape: a tripwire that excused exactly the code shape of its motivating bug).
+
 Be adversarial: a test that passes without the fix is a false guarantee — say so plainly.
 The verdict is SYMMETRIC and fails closed: VERIFIED requires BOTH runs — fails-without AND
 passes-with. A test that passes in both states pins nothing; a test that fails in both
