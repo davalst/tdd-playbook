@@ -99,13 +99,27 @@ SUMMARY_LINE_RX = re.compile(
 class Tally:
     def __init__(self, sub):
         self.sub = sub
-        self.checked = 0
-        self.unresolvable = 0
+        self.checked = 0          # sites/pairs/claims actually VERIFIED — the only
+                                  # counter that can vouch for the scan (vacuity keys
+                                  # on this alone; v1.25 arch-F1)
         self.exempted = 0
-        self.violations = []  # (target, message, kind) — kind: "sweep" | "exemption"
+        self.violations = []      # (target, message, kind) — kind: "sweep" | "exemption"
+        self.unresolved = []      # per-site NAMED targets, e.g. "src/x.py::<dyn:EXPR>" —
+                                  # a count is never a silent pass, and a NAME lets §6c's
+                                  # "dynamic sites get a named dated exemption" be
+                                  # mechanically true (v1.25 arch-F4)
+        self.scanned = set()      # rel paths this run actually read — the fact "unused
+                                  # exemption" is judged against (v1.25 arch-F2)
 
     def violate(self, target, message, kind="sweep"):
         self.violations.append((target, message, kind))
+
+    def unresolvable_site(self, target):
+        self.unresolved.append(target)
+
+    @property
+    def unresolvable(self):
+        return len(self.unresolved)
 
     def summary(self):
         return ("dataflow_sweeps {}: checked {} · violations {} · exempted {} · "
@@ -223,18 +237,52 @@ def apply_exemptions(tally, exemptions, base, as_of, registry_path):
         elif target:
             suppress[target] = ent
     kept = []
+    used = set()
     for target, message, kind in tally.violations:
         # entry-level exemption violations always survive (typed kind, not a string
         # prefix proxy); sweep violations covered by a clean live exemption are counted
         # AND PRINTED as exempted — visible, dated, expiring, never silent
         if target in suppress and kind == "sweep":
             tally.exempted += 1
+            used.add(target)
             ent = suppress[target]
             print("  EXEMPTED {}: {} (owner: {}, expires: {})".format(
                 target, ent.get("what"), ent.get("owner"), ent.get("expires")))
         else:
             kept.append((target, message, kind))
     tally.violations = kept
+    # named unresolvable sites may carry a named dated exemption too (§6c: "dynamic
+    # templates get a NAMED dated exemption") — matched ones count exempted, never checked
+    still_unresolved = []
+    for target in tally.unresolved:
+        if target in suppress:
+            tally.exempted += 1
+            used.add(target)
+            ent = suppress[target]
+            print("  EXEMPTED {}: {} (owner: {}, expires: {})".format(
+                target, ent.get("what"), ent.get("owner"), ent.get("expires")))
+        else:
+            still_unresolved.append(target)
+            print("  UNRESOLVABLE {}".format(target))
+    tally.unresolved = still_unresolved
+    # stale vs unmatched (v1.25 arch-F2 — "unused" is judged against the SCANNED set,
+    # never against what this run happened to flag): a live exemption whose target's
+    # file WAS scanned but matched nothing is stale debt hygiene -> fail closed; a
+    # target outside this run's scan is a distinct, printed, non-blocking state so a
+    # narrowed scan never false-REDs someone else's debt
+    for target, ent in suppress.items():
+        if target in used:
+            continue
+        target_file = target.split("::", 1)[0]
+        if target_file in tally.scanned:
+            tally.violate(target,
+                          "exemption matches nothing — the target's file was scanned "
+                          "and produced no matching site; remove the entry or fix the "
+                          "target (a stale exemption silently excuses the next "
+                          "regression at that name)", kind="exemption")
+        else:
+            print("  EXEMPTION NOT IN SCAN {}: target's file is not in scan for this "
+                  "run (covered by a different sweep/config?)".format(target))
 
 
 # ------------------------------------------------------------------ render-pairing
@@ -274,16 +322,19 @@ def _module_str_constants(tree):
     return consts
 
 
-def _check_pairing(tally, target_prefix, template, supplied_kw, supplied_pos,
+def _check_pairing(tally, target_prefix, dyn_target, template, supplied_kw, supplied_pos,
                    star_args=False, star_kwargs=False):
+    """Both-directions pairing for one resolved call site. Returns True when the site
+    was actually VERIFIED (the caller credits `checked` on True and ONLY on True —
+    an unresolvable site can never vouch for the scan, v1.25 arch-F1)."""
     fields = _template_fields(template)
     if fields is None:
-        tally.unresolvable += 1
-        return
+        tally.unresolvable_site(dyn_target)
+        return False
     named, auto, max_idx = fields
     if star_args or star_kwargs:
-        tally.unresolvable += 1
-        return
+        tally.unresolvable_site(dyn_target)
+        return False
     needed_pos = max(auto, max_idx + 1)
     for root in sorted(named - set(supplied_kw)):
         tally.violate("{}::{}".format(target_prefix, root),
@@ -302,14 +353,32 @@ def _check_pairing(tally, target_prefix, template, supplied_kw, supplied_pos,
             tally.violate("{}::<positional>".format(target_prefix),
                           "surplus positional argument(s): call supplies {}, template has "
                           "{} — silently dropped value".format(supplied_pos, needed_pos))
+    return True
+
+
+def _dyn_target(base, path, src, expr_node):
+    """Per-site NAMED target for an unresolvable site: <relpath>::<dyn:SOURCE-SEGMENT>.
+    Keyed on the receiver's source text — unique per template expression, stable under
+    line moves — never a file-wide blanket (v1.25 arch-F4)."""
+    seg = None
+    try:
+        seg = ast.get_source_segment(src, expr_node)
+    except Exception:  # noqa: BLE001 — a naming fallback, never a crash
+        seg = None
+    seg = (seg or "?").strip().replace("\n", " ")
+    if len(seg) > 60:
+        seg = seg[:57] + "..."
+    return "{}::<dyn:{}>".format(rel(base, path), seg)
 
 
 def sweep_render_pairing(cfg, base, tally):
     section = cfg.get("render_pairing") or {}
     for path in iter_py_files(base, section.get("scan") or []):
+        tally.scanned.add(rel(base, path))
         try:
             with open(path) as fh:
-                tree = ast.parse(fh.read())
+                src = fh.read()
+            tree = ast.parse(src)
         except (SyntaxError, ValueError, OSError) as e:
             # fail CLOSED: a file the sweep could not read/parse is a violation, never
             # an "unresolvable" that vouches for the scan (script-adversary F1)
@@ -330,32 +399,35 @@ def sweep_render_pairing(cfg, base, tally):
             elif isinstance(recv, ast.Name) and recv.id in consts:
                 template = consts[recv.id]
             else:
-                tally.checked += 1
-                tally.unresolvable += 1
+                # dynamic receiver — NAMED per site; never credits `checked`
+                tally.unresolvable_site(_dyn_target(base, path, src, recv))
                 continue
-            tally.checked += 1
-            prefix = "{}:{}".format(rel(base, path), getattr(node, "lineno", "?"))
             target_prefix = rel(base, path)
+            dyn_target = _dyn_target(base, path, src, recv)
             if node.func.attr == "format_map":
                 arg = node.args[0] if node.args else None
                 if (isinstance(arg, ast.Dict)
                         and all(isinstance(k, ast.Constant) and isinstance(k.value, str)
                                 for k in arg.keys)):
-                    _check_pairing(tally, target_prefix, template,
-                                   [k.value for k in arg.keys], None)
+                    if _check_pairing(tally, target_prefix, dyn_target, template,
+                                      [k.value for k in arg.keys], None):
+                        tally.checked += 1
                 else:
-                    tally.unresolvable += 1
+                    tally.unresolvable_site(dyn_target)
                 continue
             star_args = any(isinstance(a, ast.Starred) for a in node.args)
             star_kwargs = any(kw.arg is None for kw in node.keywords)
             supplied_kw = [kw.arg for kw in node.keywords if kw.arg is not None]
             supplied_pos = sum(1 for a in node.args if not isinstance(a, ast.Starred))
-            _check_pairing(tally, target_prefix, template, supplied_kw, supplied_pos,
-                           star_args, star_kwargs)
+            if _check_pairing(tally, target_prefix, dyn_target, template, supplied_kw,
+                              supplied_pos, star_args, star_kwargs):
+                tally.checked += 1
 
     for pair in section.get("template_pairs") or []:
         tpl_path = os.path.join(base, pair.get("template", ""))
         sup_path = os.path.join(base, pair.get("supplier", ""))
+        tally.scanned.add(pair.get("template", ""))
+        tally.scanned.add(pair.get("supplier", ""))
         pair_target = "{}<->{}".format(pair.get("template"), pair.get("supplier"))
         if not os.path.isfile(tpl_path):
             tally.violate(pair_target, "template file missing (fail closed)")
@@ -447,9 +519,11 @@ def sweep_ghost_gates(cfg, base, tally, strict):
     print("dataflow_sweeps ghost-gates: Tier 2 — advisory by default, --strict makes it "
           "blocking; promotion to blocking is a pilot-data decision (§6c).")
     for path in iter_py_files(base, section.get("scan") or []):
+        tally.scanned.add(rel(base, path))
         try:
             with open(path) as fh:
-                tree = ast.parse(fh.read())
+                src = fh.read()
+            tree = ast.parse(src)
         except (SyntaxError, ValueError, OSError) as e:
             tally.violate(rel(base, path),
                           "could not read/parse scanned file (fail closed): {}"
@@ -469,7 +543,8 @@ def sweep_ghost_gates(cfg, base, tally, strict):
             else:
                 continue
             if not (isinstance(name_arg, ast.Constant) and isinstance(name_arg.value, str)):
-                tally.unresolvable += 1  # dynamic name — counted, never a silent pass
+                # dynamic name — NAMED per site, counted, never a silent pass
+                tally.unresolvable_site(_dyn_target(base, path, src, name_arg))
                 continue
             name = name_arg.value
             if not any(fnmatch.fnmatch(name, p) for p in patterns):
@@ -587,7 +662,12 @@ def run_one(sub, cfg, base, as_of, strict, registry_path):
     print(tally.summary())
 
     if tally.violations:
-        if sub == "ghost-gates" and not strict:
+        # Tier-2 advisory covers the sweep HEURISTIC's findings only — debt hygiene
+        # (exemption-kind violations: malformed/expired/stale/user-facing entries) is
+        # exact by construction and ALWAYS blocks (v1.25 arch-F3: an EXPIRED exemption
+        # under ghost-gates used to exit 0)
+        if sub == "ghost-gates" and not strict \
+                and all(kind == "sweep" for _t, _m, kind in tally.violations):
             print("dataflow_sweeps ghost-gates: {} finding(s) — ADVISORY (Tier 2); "
                   "--strict to block".format(len(tally.violations)))
             return EXIT_CLEAN
@@ -617,7 +697,13 @@ def main(argv=None):
             "file is a VIOLATION (fail closed), and a scan that CHECKED nothing refuses.\n"
             "Exit codes: 0 clean · 1 violation · 2 usage ONLY · 3 vacuous-refusal\n"
             "('refusing a vacuous pass' — a scan of nothing is a real blocking verdict,\n"
-            "distinct from a fat-fingered flag; exit 2 is usage, never proof)."))
+            "distinct from a fat-fingered flag; exit 2 is usage, never proof).\n"
+            "Exemption hygiene (v1.25): unresolvable sites carry per-site names\n"
+            "(<relpath>::<dyn:EXPR>) an exemption may target; an exemption whose target\n"
+            "was SCANNED but matched nothing is a stale-entry VIOLATION (a target\n"
+            "outside this run's scan prints 'NOT IN SCAN', non-blocking); exemption-\n"
+            "entry violations (malformed/expired/stale/user-facing) always block, even\n"
+            "under ghost-gates' advisory tier."))
     ap.add_argument("subcommand",
                     choices=["render-pairing", "ghost-gates", "exemption-prose", "all"])
     ap.add_argument("--config", required=True, help="JSON sweep config; paths inside are "
