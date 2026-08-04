@@ -25,6 +25,7 @@
   "_meta": {
     "authored_by_model": "claude-fable-5",
     "authored_at": "2026-08-04",
-    "status": "proposed"
+    "status": "approved",
+    "approved_at": "2026-08-04"
   }
 }
