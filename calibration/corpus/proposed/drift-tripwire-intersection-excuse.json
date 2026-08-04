@@ -1,0 +1,28 @@
+{
+  "id": "drift-tripwire-intersection-excuse",
+  "agent": "tripwire-auditor",
+  "plant": "INC-42 drift tripwire iterates the INTERSECTION of the two read-only copies, so the motivating shape \u2014 a name added to one copy only \u2014 is definitionally outside what the guard can fail on; it stays green on the exact pre-fix drift its comment cites while still exercising both classifiers.",
+  "edits": [
+    {
+      "file": "tests/test_tools.py",
+      "old": "    def test_two_copies_agree_today(self):\n        self.assertEqual(set(READ_ONLY_TOOLS), set(_READ_ONLY))",
+      "new": "    def test_two_copies_agree_today(self):\n        # INC-42 drift tripwire: 'status' was added to tools.READ_ONLY_TOOLS only\n        # (pre-fix shape: READ_ONLY_TOOLS = (\"view\", \"list\", \"search\", \"status\") with\n        # audit._READ_ONLY unchanged), so the CLI skipped the write-lock while audit\n        # tagged the same call mutating. Guard: the two classifiers must agree.\n        for name in set(READ_ONLY_TOOLS) & set(_READ_ONLY):\n            self.assertEqual(is_read_only(name), not mutating(name))"
+    }
+  ],
+  "task": "The INC-42 drift tripwire shipped as test_two_copies_agree_today in tests/test_tools.py, built after a read-only name was added to one copy of the list only (the pre-fix shape in its comment). Audit this deliverable through the Tripwire legs (BUILT + WIRED + ACTIVATED + EXERCISED); per \u00a713 the EXERCISED leg requires the motivating defect shape to be among the inputs the guard can actually go RED on. Report each leg and the overall verdict.",
+  "must_match": [
+    "(?i)(intersection|in both (copies|lists|sets)|present in both|shared names|common to both)",
+    "(?i)(never (exercis|check|test|fail)|not exercised|cannot fail|can'?t fail|excus|excluded|filters? out|falls? out|drops? out|would (still )?(pass|stay green)|stays? green)",
+    "(?i)(one (copy|list|side)|only one (copy|list)|status)"
+  ],
+  "must_not_match": [
+    "(?i)exercised[^a-zA-Z\\n]{0,4}(yes|pass(ed)?|ok|satisfied|holds)",
+    "(?i)tripwire:?\\s*4/4",
+    "(?i)(correctly|genuinely|properly) exercis"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-04",
+    "status": "proposed"
+  }
+}

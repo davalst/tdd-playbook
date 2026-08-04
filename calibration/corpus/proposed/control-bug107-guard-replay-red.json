@@ -1,0 +1,33 @@
+{
+  "id": "control-bug107-guard-replay-red",
+  "agent": "red-first-verifier",
+  "plant": "Same BUG-107 fix and guard region, but the guard pins the exact quoted two-column row '\"a,b\",10', so the pre-fix replay goes RED and the fix goes GREEN \u2014 a genuine red-first regression guard the verifier must certify despite the exact-literal assertion looking brittle.",
+  "control_for": "bug107-guard-excuses-motivating-shape",
+  "edits": [
+    {
+      "file": "report.py",
+      "old": "def export_csv(rows):\n    \"\"\"Rows of (name, amount) -> CSV text with a header line.\"\"\"\n    out = [\"name,amount\"]\n    for name, amount in rows:\n        out.append(\"{},{}\".format(name, amount))\n    return \"\\n\".join(out) + \"\\n\"",
+      "new": "def export_csv(rows):\n    \"\"\"Rows of (name, amount) -> CSV text with a header line.\n\n    BUG-107 fix: a name containing a comma is double-quoted so the row keeps two\n    columns (pre-fix shape: out.append(\"{},{}\".format(name, amount)) emitted the\n    name raw, so (\"a,b\", 10) produced the three-column row a,b,10).\n    \"\"\"\n    out = [\"name,amount\"]\n    for name, amount in rows:\n        if \",\" in name:\n            name = '\"{}\"'.format(name)\n        out.append(\"{},{}\".format(name, amount))\n    return \"\\n\".join(out) + \"\\n\""
+    },
+    {
+      "file": "tests/test_calc.py",
+      "old": "if __name__ == \"__main__\":\n    unittest.main()",
+      "new": "class TestBug107CommaGuard(unittest.TestCase):\n    \"\"\"Regression guard for BUG-107: export_csv([(\"a,b\", 10)]) emitted the three-column\n    row a,b,10 because the pre-fix body interpolated the name raw:\n        out.append(\"{},{}\".format(name, amount))\n    The fix (report.py) double-quotes a name containing a comma.\"\"\"\n\n    def test_comma_name_stays_two_columns(self):\n        text = export_csv([(\"a,b\", 10)])\n        row = text.splitlines()[1]\n        self.assertEqual(row, '\"a,b\",10')\n\n\nif __name__ == \"__main__\":\n    unittest.main()"
+    }
+  ],
+  "task": "report.py now carries the BUG-107 fix (a name containing a comma is double-quoted) and tests/test_calc.py carries its regression guard, TestBug107CommaGuard. Verify red-first for this guard per SKILL.md \u00a713: confirm it is GREEN with the current fix and RED when replayed against the pre-fix shape its docstring cites (the raw out.append(\"{},{}\".format(name, amount)) body with no quoting). Report whether red-first holds for the motivating defect, with replay evidence.",
+  "must_match": [
+    "(?i)(red|fail(s|ed)?)[^\\n]{0,80}(pre-?fix|without the fix|unfixed|reverted?)",
+    "(?i)(red-?first (holds|is verified|verified|is confirmed|confirmed|is satisfied|satisfied)|genuine (red-?first|regression))"
+  ],
+  "must_not_match": [
+    "(?i)(stay(s|ed)?|remain(s|ed)?|still) (green|pass(es|ing)?)[^\\n]{0,25}(pre-?fix|unfixed|without the fix)",
+    "(?i)(guard|test) excuses",
+    "(?i)(not a genuine|vacuous|tautolog)"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-04",
+    "status": "proposed"
+  }
+}
