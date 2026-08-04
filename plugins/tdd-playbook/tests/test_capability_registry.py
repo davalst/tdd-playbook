@@ -316,13 +316,15 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")),
           _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")[:2])
-    check("integrity_globs arming debt (2026-09-15): silent on its expiry day, fires "
-          "09-16 naming civerd-release-gate — the roster pin's own surface has no "
-          "engine-side shrink protection until David arms it",
-          not _fires("2026-09-15", "TDD-PLAYBOOK INTEGRITY_GLOBS")
-          and any("civerd-release-gate" in v
-                  for v in _fires("2026-09-16", "TDD-PLAYBOOK INTEGRITY_GLOBS")),
-          _fires("2026-09-16", "TDD-PLAYBOOK INTEGRITY_GLOBS")[:2])
+    # (The TDD-PLAYBOOK INTEGRITY_GLOBS arming pin lived here 2026-08-03 only: the debt
+    # was PAID the same day it was registered — David armed the engine-side floor/globs
+    # on srv1621832; the corrected record is the `notes` field on civerd-release-gate.
+    # A paid loan's trigger is retired WITH this dated comment, never silently.)
+    check("integrity_globs arming: paid — the entry is GONE, its record survives in notes",
+          not _fires("2026-09-16", "TDD-PLAYBOOK INTEGRITY_GLOBS")
+          and any("PAID 2026-08-03" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "civerd-release-gate"))
 
 
 def test_probe_survivor_gaps():

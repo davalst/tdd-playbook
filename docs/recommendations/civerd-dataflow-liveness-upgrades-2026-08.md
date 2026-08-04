@@ -35,7 +35,14 @@ accepted verdict), making the repo-side roster pin the primary deliverable — s
 this repo 2026-08-03 (`verify_verdict.py` EXPECTED_REQUIRED/EXPECTED_PRESENT). Item 5's
 `dataflow` check went LIVE in root config the same day. Items 1/2's engine-side transport
 (`snapshot.armed`, `checks_expected`) is explicitly NOT coming soon — the snapshot schema
-is closed by design; nothing in this repo may wait on those fields.
+is closed by design; nothing in this repo may wait on those fields. **Armed 2026-08-03
+(same day):** David added engine-side shrink protection for this repo's release-trust
+surface in root config — non-Python surfaces via the integrity FLOOR (not globs; the
+original repo-side recommendation mis-stated the mechanism), Python surfaces per the
+recommended list, with the release_verify.py path corrected during the edit. The
+plan_globs arming for `docs/plans/gated/` was deliberately NOT folded into that edit —
+turning it on makes unmet plans block releases and gets its own review (the existing
+plan-authoring debt, 2026-09-15).
 
 ---
 
