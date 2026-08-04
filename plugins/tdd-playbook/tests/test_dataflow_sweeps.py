@@ -127,12 +127,21 @@ def test_render_pairing():
               "fstr.py" not in out, out)
 
     with tempfile.TemporaryDirectory() as td:
-        # **kwargs is UNRESOLVABLE — counted, never a silent pass, never a violation
+        # **kwargs is UNRESOLVABLE — counted, never a violation; and per the vacuity
+        # invariant ("nothing CHECKED is never CLEAN") an ALL-unresolvable scan REFUSES
+        # (v1.25 arch-F1: the v1.24 code credited `checked` before resolution, so this
+        # scan exited 0 — the buggy semantics this pin corrects)
         write(td, "src/dyn.py", 'D = "{x}".format(**{"x": 1})\n')
         c = cfg(td, {"render_pairing": {"scan": ["src"]}})
         rc, out = run(["render-pairing", "--config", c])
-        check("render: **kwargs counted unresolvable, not a violation",
-              rc == 0 and "unresolvable 1" in out, (rc, out))
+        check("render: **kwargs-only scan is unresolvable AND vacuous -> exit 3",
+              rc == 3 and "unresolvable 1" in out, (rc, out))
+        # CONTROL: one real checked site alongside the unresolvable one -> clean pass
+        write(td, "src/ok.py", 'Z = "{k}".format(k=2)\n')
+        rc2, out2 = run(["render-pairing", "--config", c])
+        check("render: unresolvable beside a checked site -> exit 0",
+              rc2 == 0 and "checked 1" in out2 and "unresolvable 1" in out2,
+              (rc2, out2))
 
     with tempfile.TemporaryDirectory() as td:
         # cross-file template pair: template placeholder set vs supplier's supplied keys
@@ -565,6 +574,116 @@ def test_plant_target_handoff():
           "dataflow_sweeps.py" not in stripped)
 
 
+# ------------------------------------------------------------------ v1.25 guard-calibration fold
+def test_render_vacuity_all_dynamic():
+    """arch-F1 (probe-proven live bug): a render scan whose only site is a DYNAMIC
+    receiver exited 0 in v1.24 against the tool's own invariant. Frozen here as the
+    guard-calibration fixture for the fix (motivating artifact: v1.24's shipped
+    dataflow_sweeps.py, repo rev a3277eb)."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/dyn.py", 'TEMPLATES = {}\nE = TEMPLATES[k].format(a=1)\n')
+        c = cfg(td, {"render_pairing": {"scan": ["src"]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("all-dynamic render scan -> vacuous refusal 3, never a silent pass",
+              rc == 3 and "refusing a vacuous pass" in out, (rc, out))
+        check("dynamic site is NAMED per-site (not a file-wide blanket)",
+              "::<dyn:TEMPLATES[k]>" in out, out)
+
+
+def test_exemption_kind_survives_advisory():
+    """arch-F3 (live bug): under ghost-gates without --strict, v1.24 downgraded EVERY
+    violation to exit 0 — including entry-level exemption violations (an EXPIRED
+    exemption never blocked). Debt hygiene is exact by construction; only the sweep
+    HEURISTIC's findings are advisory."""
+    def gcfg(td, exemptions):
+        write(td, "src/ghost.py", 'v = getattr(cfg, "x_enabled", True)\n')
+        write(td, "src/declared.py", "class Config:\n    z_enabled = False\n")
+        return cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+                                        "declared_fields": {"kind": "module",
+                                                            "path": "src/declared.py"},
+                                        "exemptions": exemptions}})
+
+    with tempfile.TemporaryDirectory() as td:
+        c = gcfg(td, [{"what": "stale", "target": "src/ghost.py::x_enabled",
+                       "owner": "d", "expires": "2026-01-01"}])
+        rc, out = run(["ghost-gates", "--config", c, "--as-of", "2026-08-04"])
+        rc2, _ = run(["ghost-gates", "--config", c, "--as-of", "2026-08-04", "--strict"])
+        check("EXPIRED exemption blocks even in advisory mode (both modes exit 1)",
+              rc == 1 and rc2 == 1 and "EXPIRED" in out, (rc, rc2, out))
+    with tempfile.TemporaryDirectory() as td:
+        # CONTROL: a live exemption suppressing the ghost finding stays clean both modes
+        c = gcfg(td, [{"what": "gate ships next sprint",
+                       "target": "src/ghost.py::x_enabled",
+                       "owner": "d", "expires": "2099-01-01"}])
+        rc, out = run(["ghost-gates", "--config", c, "--as-of", "2026-08-04"])
+        rc2, _ = run(["ghost-gates", "--config", c, "--as-of", "2026-08-04", "--strict"])
+        check("live exemption suppresses the finding in both modes",
+              rc == 0 and rc2 == 0 and "exempted 1" in out, (rc, rc2, out))
+
+
+def test_stale_vs_unmatched_exemptions():
+    """G4.3 (David: fail closed + arch-F2's proxy correction): UNUSED means the target's
+    file WAS scanned and nothing matched — that REDs. A target OUTSIDE the scanned set
+    is the distinct 'not in scan' state (printed, non-blocking) so a narrowed scan never
+    false-REDs debt hygiene."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/clean.py", 'Z = "{k}".format(k=2)\n')
+        # PLANT: target names a scanned file but matches nothing (defect was fixed)
+        c = cfg(td, {"render_pairing": {"scan": ["src"], "exemptions": [
+            {"what": "old dropped-key", "target": "src/clean.py::ghost",
+             "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("stale exemption (file scanned, no match) -> violation, exit 1",
+              rc == 1 and "matches nothing" in out, (rc, out))
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/clean.py", 'Z = "{k}".format(k=2)\n')
+        # CONTROL: target's file is NOT in this scan — distinct state, non-blocking
+        c = cfg(td, {"render_pairing": {"scan": ["src"], "exemptions": [
+            {"what": "covers the tier-2 sweep's file", "target": "other/mod.py::key",
+             "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("unmatched exemption (target not in scan) -> printed, exit 0",
+              rc == 0 and "not in scan" in out, (rc, out))
+
+
+def test_dynamic_site_exemption():
+    """G4.4: unresolvable sites carry per-site <dyn:EXPR> targets, so §6c's 'dynamic
+    templates get a NAMED dated exemption' is mechanically true — the exemption matches
+    THE site (never a file-wide blanket) and counts exempted, never checked."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/mix.py",
+              'TEMPLATES = {}\nZ = "{k}".format(k=2)\nE = TEMPLATES[k].format(a=1)\n')
+        c = cfg(td, {"render_pairing": {"scan": ["src"], "exemptions": [
+            {"what": "runtime-selected template; reader is the render smoke test",
+             "target": "src/mix.py::<dyn:TEMPLATES[k]>",
+             "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("named dynamic-site exemption is USED: exempted 1, checked 1, exit 0",
+              rc == 0 and "exempted 1" in out and "checked 1" in out
+              and "unresolvable 0" in out, (rc, out))
+
+
+def test_layer10_motivating_shape():
+    """The motivating-artifact fixture for the render-pairing sweep itself — a
+    RECONSTRUCTION of the Cheliped T5 escape: layer_10_autonomy_awareness supplied its
+    key while the prompt template carried no placeholder; str.format dropped it
+    silently and the fix was verified at the supply end for months.
+    Cheliped artifact: prompts/layers (layer_10_autonomy_awareness), pre-fix blob sha:
+    <reported back by the Cheliped pilot — G6b>; the engine-side replay recipe (G7)
+    anchors on the same sha. This fixture is the reconstruction, stated as such."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "prompt.tmpl", "You are the agent. Context: {context}. Task: {task}.")
+        write(td, "layers.py",
+              'body = TEMPLATE.format(context=ctx, task=t, '
+              'layer_10_autonomy_awareness=layer)\n')
+        c = cfg(td, {"render_pairing": {"scan": [], "template_pairs": [
+            {"template": "prompt.tmpl", "supplier": "layers.py"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("layer_10 shape: supplied key with no placeholder -> T5 violation, named",
+              rc == 1 and "layer_10_autonomy_awareness" in out
+              and "no placeholder" in out, (rc, out))
+
+
 # ------------------------------------------------------------------ tool doc honesty
 def test_help_states_bounds():
     """`--help` states what v1 does NOT cover — silently unhandled classes are the trap."""
@@ -590,7 +709,10 @@ def main():
              test_duplicate_exemption_targets,
              test_prose_vocabulary_closed, test_config_shape_and_containment,
              test_all_subcommand, test_companion_unclassified_fails_closed,
-             test_plant_target_handoff, test_help_states_bounds)
+             test_plant_target_handoff,
+             test_render_vacuity_all_dynamic, test_exemption_kind_survives_advisory,
+             test_stale_vs_unmatched_exemptions, test_dynamic_site_exemption,
+             test_layer10_motivating_shape, test_help_states_bounds)
     if MOD is not None:
         for fn in suite:
             print("\n[{}]".format(fn.__name__))

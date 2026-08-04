@@ -796,6 +796,77 @@ def test_v124_gate_surfaces_planted():
                                     "flow · producer · consumer · liveness test")))
 
 
+def test_v125_doctrine():
+    """v1.25 Guard Calibration (the Cheliped proposal, 2026-08-04 — a guard that excused
+    the very bug shape it was built to catch: red-first in ritual, never failed for the
+    right reason). Pins:
+      §13 the guard-calibration rule: REPLAY the motivating artifact (git show pre-fix),
+          cite the sha in the frozen fixture's docstring; cross-refs from §6 and §6c so
+          tripwire/sweep authors actually reach it.
+      §1  the generalized trigger question (single home); state-not-action clause;
+          silent-failure corollary; the seam-fabrication rule (+ create_autospec check).
+      §12 the trigger question governs claims evidence (cross-ref, not a copy).
+      Briefs: red-first-verifier / tripwire-auditor / planted-error-probe adopt the rule
+      (agents receive briefs, not SKILL — the v1.7 house precedent)."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §13: replay the motivating artifact",
+         "REPLAYED against the motivating artifact"),
+        ("SKILL §13: sha cited in the frozen fixture", "cite the pre-fix"),
+        ("SKILL §13: cheapest plant is the bug in git history",
+         "cheapest plant is the bug already in git history"),
+        ("SKILL §6: tripwire guards reach the rule",
+         "itself subject to §13's guard-calibration"),
+        ("SKILL §6c: sweep governance reaches the rule",
+         "obeys §13's guard-calibration"),
+        ("SKILL §1: generalized trigger question",
+         "what would still be true if this were broken?"),
+        ("SKILL §1: state-not-action clause",
+         "Assert the resulting STATE, not the action"),
+        ("SKILL §1: silent-failure corollary",
+         "never wrap the line that establishes the guarantee"),
+        ("SKILL §1: seam-fabrication rule",
+         "never supply an attribute, method, or seam"),
+        ("SKILL §1: mechanical seam check named", "create_autospec"),
+        ("SKILL §12: trigger question governs evidence",
+         "trigger question governs evidence"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    for fname, label, needle in [
+        ("red-first-verifier.md", "right-reason includes the pre-fix artifact",
+         "PRE-FIX artifact"),
+        ("tripwire-auditor.md", "EXERCISED asks for the motivating defect shape",
+         "motivating defect shape"),
+        ("planted-error-probe.md", "prefer real historical defects",
+         "historical defect from git history"),
+    ]:
+        with open(os.path.join(AGENTS, fname)) as fh:
+            check("{}: {}".format(fname[:-3], label), needle in fh.read(),
+                  "needle {!r} missing".format(needle))
+
+
+def test_v125_planted_fixtures():
+    """The v1.25 pins must be able to FAIL (§13 calibrate-the-checker)."""
+    stripped = ("SKILL where a guard is trusted after ordinary red-first and a double "
+                "may patch in whatever production lacks.\n")
+    check("planted: missing replay needle detected",
+          "REPLAYED against the motivating artifact" not in stripped)
+    check("planted: missing trigger-question needle detected",
+          "what would still be true if this were broken?" not in stripped)
+    check("planted: missing seam-rule needle detected",
+          "never supply an attribute, method, or seam" not in stripped)
+    intact = ("a guard is REPLAYED against the motivating artifact; ask what would "
+              "still be true if this were broken?; a double may never supply an "
+              "attribute, method, or seam production lacks.\n")
+    check("planted: intact guard-calibration doctrine passes the same needles",
+          all(n in intact for n in ("REPLAYED against the motivating artifact",
+                                    "what would still be true if this were broken?",
+                                    "never supply an attribute, method, or seam")))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -808,7 +879,8 @@ def main():
                test_v114_doctrine, test_v114_planted_fixtures,
                test_v116_doctrine, test_v116_planted_fixtures,
                test_v124_doctrine, test_v124_planted_fixtures,
-               test_v124_gate_surfaces, test_v124_gate_surfaces_planted):
+               test_v124_gate_surfaces, test_v124_gate_surfaces_planted,
+               test_v125_doctrine, test_v125_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

@@ -157,6 +157,27 @@ def test_overmock():
     rc, _o, _e = run(s, edit("src/factory.py", "x", "m = mock.patch('a')"))
     check("H3: non-test file ignored", rc == 0, rc)
 
+    # v1.25 (G2e — the §1 seam-fabrication rule's mechanical trigger):
+    # create_autospec is the PRESCRIBED check for the rule (a missing production
+    # attribute RAISES) — counting it as mock noise punishes exactly the right move
+    rc, _o, e = run(s, edit(tf, "resp = client.get('/x')",
+                            "spec = create_autospec(Client)\nresp = spec.get('/x')"))
+    check("G2e: create_autospec alone is NOT a net-new mock (prescribed check)",
+          rc == 0, (rc, e))
+
+    # PLANTED (seam fabrication — the Cheliped months-green class): a double that
+    # GRAFTS a seam production may lack (SimpleNamespace with a callable member)
+    rc, _o, e = run(s, edit(tf, "result = runner()",
+                            "result = SimpleNamespace(interruptions=[], "
+                            "to_state=lambda: state)"))
+    check("G2e: fabricated-seam double flagged (advisory, names the class)",
+          rc == 1 and "seam" in e, (rc, e))
+
+    # CLEAN control: SimpleNamespace as plain data (no callable graft) stays silent
+    rc, _o, e = run(s, edit(tf, "cfg = load()",
+                            "cfg = SimpleNamespace(host='x', port=1)"))
+    check("G2e: data-only SimpleNamespace control silent", rc == 0, (rc, e))
+
 
 # ---------------------------------------------------------------------- snapshot_guard
 def test_snapshot():
