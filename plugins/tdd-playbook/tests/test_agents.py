@@ -848,6 +848,35 @@ def test_v125_doctrine():
                   "needle {!r} missing".format(needle))
 
 
+def test_v125_downstream_pins():
+    """tripwire-fold (G6a/G6c REDs): the ADOPT bullet and the HACK_CATALOG H9/H10 rows
+    are downstream adoption surfaces OUTSIDE rule (d)'s protected set — without needles
+    their silent removal is undetectable."""
+    repo_root = os.path.dirname(os.path.dirname(ROOT))
+    with open(os.path.join(repo_root, "CLAUDE.md")) as fh:
+        claude_md = fh.read()
+    check("CLAUDE.md ADOPT: guard-calibration bullet present",
+          "§13 guard calibration (v1.25)" in claude_md)
+    check("CLAUDE.md ADOPT: seam-fabrication line present",
+          "never\n     supply an attribute/method/seam" in claude_md
+          or "never supply an attribute/method/seam" in claude_md)
+    with open(os.path.join(repo_root, "docs", "HACK_CATALOG.md")) as fh:
+        catalog = fh.read()
+    for label, needle in [
+        ("HACK_CATALOG: H9 entry", "### H9 — Seam fabrication"),
+        ("HACK_CATALOG: H10 entry",
+         "### H10 — The guard that excuses its own motivating bug"),
+        ("HACK_CATALOG: H9 map row", "| H9 | overmock_guard fabricated-seam pattern"),
+        ("HACK_CATALOG: H10 map row", "| H10 | —"),
+    ]:
+        check(label, needle in catalog, "needle {!r} missing".format(needle))
+    # planted-stripped pair (§13): a catalog without the rows must be detectable
+    stripped = "| H8 | doctor GUARDS-DARK |\n"
+    check("planted: catalog stripped of H9/H10 detected",
+          "### H9 — Seam fabrication" not in stripped
+          and "| H10 | —" not in stripped)
+
+
 def test_v125_planted_fixtures():
     """The v1.25 pins must be able to FAIL (§13 calibrate-the-checker)."""
     stripped = ("SKILL where a guard is trusted after ordinary red-first and a double "
@@ -880,7 +909,8 @@ def main():
                test_v116_doctrine, test_v116_planted_fixtures,
                test_v124_doctrine, test_v124_planted_fixtures,
                test_v124_gate_surfaces, test_v124_gate_surfaces_planted,
-               test_v125_doctrine, test_v125_planted_fixtures):
+               test_v125_doctrine, test_v125_downstream_pins,
+               test_v125_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

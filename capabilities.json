@@ -190,6 +190,16 @@
           "what": "V1.24 GATE-SURFACE CALIBRATION (tripwire-fold, §13: gate-surface text changes are live-calibrated before trusted): the D7–D9 v1.24 additions (integration-audit fifth class, integration-adversary dangling-flows pattern, tdd-plan flow table) are NOT trusted until their rows land in docs/calibration/history.md — sequence in the ~2026-08-10 run AFTER the owed 3-agent re-run. Done = v1.24-surface rows in history.md, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-08-17"
+        },
+        {
+          "what": "V1.25 GATE-SURFACE CALIBRATION (§13): the guard-calibration doctrine + brief adoptions (SKILL §13/§1/§12 additions; red-first-verifier / tripwire-auditor / planted-error-probe brief lines) are NOT trusted until their rows land in docs/calibration/history.md — rides the same re-run as the v1.24 surfaces. Done = v1.25-surface rows in history.md, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-08-17"
+        },
+        {
+          "what": "V1.25 CORPUS QUEUE: review and --approve/reject the four H10 guard-excuses-its-own-motivating-bug proposals in corpus/proposed/ (bug107 + drift-tripwire pairs, target agents red-first-verifier / tripwire-auditor). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-08-17"
         }
       ]
     },
@@ -440,6 +450,11 @@
         },
         {
           "what": "CIVERD UPGRADE PROPOSAL FORWARDED y/n: hand docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md to the CIVerd engine backlog (adoption is CIVerd's call — only the forwarding is owed here; the documented rot case is a review doc nobody actioned)",
+          "owner": "david",
+          "expires": "2026-09-15"
+        },
+        {
+          "what": "LAYER_10 PRE-FIX SHA REPORT-BACK (v1.25 tripwire-fold): the Cheliped pilot reports the pre-fix layer_10_autonomy_awareness blob sha; fill the slot in test_dataflow_sweeps.py::test_layer10_motivating_shape's docstring and hand the same sha to the engine-side replay recipe — the release that invented the sha-citation rule must not ship its own slot empty forever. Done = the sha in the docstring (grep '<reported back' returns nothing), or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         }

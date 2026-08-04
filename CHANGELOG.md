@@ -3,6 +3,43 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.25.0 — 2026-08-04
+
+**Guard calibration — a guard is not trusted until it has failed on the bug that birthed
+it.** Adopts the Cheliped proposal (a guard that excused the pre-fix shape of its own
+motivating defect: red-first in ritual, never failed for the right reason); both
+plan-review adversaries dispatched, all 14 findings folded — including two live v1.24
+sweep bugs their probes proved.
+
+- **§13 guard-calibration rule:** a defect-born guard is REPLAYED against the motivating
+  artifact (`git show <pre-fix-rev>:<file>`) before trust; the defect shape is frozen as
+  a planted fixture citing the pre-fix sha (the anchor shared with corpus plants and any
+  engine-side replay recipe). Reachability cross-refs from §6 (tripwires) and §6c
+  (sweeps). Briefs adopt it: red-first-verifier (right-reason includes the pre-fix
+  artifact), tripwire-auditor (EXERCISED asks for the motivating defect shape),
+  planted-error-probe (prefer real historical defects over synthetic mutations).
+- **§1 single-home additions:** the generalized trigger question ("what would still be
+  true if this were broken?" — fixture form kept as its special case); assert the
+  resulting STATE, not the action; an `except` hiding a programming error is a proxy for
+  "this worked" (never wrap the guarantee line); the seam-fabrication rule — a double may
+  fake BEHAVIOR, never supply a seam production lacks (`create_autospec`/`hasattr`
+  checks). §12 applies the trigger question to claims evidence. HACK_CATALOG gains H9
+  (seam fabrication) + H10 (guard excuses its motivating bug) with guard-map rows.
+- **dataflow_sweeps fixes (adversary-proven live bugs):** `checked` credits only VERIFIED
+  sites — an all-dynamic scan now refuses instead of exiting 0; exemption-entry
+  violations (malformed/expired/stale/user-facing) ALWAYS block, even under ghost-gates'
+  advisory tier; stale exemptions fail closed only when the target's file was actually
+  scanned (outside-scan targets print non-blocking); unresolvable sites carry per-site
+  `<dyn:EXPR>` names an exemption may target — §6c's "dynamic templates get a NAMED dated
+  exemption" is now mechanically true; the Cheliped layer_10 shape frozen as the sweep's
+  motivating-artifact fixture (sha slot awaits the pilot's report-back).
+- **overmock_guard:** `create_autospec` de-listed from the mock-delta (it is the
+  prescribed seam check); H9 fabricated-seam advisory (SimpleNamespace grafting a
+  callable member), planted pair in test_hooks.
+- Corpus: four H10 proposals live-authored (plant+control per target agent), queued for
+  approval; V1.25 GATE-SURFACE CALIBRATION + V1.25 CORPUS QUEUE debts (2026-08-17,
+  string-pinned). Gated plan: `docs/plans/gated/2026-08-04-guard-calibration.md`.
+
 ## 1.24.0 — 2026-08-03
 
 **Dataflow Liveness (§6c) — nodes are necessary; edges are the truth.** Origin: the

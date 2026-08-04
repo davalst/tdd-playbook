@@ -684,6 +684,81 @@ def test_layer10_motivating_shape():
               and "no placeholder" in out, (rc, out))
 
 
+# ------------------------------------------------------------------ v1.25 arch-fold (post-diff review)
+def test_scanned_key_normalization():
+    """arch-F1 (probe-proven fail-open): staleness was keyed on raw path STRINGS, so a
+    './' prefix in a template_pairs config disarmed stale-exemption detection, and the
+    exemption-prose sweep never registered coverage at all — its stale check was
+    structurally dead on a blocking sweep."""
+    with tempfile.TemporaryDirectory() as td:
+        # PLANT: './'-prefixed template config + canonical exemption target — must RED
+        write(td, "prompts/x.tmpl", "Dear {name}.")
+        write(td, "sup.py", "b = T.format(name=n)\n")
+        c = cfg(td, {"render_pairing": {
+            "scan": [], "template_pairs": [{"template": "./prompts/x.tmpl",
+                                            "supplier": "sup.py"}],
+            "exemptions": [{"what": "old", "target": "prompts/x.tmpl::gone",
+                            "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("F1: './'-prefixed config cannot disarm staleness -> exit 1",
+              rc == 1 and "matches nothing" in out, (rc, out))
+    with tempfile.TemporaryDirectory() as td:
+        # PLANT: a dead exemption on the exemption-prose sweep must go STALE, not
+        # 'not in scan' — the claim set is fully enumerated every run
+        reg = {"version": 1, "capabilities": [
+            {"id": "cap-on", "summary": "s", "surfaces": ["local"],
+             "activation": {"default": "on"}, "wired_by": ["w"], "exercised_by": ["e"]}]}
+        write(td, "capabilities.json", json.dumps(reg))
+        c = cfg(td, {"exemption_prose": {
+            "claims": [{"what": "live claim", "claim": "always-on",
+                        "artifact": "capabilities.json", "capability": "cap-on"}],
+            "exemptions": [{"what": "covers a claim that no longer exists",
+                            "target": "a vanished claim",
+                            "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["exemption-prose", "--config", c])
+        check("F1: dead prose-sweep exemption goes STALE, never 'not in scan'",
+              rc == 1 and "matches nothing" in out, (rc, out))
+
+
+def test_dyn_target_collisions():
+    """arch-F2 (probe-proven): identical dynamic expressions at different sites collapsed
+    into ONE target — an exemption blanketed N sites, and a NEW colliding site arrived
+    pre-exempted. Ordinals disambiguate repeats (first stays bare so existing exemptions
+    keep their meaning)."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/a.py",
+              'TPL = {}\nA = TPL[k].format(x=1)\nB = TPL[k].format(y=2)\n'
+              'Z = "{q}".format(q=3)\n')
+        c = cfg(td, {"render_pairing": {"scan": ["src"], "exemptions": [
+            {"what": "site 1 only, reviewed", "target": "src/a.py::<dyn:TPL[k]>",
+             "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["render-pairing", "--config", c])
+        check("F2: one exemption covers ONE site — the twin stays unresolved, exit 0",
+              rc == 0 and "exempted 1" in out and "unresolvable 1" in out, (rc, out))
+        check("F2: the second site is ordinal-named, never blanketed",
+              "<dyn:TPL[k]#2>" in out, out)
+
+
+def test_advisory_partition_mixed():
+    """arch-F3: one exemption-hygiene violation must not convert the Tier-2 HEURISTIC's
+    findings into blocking noise — exit 1 comes from the exact violation; the advisory
+    line still tells the operator which findings are the heuristic's."""
+    with tempfile.TemporaryDirectory() as td:
+        write(td, "src/ghost.py", 'v = getattr(cfg, "x_enabled", True)\n')
+        write(td, "src/declared.py", "class Config:\n    z_enabled = False\n")
+        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+                                     "declared_fields": {"kind": "module",
+                                                         "path": "src/declared.py"},
+                                     "exemptions": [
+                                         {"what": "stale", "target": "src/ghost.py::vanished",
+                                          "owner": "d", "expires": "2099-01-01"}]}})
+        rc, out = run(["ghost-gates", "--config", c])
+        check("F3: mixed case exits 1 (exact violation) AND still prints the advisory "
+              "line for the heuristic finding",
+              rc == 1 and "ADVISORY (Tier 2)" in out and "matches nothing" in out,
+              (rc, out))
+
+
 # ------------------------------------------------------------------ tool doc honesty
 def test_help_states_bounds():
     """`--help` states what v1 does NOT cover — silently unhandled classes are the trap."""
@@ -712,7 +787,9 @@ def main():
              test_plant_target_handoff,
              test_render_vacuity_all_dynamic, test_exemption_kind_survives_advisory,
              test_stale_vs_unmatched_exemptions, test_dynamic_site_exemption,
-             test_layer10_motivating_shape, test_help_states_bounds)
+             test_layer10_motivating_shape,
+             test_scanned_key_normalization, test_dyn_target_collisions,
+             test_advisory_partition_mixed, test_help_states_bounds)
     if MOD is not None:
         for fn in suite:
             print("\n[{}]".format(fn.__name__))

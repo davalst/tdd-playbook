@@ -243,6 +243,32 @@ def test_dataflow_rollup_and_trend():
               p.returncode == 0 and "unmeasured" in p.stdout.lower(),
               (p.returncode, p.stdout))
 
+    # v1.25 arch-F4: the series is versioned AT THE CONTRACT — a rollup against a record
+    # whose schema stamp differs from the producer's REFUSES (a semantics change must be
+    # a conscious migration, never a prose note the comparator ignores)
+    with tempfile.TemporaryDirectory() as d:
+        md = os.path.join(d, "dataflow_yield.md")
+        with open(md, "w") as fh:
+            fh.write("# Dataflow-sweep yield record\nschema: 1\n\n"
+                     "| date | sweep | checked | violations | exempted | unresolvable |\n"
+                     "|---|---|---|---|---|---|\n"
+                     "| 2026-08-03 | render-pairing | 152 | 0 | 0 | 0 |\n")
+        line = ("dataflow_sweeps render-pairing: checked 40 · violations 0 · "
+                "exempted 2 · unresolvable 1")
+        p = run_gy("dataflow-rollup", "--md", md, "--date", "2026-08-17", "--line", line)
+        check("F4: schema-mismatched record REFUSES the rollup, nothing appended",
+              p.returncode != 0 and "schema" in p.stdout.lower()
+              and "2026-08-17" not in open(md).read(),
+              (p.returncode, p.stdout, p.stderr))
+        # CONTROL: a fresh record created by the rollup carries the current stamp and
+        # accepts subsequent rollups
+        md2 = os.path.join(d, "fresh.md")
+        p = run_gy("dataflow-rollup", "--md", md2, "--date", "2026-08-17", "--line", line)
+        body = open(md2).read() if os.path.isfile(md2) else "<missing>"
+        check("F4: fresh record stamped with the current schema and accepts rows",
+              p.returncode == 0 and "schema: 2" in body
+              and "| 2026-08-17 | render-pairing |" in body, (p.returncode, body))
+
 
 def test_dataflow_producer_consumer_seam():
     """v1.24 fold (arch-adversary F3 + tripwire D13b): the summary-line contract is

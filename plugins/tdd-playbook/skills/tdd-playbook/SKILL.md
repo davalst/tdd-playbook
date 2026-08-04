@@ -498,9 +498,8 @@ target the feature). For each deliverable assert it is:
   integration-adversary, not a hard block, but its findings are specific enough to act on.
 - Author it red-first, drive to green; report `Tripwire: N/N`. It's a FLOOR, not a target — never add a
   hollow button/stub to go green. Anchor it to the PLAN, not the implementation. And a NEW
-  guard/check/tripwire a plan ships is itself subject to §13's guard-calibration rule — replayed
-  against the defect that motivated it before it is trusted (the documented escape is a tripwire
-  that excused exactly the code shape it was built to catch). A plan that
+  guard/check/tripwire a plan ships is itself subject to §13's guard-calibration rule before it
+  is trusted. A plan that
   carries a §0 flow table reports `Tripwire: N/N (+ FLOWS M/M)` — each flow row's liveness test
   named and GREEN (§6c); a deliverable can be four-leg green while its flow dead-ends.
 - Scale it: full Tripwire for multi-deliverable plans; for a 1–2 deliverable change the regular behavioral
@@ -628,8 +627,7 @@ proves parity for the seam it replaces, and every "wired" claim is proven at the
   Tier-1 reference tool is `plugins/tdd-playbook/bin/dataflow_sweeps.py` (config-driven: repos
   tailor the pairing map, they don't fork the scanner).
 - **Sweep governance — exemptions are debt, not prose.** A new sweep obeys §13's guard-calibration
-  rule first: replayed against the motivating defect (the pre-fix artifact) before it gates
-  anything — a sweep that reports zero offenders on the bug it was built for is decorative. A sweep exemption REUSES the house debt
+  rule first (replayed against its motivating defect before it gates anything). A sweep exemption REUSES the house debt
   shape `{what, owner, expires}` (the registry's R-DEBT contract; an EXPIRED exemption REDs the
   sweep, provable via `--as-of`) — never a new sibling format. An exemption naming a user-facing
   flow FAILS the suite, by §6a's companion rule (one canonical statement — cross-reference, don't

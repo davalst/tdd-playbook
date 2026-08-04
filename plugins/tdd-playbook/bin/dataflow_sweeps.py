@@ -77,6 +77,7 @@ import argparse
 import ast
 import datetime as _dt
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -95,6 +96,19 @@ SUMMARY_LINE_RX = re.compile(
     r"dataflow_sweeps ([a-z-]+): checked (\d+) · violations (\d+) · "
     r"exempted (\d+) · unresolvable (\d+)")
 
+# counting-semantics version of the summary numbers (v1.25 arch-F4): consumers that
+# COMPARE rows across runs (gate_yield's committed record + trend) stamp and check this —
+# a semantics change is a conscious migration, never a prose note a comparator ignores.
+# 2 = checked counts only VERIFIED sites; exempted may include named dynamic sites.
+SUMMARY_SCHEMA = 2
+
+
+def normkey(p):
+    """ONE normalization for every coverage key and every target file-part (v1.25
+    arch-F1: staleness was string-keyed, so './prompts/x' vs 'prompts/x' silently
+    disarmed it)."""
+    return os.path.normpath(p).replace(os.sep, "/")
+
 
 class Tally:
     def __init__(self, sub):
@@ -108,8 +122,12 @@ class Tally:
                                   # a count is never a silent pass, and a NAME lets §6c's
                                   # "dynamic sites get a named dated exemption" be
                                   # mechanically true (v1.25 arch-F4)
-        self.scanned = set()      # rel paths this run actually read — the fact "unused
-                                  # exemption" is judged against (v1.25 arch-F2)
+        self.scanned = set()      # coverage keys this run actually enumerated — the fact
+                                  # "unused exemption" is judged against (v1.25 arch-F2)
+        self.coverage_complete = False  # True when the sweep enumerates its WHOLE
+                                  # universe every run (exemption-prose): any unmatched
+                                  # live exemption is then stale — "not in scan" cannot
+                                  # exist for a closed coverage
 
     def violate(self, target, message, kind="sweep"):
         self.violations.append((target, message, kind))
@@ -174,7 +192,7 @@ def iter_py_files(base, scan):
 
 
 def rel(base, path):
-    return os.path.relpath(path, base)
+    return normkey(os.path.relpath(path, base))
 
 
 def apply_exemptions(tally, exemptions, base, as_of, registry_path):
@@ -273,8 +291,8 @@ def apply_exemptions(tally, exemptions, base, as_of, registry_path):
     for target, ent in suppress.items():
         if target in used:
             continue
-        target_file = target.split("::", 1)[0]
-        if target_file in tally.scanned:
+        target_file = normkey(target.split("::", 1)[0])
+        if tally.coverage_complete or target_file in tally.scanned:
             tally.violate(target,
                           "exemption matches nothing — the target's file was scanned "
                           "and produced no matching site; remove the entry or fix the "
@@ -322,18 +340,20 @@ def _module_str_constants(tree):
     return consts
 
 
-def _check_pairing(tally, target_prefix, dyn_target, template, supplied_kw, supplied_pos,
-                   star_args=False, star_kwargs=False):
+def _check_pairing(tally, target_prefix, dyn_target_fn, template, supplied_kw,
+                   supplied_pos, star_args=False, star_kwargs=False):
     """Both-directions pairing for one resolved call site. Returns True when the site
     was actually VERIFIED (the caller credits `checked` on True and ONLY on True —
-    an unresolvable site can never vouch for the scan, v1.25 arch-F1)."""
+    an unresolvable site can never vouch for the scan, v1.25 arch-F1). dyn_target_fn is
+    LAZY: a site name is minted (and its ordinal counted) only when the site actually
+    registers as unresolvable."""
     fields = _template_fields(template)
     if fields is None:
-        tally.unresolvable_site(dyn_target)
+        tally.unresolvable_site(dyn_target_fn())
         return False
     named, auto, max_idx = fields
     if star_args or star_kwargs:
-        tally.unresolvable_site(dyn_target)
+        tally.unresolvable_site(dyn_target_fn())
         return False
     needed_pos = max(auto, max_idx + 1)
     for root in sorted(named - set(supplied_kw)):
@@ -356,23 +376,30 @@ def _check_pairing(tally, target_prefix, dyn_target, template, supplied_kw, supp
     return True
 
 
-def _dyn_target(base, path, src, expr_node):
-    """Per-site NAMED target for an unresolvable site: <relpath>::<dyn:SOURCE-SEGMENT>.
-    Keyed on the receiver's source text — unique per template expression, stable under
-    line moves — never a file-wide blanket (v1.25 arch-F4)."""
+def _dyn_target(base, path, src, expr_node, counts):
+    """Per-SITE named target for an unresolvable site: <relpath>::<dyn:SEGMENT[#N]>.
+    Whitespace-normalized source segment; repeats of the same segment in a file get
+    ordinals (#2, #3 … — the FIRST stays bare so existing exemptions keep their one
+    site); truncated segments carry a short digest of the full text so two long,
+    different expressions can never collide into one blanket name (v1.25 arch-F2)."""
     seg = None
     try:
         seg = ast.get_source_segment(src, expr_node)
     except Exception:  # noqa: BLE001 — a naming fallback, never a crash
         seg = None
-    seg = (seg or "?").strip().replace("\n", " ")
+    seg = re.sub(r"\s+", " ", (seg or "?").strip())
     if len(seg) > 60:
-        seg = seg[:57] + "..."
-    return "{}::<dyn:{}>".format(rel(base, path), seg)
+        digest = hashlib.sha1(seg.encode("utf-8", "replace")).hexdigest()[:6]
+        seg = "{}~{}".format(seg[:50], digest)
+    key = (rel(base, path), seg)
+    counts[key] = counts.get(key, 0) + 1
+    ordinal = "" if counts[key] == 1 else "#{}".format(counts[key])
+    return "{}::<dyn:{}{}>".format(rel(base, path), seg, ordinal)
 
 
 def sweep_render_pairing(cfg, base, tally):
     section = cfg.get("render_pairing") or {}
+    dyn_counts = {}
     for path in iter_py_files(base, section.get("scan") or []):
         tally.scanned.add(rel(base, path))
         try:
@@ -400,34 +427,38 @@ def sweep_render_pairing(cfg, base, tally):
                 template = consts[recv.id]
             else:
                 # dynamic receiver — NAMED per site; never credits `checked`
-                tally.unresolvable_site(_dyn_target(base, path, src, recv))
+                tally.unresolvable_site(_dyn_target(base, path, src, recv, dyn_counts))
                 continue
             target_prefix = rel(base, path)
-            dyn_target = _dyn_target(base, path, src, recv)
+
+            def dyn_target_fn(_p=path, _r=recv):
+                return _dyn_target(base, _p, src, _r, dyn_counts)
             if node.func.attr == "format_map":
                 arg = node.args[0] if node.args else None
                 if (isinstance(arg, ast.Dict)
                         and all(isinstance(k, ast.Constant) and isinstance(k.value, str)
                                 for k in arg.keys)):
-                    if _check_pairing(tally, target_prefix, dyn_target, template,
+                    if _check_pairing(tally, target_prefix, dyn_target_fn, template,
                                       [k.value for k in arg.keys], None):
                         tally.checked += 1
                 else:
-                    tally.unresolvable_site(dyn_target)
+                    tally.unresolvable_site(dyn_target_fn())
                 continue
             star_args = any(isinstance(a, ast.Starred) for a in node.args)
             star_kwargs = any(kw.arg is None for kw in node.keywords)
             supplied_kw = [kw.arg for kw in node.keywords if kw.arg is not None]
             supplied_pos = sum(1 for a in node.args if not isinstance(a, ast.Starred))
-            if _check_pairing(tally, target_prefix, dyn_target, template, supplied_kw,
+            if _check_pairing(tally, target_prefix, dyn_target_fn, template, supplied_kw,
                               supplied_pos, star_args, star_kwargs):
                 tally.checked += 1
 
     for pair in section.get("template_pairs") or []:
         tpl_path = os.path.join(base, pair.get("template", ""))
         sup_path = os.path.join(base, pair.get("supplier", ""))
-        tally.scanned.add(pair.get("template", ""))
-        tally.scanned.add(pair.get("supplier", ""))
+        # coverage key = the TEMPLATE only, normalized (arch-F1): exemption targets are
+        # template-prefixed; a supplier in the set would auto-"stale" supplier-named
+        # targets that no violation ever carries
+        tally.scanned.add(normkey(pair.get("template", "")))
         pair_target = "{}<->{}".format(pair.get("template"), pair.get("supplier"))
         if not os.path.isfile(tpl_path):
             tally.violate(pair_target, "template file missing (fail closed)")
@@ -518,6 +549,7 @@ def sweep_ghost_gates(cfg, base, tally, strict):
         return None
     print("dataflow_sweeps ghost-gates: Tier 2 — advisory by default, --strict makes it "
           "blocking; promotion to blocking is a pilot-data decision (§6c).")
+    dyn_counts = {}
     for path in iter_py_files(base, section.get("scan") or []):
         tally.scanned.add(rel(base, path))
         try:
@@ -544,7 +576,7 @@ def sweep_ghost_gates(cfg, base, tally, strict):
                 continue
             if not (isinstance(name_arg, ast.Constant) and isinstance(name_arg.value, str)):
                 # dynamic name — NAMED per site, counted, never a silent pass
-                tally.unresolvable_site(_dyn_target(base, path, src, name_arg))
+                tally.unresolvable_site(_dyn_target(base, path, src, name_arg, dyn_counts))
                 continue
             name = name_arg.value
             if not any(fnmatch.fnmatch(name, p) for p in patterns):
@@ -575,9 +607,13 @@ _CLAIM_POLARITY = {
 
 def sweep_exemption_prose(cfg, base, tally):
     section = cfg.get("exemption_prose") or {}
+    tally.coverage_complete = True  # the claim set IS the universe, enumerated every run
     for claim in section.get("claims") or []:
         tally.checked += 1
         what = claim.get("what", "<unnamed claim>")
+        # each claim's `what` IS its coverage key (arch-F1: the claim set is fully
+        # enumerated every run, so a dead exemption here is STALE, never "not in scan")
+        tally.scanned.add(normkey(what))
         artifact = os.path.join(base, claim.get("artifact", ""))
         if not os.path.isfile(artifact):
             tally.violate(what, "artifact {!r} missing — fail closed, never a skip"
@@ -664,13 +700,16 @@ def run_one(sub, cfg, base, as_of, strict, registry_path):
     if tally.violations:
         # Tier-2 advisory covers the sweep HEURISTIC's findings only — debt hygiene
         # (exemption-kind violations: malformed/expired/stale/user-facing entries) is
-        # exact by construction and ALWAYS blocks (v1.25 arch-F3: an EXPIRED exemption
-        # under ghost-gates used to exit 0)
-        if sub == "ghost-gates" and not strict \
-                and all(kind == "sweep" for _t, _m, kind in tally.violations):
-            print("dataflow_sweeps ghost-gates: {} finding(s) — ADVISORY (Tier 2); "
-                  "--strict to block".format(len(tally.violations)))
-            return EXIT_CLEAN
+        # exact by construction and ALWAYS blocks (v1.25 arch-F3). PARTITIONED, not
+        # conjoined: a hygiene violation must never convert the heuristic's findings
+        # into blocking noise, and the advisory line still labels which is which.
+        if sub == "ghost-gates" and not strict:
+            heuristic = [v for v in tally.violations if v[2] == "sweep"]
+            exact = [v for v in tally.violations if v[2] != "sweep"]
+            if heuristic:
+                print("dataflow_sweeps ghost-gates: {} finding(s) — ADVISORY (Tier 2); "
+                      "--strict to block".format(len(heuristic)))
+            return EXIT_VIOLATION if exact else EXIT_CLEAN
         return EXIT_VIOLATION
     if tally.checked == 0:
         print("dataflow_sweeps {}: refusing a vacuous pass — nothing was CHECKED "

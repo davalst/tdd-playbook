@@ -178,6 +178,21 @@ def test_overmock():
                             "cfg = SimpleNamespace(host='x', port=1)"))
     check("G2e: data-only SimpleNamespace control silent", rc == 0, (rc, e))
 
+    # v1.25 arch-F5 (probe-proven misses — H10 inside the commit defining H10): the
+    # pattern must catch the REAL shapes, not just the hand-transcribed happy case
+    rc, _o, e = run(s, edit(tf, "result = runner()",
+                            "result = SimpleNamespace(client=Client(), "
+                            "to_state=lambda: state)"))
+    check("F5: preceding call-kwarg does not disarm the seam pattern",
+          rc == 1 and "seam" in e, (rc, e))
+    rc, _o, e = run(s, edit(tf, "result = runner()",
+                            "ns = SimpleNamespace()\nns.to_state = lambda: state"))
+    check("F5: after-construction attribute graft is caught",
+          rc == 1 and "seam" in e, (rc, e))
+    rc, _o, e = run(s, edit(tf, "result = runner()",
+                            "m = MagicMock()\nm.to_state = lambda: state"))
+    check("F5: MagicMock attribute graft is caught", rc == 1 and "seam" in e, (rc, e))
+
 
 # ---------------------------------------------------------------------- snapshot_guard
 def test_snapshot():

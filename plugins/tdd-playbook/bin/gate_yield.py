@@ -48,8 +48,11 @@ DATAFLOW_MD_HEADER = (
     "One committed row per sweep per calibration cycle, parsed from dataflow_sweeps.py's "
     "pinned summary line. The excluded share (exempted/checked) is a TREND claim — "
     "undetectable from one run; `gate_yield.py dataflow-trend` is the comparator.\n\n"
+    "schema: {schema}\n\n"
     "| date | sweep | checked | violations | exempted | unresolvable |\n"
     "|---|---|---|---|---|---|\n")
+
+_SCHEMA_RX = re.compile(r"^schema:\s*(\d+)\s*$", re.MULTILINE)
 
 # the summary-line contract is OWNED by the producer — import it, never re-type it
 # (arch-adversary F3: four independent regex dialects was the drift surface)
@@ -226,9 +229,23 @@ def cmd_dataflow_rollup(args):
     if md_dir:
         os.makedirs(md_dir, exist_ok=True)
     new = not os.path.isfile(args.md)
+    if not new:
+        # v1.25 arch-F4: the series is versioned AT THE CONTRACT. The producer stamps
+        # its counting semantics (dataflow_sweeps.SUMMARY_SCHEMA); a record whose stamp
+        # differs (or predates stamping) REFUSES — a semantics change is a conscious,
+        # committed migration of the record, never a prose note the comparator ignores.
+        m = _SCHEMA_RX.search(open(args.md).read())
+        have = int(m.group(1)) if m else None
+        if have != _ds.SUMMARY_SCHEMA:
+            print("dataflow-rollup: REFUSED — record schema {} != producer schema {}; "
+                  "the counting semantics changed. Migrate the committed record "
+                  "consciously (retire pre-change rows, stamp 'schema: {}') before "
+                  "appending — comparing across the change corrupts the trend.".format(
+                      have, _ds.SUMMARY_SCHEMA, _ds.SUMMARY_SCHEMA))
+            return 1
     with open(args.md, "a") as fh:
         if new:
-            fh.write(DATAFLOW_MD_HEADER)
+            fh.write(DATAFLOW_MD_HEADER.format(schema=_ds.SUMMARY_SCHEMA))
         for sweep, checked, violations, exempted, unresolvable in parsed:
             fh.write("| {} | {} | {} | {} | {} | {} |\n".format(
                 args.date, sweep, checked, violations, exempted, unresolvable))

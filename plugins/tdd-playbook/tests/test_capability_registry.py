@@ -316,6 +316,24 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")),
           _fires("2026-08-18", "V1.24 GATE-SURFACE CALIBRATION")[:2])
+    check("v1.25 gate-surface calibration debt (2026-08-17): silent on its expiry day, "
+          "fires 08-18 — G1/G1b/G2 doctrine+brief text untrusted until history.md rows",
+          not _fires("2026-08-17", "V1.25 GATE-SURFACE CALIBRATION")
+          and any("calibration-loop" in v
+                  for v in _fires("2026-08-18", "V1.25 GATE-SURFACE CALIBRATION")),
+          _fires("2026-08-18", "V1.25 GATE-SURFACE CALIBRATION")[:2])
+    check("v1.25 corpus-queue debt (2026-08-17): silent on its expiry day, fires 08-18 "
+          "— the H10 proposals must not go dark in proposed/",
+          not _fires("2026-08-17", "V1.25 CORPUS QUEUE")
+          and any("calibration-loop" in v for v in _fires("2026-08-18", "V1.25 CORPUS QUEUE")),
+          _fires("2026-08-18", "V1.25 CORPUS QUEUE")[:2])
+    check("layer_10 sha report-back debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 naming dataflow-sweeps — the sha-citation rule's own slot must not sit "
+          "empty forever in the release that invented the rule",
+          not _fires("2026-09-15", "LAYER_10 PRE-FIX SHA")
+          and any("dataflow-sweeps" in v
+                  for v in _fires("2026-09-16", "LAYER_10 PRE-FIX SHA")),
+          _fires("2026-09-16", "LAYER_10 PRE-FIX SHA")[:2])
     # (The TDD-PLAYBOOK INTEGRITY_GLOBS arming pin lived here 2026-08-03 only: the debt
     # was PAID the same day it was registered — David armed the engine-side floor/globs
     # on srv1621832; the corrected record is the `notes` field on civerd-release-gate.

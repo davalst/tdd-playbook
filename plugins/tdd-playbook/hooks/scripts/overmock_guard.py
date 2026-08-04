@@ -26,10 +26,17 @@ _MOCK_RE = re.compile(
 )
 
 # Seam fabrication (H9, v1.25 — the §1 rule's reminder): a double that GRAFTS a callable
-# seam via SimpleNamespace is the shape that kept a production integration bug green for
-# months (production lacked the very method the fixture supplied). Conservative on
-# purpose: only callable members (lambda) — data-only SimpleNamespace is legitimate.
-_SEAM_RE = re.compile(r"\bSimpleNamespace\s*\([^)]*=\s*lambda\b")
+# seam is the shape that kept a production integration bug green for months (production
+# lacked the very method the fixture supplied). Two forms (arch-F5: the first pattern
+# missed both real shapes — a preceding call-kwarg disarmed it, and the after-
+# construction graft was invisible): constructor kwargs (balanced parens one level deep,
+# so SimpleNamespace(client=Client(), to_state=lambda...) still matches) and the
+# attribute graft (ns.to_state = lambda / m.to_state = lambda). Conservative on purpose:
+# only callable members — data-only SimpleNamespace is legitimate.
+_SEAM_RE = re.compile(
+    r"\bSimpleNamespace\s*\((?:[^()]|\([^()]*\))*=\s*lambda\b"
+    r"|^\s*\w+(?:\.\w+)+\s*=\s*lambda\b",
+    re.MULTILINE)
 
 
 def _count(text):
