@@ -955,6 +955,13 @@ def test_v126_seam_contract_pins():
     stripped = "You run the Playbook §4 mutation pass. Report a clean result.\n"
     check("planted: brief stripped of the limitation detected",
           "What mutation score does not cover" not in stripped)
+    # planted twin for the dogfood vacuity guard (tripwire-audit note 3, §13): freeze the
+    # motivating shape — an EMPTY enumeration must fail the guard expression, and a
+    # listing missing a rostered member must too (the mis-glob variant)
+    check("planted: empty commands enumeration fails the vacuity guard",
+          not (bool([]) and LOOP_CLOSING_COMMANDS <= set([])))
+    check("planted: mis-globbed listing (roster member missing) fails the vacuity guard",
+          not (LOOP_CLOSING_COMMANDS <= set(sorted(LOOP_CLOSING_COMMANDS)[:-1])))
 
 
 def test_v125_planted_fixtures():
