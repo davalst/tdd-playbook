@@ -2,7 +2,7 @@
   "files": {
     "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py": "2026-07-28T15:11:20+00:00",
     "plugins/tdd-playbook/tests/test_agents.py": "2026-08-04T22:56:26+00:00",
-    "calibration/test_harness.py": "2026-08-03T15:05:07+00:00",
+    "calibration/test_harness.py": "2026-08-05T19:45:18+00:00",
     "plugins/tdd-playbook/tests/test_installer.py": "2026-08-03T14:42:04+00:00",
     "plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-05T17:24:44+00:00",
     "plugins/tdd-playbook/tests/test_dataflow_sweeps.py": "2026-08-04T22:55:59+00:00",
@@ -11,6 +11,10 @@
     "plugins/tdd-playbook/tests/test_release_verify.py": "2026-08-03T22:19:53+00:00",
     "plugins/tdd-playbook/tests/test_hooks.py": "2026-08-04T22:56:45+00:00",
     ".claude/worktrees/seam-contract-v1.26/plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-05T12:56:48+00:00",
-    ".claude/worktrees/seam-contract-v1.26/plugins/tdd-playbook/tests/test_agents.py": "2026-08-05T13:08:23+00:00"
+    ".claude/worktrees/seam-contract-v1.26/plugins/tdd-playbook/tests/test_agents.py": "2026-08-05T13:08:23+00:00",
+    ".claude/worktrees/rsi-hardening-v1.27/plugins/tdd-playbook/tests/test_gate_yield.py": "2026-08-05T19:15:32+00:00",
+    ".claude/worktrees/rsi-hardening-v1.27/plugins/tdd-playbook/tests/test_tdd_lock.py": "2026-08-05T19:16:46+00:00",
+    ".claude/worktrees/rsi-hardening-v1.27/plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-05T19:19:54+00:00",
+    ".claude/worktrees/rsi-hardening-v1.27/calibration/test_harness.py": "2026-08-05T19:33:05+00:00"
   }
 }

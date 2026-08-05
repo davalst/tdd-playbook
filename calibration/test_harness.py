@@ -1056,11 +1056,16 @@ def _run_header_parser_tests():
           len(blocks) + skipped == marks and marks > 0, (len(blocks), skipped, marks))
     check("header parser: the real record yields >= 11 parsed blocks, none skipped",
           len(blocks) >= 11 and skipped == 0, (len(blocks), skipped))
-    last = blocks[-1]
-    check("header parser: fields land in the right slots on the real 08-05 header",
-          last["repo_sha"] == "976364f" and last["selected"] == 38 and last["total"] == 38
-          and last["recall"] == (15, 21) and last["fp"] == (7, 17) and len(last["rows"]) == 38,
-          last)
+    # Look the block up BY SHA, never by position: pinning blocks[-1] would make this test
+    # fail every time a new calibration run lands, which is the one event the instrument
+    # exists to consume. A test that breaks on correct new data is a test that trains you to
+    # edit it.
+    known = [b for b in blocks if b["repo_sha"] == "976364f"]
+    check("header parser: fields land in the right slots on the real 976364f header",
+          len(known) == 1 and known[0]["selected"] == 38 and known[0]["total"] == 38
+          and known[0]["recall"] == (15, 21) and known[0]["fp"] == (7, 17)
+          and len(known[0]["rows"]) == 38,
+          known[:1])
 
     with tempfile.TemporaryDirectory() as d:
         p = os.path.join(d, "h.md")

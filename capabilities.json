@@ -577,6 +577,21 @@
           "what": "LEDGER FOLLOW-UP L-20260804-12: the pre-registered effect did not land (FLAT). Four-cause disposition: underpowered \u2014 FLAT at 2/3 -> 2/3 with claimed 1. One rep is at the measured noise floor, so this entry could not have shown its effect either way; it needs more reps, not another fix. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260805-01: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 control-boundary-covered stayed 0/3 after the motivating-defect fixture was added. The v1.25-staleness reading is now REFUTED for this control by its own pre-registered prediction. Next step is NOT a fourth inference: read the agent's actual output on this scenario and quote what it objects to. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260805-02: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 control-parked-deferral stayed 0/3 after the claimed registry mechanism was made real. Same refutation as L-20260805-01; the auditor is REDing this for a reason nobody has yet read. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260805-03: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 control-cachebusted-run AND control-green-baseline-measured both stayed 1/3 after the premise was made decidable. THIRD consecutive miss on control-cachebusted-run (L-20260803-04 oracle anchor -> L-20260804-02 mutant counts -> this). Stop inferring; capture the agent's verbatim refusal text and work from it. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
         }
       ]
     }

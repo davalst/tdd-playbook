@@ -167,3 +167,37 @@ where an oracle or brief changed.
 | L-20260805-03 | 2026-08-05 | 7567423 | calibration/scenarios.json | control-cachebusted-run + control-green-baseline-measured: the 18/18-killed premise made decidable | control-cachebusted-run; control-green-baseline-measured | up | 2 | an agent disproved the premise by actually running the analysis, so the premise itself had to become true |
 | L-20260805-04 | 2026-08-05 | 7567423 | plugins/tdd-playbook/agents/tripwire-auditor.md; plugins/tdd-playbook/agents/claims-verifier.md | bare literal closing lines mandated (never markdown-wrapped) | control-connected-plan; drift-tripwire-intersection-excuse | up | 1 | correct verdicts were scored misses for being wrapped in markdown headings |
 | L-20260805-05 | 2026-08-05 | 7567423 | plugins/tdd-playbook/agents/red-first-verifier.md | verify AS GIVEN — never repair the test then certify the repair | red-first-symmetric-break | up | 1 | the brief now forbids repairing a broken test and certifying the repair, and symmetric-break is the scenario where that shortcut is most available — so it should recover the rep it is losing to it |
+
+### Scored 2026-08-05 — run 2026-08-05 · repo 119e2de
+
+The instrument's first UNPLANNED cycle: this run landed on main while v1.27 was being built,
+at a sha strictly descended from `7567423`, so it bound the entries above automatically. No
+one decided it was a scoring run; the binding rule decided.
+
+| id | scenario | baseline | actual | delta | verdict | note |
+|---|---|---|---|---|---|---|
+| L-20260805-01 | control-boundary-covered | 0/3 | 0/3 | 0 | FLAT | debt LEDGER FOLLOW-UP L-20260805-01 |
+| L-20260805-02 | control-parked-deferral | 0/3 | 0/3 | 0 | FLAT | debt LEDGER FOLLOW-UP L-20260805-02 |
+| L-20260805-03 | control-cachebusted-run | 1/3 | 1/3 | 0 | FLAT | debt LEDGER FOLLOW-UP L-20260805-03 |
+| L-20260805-03 | control-green-baseline-measured | 1/3 | 1/3 | 0 | FLAT | (same entry, second scenario) |
+| L-20260805-04 | control-connected-plan | 2/3 | 3/3 | +1 | HIT | claimed 1 |
+| L-20260805-04 | drift-tripwire-intersection-excuse | 2/3 | 3/3 | +1 | HIT | claimed 1 |
+| L-20260805-05 | red-first-symmetric-break | 2/3 | 3/3 | +1 | HIT | claimed 1 |
+
+**Cycle-2: 4 HIT · 3 FLAT — and the split falls exactly along the line that matters.**
+
+The 2026-08-05 adjudication made two different kinds of claim. The FORMAT claims — bare
+literal closing lines (L-04) and verify-as-given (L-05) — all landed, 3/3 HIT. The
+NARRATIVE claim — that three controls were REDed because they predated the v1.25
+guard-calibration doctrine and the agents were correctly applying the newer bar, so raising
+the controls to that bar would fix them (L-01, L-02, L-03) — did **not** land. All three are
+FLAT, at exactly the numbers they had before.
+
+That narrative is the one recorded in the previous block as "currently unfalsified narrative
+of exactly the shape this instrument exists to price." It has now been priced, by its own
+pre-registered prediction, and it did not survive. Whatever those three controls are failing
+on, it is not staleness against v1.25 — three successive confident fixes have now missed
+(L-20260803-04 → L-20260804-02 → L-20260805-03 on `control-cachebusted-run` alone). The next
+step is not a fourth inference: it is reading the agents' actual output on those scenarios.
+
+Aggregate for the third consecutive run: recall 15/21, FP 7/17 — unchanged.
