@@ -338,6 +338,12 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-09-16", "SUPERSEDE PROSE-ORACLE PLANTS")),
           _fires("2026-09-16", "SUPERSEDE PROSE-ORACLE PLANTS")[:2])
+    check("pre-commit gate blind spot debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 — a gate that reads COMMITTED state gives a false green when run before "
+          "the commit, which is how a repo-red commit reached origin on 2026-08-05",
+          not _fires("2026-09-15", "PRE-COMMIT GATE BLIND SPOT")
+          and _fires("2026-09-16", "PRE-COMMIT GATE BLIND SPOT"),
+          _fires("2026-09-16", "PRE-COMMIT GATE BLIND SPOT")[:2])
     # (The TESTLOCK OVERRIDE SEMANTICS pin lived here 2026-08-05 only: the debt was PAID the
     # same day in v1.27 — `unlock --class` + the fp column + candidates() computing from
     # CLASSIFIED blocks. A paid loan's trigger is retired WITH this dated comment, never
