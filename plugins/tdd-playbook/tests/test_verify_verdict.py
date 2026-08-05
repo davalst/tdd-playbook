@@ -225,6 +225,8 @@ def main():
 
     probe_survivor_gaps(d)
 
+    test_probe_collision()
+
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
 
@@ -293,6 +295,65 @@ def probe_survivor_gaps(d):
             else:
                 os.environ["XDG_CACHE_HOME"] = old_xdg
 
+
+
+def test_probe_collision():
+    """CIVerd engine finding, 2026-08-05: `planted_probe` writes ordinary kind:"run"
+    ledger entries, so a GREEN probe verdict at a release sha is indistinguishable from a
+    CI verdict to a last-match-wins reducer — and for ~5 hours a green probe outranked a
+    RED CI verdict at the same sha.
+
+    Fixture is REAL signed data, not a mock: sha 976364f carries a RED CI verdict
+    (gate_cmd 'venv && deps && tests && ...', 02:00) AND a GREEN probe verdict
+    (gate_cmd 'planted_probe', 12:46). Both directions the engine named are pinned:
+      1. a green PROBE must never authorize a release (nor mask the CI verdict);
+      2. a probe must never trigger a spurious roster_shrink on an otherwise-valid
+         release — probe snapshots carry probe.<slug> rows and none of the roster."""
+    led = os.path.join(HERE, "fixtures", "civerd_probe_collision.jsonl")
+    lines = open(led).readlines()
+    sha = "976364fd1655dd90fab9f79b3a389ef0cca880b4"
+    snaps = [(json.loads(l).get("verdict") or {}).get("snapshot") or {} for l in lines]
+    ci = next(s for s in snaps if "tests" in str(s.get("gate_cmd") or ""))
+    probe = next(s for s in snaps if s.get("gate_cmd") == "planted_probe")
+
+    # the discriminator itself — positive identification, not last-wins
+    check("probe collision: CI entry identified as a release-deciding verdict",
+          V.is_ci_verdict(ci), ci.get("gate_cmd"))
+    check("probe collision: probe entry is NOT a release-deciding verdict",
+          not V.is_ci_verdict(probe), probe.get("gate_cmd"))
+    check("probe collision: both entries are kind=run at the SAME sha (why kind cannot "
+          "discriminate)",
+          ci.get("kind") == probe.get("kind") == "run"
+          and ci.get("commit") == probe.get("commit") == sha)
+
+    # direction 1: the green probe must not authorize; the CI verdict's REAL state governs
+    allowed, reason = V.may_release(lines, sha, now=datetime(2026, 8, 5, 13, 0, 0,
+                                                             tzinfo=timezone.utc),
+                                    max_age_s=10 ** 9)
+    check("probe collision: green probe does NOT authorize a release", allowed is False,
+          (allowed, reason))
+    check("probe collision: refusal reports the CI verdict's real state (verdict_not_ok), "
+          "not a probe-induced roster_shrink",
+          reason == "verdict_not_ok", reason)
+
+    # direction 2: a probe alone can never stand in for a CI verdict — fails CLOSED
+    probe_only = [l for l in lines
+                  if ((json.loads(l).get("verdict") or {}).get("snapshot") or {})
+                  .get("gate_cmd") != ci.get("gate_cmd")]
+    allowed2, reason2 = V.may_release(probe_only, sha,
+                                      now=datetime(2026, 8, 5, 13, 0, 0,
+                                                   tzinfo=timezone.utc),
+                                      max_age_s=10 ** 9)
+    check("probe collision: probe-only ledger -> no_verdict_for_commit (fails closed)",
+          allowed2 is False and reason2 == "no_verdict_for_commit", (allowed2, reason2))
+
+    # a REAL roster shrink on a REAL CI entry must still fail LOUD and NAMED — the probe
+    # fix must not swallow the v1.25 pin
+    shrunk = copy.deepcopy(ci)
+    shrunk["required"] = [r for r in shrunk.get("required", []) if r != "dataflow"]
+    shrunk["checks"] = [c for c in shrunk.get("checks", []) if c.get("name") != "dataflow"]
+    check("probe collision: roster pin still fires on a genuine CI shrink",
+          V.roster_gaps(shrunk) == ["dataflow"], V.roster_gaps(shrunk))
 
 if __name__ == "__main__":
     main()

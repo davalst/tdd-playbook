@@ -71,6 +71,29 @@ EXPECTED_REQUIRED = ("dataflow", "deps", "dryrun", "registry", "tests", "venv")
 EXPECTED_PRESENT = ("staleness",)
 
 
+# ---- probe/CI COLLISION (CIVerd engine finding, 2026-08-05) ----------------------------
+# `planted_probe` writes ordinary kind:"run" ledger entries, so kind+commit cannot tell a
+# probe verdict from a CI verdict. For ~5 hours a GREEN probe outranked a RED CI verdict at
+# the same sha under a last-match-wins reducer. Identify release-deciding verdicts
+# POSITIVELY instead: a CI entry's gate_cmd names the checks it actually ran (" && "
+# separated); probe and cert entries structurally do not carry them. CI_CORE is deliberately
+# MINIMAL — not the full roster — so that a genuine roster SHRINK still reaches roster_gaps()
+# and fails loud and named, rather than silently ceasing to be a candidate.
+CI_CORE = ("tests",)
+
+
+def gate_cmd_checks(snapshot):
+    """The check names an entry's gate_cmd claims to have run."""
+    return {t.strip() for t in str(snapshot.get("gate_cmd") or "").split("&&") if t.strip()}
+
+
+def is_ci_verdict(snapshot):
+    """True only for release-deciding CI verdicts. A probe entry (gate_cmd
+    'planted_probe') can never authorize a release, nor mask a CI verdict, nor trigger a
+    spurious roster_shrink on one."""
+    return set(CI_CORE).issubset(gate_cmd_checks(snapshot))
+
+
 def roster_gaps(snapshot):
     """Sorted names missing from the snapshot vs the pin. Empty = roster intact.
     Engine-side EXTRA checks (integrity, integrity_baseline, ...) are always fine —
@@ -311,7 +334,13 @@ def may_release(ledger_lines, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_K
             continue  # a malformed line is not a valid verdict; keep scanning
 
     engine_alive = False
-    run_hit = None  # (allowed, reason) for the run verdict matching expect_sha, if any
+    run_hit = None  # (allowed, reason) for the CI verdict matching expect_sha, if any
+
+    # Decide on the LATEST CI judgment of this sha, not on ledger file order: a re-run
+    # after an infrastructure failure is legitimate, and "whichever line came last" is not
+    # a decision rule. Undated entries sort first so a dated verdict always outranks them.
+    bundles.sort(key=lambda x: (_parse_ts(x.get("as_of"))
+                                or datetime.min.replace(tzinfo=timezone.utc)))
 
     for b in bundles:
         snap = (b.get("verdict") or {}).get("snapshot") or {}
@@ -329,6 +358,9 @@ def may_release(ledger_lines, expect_sha, now, max_age_s, pinned=PINNED_ISSUER_K
             continue
         # A run verdict: does it authenticate AND concern our SHA AND is fresh AND say ok?
         if snap.get("commit") != expect_sha:
+            continue
+        # ...and is it a CI verdict at all? A probe entry is kind:"run" at our sha too.
+        if not is_ci_verdict(snap):
             continue
         try:
             res = verify_facts(b, pinned=pinned)
