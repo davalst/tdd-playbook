@@ -4,7 +4,10 @@
 seam you don't own", §4 mutation-score limitation, §6c family parity sweep;
 origin proposal: Cheliped, `PLAYBOOK_PROPOSAL_seam_contract.md`, 2026-08-04).
 **To:** CIVerd engine backlog — for consideration, on CIVerd's own plan discipline.
-**Status:** PROPOSAL. Nothing here is a commitment on the engine; adoption, sequencing,
+**Status:** FORWARDED 2026-08-05 — CIVerd accepted it for action and is building an
+implementation plan. Root-config roster action (taken or consciously declined) pending
+that plan; tracked by the SEAM-CONTRACT REPORT-BACK debt in capabilities.json. Nothing
+here is a commitment on the engine; adoption, sequencing,
 and design are CIVerd's call. Scoped deliberately small: ONE engine ask (item 2), one
 root-config action that needs no engine work (item 1), and the repo-side precondition we
 owe first (item 0).

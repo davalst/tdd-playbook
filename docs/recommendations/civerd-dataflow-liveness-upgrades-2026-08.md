@@ -4,7 +4,11 @@
 `docs/recommendations/dataflow-liveness-amendment-review-2026-08.md` +
 `docs/plans/dataflow-liveness-implementation-plan-2026-08.md`).
 **To:** CIVerd engine backlog — for consideration, on CIVerd's own plan discipline.
-**Status:** PROPOSAL. Nothing here is a commitment on the engine; adoption, sequencing,
+**Status:** FORWARDED AND ACTIONED — David confirms (2026-08-05) the proposal was handed
+to the CIVerd engine backlog and the engine-side work was built; items 2/5 plus the
+shrink-protection arming had already landed 2026-08-03 (CORRECTIONS block below). The
+forwarding debt on dataflow-sweeps is PAID. Original framing kept for the record:
+PROPOSAL — nothing here is a commitment on the engine; adoption, sequencing,
 and design are CIVerd's call. Items are ordered by value to the repos CIVerd protects.
 
 **Context in one paragraph.** A downstream excavation (Cheliped, 2026-08-03) found the

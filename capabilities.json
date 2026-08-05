@@ -347,17 +347,12 @@
           "expires": "2026-09-15"
         },
         {
-          "what": "SEAM-CONTRACT RECOMMENDATION FORWARDED y/n (v1.26 Phase 0 — docs/recommendations/civerd-seam-contract-2026-08.md: the parity-sweep vacuity check class ask + the root-config roster action arming family-parity test files as protected surfaces). The documented rot case is a review doc nobody actioned; done = forwarded to a CIVerd session/backlog AND the root-config roster action taken or consciously declined, recorded in the doc's Status line.",
-          "owner": "david",
-          "expires": "2026-09-15"
-        },
-        {
-          "what": "SEAM-CONTRACT REPORT-BACK (v1.26 Phase 0): once forwarded, record here (a) adopted y/n/deferred per item, (b) the check-class name as it appears in signed checks[], (c) the root-config surface the parity roster lives in, (d) any inline corrections to the proposal's model of the engine — replaced by the answers, never silently dropped.",
+          "what": "SEAM-CONTRACT REPORT-BACK (v1.26 Phase 0): forwarded 2026-08-05 — CIVerd is building an implementation plan. Once that plan lands, record here (a) adopted y/n/deferred per item, (b) the check-class name as it appears in signed checks[], (c) the root-config surface the parity roster lives in, (d) any inline corrections to the proposal's model of the engine — replaced by the answers, never silently dropped — and (e) the root-config roster action taken or consciously declined, recorded in the doc's Status line (this leg moved here from the paid FORWARDED debt 2026-08-05: forwarding happened, but taken-or-declined is decided by the plan CIVerd is now writing).",
           "owner": "david",
           "expires": "2026-09-15"
         }
       ],
-      "notes": "PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay — the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day — a paid loan, not a silent deletion."
+      "notes": "PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded — CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay — the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day — a paid loan, not a silent deletion."
     },
     {
       "id": "plan-authoring",
@@ -481,16 +476,12 @@
           "expires": "2026-09-15"
         },
         {
-          "what": "CIVERD UPGRADE PROPOSAL FORWARDED y/n: hand docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md to the CIVerd engine backlog (adoption is CIVerd's call — only the forwarding is owed here; the documented rot case is a review doc nobody actioned)",
-          "owner": "david",
-          "expires": "2026-09-15"
-        },
-        {
           "what": "LAYER_10 PRE-FIX SHA REPORT-BACK (v1.25 tripwire-fold): the Cheliped pilot reports the pre-fix layer_10_autonomy_awareness blob sha; fill the slot in test_dataflow_sweeps.py::test_layer10_motivating_shape's docstring and hand the same sha to the engine-side replay recipe — the release that invented the sha-citation rule must not ship its own slot empty forever. Done = the sha in the docstring (grep '<reported back' returns nothing), or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         }
-      ]
+      ],
+      "notes": "PAID 2026-08-05: the dataflow-liveness upgrades proposal (docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md) was forwarded to the CIVerd engine backlog and ACTIONED — David confirms the engine-side work was built (2026-08-05); items 2/5 plus the shrink-protection arming had already landed 2026-08-03 per the doc's CORRECTIONS block. Only the forwarding was owed here; the boundary pin retires from test_capability_registry with this dated note — a paid loan, never a silent deletion."
     }
   ]
 }

@@ -298,11 +298,15 @@ def test_own_registry():
           not _fires("2026-09-15", "CHELIPED TIER-2 PILOT")
           and any("dataflow-sweeps" in v for v in _fires("2026-09-16", "CHELIPED TIER-2 PILOT")),
           _fires("2026-09-16", "CHELIPED TIER-2 PILOT")[:2])
-    check("CIVerd proposal-forwarding debt (2026-09-15): silent on its expiry day, fires "
-          "09-16 naming dataflow-sweeps — a review doc nobody actioned is the documented rot",
-          not _fires("2026-09-15", "CIVERD UPGRADE PROPOSAL")
-          and any("dataflow-sweeps" in v for v in _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")),
-          _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")[:2])
+    # (The CIVERD UPGRADE PROPOSAL boundary pin lived here 2026-08-03..05 only: the debt
+    # was PAID 2026-08-05 — David forwarded the dataflow-liveness upgrades doc and CIVerd
+    # actioned/built the engine-side work. A paid loan's trigger is retired WITH this
+    # dated comment, never silently; the record survives in dataflow-sweeps notes.)
+    check("CIVerd proposal forwarding: paid — the entry is GONE, its record survives in notes",
+          not _fires("2026-09-16", "CIVERD UPGRADE PROPOSAL")
+          and any("PAID 2026-08-05" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "dataflow-sweeps"))
     # tripwire-auditor (v1.24 fold): two deferrals were parked in PROSE ONLY — the exact
     # H7 class the plan's §B rule bans. Now dated + string-pinned like every other loan:
     check("v1.24 corpus-batch debt (2026-08-17): silent on its expiry day, fires 08-18 "
@@ -370,13 +374,22 @@ def test_own_registry():
           and any("dataflow-sweeps" in v
                   for v in _fires("2026-09-16", "TIER-2 FIELD-PAIRING SWEEP")),
           _fires("2026-09-16", "TIER-2 FIELD-PAIRING SWEEP")[:2])
-    check("seam-contract forwarding debt (2026-09-15): silent on its expiry day, fires "
-          "09-16 naming civerd-release-gate — a recommendation doc nobody actioned is "
-          "the documented rot case this repo already paid for once",
-          not _fires("2026-09-15", "SEAM-CONTRACT RECOMMENDATION FORWARDED")
-          and any("civerd-release-gate" in v
-                  for v in _fires("2026-09-16", "SEAM-CONTRACT RECOMMENDATION FORWARDED")),
-          _fires("2026-09-16", "SEAM-CONTRACT RECOMMENDATION FORWARDED")[:2])
+    # (The SEAM-CONTRACT RECOMMENDATION FORWARDED pin lived here 2026-08-05..05 only:
+    # the forwarding leg was PAID 2026-08-05 — David handed the doc over and CIVerd is
+    # building an implementation plan. The debt's OTHER leg — root-config roster action
+    # taken or consciously declined — was NOT decidable yet and moved into the
+    # REPORT-BACK debt below, never dropped. Record survives in civerd-release-gate notes.)
+    check("seam-contract forwarding: paid — entry GONE, record in notes, remainder moved",
+          not _fires("2026-09-16", "SEAM-CONTRACT RECOMMENDATION FORWARDED")
+          and any("PAID 2026-08-05 (forwarding leg)" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "civerd-release-gate"))
+    check("seam-contract report-back debt (2026-09-15) now ALSO carries the moved "
+          "roster-action leg: silent on its expiry day, fires 09-16 naming "
+          "civerd-release-gate — the answers slot must not sit empty forever",
+          any("roster action" in v
+              for v in _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")),
+          _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")[:2])
     check("seam-contract report-back debt (2026-09-15): silent on its expiry day, fires "
           "09-16 naming civerd-release-gate — the answers slot must not sit empty forever",
           not _fires("2026-09-15", "SEAM-CONTRACT REPORT-BACK")
