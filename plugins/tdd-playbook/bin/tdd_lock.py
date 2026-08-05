@@ -8,20 +8,46 @@ test-editing; this does — `test_lock_guard.py` (PreToolUse) BLOCKS edits to lo
 while a lock is active, and to the verifier surface (conftest.py, test configs) wholesale.
 
     tdd_lock.py lock <file> [...]     # record path + sha256 of each test file
-    tdd_lock.py unlock --reason "..." # journaled; the reason feeds /grade
+    tdd_lock.py unlock --reason "..." [--class phase|feature-end|test-wrong|gate-wrong]
     tdd_lock.py status                # active lock, if any
 
 State: .claude/tdd-lock.json (the active lock — delete = unlock, but use `unlock` so the
 journal records WHY). Journal: .claude/tdd-lock-journal.jsonl, append-only across locks —
 an unlock without a reason is refused; frequent unlocks are a smell /grade must see.
 Exit codes: 0 ok · 1 refusal (bad unlock / nothing locked) · 2 usage.
+
+REASON CLASS (v1.27) — why it exists: gate_yield counted EVERY journaled unlock as a block
+adjudicated a false positive, so four cycles of the normal red-first lock/implement/unlock
+rhythm printed `RETIREMENT CANDIDATE: testlock` with zero real false positives — the
+instrument recommending retirement of the strongest anti-gaming defense there is. Only
+`gate-wrong` means "the gate blocked work it should not have"; that is the ONLY class that
+feeds retirement. `test-wrong` is the lock DELIVERING value (the agent hit the wall, stopped,
+and said why the test was wrong) — counting it as a false positive inverts the sign.
+Self-grading hazard, handled: the one class that moves the needle is the most expensive to
+claim (>=30 chars naming which block was wrong and why, else REFUSED), and a phase-shaped
+reason claiming `gate-wrong` is flagged `class_mismatch` — advisory only. Inference NEVER
+rewrites a stated class: silently correcting the record would be the same fabrication this
+fix exists to end.
 """
 import argparse
 import datetime
 import hashlib
 import json
 import os
+import re
 import sys
+
+# Closed vocabulary. No `other`/`misc` bucket — an open bucket becomes the dumping ground and
+# re-creates the ambiguity. Absent --class records `unclassified`, which is UNMEASURED (never
+# a soft accept, never a zero): gate_yield's own rule is that absent data is not evidence.
+REASON_CLASSES = ("phase", "feature-end", "test-wrong", "gate-wrong")
+FEEDS_RETIREMENT = "gate-wrong"
+GATE_WRONG_MIN = 30
+
+# Advisory only — drawn from the REAL journal's text (26 locks / 24 unlocks as of 119e2de).
+_PHASE_RX = re.compile(
+    r"(?i)(implemented? to green|will re-?lock|re-?locking|phase (?:boundary|complete)"
+    r"|feature complete|releasing v|all suites green|cycle complete)")
 
 
 def project_root():
@@ -94,17 +120,43 @@ def cmd_unlock(args):
             "tdd_lock: REFUSED — unlocking needs a real reason (>=10 chars, e.g. why the "
             "test itself is wrong). The reason is journaled and reviewed by /grade.\n")
         return 1
+    klass = args.reason_class or "unclassified"
+    # The only class that feeds retirement is also the most expensive to claim (see header).
+    # Refuse BEFORE any write, so a thin gate-wrong leaves the lock intact and nothing journaled.
+    if klass == FEEDS_RETIREMENT and len(reason) < GATE_WRONG_MIN:
+        sys.stderr.write(
+            "tdd_lock: REFUSED — --class {} is the one class that counts a block as a false "
+            "positive and drives gate retirement, so it needs >={} chars naming WHICH block "
+            "fired and why it was wrong (got {}). Use --class phase/feature-end/test-wrong if "
+            "the gate was right and the work simply moved on.\n"
+            .format(FEEDS_RETIREMENT, GATE_WRONG_MIN, len(reason)))
+        return 1
+    mismatch = bool(klass == FEEDS_RETIREMENT and _PHASE_RX.search(reason))
     with open(path) as fh:
         locked = json.load(fh)
-    _journal(root, {"ts": _now(), "event": "unlock", "reason": reason,
-                    "files": sorted(locked.get("files", {}))})
-    # R4 exhaust: a journaled unlock is the one ADJUDICATED false-positive signal the yield
-    # instrument has — it lands in the same event log the hooks write (one store, one schema).
+    entry = {"ts": _now(), "event": "unlock", "reason": reason, "reason_class": klass,
+             "files": sorted(locked.get("files", {}))}
+    if mismatch:
+        # Recorded, never corrected: the stated class stands and the contradiction rides
+        # beside it. A silent rewrite would fabricate into the record /grade reads.
+        entry["class_mismatch"] = True
+        sys.stderr.write(
+            "tdd_lock: MISMATCH — the reason reads like a phase boundary but claims --class "
+            "{}. Recording your class as stated, flagged for /grade.\n".format(FEEDS_RETIREMENT))
+    if not args.reason_class:
+        sys.stderr.write(
+            "tdd_lock: no --class given — recorded UNCLASSIFIED, so this unlock measures "
+            "nothing either way. Pass --class {} next time.\n".format("|".join(REASON_CLASSES)))
+    _journal(root, entry)
+    # R4 exhaust: an unlock classed `gate-wrong` is the one ADJUDICATED false-positive signal
+    # the yield instrument has — it lands in the same event log the hooks write (one store,
+    # one schema). reason_class rides in `extra`, which log_yield_event merges verbatim.
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                         "..", "hooks", "scripts"))
         from _common import log_yield_event
-        log_yield_event("testlock", "override", {"reason": reason}, source="testlock")
+        log_yield_event("testlock", "override",
+                        {"reason": reason, "reason_class": klass}, source="testlock")
     except Exception:
         pass
     os.remove(path)
@@ -135,6 +187,10 @@ def main(argv=None):
     p_lock.add_argument("files", nargs="+")
     p_unlock = sub.add_parser("unlock")
     p_unlock.add_argument("--reason", default="")
+    # dest is mandatory: `class` is a Python keyword, so args.class would not parse.
+    p_unlock.add_argument("--class", dest="reason_class", choices=REASON_CLASSES, default=None,
+                          help="why the lock is being released; only gate-wrong counts a "
+                               "block as a false positive (see module header)")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     return {"lock": cmd_lock, "unlock": cmd_unlock, "status": cmd_status}[args.cmd](args)

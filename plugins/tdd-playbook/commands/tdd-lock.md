@@ -19,8 +19,11 @@ the same upgrade `/claims` got from `verify_citations`.
 3. **Implement to green** — source edits only. If a locked test blocks you, that is the
    system working: the answer is almost always "fix the source."
 4. **If the TEST itself is genuinely wrong** (wrong expected value, over-strict invariant):
-   `/tdd-unlock` with a real reason — never work around the guard.
-5. **On green:** run the suite, report Tripwire N/N as usual, then unlock with reason
-   "green — implementation complete" (the journal entry closes the cycle for `/grade`).
+   `/tdd-unlock` with a real reason and `--class test-wrong` — never work around the guard.
+   Reserve `--class gate-wrong` for the guard blocking work it had no business blocking;
+   that is the only class that counts the friction as wasted, and it is what retires a gate.
+5. **On green:** run the suite, report Tripwire N/N as usual, then unlock with
+   `--class feature-end --reason "green — implementation complete"` (mid-feature phase
+   boundaries take `--class phase`). The journal entry closes the cycle for `/grade`.
 
 Report: `Test-lock: N file(s) locked · <commit sha of the red tests>`.

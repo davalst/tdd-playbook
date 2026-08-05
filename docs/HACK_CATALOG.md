@@ -177,6 +177,28 @@ the code under test constructed, and no representation of the consumer appears i
   pluggable family from the real registry, asserting the host's contract per member (it
   catches the author who never read the convention, which is this class's whole character).
 
+### H12 — Self-serving adjudication: grading the gate that blocked you
+Where a guard's cost is measured from the blocked agent's OWN account of why it released the
+lock, that account is written by the party with an interest in the verdict. Claiming the
+friction was wasted ("the gate was wrong") is the cheapest sentence in the transcript, and
+enough of them retire the guard — so the agent that finds a gate inconvenient can, entirely
+within the sanctioned path and leaving a full journal trail, argue it out of existence. No
+test is weakened and no guard is disabled; the DELETION IS VOTED FOR, one honest-looking
+unlock at a time. Note the shape is not hypothetical in its dual: the same instrument reading
+every unlock as an adjudication already recommended retiring TEST-LOCK across four cycles in
+which no gate was ever wrong (v1.27) — that was miscounting, and H12 is what miscounting
+becomes once the count is deliberate.
+- Evidence: this repo, 2026-08-05 — the v1.27 fix that stopped counting every unlock as a
+  false positive necessarily created a class (`gate-wrong`) that DOES count, and put the
+  choice of class in the hand of the agent seeking the unlock.
+- Defense: asymmetric cost — the one class that feeds retirement demands ≥30 chars naming
+  WHICH block fired and why it was wrong, and is refused below that bar (`tdd_lock.py`);
+  a phrase detector flags a phase-shaped reason claiming `gate-wrong` as `class_mismatch`
+  and records the contradiction beside the stated class WITHOUT rewriting it (silent
+  correction would fabricate into the record `/grade` reads); `/grade` reports the
+  `gate-wrong` share and every mismatch (§13); retirement stays a human call with the R4.3
+  demotion shape, never automatic from the count.
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -192,6 +214,7 @@ the code under test constructed, and no representation of the consumer appears i
 | H9 | overmock_guard fabricated-seam pattern (planted: test_hooks G2e pair) | §1 seam-fabrication rule; §6a assembly suite |
 | H10 | — (mechanical replay is per-guard, not a standing hook) | §13 guard calibration + red-first-verifier/tripwire-auditor briefs + corpus plant class |
 | H11 | family parity sweeps (repo-local by construction; this repo: test_agents commands sweep + vacuity guard) | §1 seam rule + §0 field-granularity emits + integration-adversary brief + corpus plant pair seam-self-consistency-return-only / control-seam-message-rendered |
+| H12 | tdd_lock `--class` asymmetric bar (gate-wrong refused under 30 chars) + `class_mismatch` flag recorded-never-corrected (planted: test_tdd_lock reason-class pair) | `/grade` gate-wrong-share + mismatch read; R4.3 human demotion call — the count never retires a gate by itself |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 

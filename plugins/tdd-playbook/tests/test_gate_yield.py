@@ -70,17 +70,18 @@ def main():
              "findings": 1},
             "this line is not json (PLANTED corruption)",
             {"ts": "t", "source": "testlock", "gate": "testlock", "event": "override",
-             "reason": "r"},
+             "reason": "the testlock guard blocked an edit it had no business blocking",
+             "reason_class": "gate-wrong"},
             {"ts": "t", "source": "hook", "gate": "snapshotguard", "event": "suppressed",
              "findings": 1},
         ])
         p = run_gy("rollup", "--log", raw, "--md", md, "--date", "2026-07-27")
         body = open(md).read() if os.path.isfile(md) else ""
-        check("rollup: exit 0 with per-gate rows",
-              p.returncode == 0 and "| 2026-07-27 | testweaken | 2 | 0 | 0 | 0 |" in body
-              and "| 2026-07-27 | testlock | 1 | 0 | 1 | 0 |" in body
-              and "| 2026-07-27 | flaky | 0 | 1 | 0 | 0 |" in body
-              and "| 2026-07-27 | snapshotguard | 0 | 0 | 0 | 1 |" in body,
+        check("rollup: exit 0 with per-gate rows (v1.27: 7 cells, fp last)",
+              p.returncode == 0 and "| 2026-07-27 | testweaken | 2 | 0 | 0 | 0 | 0 |" in body
+              and "| 2026-07-27 | testlock | 1 | 0 | 1 | 0 | 1 |" in body
+              and "| 2026-07-27 | flaky | 0 | 1 | 0 | 0 | 0 |" in body
+              and "| 2026-07-27 | snapshotguard | 0 | 0 | 0 | 1 | 0 |" in body,
               (p.returncode, body, p.stdout, p.stderr))
         check("rollup: PLANTED corrupt line skipped with a warning, run not failed",
               "corrupt" in (p.stdout + p.stderr).lower()
@@ -94,19 +95,24 @@ def main():
             {"ts": "t", "source": "hook", "gate": "testlock", "event": "block",
              "findings": 1},
             {"ts": "t", "source": "testlock", "gate": "testlock", "event": "override",
-             "reason": "r"},
+             "reason": "the testlock guard blocked an edit it had no business blocking",
+             "reason_class": "gate-wrong"},
         ])
         run_gy("rollup", "--log", raw, "--md", md, "--date", "2026-08-10")
         body = open(md).read()
         check("rollup: second cycle appends, first cycle intact",
               "| 2026-07-27 | testweaken |" in body
-              and "| 2026-08-10 | testlock | 1 | 0 | 1 | 0 |" in body, body)
+              and "| 2026-08-10 | testlock | 1 | 0 | 1 | 0 | 1 |" in body, body)
 
-        # candidates: testlock has 2 cycles of friction with every block overridden ->
-        # candidate; testweaken has friction but no adjudication -> NOT a candidate;
-        # a gate absent from the record is UNMEASURED, never zero-yield
+        # candidates: testlock has 2 cycles of friction where every block was adjudicated a
+        # false positive (fp, i.e. --class gate-wrong) -> candidate; testweaken has friction
+        # but no adjudication -> NOT a candidate; a gate absent from the record is UNMEASURED.
+        # v1.27 (pre-fix sha 119e2de): this pin previously seeded a CLASSLESS override and
+        # asserted the flag, which pinned the DEFECT — every unlock read as an adjudicated
+        # false positive. The fixtures now carry reason_class, so the TRUE half of the old
+        # semantics (genuine FPs DO flag) survives under the corrected mechanism.
         p = run_gy("candidates", "--md", md)
-        check("candidates: 2 cycles all-overridden -> retirement candidate",
+        check("candidates: 2 cycles all-adjudicated-gate-wrong -> retirement candidate",
               p.returncode == 0 and "RETIREMENT CANDIDATE" in p.stdout
               and "testlock" in p.stdout, (p.returncode, p.stdout, p.stderr))
         check("candidates: unadjudicated friction is NOT a candidate",
@@ -119,9 +125,9 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         md = os.path.join(d, "gate_yield.md")
         with open(md, "w") as fh:
-            fh.write("| date | gate | blocks | warns | overrides | suppressed |\n"
-                     "|---|---|---|---|---|---|\n"
-                     "| 2026-08-10 | testlock | 3 | 0 | 3 | 0 |\n")
+            fh.write("| date | gate | blocks | warns | overrides | suppressed | fp |\n"
+                     "|---|---|---|---|---|---|---|\n"
+                     "| 2026-08-10 | testlock | 3 | 0 | 3 | 0 | 3 |\n")
         p = run_gy("candidates", "--md", md)
         check("candidates: ONE cycle is never enough (fresh-clone protection)",
               p.returncode == 0 and "RETIREMENT CANDIDATE" not in p.stdout, p.stdout)
@@ -148,10 +154,10 @@ def main():
         os.chmod(stub, 0o755)
         md = os.path.join(d, "gate_yield.md")
         with open(md, "w") as fh:
-            fh.write("| date | gate | blocks | warns | overrides | suppressed |\n"
-                     "|---|---|---|---|---|---|\n"
-                     "| 2026-07-27 | testlock | 3 | 0 | 3 | 0 |\n"
-                     "| 2026-08-10 | testlock | 2 | 0 | 2 | 0 |\n")
+            fh.write("| date | gate | blocks | warns | overrides | suppressed | fp |\n"
+                     "|---|---|---|---|---|---|---|\n"
+                     "| 2026-07-27 | testlock | 3 | 0 | 3 | 0 | 3 |\n"
+                     "| 2026-08-10 | testlock | 2 | 0 | 2 | 0 | 2 |\n")
         env = dict(os.environ)
         env["TDD_PLAYBOOK_YIELD_MD"] = md
         # isolation: never drain a developer's real raw log through this test
@@ -174,11 +180,146 @@ def main():
               p.returncode == 0 and "unmeasured" in p.stdout.lower(),
               (p.returncode, p.stdout[-400:]))
 
+    test_override_reason_class()
+    test_replay_motivating_artifact()
     test_dataflow_rollup_and_trend()
     test_dataflow_producer_consumer_seam()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
+
+
+def _md(path, rows, header=True):
+    """Write a committed-record fixture. rows are raw '| ... |' strings."""
+    with open(path, "w") as fh:
+        if header:
+            fh.write("| date | gate | blocks | warns | overrides | suppressed | fp |\n"
+                     "|---|---|---|---|---|---|---|\n")
+        fh.write("\n".join(rows) + "\n")
+
+
+def test_override_reason_class():
+    """PLANTED (v1.27, pre-fix sha 119e2de): gate_yield counted EVERY journaled unlock as a
+    block adjudicated a false positive, so four cycles of the normal red-first
+    lock/implement/unlock rhythm printed `RETIREMENT CANDIDATE: testlock` with zero real
+    false positives — the instrument recommending retirement of the strongest anti-gaming
+    defense there is. Only an unlock journaled `--class gate-wrong` adjudicates a block.
+
+    Every plant below is paired with the clean control that MUST still flag: a fix that
+    simply stopped flagging would be the same defect with the sign flipped."""
+    print("\n[override reason-class (v1.27)]")
+    with tempfile.TemporaryDirectory() as d:
+        # 1. the motivating shape: friction fully overridden, but all PHASE-class
+        for klass, should_flag in (("phase", False), ("feature-end", False),
+                                   ("test-wrong", False), ("gate-wrong", True)):
+            raw, md = os.path.join(d, "raw.jsonl"), os.path.join(d, klass + ".md")
+            for date in ("2026-09-01", "2026-09-02"):
+                seed_raw(raw, [
+                    {"ts": "t", "source": "hook", "gate": "testlock", "event": "block",
+                     "findings": 1},
+                    {"ts": "t", "source": "testlock", "gate": "testlock",
+                     "event": "override", "reason": "x" * 40, "reason_class": klass},
+                ])
+                run_gy("rollup", "--log", raw, "--md", md, "--date", date)
+            p = run_gy("candidates", "--md", md)
+            flagged = "RETIREMENT CANDIDATE" in p.stdout
+            check("candidates: all-{} overrides -> {}".format(
+                      klass, "candidate" if should_flag else "NO candidate"),
+                  p.returncode == 0 and flagged == should_flag, (klass, p.stdout))
+
+        # 2. rollup keeps `overrides` as the TOTAL and `fp` as the adjudicating subset;
+        #    a class-less override (old vendored lock) counts as an override, never an fp
+        raw, md = os.path.join(d, "mix.jsonl"), os.path.join(d, "mix.md")
+        seed_raw(raw, [
+            {"ts": "t", "source": "testlock", "gate": "testlock", "event": "override",
+             "reason": "x" * 40, "reason_class": "phase"},
+            {"ts": "t", "source": "testlock", "gate": "testlock", "event": "override",
+             "reason": "x" * 40, "reason_class": "gate-wrong"},
+            {"ts": "t", "source": "testlock", "gate": "testlock", "event": "override",
+             "reason": "no class at all (old vendored caller)"},
+        ])
+        run_gy("rollup", "--log", raw, "--md", md, "--date", "2026-09-03")
+        check("rollup: overrides counts ALL 3, fp counts only the gate-wrong one",
+              "| 2026-09-03 | testlock | 0 | 0 | 3 | 0 | 1 |" in open(md).read(),
+              open(md).read())
+
+        # 3. FABRICATION GUARD: legacy 6-cell rows are UNMEASURED, never fp=0-by-default.
+        #    A record of only legacy rows can never produce a candidate, and says why.
+        legacy = os.path.join(d, "legacy.md")
+        _md(legacy, ["| 2026-07-30 | testlock | 2 | 0 | 7 | 0 |",
+                     "| 2026-08-03 | testlock | 3 | 0 | 5 | 0 |"])
+        p = run_gy("candidates", "--md", legacy)
+        check("candidates: PLANTED legacy-only record -> no candidate (unmeasured, not zero)",
+              "RETIREMENT CANDIDATE" not in p.stdout, p.stdout)
+        check("candidates: legacy record says UNCLASSIFIED HISTORY out loud",
+              "UNCLASSIFIED HISTORY" in p.stdout and "testlock" in p.stdout, p.stdout)
+
+        # 4. mixed history: the verdict rests on the CLASSIFIED cycles only — one classified
+        #    cycle is below min_cycles even though the record holds three dates
+        mixed = os.path.join(d, "mixed.md")
+        _md(mixed, ["| 2026-07-30 | testlock | 2 | 0 | 7 | 0 |",
+                    "| 2026-08-03 | testlock | 3 | 0 | 5 | 0 |",
+                    "| 2026-09-03 | testlock | 1 | 0 | 1 | 0 | 1 |"])
+        p = run_gy("candidates", "--md", mixed)
+        check("candidates: PLANTED mixed history -> 1 classified cycle is not enough",
+              "RETIREMENT CANDIDATE" not in p.stdout, p.stdout)
+        check("candidates: mixed history cites the classified count, not the row count",
+              "2 committed cycle(s) predate" in p.stdout, p.stdout)
+
+        # 5. CONTROL: two classified cycles, fp >= blocks -> the flag MUST return
+        good = os.path.join(d, "good.md")
+        _md(good, ["| 2026-09-03 | testlock | 1 | 0 | 1 | 0 | 1 |",
+                   "| 2026-09-04 | testlock | 2 | 0 | 2 | 0 | 2 |"])
+        p = run_gy("candidates", "--md", good)
+        check("candidates: CONTROL 2 classified cycles, fp>=blocks -> candidate returns",
+              "RETIREMENT CANDIDATE: testlock" in p.stdout, p.stdout)
+
+        # 6. legacy blocks must NOT inflate the denominator against post-fix fp (the same
+        #    bug sign-flipped: a real candidate silently suppressed forever)
+        infl = os.path.join(d, "inflate.md")
+        _md(infl, ["| 2026-07-30 | testlock | 99 | 0 | 0 | 0 |",
+                   "| 2026-09-03 | testlock | 1 | 0 | 1 | 0 | 1 |",
+                   "| 2026-09-04 | testlock | 1 | 0 | 1 | 0 | 1 |"])
+        p = run_gy("candidates", "--md", infl)
+        check("candidates: PLANTED 99 legacy blocks do NOT suppress a real candidate",
+              "RETIREMENT CANDIDATE: testlock" in p.stdout, p.stdout)
+
+
+def test_replay_motivating_artifact():
+    """§13 v1.25 guard calibration: replay the fix against the artifact that MOTIVATED it.
+
+    Pre-fix sha 119e2de. The four rows below are a verbatim freeze of
+    `git show 119e2de:docs/calibration/gate_yield.md` (testlock rows) — frozen inline rather
+    than shelled out, so the test is self-contained in a shallow clone; provenance lives
+    here. The paired journal artifact is `git show 119e2de:.claude/tdd-lock-journal.jsonl`
+    (22 unlocks, overwhelmingly phase-boundary rhythm).
+
+    Red-first alone proves a guard CAN fail, not that it fails for the reason it was built.
+    Leg (c) is what makes this real: re-materialize the identical numbers as classified rows
+    and the flag must REAPPEAR — without it this whole test passes for a candidates() that
+    never flags anything."""
+    print("\n[replay: the motivating artifact (pre-fix 119e2de)]")
+    FROZEN = ["| 2026-07-30 | testlock | 2 | 0 | 7 | 0 |",
+              "| 2026-08-03 | testlock | 3 | 0 | 5 | 0 |",
+              "| 2026-08-04 | testlock | 3 | 0 | 2 | 0 |",
+              "| 2026-08-05 | testlock | 1 | 0 | 0 | 0 |"]
+    with tempfile.TemporaryDirectory() as d:
+        pre = os.path.join(d, "prefix.md")
+        _md(pre, FROZEN)
+        p = run_gy("candidates", "--md", pre)
+        check("(a) replay: the pre-fix record no longer flags testlock for retirement",
+              p.returncode == 0 and "RETIREMENT CANDIDATE" not in p.stdout, p.stdout)
+        check("(b) replay: the retraction is as visible as the spurious flag was",
+              "UNCLASSIFIED HISTORY" in p.stdout, p.stdout)
+
+        # (c) NEGATIVE CONTROL — same numbers, now classified: the flag must come back,
+        #     proving (a) is a correct verdict and not a guard that stopped working.
+        ctl = os.path.join(d, "control.md")
+        _md(ctl, [r + " {} |".format(r.strip().strip("|").split("|")[4].strip())
+                  for r in FROZEN])
+        p = run_gy("candidates", "--md", ctl)
+        check("(c) replay NEGATIVE CONTROL: identical numbers classified -> flag returns",
+              "RETIREMENT CANDIDATE: testlock" in p.stdout, p.stdout)
 
 
 def test_dataflow_rollup_and_trend():

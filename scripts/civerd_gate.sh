@@ -35,4 +35,20 @@ python3 calibration/test_harness.py || exit 1
 # (vacuous — scanning nothing is a real failure, not a pass) both fail the gate.
 python3 plugins/tdd-playbook/bin/dataflow_sweeps.py all \
     --config dataflow-sweeps.json || exit 1
-echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep)"
+# v1.27 (§13 RSI): every gate-surface change must carry a PRE-REGISTERED expected effect.
+# Baseline resolution is fail-closed on purpose. `git describe` is tried first, then the
+# ledger's own EPOCH (always in history, so it resolves in any full clone); if NEITHER
+# resolves we exit 1 rather than skip. A silent skip would leave this gate dark on exactly
+# the host that signs the release verdict — the engine runs THIS script on a fresh clone.
+LEDGER_BASE="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+if [ -z "$LEDGER_BASE" ]; then
+    LEDGER_BASE="$(sed -n 's/^EPOCH:[[:space:]]*\([0-9a-f]\{7,40\}\).*/\1/p' \
+        docs/calibration/ledger.md 2>/dev/null | head -1)"
+fi
+if [ -z "$LEDGER_BASE" ]; then
+    echo "civerd_gate: FAIL — no ledger baseline (no tag and no EPOCH in ledger.md);" \
+         "refusing to skip the ledger check" >&2
+    exit 1
+fi
+python3 calibration/ledger.py check --baseline-rev "$LEDGER_BASE" || exit 1
+echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep + ledger)"
