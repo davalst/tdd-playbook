@@ -9,6 +9,8 @@
     "plugins/tdd-playbook/tests/test_gate_yield.py": "2026-08-04T22:56:55+00:00",
     "plugins/tdd-playbook/tests/test_verify_verdict.py": "2026-08-03T22:17:22+00:00",
     "plugins/tdd-playbook/tests/test_release_verify.py": "2026-08-03T22:19:53+00:00",
-    "plugins/tdd-playbook/tests/test_hooks.py": "2026-08-04T22:56:45+00:00"
+    "plugins/tdd-playbook/tests/test_hooks.py": "2026-08-04T22:56:45+00:00",
+    ".claude/worktrees/seam-contract-v1.26/plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-05T12:56:48+00:00",
+    ".claude/worktrees/seam-contract-v1.26/plugins/tdd-playbook/tests/test_agents.py": "2026-08-05T13:08:23+00:00"
   }
 }
