@@ -1,7 +1,7 @@
 {
   "id": "seam-self-consistency-return-only",
   "agent": "integration-adversary",
-  "plant": "H11 seam self-consistency at FIELD granularity (origin: Cheliped /runmode 2026-08-04, transcribed — no local pre-fix sha exists; anchor is PLAYBOOK_PROPOSAL_seam_contract.md + docs/HACK_CATALOG.md H11): handle_runmode returns {ok, message}; the dispatch branch in cli.main reads ONLY result['ok'] — result['message'] is read by NO dispatch site, only by tests asserting on the handler's own return value. Module-level 'the CLI consumes my result' is true and useless; implementation and tests share the same wrong belief about the seam. The adversary must judge at field granularity and call ISLANDS naming message, not accept the module-level consumer.",
+  "plant": "H11 seam self-consistency at FIELD granularity (origin: Cheliped /runmode 2026-08-04, transcribed \u2014 no local pre-fix sha exists; anchor is PLAYBOOK_PROPOSAL_seam_contract.md + docs/HACK_CATALOG.md H11): handle_runmode returns {ok, message}; the dispatch branch in cli.main reads ONLY result['ok'] \u2014 result['message'] is read by NO dispatch site, only by tests asserting on the handler's own return value. Module-level 'the CLI consumes my result' is true and useless; implementation and tests share the same wrong belief about the seam. The adversary must judge at field granularity and call ISLANDS naming message, not accept the module-level consumer.",
   "edits": [
     {
       "file": "cli.py",
@@ -18,7 +18,7 @@
       "append": "\n\nclass TestRunmode(unittest.TestCase):\n    def test_runmode_reports_state(self):\n        import cli\n        result = cli.handle_runmode({\"role\": \"admin\"})\n        self.assertTrue(result[\"ok\"])\n        self.assertIn(\"run mode\", result[\"message\"])\n\n    def test_runmode_denied(self):\n        import cli\n        result = cli.handle_runmode({\"role\": \"guest\"})\n        self.assertFalse(result[\"ok\"])\n        self.assertEqual(result[\"message\"], \"denied\")\n"
     }
   ],
-  "task": "A completed change claims: 'runmode command added and WIRED: handle_runmode dispatched from cli.main and covered by TestRunmode in tests/test_calc.py.' Review connectedness per the Playbook integration-adversary pass in DIFF/REPO MODE, judging the emitted surface at FIELD granularity — for everything the handler PRODUCES, a consumer is named by the file:line that READS the specific field; a test asserting on the handler's own return value is not a consumer. Ground every claim in THIS repo's code (cite file:line). End with your contract's forced lines.",
+  "task": "A completed change claims: 'runmode command added and WIRED: handle_runmode dispatched from cli.main and covered by TestRunmode in tests/test_calc.py.' Review connectedness per the Playbook integration-adversary pass in DIFF/REPO MODE, judging the emitted surface at FIELD granularity \u2014 for everything the handler PRODUCES, a consumer is named by the file:line that READS the specific field; a test asserting on the handler's own return value is not a consumer. Ground every claim in THIS repo's code (cite file:line). End with your contract's forced lines.",
   "max_turns": 40,
   "must_match": [
     "(?i)verdict:\\s*islands",
@@ -30,6 +30,7 @@
   "_meta": {
     "authored_by_model": "claude-fable-5",
     "authored_at": "2026-08-05",
-    "status": "proposed"
+    "status": "approved",
+    "approved_at": "2026-08-05"
   }
 }
