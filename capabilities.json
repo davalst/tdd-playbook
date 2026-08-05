@@ -267,6 +267,13 @@
             "calibration cycle review (retirement decisions, R4.3 demotion shape when the first candidate appears)"
           ]
         }
+      ],
+      "integration_debt": [
+        {
+          "what": "TESTLOCK OVERRIDE SEMANTICS (v1.27 candidate, filed 2026-08-05 per David): gate_yield counts EVERY journaled unlock as an adjudicated false positive, so four consecutive cycles of phase-boundary unlocks (the normal red-first lock/implement/unlock rhythm) produced spurious RETIREMENT CANDIDATE: testlock flags with zero real FPs. The instrument must distinguish unlock REASONS (phase-complete/feature-end vs gate-was-wrong) before any retirement decision is trustworthy — likely a reason-class field on the unlock journal consumed by the rollup. Done = candidates() ignores phase-class unlocks with a planted test, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-09-15"
+        }
       ]
     },
     {

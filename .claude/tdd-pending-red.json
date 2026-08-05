@@ -4,7 +4,7 @@
     "plugins/tdd-playbook/tests/test_agents.py": "2026-08-04T22:56:26+00:00",
     "calibration/test_harness.py": "2026-08-03T15:05:07+00:00",
     "plugins/tdd-playbook/tests/test_installer.py": "2026-08-03T14:42:04+00:00",
-    "plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-04T22:56:32+00:00",
+    "plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-05T16:08:30+00:00",
     "plugins/tdd-playbook/tests/test_dataflow_sweeps.py": "2026-08-04T22:55:59+00:00",
     "plugins/tdd-playbook/tests/test_gate_yield.py": "2026-08-04T22:56:55+00:00",
     "plugins/tdd-playbook/tests/test_verify_verdict.py": "2026-08-03T22:17:22+00:00",

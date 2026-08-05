@@ -327,6 +327,13 @@ def test_own_registry():
           not _fires("2026-08-17", "V1.25 CORPUS QUEUE")
           and any("calibration-loop" in v for v in _fires("2026-08-18", "V1.25 CORPUS QUEUE")),
           _fires("2026-08-18", "V1.25 CORPUS QUEUE")[:2])
+    check("testlock override-semantics debt (2026-09-15): silent on its expiry day, "
+          "fires 09-16 naming gate-yield — phase-boundary unlocks are not adjudicated "
+          "false positives, and 4 cycles of spurious retirement flags prove it",
+          not _fires("2026-09-15", "TESTLOCK OVERRIDE SEMANTICS")
+          and any("gate-yield" in v
+                  for v in _fires("2026-09-16", "TESTLOCK OVERRIDE SEMANTICS")),
+          _fires("2026-09-16", "TESTLOCK OVERRIDE SEMANTICS")[:2])
     check("layer_10 sha report-back debt (2026-09-15): silent on its expiry day, fires "
           "09-16 naming dataflow-sweeps — the sha-citation rule's own slot must not sit "
           "empty forever in the release that invented the rule",
