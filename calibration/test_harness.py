@@ -701,6 +701,56 @@ def _lift_ratchet_scenario_tests(d):
           p.returncode == 0 and "PASS" in p.stdout, (p.returncode, p.stdout[-300:]))
 
 
+
+def _promotion_quarantine_tests():
+    """CIVerd engine finding, 2026-08-05: the AMBER->BLOCKING promotion is MECHANICAL, so
+    a scenario whose oracle is known-defective promotes a known-FALSE failure to BLOCKING
+    on its second consecutive AMBER — hardening noise into policy while the real fix waits.
+    Three such scenarios exist: v1.22.0-BASELINE plants whose oracles are proven wrong (one
+    regex cannot match the word "survives") and which the integrity floor forbids editing,
+    so superseding is the only sanctioned path and it is dated debt.
+
+    The quarantine pauses PROMOTION ONLY. Matching, scoring, rep counts and the AMBER
+    verdict itself are untouched, so the ten predictions in flight are measured against a
+    byte-identical instrument. It is a dated exemption in the house shape: expired means
+    it stops protecting AND is reported."""
+    print("\n[promotion quarantine]")
+    import run_calibration as rc
+    live = datetime.date(2026, 8, 6)
+    past = datetime.date(2026, 9, 16)
+    q = rc.PROMOTION_QUARANTINE[0]["target"]
+
+    check("quarantine: a known-defective scenario is NOT promoted on a second AMBER",
+          rc.verdict_for(q, 1, 3, "AMBER", today=live) == "AMBER",
+          rc.verdict_for(q, 1, 3, "AMBER", today=live))
+    check("quarantine: an ordinary scenario IS still promoted on a second AMBER",
+          rc.verdict_for("not-quarantined-scenario", 1, 3, "AMBER", today=live)
+          == "**BLOCKING FAIL** (AMBER\u00d72)",
+          rc.verdict_for("not-quarantined-scenario", 1, 3, "AMBER", today=live))
+    check("quarantine: it never rescues a total miss (0/3 stays BLOCKING)",
+          rc.verdict_for(q, 0, 3, "AMBER", today=live) == "**BLOCKING FAIL**")
+    check("quarantine: it never manufactures a pass (3/3 is PASS, 1/3 first-time AMBER)",
+          rc.verdict_for(q, 3, 3, "PASS", today=live) == "PASS"
+          and rc.verdict_for(q, 1, 3, "PASS", today=live) == "AMBER")
+    check("quarantine: EXPIRED stops protecting — promotion resumes",
+          rc.verdict_for(q, 1, 3, "AMBER", today=past) == "**BLOCKING FAIL** (AMBER\u00d72)",
+          rc.verdict_for(q, 1, 3, "AMBER", today=past))
+    check("quarantine: EXPIRED is REPORTED, not silent",
+          any(q in p for p in rc.quarantine_problems(past)),
+          rc.quarantine_problems(past))
+    check("quarantine: live quarantine reports no problem",
+          rc.quarantine_problems(live) == [], rc.quarantine_problems(live))
+    check("quarantine: every entry carries the house debt shape (what/target/owner/expires)",
+          all(set(("what", "target", "owner", "expires")).issubset(e)
+              for e in rc.PROMOTION_QUARANTINE), rc.PROMOTION_QUARANTINE)
+    check("quarantine: covers ONLY the immutable baseline plants it names, not the "
+          "scenarios with pending predictions",
+          {e["target"] for e in rc.PROMOTION_QUARANTINE}
+          == {"shadowed-import-vacuous-suite", "csv-escape-fixed-at-call-site",
+              "special-case-bypasses-both-copies"},
+          {e["target"] for e in rc.PROMOTION_QUARANTINE})
+
+
 def _wilson_tests():
     """PLANTED (D4): `recall 9/9` implies certainty we don't have — at 3 reps, 3/3 is
     consistent with a true rate from ~0.44 to 1.0. wilson() is a pure statistic (the
@@ -1312,6 +1362,7 @@ def main():
     with tempfile.TemporaryDirectory() as dwf:
         _weak_plant_flag_tests(dwf)
     _coverage_invariant_tests()
+    _promotion_quarantine_tests()
     _wilson_tests()
     _quarterly_clock_tests()
     with tempfile.TemporaryDirectory() as dlr:

@@ -307,6 +307,8 @@ def dry_run(scenarios):
     full = load_scenarios() + load_corpus()
     problems.extend(pairing_problems(full))
     problems.extend(agent_coverage_problems(full))
+    # an EXPIRED promotion quarantine must be loud on the gate path, not discovered later
+    problems.extend(quarantine_problems())
     for msg in problems:
         print("DRY-RUN PROBLEM: " + msg)
     print("dry-run: {} scenario(s), {} problem(s)".format(len(scenarios), len(problems)))
@@ -317,6 +319,85 @@ def repo_sha():
     p = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
                        capture_output=True, text=True, timeout=30)
     return p.stdout.strip() if p.returncode == 0 and p.stdout.strip() else "unknown"
+
+
+# ---- PROMOTION QUARANTINE (CIVerd engine finding, 2026-08-05) -------------------------
+# The AMBER -> BLOCKING promotion is MECHANICAL: a second consecutive AMBER hardens into a
+# blocking verdict. Three scenarios carry oracles PROVEN defective against recorded agent
+# text (one regex cannot match the word "survives"; two are synonym misses), and they are
+# v1.22.0-BASELINE plants — check_scoreboard_integrity refuses edits to approved plants, so
+# SUPERSEDING them is the only sanctioned path and it is dated debt on calibration-loop.
+# Left alone they would promote known-FALSE failures to BLOCKING and harden noise into
+# policy while the fix waits.
+#
+# This pauses PROMOTION ONLY. Matching, scoring, rep counts and the AMBER verdict itself are
+# untouched — the instrument stays byte-identical for the ten predictions in flight
+# (L-20260805-20..29), which is why this is safe to land mid-cycle when a matcher change
+# would not be. House debt shape; an EXPIRED entry stops protecting AND is reported.
+PROMOTION_QUARANTINE = [
+    {"what": "oracle cannot match 'survives' — regex is surviv(ed|ing|ors?); the agent's "
+             "'every mutant survives' is a correct catch scored as a miss",
+     "target": "shadowed-import-vacuous-suite", "owner": "david", "expires": "2026-09-15"},
+    {"what": "oracle lists future caller/consumer/user; the agent wrote 'ANY future call "
+             "site is at risk' — a correct BAND-AID verdict scored as a miss",
+     "target": "csv-escape-fixed-at-call-site", "owner": "david", "expires": "2026-09-15"},
+    {"what": "oracle lists disagree/diverge/bypass; the agent wrote 'contract mismatch' and "
+             "'accidental agreement' — a correct BAND-AID verdict scored as a miss",
+     "target": "special-case-bypasses-both-copies", "owner": "david", "expires": "2026-09-15"},
+]
+
+
+def quarantine_problems(today=None):
+    """Expired or malformed quarantine entries, as loud strings. Fails closed: an expired
+    entry is REPORTED here and simultaneously stops protecting in verdict_for()."""
+    today = today or datetime.date.today()
+    out = []
+    for e in PROMOTION_QUARANTINE:
+        missing = [f for f in ("what", "target", "owner", "expires") if not e.get(f)]
+        if missing:
+            out.append("PROMOTION QUARANTINE {}: missing {}".format(
+                e.get("target", "<no target>"), "/".join(missing)))
+            continue
+        try:
+            exp = datetime.date.fromisoformat(e["expires"])
+        except ValueError:
+            out.append("PROMOTION QUARANTINE {}: expires {!r} is not YYYY-MM-DD".format(
+                e["target"], e["expires"]))
+            continue
+        if exp < today:
+            out.append(
+                "PROMOTION QUARANTINE {}: EXPIRED {} (owner: {}) — supersede the plant or "
+                "re-date consciously; promotion has RESUMED for it".format(
+                    e["target"], e["expires"], e["owner"]))
+    return out
+
+
+def promotion_quarantined(sid, today=None):
+    """True only while a well-formed, unexpired entry covers this scenario."""
+    today = today or datetime.date.today()
+    for e in PROMOTION_QUARANTINE:
+        if e.get("target") != sid:
+            continue
+        try:
+            if datetime.date.fromisoformat(e["expires"]) >= today:
+                return True
+        except (ValueError, KeyError, TypeError):
+            return False
+    return False
+
+
+def verdict_for(sid, k, n, last, today=None):
+    """The verdict for one scenario's reps. Extracted from main() so the promotion rule is
+    testable at a seam rather than only through a live model run."""
+    if n == 0:
+        return "INVALID — env failure on all reps"
+    if k == n:
+        return "PASS"
+    if k == 0:
+        return "**BLOCKING FAIL**"
+    if last == "AMBER" and not promotion_quarantined(sid, today):
+        return "**BLOCKING FAIL** (AMBER\u00d72)"
+    return "AMBER"
 
 
 def append_history(history_path, model, results, meta):
@@ -440,16 +521,7 @@ def main(argv=None):
         n = len(counted)
         fail_modes = [r["mode"] for r in reps if r["mode"]]
         mode = next((m for m in mode_precedence if m in fail_modes), None)
-        if n == 0:
-            verdict = "INVALID — env failure on all reps"
-        elif k == n:
-            verdict = "PASS"
-        elif k == 0:
-            verdict = "**BLOCKING FAIL**"
-        elif last_kind(sc["id"]) == "AMBER":
-            verdict = "**BLOCKING FAIL** (AMBER×2)"
-        else:
-            verdict = "AMBER"
+        verdict = verdict_for(sc["id"], k, n, last_kind(sc["id"]))
         results.append({"sc": sc, "runs": "{}/{}".format(k, n), "mode": mode,
                         "verdict": verdict})
         if verdict == "PASS":
@@ -464,6 +536,10 @@ def main(argv=None):
         elif verdict == "AMBER":
             print("AMBER — caught only {}/{} (mode: {}); a terminal pass no longer closes "
                   "a failure".format(k, n, mode))
+            if last_kind(sc["id"]) == "AMBER" and promotion_quarantined(sc["id"]):
+                print("  (promotion to BLOCKING is QUARANTINED for this scenario — its "
+                      "oracle is proven defective and the plant is immutable; superseding "
+                      "is dated debt. Scoring is untouched.)")
         else:
             print("BLOCKING FAIL — the plant survived ({}/{}, mode: {}):".format(k, n, mode))
         worst = next((r for r in reps if not r["passed"]), reps[-1])
