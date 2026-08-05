@@ -81,6 +81,47 @@ will always own "making AI smarter" — competing there is a losing game. We sel
 measurement. And note the beautiful asymmetry: **the faster the labs improve AI, the
 more the world needs independent verification.** Their success grows our market.
 
+## The self-improvement race — and the seat we hold in it
+
+The loudest story in AI right now is **self-improvement**: the labs are racing toward AI
+that makes itself better, and staggering amounts of capital are chasing that word. Here
+is the part of the story the capital hasn't priced yet.
+
+Every serious attempt at self-improving AI has two halves: a **generator** (the AI
+producing new-and-hopefully-better work) and a **verifier** (the thing that decides
+whether the work actually got better). The research record is unambiguous about which
+half is the bottleneck: *an AI grading its own homework inflates the grade.* Left to
+judge themselves, these systems get more confident and more elaborate — not more
+correct. Real improvement only happens when the judge is independent, can't be
+sweet-talked, and stays trustworthy even as the student gets smarter than the teacher.
+Generation is a commodity the labs will always own. **The honest judge is the scarce
+asset — and the honest judge is what we built.**
+
+Three things make our seat in this race unusual, and we state them plainly:
+
+- **We built the hard half first, and run it on ourselves.** Our own development
+  process is a working, documented self-improvement loop: the system's safeguards
+  improve, the *measuring stick* for those safeguards improves (new planted bugs are
+  authored each cycle by an adversary AI), and every change is scored against a written
+  prediction. One rule is absolute: **the machine never gets to modify its own judge.**
+  Changes to the scoring apparatus require a human sign-off and land in a tamper-proof
+  journal. That's not caution slowing us down — it's the design that fifty years of
+  theory says is the only version of self-improvement that's real rather than
+  self-flattery. We may be the first company whose "our AI process improves itself"
+  claim comes with a verifiable paper trail instead of a press release.
+- **Honest labeling is the strategy, not a compromise.** We say "human-governed
+  recursive improvement with a cryptographic audit trail," never "self-improving AI."
+  The first phrase is what regulators, procurement committees, and safety-conscious
+  enterprises are actively looking to approve; the second is what triggers their
+  alarms. We get to ride the most exciting narrative in technology *and* pass the
+  diligence it provokes — very few companies in this wave will be able to do both.
+- **The bet is hedged by construction.** If the self-improvement push succeeds, the
+  world urgently needs independent referees for a torrent of improvement claims — our
+  market explodes. If it stalls or embarrasses itself, the resulting trust crisis makes
+  verifiable evidence *more* valuable, not less. Investing in the referee is exposure
+  to the race without betting on any one runner — the picks-and-shovels position, in
+  the one part of the racecourse every runner must pass through.
+
 ## Why this exact moment
 
 - **The volume tipping point.** AI-written code has crossed from novelty to
@@ -170,9 +211,13 @@ wins the trust — and trust is the product.**
 - **Market shape:** every company shipping AI-written software eventually needs this,
   the way every public company needs an auditor — a small percentage of a very large
   and compounding base.
-- **Timing:** regulation, insurance, and the first wave of AI-code incidents are all
-  converging in the next few years; the winner will be whoever has the longest track
-  record when the music stops.
+- **Timing:** regulation, insurance, the self-improvement funding wave, and the first
+  AI-code incidents are all converging in the next few years; the winner will be
+  whoever has the longest track record when the music stops.
+- **The RSI angle:** the verification half of self-improving AI is the half every
+  researcher agrees is the bottleneck, the half the labs aren't building for anyone but
+  themselves, and the half that wins whether the self-improvement race succeeds or
+  stumbles.
 - **Moat:** private test bank + tamper-proof multi-year history — assets that only time
   can build, and our clock started first.
 - **Team economics:** the system already runs itself on strict, automated discipline —
