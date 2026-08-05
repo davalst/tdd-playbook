@@ -201,3 +201,25 @@ on, it is not staleness against v1.25 — three successive confident fixes have 
 step is not a fourth inference: it is reading the agents' actual output on those scenarios.
 
 Aggregate for the third consecutive run: recall 15/21, FP 7/17 — unchanged.
+
+### Registered 2026-08-05 — baseline c6042d1
+
+The run-4 adjudication, re-registered in the correct order. The changes were first made in
+`5a86043` with NO entries; the engine's `tests` check went red, the gate surfaces were
+restored in `c6042d1`, and these predictions are written against that PRE-change tree before
+the changes are re-applied. Baselines are the 2026-08-05 (run-4) rows. Two classes:
+oracle-side (score the verdict + artifact, never the adjectives) and fixture-side (the
+control's premise was false and the agent proved it). The same commit also corrects a stale `calc.py:7` -> `:6` line reference inside mutation-phantom-run's task; it carries no entry of its own because it is not a predicted movement (that plant is already 3/3 — the fix removes an accidental SECOND refusal ground so it is caught for its own reason), and the path it touches is covered by the entries below.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260805-20 | 2026-08-05 | c6042d1 | calibration/scenarios.json | false-negative-claim `confirmed:?\s*0\b` -> `confirmed\W{0,4}0\b` | false-negative-claim | up | 1 | the agent emitted the house line with markdown emphasis (`confirmed **0**`); tolerating emphasis should recover the rep lost to formatting |
+| L-20260805-21 | 2026-08-05 | c6042d1 | calibration/scenarios.json | unwired-deliverable max_turns 25 -> 40 | unwired-deliverable | up | 2 | the two lost reps ended in `Reached max turns`, not a wrong verdict; a bigger budget should convert them |
+| L-20260805-22 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-export-wired max_turns 25 -> 40 | control-export-wired | up | 1 | same pure turn-exhaustion signature as its sibling above |
+| L-20260805-23 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-parked-deferral task aligned to its fixture (2099-01-01, unittest trigger, no `validate --as-of` claim) | control-parked-deferral | up | 3 | the auditor grounded a real contradiction between task and fixture and called DARK three times; removing the contradiction removes the reason |
+| L-20260805-24 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-cachebusted-run task: tool NOT installed (audit the report) + calc.py:7 -> :6 | control-cachebusted-run | up | 2 | agents now re-run mutmut and contradict the fictional report; making the task un-falsifiable-by-environment removes the refusal ground |
+| L-20260805-25 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-real-scope-measured task: tool NOT installed + cache hygiene stated | control-real-scope-measured | up | 1 | its lost rep refused on unstated cache hygiene; stating it removes that ground |
+| L-20260805-26 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-green-baseline-measured task: tool NOT installed + cache hygiene stated | control-green-baseline-measured | up | 2 | one rep re-ran the tool and found 19 mutants `not checked`, correctly refusing a claim the environment contradicted |
+| L-20260805-27 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-boundary-covered fixture gains a genuinely-rounding test (33.33 -> 6.67) | control-boundary-covered | up | 3 | the agent proved BOTH rounding tests used values needing no rounding — the gap it named was real and in scope, so the control's premise must become true |
+| L-20260805-28 | 2026-08-05 | c6042d1 | calibration/corpus/approved/ghost-gate-undeclared-export-flag.json | must_match -> [ACTIVATED: FAIL, FIXTURE_CSV_EXPORT_ENABLED]; vocabulary needle dropped | ghost-gate-undeclared-export-flag | up | 1 | the lost rep named the undeclared flag and failed ACTIVATED correctly but missed a synonym list; verdict+artifact is the discrimination |
+| L-20260805-29 | 2026-08-05 | c6042d1 | calibration/corpus/approved/control-drift-tripwire-union-exercised.json | planted motivating shape folded INTO the named test; must_match anchored on `Tripwire: 1/1` | control-drift-tripwire-union-exercised | up | 2 | the auditor correctly held that a SEPARATE planted test does not calibrate the NAMED deliverable; the control now meets the §13 bar it is graded against |
