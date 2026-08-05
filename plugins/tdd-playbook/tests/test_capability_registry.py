@@ -331,13 +331,43 @@ def test_own_registry():
           not _fires("2026-08-17", "V1.25 CORPUS QUEUE")
           and any("calibration-loop" in v for v in _fires("2026-08-18", "V1.25 CORPUS QUEUE")),
           _fires("2026-08-18", "V1.25 CORPUS QUEUE")[:2])
-    check("testlock override-semantics debt (2026-09-15): silent on its expiry day, "
-          "fires 09-16 naming gate-yield — phase-boundary unlocks are not adjudicated "
-          "false positives, and 4 cycles of spurious retirement flags prove it",
-          not _fires("2026-09-15", "TESTLOCK OVERRIDE SEMANTICS")
+    # (The TESTLOCK OVERRIDE SEMANTICS pin lived here 2026-08-05 only: the debt was PAID the
+    # same day in v1.27 — `unlock --class` + the fp column + candidates() computing from
+    # CLASSIFIED blocks. A paid loan's trigger is retired WITH this dated comment, never
+    # silently; the record survives in gate-yield's notes.)
+    check("testlock override-semantics: paid — entry GONE, record survives in notes",
+          not _fires("2026-09-16", "TESTLOCK OVERRIDE SEMANTICS")
+          and any("PAID 2026-08-05 (v1.27)" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "gate-yield"))
+    # v1.27 successors — the debts this release OPENS, each string-pinned like every other
+    # loan. Paying one debt while opening smaller named ones is the honest shape; opening
+    # them undated would be exactly the deferral-without-a-trigger this repo bans.
+    check("require --class debt (2026-10-15): silent on its expiry day, fires 10-16 naming "
+          "gate-yield — an optional class leaves the instrument blind by omission",
+          not _fires("2026-10-15", "REQUIRE --class ON UNLOCK")
           and any("gate-yield" in v
-                  for v in _fires("2026-09-16", "TESTLOCK OVERRIDE SEMANTICS")),
-          _fires("2026-09-16", "TESTLOCK OVERRIDE SEMANTICS")[:2])
+                  for v in _fires("2026-10-16", "REQUIRE --class ON UNLOCK")),
+          _fires("2026-10-16", "REQUIRE --class ON UNLOCK")[:2])
+    check("per-gate adjudication debt (2026-11-15): silent on its expiry day, fires 11-16 — "
+          "v1.27 fixed precision on 1 of 6 gates and must not read as fixing the instrument",
+          not _fires("2026-11-15", "PER-GATE ADJUDICATION SEAM")
+          and any("gate-yield" in v
+                  for v in _fires("2026-11-16", "PER-GATE ADJUDICATION SEAM")),
+          _fires("2026-11-16", "PER-GATE ADJUDICATION SEAM")[:2])
+    check("downstream write-only debt (2026-11-15): silent on its expiry day, fires 11-16 — "
+          "vendored repos write reason_class into a log nothing ever rolls up",
+          not _fires("2026-11-15", "DOWNSTREAM WRITE-ONLY EMITTER")
+          and any("gate-yield" in v
+                  for v in _fires("2026-11-16", "DOWNSTREAM WRITE-ONLY EMITTER")),
+          _fires("2026-11-16", "DOWNSTREAM WRITE-ONLY EMITTER")[:2])
+    check("worktree lock-bypass debt (2026-10-15): silent on its expiry day, fires 10-16 — "
+          "a worktree is an unlogged bypass of §1's strongest mechanism",
+          not _fires("2026-10-15", "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")
+          and any("gate-yield" in v
+                  for v in _fires("2026-10-16",
+                                  "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")),
+          _fires("2026-10-16", "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")[:2])
     check("layer_10 sha report-back debt (2026-09-15): silent on its expiry day, fires "
           "09-16 naming dataflow-sweeps — the sha-citation rule's own slot must not sit "
           "empty forever in the release that invented the rule",

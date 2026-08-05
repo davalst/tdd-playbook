@@ -63,11 +63,21 @@ SUMMARY_LINE_RX = _ds.SUMMARY_LINE_RX
 
 MD_HEADER = ("# Gate yield record (R4 — derived from telemetry, never self-report)\n\n"
              "One committed row per gate per calibration cycle. blocks/warns = frictions "
-             "fired; overrides = journaled unlocks adjudicating a block as false-positive; "
-             "suppressed = findings that fired while the gate was demoted to off (a muzzled "
-             "gate, never a quiet one). Candidates need >=2 cycles — see gate_yield.py.\n\n"
-             "| date | gate | blocks | warns | overrides | suppressed |\n"
-             "|---|---|---|---|---|---|\n")
+             "fired; overrides = ALL journaled unlocks; fp = the subset whose journaled "
+             "reason-class is `gate-wrong` — the only kind that adjudicates a block as a "
+             "false positive; suppressed = findings that fired while the gate was demoted "
+             "to off (a muzzled gate, never a quiet one). Candidates need >=2 cycles and "
+             "are computed from fp, never from overrides — see gate_yield.py.\n\n"
+             "DATED CORRECTION (v1.27, pre-fix sha 119e2de): rows on or before 2026-08-05 "
+             "have NO fp cell. Before that fix `overrides` was read as 'blocks adjudicated "
+             "false-positive', so four cycles of the normal red-first lock/implement/unlock "
+             "rhythm printed RETIREMENT CANDIDATE: testlock with zero real false positives. "
+             "Those rows mix phase/feature-end/test-wrong/gate-wrong in unknown proportion "
+             "and are UNMEASURED — they are left byte-identical and are never reinterpreted, "
+             "because inferring a class into a durable record is the fabrication this fix "
+             "exists to end.\n\n"
+             "| date | gate | blocks | warns | overrides | suppressed | fp |\n"
+             "|---|---|---|---|---|---|---|\n")
 
 
 def project_root():
@@ -104,18 +114,25 @@ def read_raw(path):
 
 
 def parse_md_rows(path):
-    """Committed rollup rows: list of (date, gate, blocks, warns, overrides)."""
+    """Committed rollup rows: (date, gate, blocks, warns, overrides, suppressed, fp).
+
+    Widths 5/6/7 are all accepted — the record grew columns and older rows stay valid.
+    `fp` is **None** when the row predates reason-class recording, never 0: a missing
+    measurement is UNMEASURED, and coercing it to zero would fabricate the very number the
+    v1.27 fix exists to stop inventing. Callers must branch on None explicitly.
+    """
     out = []
     if not os.path.isfile(path):
         return out
     with open(path) as fh:
         for ln in fh:
             cells = [c.strip() for c in ln.strip().strip("|").split("|")]
-            if len(cells) not in (5, 6) or not cells[0][:4].isdigit():
+            if len(cells) not in (5, 6, 7) or not cells[0][:4].isdigit():
                 continue
             try:
                 out.append((cells[0], cells[1], int(cells[2]), int(cells[3]),
-                            int(cells[4]), int(cells[5]) if len(cells) == 6 else 0))
+                            int(cells[4]), int(cells[5]) if len(cells) >= 6 else 0,
+                            int(cells[6]) if len(cells) == 7 else None))
             except ValueError:
                 continue
     return out
@@ -132,10 +149,15 @@ def cmd_rollup(args):
     for row in raw:
         gate = str(row.get("gate") or "unknown")
         counts = per_gate.setdefault(gate, {"block": 0, "warn": 0, "override": 0,
-                                            "suppressed": 0})
+                                            "suppressed": 0, "fp": 0})
         ev = row.get("event")
         if ev in counts:
             counts[ev] += 1
+        # `overrides` keeps its exact old meaning (every unlock); `fp` is the adjudicating
+        # subset. Kept as a sub-key rather than a new event NAME because the increment above
+        # silently drops unknown event names — an older vendored copy would eat the signal.
+        if ev == "override" and str(row.get("reason_class") or "") == "gate-wrong":
+            counts["fp"] += 1
     md_dir = os.path.dirname(args.md)
     if md_dir:
         os.makedirs(md_dir, exist_ok=True)
@@ -145,8 +167,9 @@ def cmd_rollup(args):
             fh.write(MD_HEADER)
         for gate in sorted(per_gate):
             c = per_gate[gate]
-            fh.write("| {} | {} | {} | {} | {} | {} |\n".format(
-                args.date, gate, c["block"], c["warn"], c["override"], c["suppressed"]))
+            fh.write("| {} | {} | {} | {} | {} | {} | {} |\n".format(
+                args.date, gate, c["block"], c["warn"], c["override"], c["suppressed"],
+                c["fp"]))
     os.remove(args.log)  # drained — the committed rollup is the durable record
     print("rollup: {} gate(s) recorded for {} in {} (raw log drained)".format(
         len(per_gate), args.date, args.md))
@@ -155,16 +178,30 @@ def cmd_rollup(args):
 
 def candidates(md_path, min_cycles):
     """(candidate_lines, measured_gate_count). Candidate = >=min_cycles cycles of friction
-    with every block overridden."""
+    where every CLASSIFIED block was adjudicated a false positive (`fp`, i.e. an unlock
+    journaled `--class gate-wrong`).
+
+    v1.27: `overrides` left this predicate entirely. It counts EVERY unlock, so the normal
+    red-first lock/implement/unlock rhythm satisfied `overrides >= blocks` and flagged
+    testlock for retirement across four cycles with zero real false positives.
+
+    Both sides of the ratio are classified-only. Counting legacy `blocks` against post-fix
+    `fp` would inflate the denominator and permanently suppress a REAL candidate — the same
+    bug with the sign flipped. Rows predating the fix (fp is None) contribute to neither
+    numerator nor denominator and are reported as UNCLASSIFIED HISTORY instead.
+    """
     rows = parse_md_rows(md_path)
     by_gate = {}
-    for date, gate, blocks, warns, overrides, suppressed in rows:
-        g = by_gate.setdefault(gate, {"cycles": set(), "blocks": 0, "overrides": 0,
-                                      "suppressed": 0})
+    for date, gate, blocks, warns, overrides, suppressed, fp in rows:
+        g = by_gate.setdefault(gate, {"cycles": set(), "blocks_classified": 0, "fp": 0,
+                                      "suppressed": 0, "unknown_cycles": set()})
         g["cycles"].add(date)
-        g["blocks"] += blocks
-        g["overrides"] += overrides
         g["suppressed"] += suppressed
+        if fp is None:
+            g["unknown_cycles"].add(date)
+        else:
+            g["blocks_classified"] += blocks
+            g["fp"] += fp
     lines = []
     for gate in sorted(by_gate):
         g = by_gate[gate]
@@ -174,14 +211,24 @@ def candidates(md_path, min_cycles):
                 "to off (a muzzled gate, not a quiet one). A demotion nobody journaled is "
                 "the H-class kill switch; restore the gate or journal the demotion with an "
                 "owner and expiry.".format(gate, g["suppressed"]))
-        if (len(g["cycles"]) >= min_cycles and g["blocks"] > 0
-                and g["overrides"] >= g["blocks"]):
+        if g["unknown_cycles"]:
             lines.append(
-                "RETIREMENT CANDIDATE: {} — {} cycles of friction ({} blocks) with every "
-                "adjudicated block overridden (zero measured yield). Demotion is a human "
-                "call with the R4.3 shape: TDD_PLAYBOOK_HOOK_{}=warn + a dated demotion "
-                "journal entry whose expiry fails the release gate — never a silent "
-                "deletion.".format(gate, len(g["cycles"]), g["blocks"], gate.upper()))
+                "UNCLASSIFIED HISTORY: {} — {} committed cycle(s) predate reason-class "
+                "recording (pre-119e2de); their overrides are UNMEASURED and are never "
+                "counted as adjudicated false positives. Any retirement verdict for this "
+                "gate rests only on the {} classified cycle(s)."
+                .format(gate, len(g["unknown_cycles"]),
+                        len(g["cycles"]) - len(g["unknown_cycles"])))
+        classified_cycles = len(g["cycles"]) - len(g["unknown_cycles"])
+        if (classified_cycles >= min_cycles and g["blocks_classified"] > 0
+                and g["fp"] >= g["blocks_classified"]):
+            lines.append(
+                "RETIREMENT CANDIDATE: {} — {} classified cycles of friction ({} blocks) "
+                "with every block adjudicated a false positive (unlock --class gate-wrong; "
+                "zero measured yield). Demotion is a human call with the R4.3 shape: "
+                "TDD_PLAYBOOK_HOOK_{}=warn + a dated demotion journal entry whose expiry "
+                "fails the release gate — never a silent deletion."
+                .format(gate, classified_cycles, g["blocks_classified"], gate.upper()))
     return lines, len(by_gate)
 
 
@@ -257,9 +304,13 @@ def cmd_dataflow_rollup(args):
 def dataflow_trend(md_path, cycles):
     """Trend lines for sweeps whose excluded share (exempted/checked) grew strictly
     across the last `cycles` committed rows. Returns a list of flag lines."""
-    rows = sorted(parse_md_rows(md_path))  # (date, sweep, checked, violations, exempted, unres)
+    # (date, sweep, checked, violations, exempted, unres, _fp) — parse_md_rows is shared with
+    # the gate record, so it yields the v1.27 7th cell here too; it is always None for sweep
+    # rows and is ignored. Sort on (date, sweep) ONLY: a full-tuple sort would compare None
+    # against None-or-int whenever two rows tie on the first six cells, a latent TypeError.
+    rows = sorted(parse_md_rows(md_path), key=lambda r: r[:2])
     by_sweep = {}
-    for date, sweep, checked, violations, exempted, unresolvable in rows:
+    for date, sweep, checked, violations, exempted, unresolvable, _fp in rows:
         by_sweep.setdefault(sweep, []).append(exempted / max(checked, 1))
     flags = []
     for sweep in sorted(by_sweep):

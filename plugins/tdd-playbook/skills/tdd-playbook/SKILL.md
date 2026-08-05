@@ -156,7 +156,9 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   SHELL commands (`sed -i`, `> file`, `git checkout -- test`, `rm`, inline-python writes) to four
   surfaces: the locked tests, the verifier surface (conftest, test configs), the lock's OWN state
   (you can't self-unlock by deleting `tdd-lock.json`), and the guard/hook files themselves —
-  until `/tdd-unlock` with a JOURNALED reason. Reads and running the locked tests stay free. The
+  until `/tdd-unlock` with a JOURNALED reason AND a class (`phase` | `feature-end` |
+  `test-wrong` | `gate-wrong` — only the last claims the gate was wrong, and it is the only one
+  the yield instrument counts as a false positive). Reads and running the locked tests stay free. The
   strongest validated defense against the documented top agent attack vector (editing the
   failing test — HACK_CATALOG H2/H5; prompts don't stop it, mechanisms do). Unlock reasons
   are reviewed by §13's `/grade`; "adjusted test to match output" is the move the lock exists
@@ -853,8 +855,14 @@ direction calibration instruments), OR by becoming more expensive than the risk 
 ceremony built for a weaker doer, still charging rent against one that no longer needs it. The
 second direction is instrumented by the gate-yield record (`gate_yield.py`, one committed rollup
 per calibration cycle from the hooks' own event log — telemetry, never self-report): a gate with
-repeated cycles of friction whose every adjudicated block was a journaled false positive is a
-RETIREMENT CANDIDATE, surfaced by the calibration run itself. Retirement is never silent
+repeated cycles of friction whose every CLASSIFIED block was adjudicated a false positive is a
+RETIREMENT CANDIDATE, surfaced by the calibration run itself. **A journaled unlock is not by
+itself an adjudication (v1.27).** Releasing a lock at a phase boundary, at feature end, or
+because the TEST was wrong all mean the gate was RIGHT; only `unlock --class gate-wrong` says
+the friction bought nothing, and only that class feeds retirement. Reading every unlock as a
+false positive is not a rounding error — it made the instrument recommend retiring TEST-LOCK,
+the strongest anti-gaming defense there is, across four cycles in which no gate was ever wrong.
+Cycles predating class recording are UNMEASURED and are never reinterpreted. Retirement is never silent
 deletion: demote to warn with an owner and a dated re-check (the flaky-quarantine shape), and
 the PLANT CORPUS stays append-only regardless — only human/doer-facing ceremony is retirable.
 Absent yield data is UNMEASURED, never zero.
