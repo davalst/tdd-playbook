@@ -28,5 +28,6 @@
     "authored_at": "2026-08-03",
     "status": "approved",
     "approved_at": "2026-08-03"
-  }
+  },
+  "max_turns": 40
 }

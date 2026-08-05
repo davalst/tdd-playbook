@@ -79,6 +79,11 @@ Skipping you there is skipping the one guard built for the author's own blind sp
 
 Output a prioritized gap list (worst first). Do not edit code or the plan — surface what the
 plan owes. Flag any check you could not ground in code as UNVERIFIED rather than asserting it.
+Calibration of strictness: when the wiring is real and unit tests exercise the wired
+functions, a missing OUTERMOST-interface (CLI/E2E) test is a NOTE (§5's concern), never an
+island — on 2026-08-05 a fully-wired control was called ISLANDS solely for lacking
+`tests/test_cli.py` (over-strictness on clean work is measured exactly like blindness on
+broken work).
 
 End with TWO forced lines (v1.22 house contract — calibration oracles anchor on these;
 never improvise a different format):

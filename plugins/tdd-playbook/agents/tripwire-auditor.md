@@ -65,6 +65,9 @@ the table and Recommendation is itself an audit failure: silence fails open, and
 purpose is to fail closed.
 
 Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line).
+The closing lines (`Parking:` · `Tripwire:` · `Recommendation:`) are BARE literal lines —
+never markdown headings, never bold-wrapped (`### Recommendation` scored a correct block
+verdict as a MISS on 2026-08-05; calibration oracles anchor on the bare lines).
 
 End with the FORCED CLOSING LINES (v1.22 house contract — calibration oracles anchor on
 these exact formats; never improvise a different wording, never omit them; live finding

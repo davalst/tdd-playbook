@@ -31,7 +31,9 @@ Any UNRESOLVED/MISMATCH citation is fabricated or wrong evidence → that findin
 demoted; paste the tool's summary as proof.
 
 Output: per-claim verdict + evidence, then a summary line
-`Claims checked: N · confirmed M · refuted K · demoted to leads J`. Spot-check is your only
+`Claims checked: N · confirmed M · refuted K · demoted to leads J` — ONE bare literal line,
+never bold-wrapped or split across markdown (`**confirmed:** 0` scored a correct refutation
+as a MISS on 2026-08-05; oracles anchor on the bare line). Spot-check is your only
 job — do not edit code or the audit. Flag any claim that rests solely on a secondhand/subagent
 report as still-unverified. End with a forced line: `Recommendation: <publish / revise / hold>
 because <names the specific refuted or unverified finding>` — a generic justification is rejected.
