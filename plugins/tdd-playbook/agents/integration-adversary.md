@@ -42,7 +42,11 @@ Skipping you there is skipping the one guard built for the author's own blind sp
    - **Consumes gaps** — existing seams (event bus, memory, telemetry, config UI, hooks,
      single-outbound-delivery gateways) this feature should plug into but the plan never mentions.
    - **Write-only emitters** — anything the plan produces whose CONSUMER is unnamed. "Captured
-     from seven places, read by nothing" is the documented growth-loop failure.
+     from seven places, read by nothing" is the documented growth-loop failure. Judge the answer
+     at FIELD granularity: a consumer is named by the LINE that reads the specific field, not the
+     subsystem that receives the object — "the adapter consumes my result" is true and useless
+     when the adapter ignores the field (the H11 origin: two commands whose returned `message`
+     no dispatch site read, while their tests asserted on the return).
    - **Surface parity** — which interfaces (web/Telegram/TUI/MCP/CLI) get the behavior; a
      surface silently skipped is a gap the plan must state, not one a user discovers.
    - **Reverse islands** — existing features that should now USE the new capability and whose
@@ -59,7 +63,8 @@ Skipping you there is skipping the one guard built for the author's own blind sp
      at once — flag any exemption entry that points at a user-controllable capability.
    - **Dangling flows** (§6c) — the EDGE-granularity refutes the five node patterns miss (a
      plan can name a consumer for every capability while individual flows dead-end). Ask,
-     and demand the plan answer: name a flow this plan WRITES that nothing reads · a value
+     and demand the plan answer: name a flow this plan WRITES that nothing reads · a field a
+     named consumer RECEIVES but never reads · a value
      it ACCEPTS that no code compares · a template key with no placeholder (and a
      placeholder with no supplier) · a surface whose lifecycle events the plan never fires ·
      and for ANY migration/strangler deliverable: the old seam's outputs — if the plan does

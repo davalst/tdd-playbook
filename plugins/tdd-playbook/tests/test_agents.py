@@ -921,6 +921,12 @@ def test_v126_seam_contract_pins():
         ("integration-audit.md", COMMANDS,
          "audit command enumerates the family parity sweep as a standing mechanism",
          "FAMILY PARITY SWEEP"),
+        ("integration-adversary.md", AGENTS,
+         "brief judges emitters at field granularity",
+         "a consumer is named by the LINE that reads the specific field"),
+        ("integration-adversary.md", AGENTS,
+         "dangling-flows demand includes received-but-never-read fields",
+         "RECEIVES but never reads"),
     ]:
         with open(os.path.join(base, fname)) as fh:
             check("{}: {}".format(fname[:-3], label), needle in fh.read(),
