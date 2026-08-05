@@ -3,6 +3,43 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.27.0 — 2026-08-05
+
+**The measured update loop — stop experiencing improvement and start verifying it.**
+Process mutations (agent-brief fixes, oracle adjudications, guards, knobs) landed with an
+IMPLICIT expected effect that nothing ever checked. Plan-review adversary dispatched
+(ISLANDS 10); all findings folded — including the fatal one, that no shipped surface would
+ever have passed the new `--class`, leaving the fix dark by starvation.
+
+- **testlock override semantics, PAID.** `gate_yield` counted EVERY journaled unlock as a
+  block adjudicated a false positive, so four cycles of the normal red-first
+  lock/implement/unlock rhythm printed `RETIREMENT CANDIDATE: testlock` — the instrument
+  recommending retirement of the strongest anti-gaming defense there is, with zero real
+  false positives. `tdd_lock.py unlock --class {phase|feature-end|test-wrong|gate-wrong}`
+  now names WHY; only `gate-wrong` adjudicates. `test-wrong` is deliberately not a false
+  positive — stopping to say why a test was wrong is the lock working. A 7th `fp` column
+  carries it; `parse_md_rows` reads a missing cell as `None`, never 0. Pre-fix rows stay
+  byte-identical and report as UNCLASSIFIED HISTORY — never retroactively classified.
+  Replayed against the motivating artifact (`119e2de`) with a negative control proving a
+  genuine candidate still flags (§13 v1.25).
+- **H12 — self-serving adjudication**, the vector this necessarily creates: the agent
+  picking the class is the one that wants out. Defended by asymmetric cost (`gate-wrong`
+  refused under 30 chars naming which block), a `class_mismatch` flag recorded beside the
+  stated class and never rewriting it, and a `/grade` read.
+- **The improvement ledger** (`calibration/ledger.py`, `docs/calibration/ledger.md`,
+  append-only under integrity rule (a)). Entries pre-register scenario + direction + claimed
+  rep movement + mechanism BEFORE the diff; the first run measuring a strictly-descendant
+  tree scores them. Binding is commit-ordering, not a date — the original spec's date rule
+  missed its own scoring run. Verdicts describe MOVEMENT, not k/k: scoring CONFIRMED only at
+  k/k means `P = p³`, so an 80% bar demands per-rep `p ≥ 0.928`. Coverage is sha-cited, so a
+  back-filled entry cannot cover. The gate blocks on PROCESS, never the hit rate.
+- **`power.py`** ships with it, because it is the source of the INCONCLUSIVE threshold: at
+  3 reps only 0/3→3/3 is significant (Fisher p=0.050), so significance is a cycle-level
+  sign-test claim needing ≥5 moved entries.
+- **The 08-04 cycle, scored honestly:** 6 HIT · 5 FLAT · 1 REGRESSED · 2 INCONCLUSIVE, with
+  aggregate recall unchanged across the two runs. Seven dated four-cause follow-ups. The
+  original ≥80%/<50% bars retired as mis-specified, with the arithmetic recorded.
+
 ## 1.26.0 — 2026-08-05
 
 **Seam contract — a test cannot catch a mistake it also makes.** Adopts the Cheliped
