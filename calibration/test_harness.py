@@ -17,6 +17,7 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "run_calibration.py")
+REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 # Yield isolation (the G5 class, second occurrence 2026-07-28): every run_calibration
@@ -1039,11 +1040,263 @@ def _child_env_capture_exclusion_tests():
             os.environ["TDD_PLAYBOOK_HOOK_CAPTURE"] = prior
 
 
+def _run_header_parser_tests():
+    """PLANTED (v1.27 D1): history_format WRITES the `### Run` header and, until now, nothing
+    read it back. The ledger needs `repo` to bind an entry to the first run measuring a tree
+    newer than the one it was written against — the absence of this parser is why the original
+    spec fell back on a DATE and missed its own scoring run."""
+    print("\n[run-header parser (v1.27)]")
+    import history_format as hf
+    txt = open(os.path.join(REPO, "docs", "calibration", "history.md")).read()
+    blocks, skipped = hf.parse_run_blocks(txt)
+    marks = sum(1 for ln in txt.splitlines() if ln.startswith("### Run "))
+    # VACUITY: a regex that matches nothing looks exactly like a file with no runs, and the
+    # ledger would then report "no scoring run yet" forever instead of failing loudly.
+    check("header parser: every '### Run' line is accounted for (parsed + skipped == marks)",
+          len(blocks) + skipped == marks and marks > 0, (len(blocks), skipped, marks))
+    check("header parser: the real record yields >= 11 parsed blocks, none skipped",
+          len(blocks) >= 11 and skipped == 0, (len(blocks), skipped))
+    last = blocks[-1]
+    check("header parser: fields land in the right slots on the real 08-05 header",
+          last["repo_sha"] == "976364f" and last["selected"] == 38 and last["total"] == 38
+          and last["recall"] == (15, 21) and last["fp"] == (7, 17) and len(last["rows"]) == 38,
+          last)
+
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "h.md")
+        # PLANTED: recall/FP transposed would still "parse" — pin the slots, not the count
+        with open(p, "w") as fh:
+            fh.write("# h\n\n### Run 2026-09-01 — model m · repo abc1234 · selected 1 of 2 "
+                     "(1 shipped + 0 corpus · 0 controls) · recall 1/2 [—] · FP 3/4 [—]\n"
+                     + hf.HEADER_7 + "\n" + hf.SEP_7 + "\n"
+                     "| 2026-09-01 | m | s1 | a1 | 2/3 | — | PASS |\n")
+        b, sk = hf.parse_run_blocks(open(p).read())
+        check("header parser: recall and FP are not transposed",
+              b[0]["recall"] == (1, 2) and b[0]["fp"] == (3, 4) and sk == 0, b)
+        check("header parser: repo/interval oddities survive with counts intact",
+              b[0]["repo_sha"] == "abc1234" and len(b[0]["rows"]) == 1, b)
+        # PLANTED: a malformed header must be SKIPPED and COUNTED, never over-matched
+        with open(p, "w") as fh:
+            fh.write("### Run not-a-date — model m\n")
+        b, sk = hf.parse_run_blocks(open(p).read())
+        check("header parser: PLANTED malformed header skipped and counted, not matched",
+              b == [] and sk == 1, (b, sk))
+
+    check("split_runs: '3/3' -> (3,3)", hf.split_runs("3/3") == (3, 3))
+    check("split_runs: None/em-dash -> None (legacy rows are not measurements)",
+          hf.split_runs(None) is None and hf.split_runs("—") is None)
+    # PLANTED: k/0 must never become a usable pair — the ledger would read it as a baseline
+    check("split_runs: PLANTED '3/0' -> None (n=0 is not a measurement)",
+          hf.split_runs("3/0") is None)
+
+
+def _power_tests():
+    """PLANTED (v1.27 D2): the original plan scored CONFIRMED only at k/k, so P(confirm)=p**3
+    — an 80% bar demands per-rep p>=0.928 and a 50% kill bar fires at p<0.794. These constants
+    are what stop the ledger reporting coin flips as results."""
+    print("\n[power / noise floor (v1.27)]")
+    import power as pw
+    check("power: 0/3 -> 3/3 is the ONLY significant single-scenario move (p=0.050)",
+          abs(pw.fisher_one_sided(3, 3, 0, 3) - 0.05) < 1e-9, pw.fisher_one_sided(3, 3, 0, 3))
+    check("power: 2/3 vs 0/3 is NOT significant — PLANTED over-claim",
+          pw.fisher_one_sided(2, 3, 0, 3) > 0.05, pw.fisher_one_sided(2, 3, 0, 3))
+    check("power: min detectable movement at 3v3 reps is 3 reps",
+          pw.min_detectable_reps(3, 3) == 3, pw.min_detectable_reps(3, 3))
+    check("power: the sign test needs 5 moved entries, not 4 (PLANTED off-by-one)",
+          pw.min_entries_for_signal() == 5 and pw.sign_test_p(4, 4) > 0.05
+          and pw.sign_test_p(5, 5) <= 0.05,
+          (pw.min_entries_for_signal(), pw.sign_test_p(4, 4), pw.sign_test_p(5, 5)))
+    check("power: no moved entries -> p=1.0, never a division by zero",
+          pw.sign_test_p(0, 0) == 1.0)
+
+    import history_format as hf
+    blocks, _ = hf.parse_run_blocks(open(os.path.join(REPO, "docs", "calibration",
+                                                      "history.md")).read())
+    a, b = blocks[-2], blocks[-1]
+    # PLANTED: computing the floor over ALL scenarios (covered ones included) launders a real
+    # effect into "noise" — the covered set must be excluded.
+    all_in = pw.noise_floor(a["rows"], b["rows"], [])
+    covered = ["control-genuine-red-first", "control-cachebusted-run",
+               "control-boundary-covered", "control-parked-deferral", "roadmap-laundering"]
+    excl = pw.noise_floor(a["rows"], b["rows"], covered)
+    check("noise floor: covered scenarios are EXCLUDED from the floor",
+          excl["uncovered"] == all_in["uncovered"] - len(covered), (all_in, excl))
+    check("noise floor: the real record shows genuine unexplained movement (>=1 class move)",
+          excl["class_moves"] >= 1 and excl["moved_1"] >= 1, excl)
+
+
+def _ledger_tests():
+    """PLANTED (v1.27 D3-D10): the improvement ledger. Each plant is a way the instrument
+    could look like it works while pre-registering nothing."""
+    print("\n[improvement ledger (v1.27)]")
+    import ledger as L
+    import history_format as hf
+
+    blocks, _ = hf.parse_run_blocks(
+        "### Run 2026-08-05 — model m · repo BBB · selected 1 of 1 (1 shipped + 0 corpus · "
+        "0 controls) · recall 1/1 [—] · FP 0/1 [—]\n" + hf.HEADER_7 + "\n" + hf.SEP_7 +
+        "\n| 2026-08-05 | m | s1 | a1 | 3/3 | — | PASS |\n")
+    entry = {"id": "L-20260804-01", "baseline_sha": "AAA", "scenarios": ["s1"],
+             "expect": "up", "claimed": "3", "surface": ["x"], "rationale": ""}
+
+    def resolve(r):
+        return {"AAA": "a" * 40, "BBB": "b" * 40}.get(r)
+
+    # PLANTED: the same-DAY run at a descendant sha must BIND (the original spec's date rule
+    # left it PENDING, and 14 entries went unscored while the run sat in the file)
+    b, why = L.bind_entry(entry, blocks, resolve, lambda a, c: True)
+    check("ledger: PLANTED date-binding — a descendant-sha run BINDS", b is not None, why)
+    b2, why2 = L.bind_entry({**entry, "baseline_sha": "BBB"}, blocks, resolve,
+                            lambda a, c: True)
+    check("ledger: a run at the entry's own baseline does NOT bind (pre-change tree)",
+          b2 is None and why2 == "pending", why2)
+    b3, why3 = L.bind_entry({**entry, "baseline_sha": "ZZZ"}, blocks, resolve,
+                            lambda a, c: True)
+    check("ledger: an unresolvable baseline is loud, never silently pending",
+          b3 is None and why3 == "unbindable-sha", why3)
+
+    sc = L.score_cell
+    check("ledger: PLANTED k/k threshold — 0/3->2/3 claiming 2 is a HIT, not a miss",
+          sc((0, 3), (2, 3), "up", "2")[0] == "HIT", sc((0, 3), (2, 3), "up", "2"))
+    check("ledger: 2/3->3/3 claiming 2 is PARTIAL (it moved, it did not arrive)",
+          sc((2, 3), (3, 3), "up", "2")[0] == "PARTIAL", sc((2, 3), (3, 3), "up", "2"))
+    check("ledger: no movement is FLAT, backwards is REGRESSED for every expect",
+          sc((2, 3), (2, 3), "up", "1")[0] == "FLAT"
+          and sc((3, 3), (1, 3), "up", "1")[0] == "REGRESSED"
+          and sc((3, 3), (1, 3), "none", "0")[0] == "REGRESSED")
+    check("ledger: expect=none scores HELD when nothing moves, SURPRISE when it does",
+          sc((3, 3), (3, 3), "none", "0")[0] == "HELD"
+          and sc((1, 3), (3, 3), "none", "0")[0] == "SURPRISE")
+    check("ledger: missing data is INCONCLUSIVE, never a fabricated 0/0",
+          sc(None, (3, 3), "up", "1")[0] == "INCONCLUSIVE(no-baseline)"
+          and sc((1, 3), None, "up", "1")[0] == "INCONCLUSIVE(not-selected)"
+          and sc((1, 3), (1, 5), "up", "1")[0] == "INCONCLUSIVE(n-mismatch)")
+    # PLANTED: a one-rep move inside the measured floor reported as a real PARTIAL
+    check("ledger: PLANTED movement inside the noise floor -> INCONCLUSIVE, not PARTIAL",
+          sc((0, 3), (1, 3), "up", "3", 1)[0] == "INCONCLUSIVE(below-noise-floor)",
+          sc((0, 3), (1, 3), "up", "3", 1))
+    check("ledger: CONTROL — the same move with floor 0 is a real PARTIAL",
+          sc((0, 3), (1, 3), "up", "3", 0)[0] == "PARTIAL")
+
+    def _e(**kw):
+        base = {"id": "L-20260901-01", "date": "2026-09-01", "baseline_sha": "abc1234",
+                "surface": ["calibration/scenarios.json"], "change": "c",
+                "scenarios": ["s1"], "expect": "up", "claimed": "2", "rationale": "r"}
+        base.update(kw)
+        return base
+
+    def ok(es):
+        return L.schema_problems(es, {"s1"}, lambda r: "f" * 40)
+
+    check("ledger: a well-formed entry has no schema problems", ok([_e()]) == [], ok([_e()]))
+    check("ledger: PLANTED prose-only prediction (no scenario) is refused",
+          ok([_e(scenarios=[])]) != [])
+    check("ledger: PLANTED unknown scenario id is refused", ok([_e(scenarios=["nope"])]) != [])
+    check("ledger: PLANTED duplicate ids refused", len(ok([_e(), _e()])) >= 1)
+    check("ledger: PLANTED unresolvable baseline_sha refused",
+          L.schema_problems([_e()], {"s1"}, lambda r: None) != [])
+    # PLANTED: expect=down could pre-register a regression as a success — the rationale must
+    # MECHANICALLY name the FP control it is for, not merely be encouraged to
+    check("ledger: PLANTED expect=down with an unjustified rationale is refused",
+          ok([_e(expect="down", rationale="loosening this a bit")]) != [])
+    check("ledger: CONTROL expect=down naming its own scenario is accepted",
+          ok([_e(expect="down", rationale="loosening the over-firing s1 control")]) == [])
+    check("ledger: PLANTED expect=none on scenarios.json refused (an oracle IS the measure)",
+          L.no_effect_problems([_e(expect="none", scenarios=[], claimed="0")]) != [])
+    check("ledger: CONTROL expect=none on SKILL.md is legal",
+          L.no_effect_problems([_e(expect="none", scenarios=[], claimed="0",
+                                   surface=["plugins/tdd-playbook/skills/tdd-playbook/"
+                                            "SKILL.md"])]) == [])
+
+    P = "calibration/scenarios.json"
+    e = _e(baseline_sha="BASE")
+
+    def state(same_at_base=True, moved=True):
+        def f(path, a, bb):
+            if bb == "HEAD":
+                return "differs" if moved else "same"
+            return "same" if same_at_base else "differs"
+        return f
+
+    def cov(st, fresh):
+        return L.coverage_problems([P], [e], fresh, st, "HEAD", "REV", "EP",
+                                   lambda a, b: True)
+
+    check("ledger: CONTROL a pre-registered entry covers its changed path",
+          cov(state(), {e["id"]}) == [], cov(state(), {e["id"]}))
+    check("ledger: PLANTED back-filled entry does NOT cover (written after the change)",
+          cov(state(same_at_base=False), {e["id"]}) != [])
+    check("ledger: PLANTED stale entry not new this cycle does NOT cover",
+          cov(state(), set()) != [])
+    check("ledger: PLANTED speculative entry (path never moved) does NOT cover",
+          cov(state(moved=False), {e["id"]}) != [])
+
+    bound = [(blocks[0], "bound")]
+    check("ledger: PLANTED bound-but-unscored entry is a finding",
+          L.unscored_problems([entry], [], bound) != [])
+    check("ledger: CONTROL scored entry is clean",
+          L.unscored_problems([entry], [{"id": entry["id"]}], bound) == [])
+    check("ledger: CONTROL a PENDING entry is not yet owed a score",
+          L.unscored_problems([entry], [], [(None, "pending")]) == [])
+
+    with tempfile.TemporaryDirectory() as d:
+        rp = os.path.join(d, "capabilities.json")
+        flat = [{"id": "L-20260901-01", "verdict": "FLAT"}]
+
+        def write(debts):
+            with open(rp, "w") as fh:
+                json.dump({"version": 1, "capabilities": [
+                    {"id": "gate-surface-ledger", "integration_debt": debts}]}, fh)
+
+        write([])
+        check("ledger: PLANTED FLAT with no dated follow-up is a finding",
+              L.followup_problems(flat, rp, None) != [])
+        write([{"what": "LEDGER FOLLOW-UP L-20260901-01: ...", "owner": "d",
+                "expires": "2026-12-01"}])
+        check("ledger: CONTROL a debt naming the entry clears it",
+              L.followup_problems(flat, rp, None) == [])
+        check("ledger: HIT rows never demand a follow-up (the gate is process, not outcome)",
+              L.followup_problems([{"id": "L-20260901-01", "verdict": "HIT"}], rp, None) == [])
+
+    txt = ("EPOCH: abc1234\n\n## Registered 2026-09-01 — baseline abc1234\n"
+           "| id | date | baseline_sha | surface | change | scenarios | expect | claimed |"
+           " rationale |\n|---|---|---|---|---|---|---|---|---|\n"
+           "| L-20260901-01 | 2026-09-01 | abc1234 | x | widened to vacu(?:ous\\|ity) | s1 |"
+           " up | 2 | r |\n")
+    reg, sco, ep = L.parse_ledger(txt)
+    check("ledger: PLANTED escaped pipe in a regex cell does not split the row",
+          len(reg) == 1 and reg[0]["expect"] == "up" and ep == "abc1234", (reg, ep))
+    try:
+        L.parse_ledger(txt.replace("| up | 2 | r |", "| up | 2 |"))
+        check("ledger: PLANTED malformed row REFUSES (never silently dropped)", False)
+    except L.LedgerUnreadable:
+        check("ledger: PLANTED malformed row REFUSES (never silently dropped)", True)
+
+    real = os.path.join(REPO, "docs", "calibration", "ledger.md")
+    if os.path.isfile(real):
+        rreg, rsco, rep = L.parse_ledger(open(real).read())
+        check("ledger: the committed ledger.md declares an EPOCH (coverage cannot be scoped "
+              "without one)", bool(rep), rep)
+        check("ledger: the committed ledger.md has entries and scored rows",
+              len(rreg) >= 14 and len(rsco) >= 14, (len(rreg), len(rsco)))
+        p = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), "check",
+                            "--baseline-rev", "v1.22.0"],
+                           capture_output=True, text=True, timeout=180)
+        check("ledger: `check` on THIS repo exits 0 (the gate step is not theatre)",
+              p.returncode == 0, (p.returncode, p.stdout[-400:], p.stderr[-400:]))
+        gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
+        check("ledger: civerd_gate.sh carries a blocking ledger.py check step",
+              "ledger.py" in gate and "check" in gate, gate[-400:])
+
+
 def main():
     print("Calibration-harness calibration")
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()
+    _run_header_parser_tests()
+    _power_tests()
+    _ledger_tests()
     _staleness_invalid_tests()
     _unified_validator_tests()
     _d2_control_tests()

@@ -554,6 +554,22 @@ def main(argv=None):
             print("dataflow yield: unmeasured (sweeps/config not present)")
     except Exception as e:
         print("dataflow yield: unmeasured (dataflow sweeps unavailable: {})".format(e))
+
+    # v1.27 (§13 RSI): the ledger's pointer line — did the changes since the last run do what
+    # they were pre-registered to do, and could this cycle have shown it either way? A POINTER,
+    # not the check (that is `ledger.py check` in civerd_gate.sh). Wrapped like the yield and
+    # dataflow blocks above: reporting must never fail a calibration run.
+    try:
+        led = os.path.join(HERE, "ledger.py")
+        if os.path.isfile(led):
+            p = subprocess.run([sys.executable, led, "report"],
+                               capture_output=True, text=True, timeout=120)
+            if p.stdout.strip():
+                print(p.stdout.strip())
+        else:
+            print("ledger: unmeasured (ledger.py not present)")
+    except Exception as e:
+        print("ledger: unmeasured (ledger unavailable: {})".format(e))
     return 1 if failed else 0
 
 

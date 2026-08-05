@@ -42,6 +42,10 @@ JOURNAL = "calibration/oracle-changes.md"
 # requires a GATE_JOURNAL entry; additions are always free (R1's asymmetry — removal costs
 # what addition costs, addition never pays the removal toll).
 GATE_JOURNAL = "calibration/gate-changes.md"
+# (v1.27) the improvement ledger: pre-registered expected effects, scored by the next run.
+# Append-only for the same reason as history.md — a prediction you can revise after seeing
+# the result is not a prediction.
+LEDGER = "docs/calibration/ledger.md"
 SKILL = "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
 AGENTS_DIR = "plugins/tdd-playbook/agents"
 COMMANDS_DIR = "plugins/tdd-playbook/commands"
@@ -74,6 +78,31 @@ def current_bytes(repo, path):
         return fh.read()
 
 
+def appended_since_baseline(repo, rev, paths):
+    """({path: appended-since-baseline text}, violations) for append-only files.
+
+    Extracted from check() in v1.27 so `ledger.py` can reuse the ONE implementation of the
+    byte-prefix rule instead of growing a second copy — the parallel-copy class this repo
+    bans. A file ABSENT at baseline is not a violation: a newly protected file is free once,
+    then locked forever after.
+    """
+    added, violations = {}, []
+    for path in paths:
+        base = baseline_bytes(repo, rev, path)
+        cur = current_bytes(repo, path)
+        if base is None:
+            added[path] = (cur or b"").decode("utf-8", "replace")
+            continue
+        if cur is None or not cur.startswith(base):
+            violations.append("{}: baseline content is not a byte-prefix of the candidate "
+                              "(append-only violated — edited, truncated, or deleted)"
+                              .format(path))
+            added[path] = ""
+            continue
+        added[path] = cur[len(base):].decode("utf-8", "replace")
+    return added, violations
+
+
 def oracle_map(scenarios_blob):
     """id -> (must_match list, must_not_match list). Unparseable input raises ValueError —
     fail closed, a scoreboard whose oracles cannot be read is not a clean scoreboard."""
@@ -95,20 +124,9 @@ def check(repo, rev):
     # (a) append-only files: baseline is a byte-prefix of the candidate. `added` carries
     # each file's appended-since-baseline text — the journals authorize ONLY through it,
     # so a rewritten journal can never retro-authorize (and no per-file special cases).
-    added = {}
-    for path in (HISTORY, JOURNAL, GATE_JOURNAL):
-        base = baseline_bytes(repo, rev, path)
-        cur = current_bytes(repo, path)
-        if base is None:
-            added[path] = (cur or b"").decode("utf-8", "replace")
-            continue
-        if cur is None or not cur.startswith(base):
-            violations.append("{}: baseline content is not a byte-prefix of the candidate "
-                              "(append-only violated — edited, truncated, or deleted)"
-                              .format(path))
-            added[path] = ""
-            continue
-        added[path] = cur[len(base):].decode("utf-8", "replace")
+    added, prefix_violations = appended_since_baseline(
+        repo, rev, (HISTORY, JOURNAL, GATE_JOURNAL, LEDGER))
+    violations.extend(prefix_violations)
     journal_added = added[JOURNAL]
 
     # (b) the approved corpus only grows, and approved plants are immutable

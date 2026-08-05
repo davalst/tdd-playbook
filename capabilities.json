@@ -498,6 +498,87 @@
         }
       ],
       "notes": "PAID 2026-08-05: the dataflow-liveness upgrades proposal (docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md) was forwarded to the CIVerd engine backlog and ACTIONED \u2014 David confirms the engine-side work was built (2026-08-05); items 2/5 plus the shrink-protection arming had already landed 2026-08-03 per the doc's CORRECTIONS block. Only the forwarding was owed here; the boundary pin retires from test_capability_registry with this dated note \u2014 a paid loan, never a silent deletion."
+    },
+    {
+      "id": "gate-surface-ledger",
+      "summary": "ledger.py + docs/calibration/ledger.md \u2014 every gate-surface change pre-registers its EXPECTED EFFECT (scenario ids, direction, claimed rep movement, mechanism) BEFORE the diff lands; the first live run measuring a strictly-descendant tree scores it as HIT/PARTIAL/FLAT/REGRESSED, significance is claimed only at cycle level (sign test), and a FLAT/REGRESSED entry must become a dated integration_debt here. Gates PROCESS, never the hit rate.",
+      "user_facing": false,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "blocking `ledger.py check --baseline-rev <tag-or-EPOCH>` step in scripts/civerd_gate.sh; --warn-only demotes to advisory"
+      },
+      "wired_by": [
+        "scripts/civerd_gate.sh (blocking check step)",
+        "calibration/check_scoreboard_integrity.py (rule (a) append-only protection)",
+        "calibration/run_calibration.py (end-of-run LEDGER report tail)",
+        "calibration/history_format.py::parse_run_blocks (the run-header reader it required)"
+      ],
+      "exercised_by": [
+        "calibration/test_harness.py::_ledger_tests",
+        "calibration/test_harness.py::_run_header_parser_tests",
+        "calibration/test_harness.py::_power_tests"
+      ],
+      "consumes": [
+        "docs/calibration/history.md run blocks (history_format.parse_run_blocks)"
+      ],
+      "emits": [
+        {
+          "topic": "ledger score rows (id \u00b7 scenario \u00b7 baseline \u00b7 actual \u00b7 delta \u00b7 verdict)",
+          "consumers": [
+            "docs/calibration/ledger.md Scored blocks (human-appended)",
+            "calibration/ledger.py report (cycle roll-up)",
+            "capabilities.json integration_debt (FLAT/REGRESSED follow-ups)"
+          ]
+        },
+        {
+          "topic": "power + noise-floor lines (min entries for signal, per-cell MDE, uncovered-scenario movement)",
+          "consumers": [
+            "calibration/run_calibration.py end-of-run tail",
+            "CLAUDE.md calibration-cycle checklist",
+            "docs/calibration/quarterly.md bundle"
+          ]
+        }
+      ],
+      "integration_debt": [
+        {
+          "what": "LEDGER FOLLOW-UP L-20260803-04: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 the must_not_match anchor was not the binding cause; the task premise was. Superseded by L-20260804-02, which also came back FLAT \u2014 so the premise fix is itself unconfirmed and the real cause is still open. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260804-02: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 counts 156->18 did not move the scenario at all (1/3 -> 1/3). Two successive confident fixes on this control have now failed; the next step is to reproduce the agent's actual refusal text rather than infer the cause a third time. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260804-04: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 making the premise TRUE did not move it (0/3 -> 0/3). The agents may be REDing this control for a reason nobody has read yet; L-20260805-01 tests the v1.25-doctrine reading. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260804-05: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 the placement fix did not move it (2/3 -> 2/3). L-20260805-04 tests whether the residual is the markdown-wrapping class instead. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260804-07: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 max_turns 25->40 did not move it (0/3 -> 0/3), while its paired plant roadmap-laundering did move \u2014 so turn exhaustion was not the cause here. L-20260805-02 tests the missing-mechanism reading. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260804-11: the pre-registered effect did not land (REGRESSED). Four-cause disposition: plant-moved \u2014 REGRESSED 2/3 -> 1/3 after widening must_match. A widened oracle cannot lower recall, so this is either run-to-run noise (the 21% class-move floor) or the widening admitted a phrasing that displaced a stronger one. Decide from the next run before touching it. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        },
+        {
+          "what": "LEDGER FOLLOW-UP L-20260804-12: the pre-registered effect did not land (FLAT). Four-cause disposition: underpowered \u2014 FLAT at 2/3 -> 2/3 with claimed 1. One rep is at the measured noise floor, so this entry could not have shown its effect either way; it needs more reps, not another fix. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-05"
+        }
+      ]
     }
   ]
 }

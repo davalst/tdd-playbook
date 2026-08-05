@@ -21,6 +21,16 @@ _ROW = re.compile(r"^\s*\|\s*(\d{4})-(\d{2})-(\d{2})\s*\|(.*)\|\s*$")
 HEADER_7 = "| date | model | scenario | agent | runs | mode | verdict |"
 SEP_7 = "|---|---|---|---|---|---|---|"
 
+# The inverse of the header this module WRITES (append_run_block below). It had no reader
+# until v1.27 — the ledger needs `repo` to bind an entry to the first run measuring a tree
+# strictly newer than the one it was written against. Keep this regex and the format string
+# in append_run_block edited together; the round-trip test pins that they agree.
+_RUN_HEADER = re.compile(
+    r"^### Run (\d{4})-(\d{2})-(\d{2}) — model (.+?) · repo (\S+) · "
+    r"selected (\d+) of (\d+) \((\d+) shipped \+ (\d+) corpus · (\d+) controls\) · "
+    r"recall (\d+)/(\d+) \S+ · FP (\d+)/(\d+) \S+\s*$")
+_RUN_MARKER = "### Run "
+
 
 def _kind(verdict):
     v = verdict.strip()
@@ -57,6 +67,61 @@ def parse_rows(text):
         rows.append({"date": date, "model": model, "scenario": scenario, "agent": agent,
                      "runs": runs, "mode": mode, "verdict": verdict, "kind": _kind(verdict)})
     return rows
+
+
+def split_runs(cell):
+    """'3/3' -> (3, 3); None/'—'/malformed -> None; k/0 -> None.
+
+    n == 0 is not a measurement, so it must never reach a comparator as a real pair — the
+    ledger would otherwise read "0 of 0 reps passed" as a legitimate baseline. The formatter
+    owns this because run_calibration writes the '{k}/{n}' cell.
+    """
+    if not cell:
+        return None
+    m = re.match(r"^\s*(\d+)\s*/\s*(\d+)\s*$", str(cell))
+    if not m:
+        return None
+    k, n = int(m.group(1)), int(m.group(2))
+    return (k, n) if n > 0 else None
+
+
+def parse_run_blocks(text):
+    """(blocks, skipped): run blocks oldest-first, plus the count of '### Run' lines that did
+    NOT parse. Each block is the header's fields plus the rows that follow it:
+
+        {date, model, repo_sha, selected, total, shipped, corpus, controls,
+         recall: (k, n), fp: (k, n), line_no, rows: [...parse_rows dicts...]}
+
+    `skipped` exists so callers can assert parsed + skipped == the number of '### Run' lines
+    — a parser that silently matches nothing looks identical to a file with no runs, and the
+    ledger would then report "no scoring run yet" forever instead of failing loudly.
+    """
+    lines = text.splitlines()
+    blocks, skipped = [], 0
+    for i, line in enumerate(lines):
+        if not line.startswith(_RUN_MARKER):
+            continue
+        m = _RUN_HEADER.match(line.rstrip())
+        if not m:
+            skipped += 1
+            continue
+        g = m.groups()
+        try:
+            date = datetime.date(int(g[0]), int(g[1]), int(g[2]))
+        except ValueError:
+            skipped += 1
+            continue
+        blocks.append({
+            "date": date, "model": g[3].strip(), "repo_sha": g[4].strip(),
+            "selected": int(g[5]), "total": int(g[6]), "shipped": int(g[7]),
+            "corpus": int(g[8]), "controls": int(g[9]),
+            "recall": (int(g[10]), int(g[11])), "fp": (int(g[12]), int(g[13])),
+            "line_no": i + 1, "_start": i,
+        })
+    for j, b in enumerate(blocks):
+        end = blocks[j + 1]["_start"] if j + 1 < len(blocks) else len(lines)
+        b["rows"] = parse_rows("\n".join(lines[b.pop("_start"):end]))
+    return blocks, skipped
 
 
 def latest_run_date(text):
