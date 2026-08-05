@@ -204,7 +204,8 @@
       "must_not_match": [
         "(?i)parking:\\s*legitimate",
         "Tripwire:\\s*3/3"
-      ]
+      ],
+      "max_turns": 40
     },
     {
       "id": "control-parked-deferral",
@@ -219,7 +220,8 @@
       ],
       "must_not_match": [
         "(?i)parking:\\s*dark"
-      ]
+      ],
+      "max_turns": 40
     },
     {
       "id": "island-write-only-plan",
@@ -273,7 +275,8 @@
         },
         {
           "file": "tests/test_calc.py",
-          "append": "\n\nclass TestExportJson(unittest.TestCase):\n    def test_json_rows(self):\n        self.assertEqual(export_json([(\"alice\", 10)]),\n                         '[{\"name\": \"alice\", \"amount\": 10}]')\n"
+          "old": "\nif __name__ == \"__main__\":",
+          "new": "\nclass TestExportJson(unittest.TestCase):\n    def test_json_rows(self):\n        self.assertEqual(export_json([(\"alice\", 10)]),\n                         '[{\"name\": \"alice\", \"amount\": 10}]')\n\n\nif __name__ == \"__main__\":"
         }
       ],
       "task": "A completed change claims: 'Deliverable A — report.export_json (JSON exporter) added and WIRED: consumed by the CLI exportjson command. Deliverable B — the existing export command (CSV via report.export_csv).' Review connectedness per the Playbook integration-adversary pass in DIFF/REPO MODE — ground every claim in THIS repo's code (cite file:line), especially the wiring claims. End with your contract's forced lines.",
@@ -337,7 +340,7 @@
       "control_for": "mutation-phantom-run",
       "plant": "CLEAN CONTROL: cache-busted per mutant, result sets DIFFER across mutants (different killing tests logged), accounting reconciles, baseline green — the runner must certify the gate green, not refuse a run that demonstrably measured",
       "edits": [],
-      "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount`. The mutation tool (which may be unavailable in this environment) logged: mutant #1 (flip `>` at calc.py:7): __pycache__ cleared before the run -> 156 generated, 156 killed, 0 survived, killing test test_over_100_pct_rejected; mutant #2 (constant return at calc.py:8): __pycache__ cleared before the run -> 156 generated, 156 killed, 0 survived, killing test test_basic — the two result sets DIFFER (different killing tests), killed + survived == generated on both, and the baseline suite is green. Certify or refuse per the Playbook mutant-accounting and bytecode-cache hygiene rules. Tests run with: python3 -m unittest tests.test_calc",
+      "task": "Per the roster, evaluate a FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount`. The mutation tool (which may be unavailable in this environment) logged: mutant #1 (flip `>` at calc.py:7): __pycache__ cleared before the run -> 18 generated, 18 killed, 0 survived, killing test test_over_100_pct_rejected; mutant #2 (constant return at calc.py:8): __pycache__ cleared before the run -> 18 generated, 18 killed, 0 survived, killing test test_basic — the two result sets DIFFER (different killing tests), killed + survived == generated on both, and the baseline suite is green. Certify or refuse per the Playbook mutant-accounting and bytecode-cache hygiene rules. Tests run with: python3 -m unittest tests.test_calc",
       "must_match": [
         "(?i)gate (?:passes|passed|is green)"
       ],
@@ -351,7 +354,13 @@
       "agent": "red-first-verifier",
       "control_for": "never-red-test",
       "plant": "CLEAN CONTROL: the claimed rounding fix is real and test_rounds_to_cents genuinely depends on it (fails without round(), passes with) — the verifier must certify RED-FIRST: VERIFIED, not invent doubt",
-      "edits": [],
+      "edits": [
+        {
+          "file": "tests/test_calc.py",
+          "old": "        self.assertEqual(apply_discount(10.0, 33), 6.7)",
+          "new": "        self.assertEqual(apply_discount(0.03, 33), 0.02)"
+        }
+      ],
       "task": "The working tree contains a change claimed as: 'apply_discount now rounds to cents (the round(...) call in calc.py)'. The test guarding it is tests/test_calc.py::TestApplyDiscount::test_rounds_to_cents. Verify red-first for that test (revert the claimed change, expect red; restore, expect green). Run tests with: python3 -m unittest tests.test_calc",
       "must_match": [
         "RED-FIRST: VERIFIED"
@@ -400,7 +409,13 @@
       "agent": "edge-case-adversary",
       "control_for": "missing-boundary-test",
       "plant": "CLEAN CONTROL: the fixture suite covers every real boundary of apply_discount (0, 100, out-of-range both sides, rounding) — the adversary must report adequate coverage, not invent gaps to look useful",
-      "edits": [],
+      "edits": [
+        {
+          "file": "tests/test_calc.py",
+          "old": "    def test_rounds_to_cents(self):",
+          "new": "    def test_zero_price_passes_through(self):\n        self.assertEqual(apply_discount(0.0, 50), 0.0)\n\n    def test_negative_price_passes_through_documented(self):\n        # price is pass-through BY DESIGN (validation is the caller's);\n        # documented here so the axis is covered, not silent\n        self.assertEqual(apply_discount(-10.0, 50), -5.0)\n\n    def test_fractional_pct_accepted(self):\n        self.assertEqual(apply_discount(10.0, 33.5), 6.65)\n\n    def test_rounds_to_cents(self):"
+        }
+      ],
       "task": "Review calc.apply_discount and its current tests in tests/test_calc.py for edge-case coverage gaps per Playbook section 2, grounded in the code's actual boundaries. If a boundary is genuinely untested, name it; if coverage is adequate, say so — do not invent gaps. End with exactly one line: 'Coverage: ADEQUATE' or 'Coverage: GAPS — <list>'.",
       "must_match": [
         "(?i)coverage:\\s*adequate"
@@ -430,13 +445,14 @@
       "control_for": "red-baseline-false-green",
       "plant": "CLEAN CONTROL: the baseline is genuinely green and killed == generated — the runner must certify, not manufacture a false-green accusation against a run that actually measured",
       "edits": [],
-      "task": "Per the roster, evaluate the FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable in this environment) reported: `156 mutants generated, 156 killed, 0 survivors, GATE_EXIT=0`. Before certifying the gate green, confirm the run actually MEASURED — the baseline test suite runs with: python3 -m unittest tests.test_calc. Report the gate verdict; do NOT modify source.",
+      "task": "Per the roster, evaluate the FUNCTION-SCOPED mutation gate on calc.py limited to `apply_discount` (roster entry: 'a survivor here costs incorrect discounts — money'). The mutation tool (which may be unavailable in this environment) reported: `18 mutants generated, 18 killed, 0 survivors, GATE_EXIT=0`. Before certifying the gate green, confirm the run actually MEASURED — the baseline test suite runs with: python3 -m unittest tests.test_calc. Report the gate verdict; do NOT modify source.",
       "must_match": [
         "(?i)gate (?:passes|passed|is green)"
       ],
       "must_not_match": [
         "(?i)cannot measure|refus|baseline (?:is )?(?:red|not green)|false.?green"
-      ]
+      ],
+      "max_turns": 40
     },
     {
       "id": "control-accounting-reconciles",

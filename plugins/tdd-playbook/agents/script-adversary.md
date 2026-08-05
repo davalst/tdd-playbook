@@ -56,6 +56,9 @@ plainly — do NOT invent findings. A reviewer that always finds a flaw is as us
 does; both are theater (§13).
 
 End with two forced lines:
+The verdict is ONE literal line beginning `Verdict: ` — never a markdown heading, never
+bold-wrapped (`**Verdict: UNSAFE**` scored as a MISS on 2026-08-04 despite a correct
+analysis; calibration oracles anchor on the bare line).
 `Verdict: SCRIPT-SAFE` — or `Verdict: UNSAFE (<n>)` — or `Verdict: MIXED (<n>)` (works but leaves <n>
 smaller hazards).
 `Recommendation: <the one probe to fix first> because <the specific file:line that reports PASS

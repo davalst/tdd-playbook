@@ -1,7 +1,7 @@
 {
   "id": "control-declared-kill-switch",
   "agent": "tripwire-auditor",
-  "plant": "Clean twin: the same region gains an env gate \u2014 but it is a default-ON kill switch (FIXTURE_CSV_EXPORT_DISABLED=1 to opt out) declared in the user-facing usage line, so the feature is live by default and the gate is discoverable; the mere presence of an env gate baits a ghost-gate alarm.",
+  "plant": "Clean twin: the same region gains an env gate — but it is a default-ON kill switch (FIXTURE_CSV_EXPORT_DISABLED=1 to opt out) declared in the user-facing usage line, so the feature is live by default and the gate is discoverable; the mere presence of an env gate baits a ghost-gate alarm.",
   "control_for": "ghost-gate-undeclared-export-flag",
   "edits": [
     {
@@ -17,10 +17,10 @@
     {
       "file": "cli.py",
       "old": "    if cmd == \"export\":\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0",
-      "new": "    if cmd == \"export\":\n        # Operational kill switch \u2014 declared in the usage line above; default ON.\n        if os.environ.get(\"FIXTURE_CSV_EXPORT_DISABLED\", \"\") == \"1\":\n            print(\"export disabled by operator\")\n            return 1\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0"
+      "new": "    if cmd == \"export\":\n        # Operational kill switch — declared in the usage line above; default ON.\n        if os.environ.get(\"FIXTURE_CSV_EXPORT_DISABLED\", \"\") == \"1\":\n            print(\"export disabled by operator\")\n            return 1\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0"
     }
   ],
-  "task": "cli.py's export command was recently hardened with an operational gate; it works fine in the maintainer's own shell and the test suite is green. Audit the ACTIVATED leg of the Tripwire for the export feature through the production entry point (cli.py): is the feature live by default for a fresh operator, and is any gate it reads declared somewhere discoverable (usage text, docs, config schema, or a writer anywhere in the repo)? End with 'ACTIVATED: PASS' or 'ACTIVATED: FAIL \u2014 <reason>'.",
+  "task": "cli.py's export command was recently hardened with an operational gate; it works fine in the maintainer's own shell and the test suite is green. Audit the ACTIVATED leg of the Tripwire for the export feature through the production entry point (cli.py): is the feature live by default for a fresh operator, and is any gate it reads declared somewhere discoverable (usage text, docs, config schema, or a writer anywhere in the repo)? End with 'ACTIVATED: PASS' or 'ACTIVATED: FAIL — <reason>'.",
   "must_match": [
     "ACTIVATED: PASS"
   ],
@@ -33,5 +33,6 @@
     "authored_at": "2026-08-03",
     "status": "approved",
     "approved_at": "2026-08-03"
-  }
+  },
+  "max_turns": 40
 }

@@ -113,4 +113,8 @@ free-prose gate verdicts failed every clean-control rep at the cheap tier):
 resolved, the baseline was green, and the numbers reconcile — or
 `Mutation gate FAILS — <the surviving mutant / floor breach>` or
 `Mutation gate UNMEASURED — <exactly what could not be measured and why>`.
+When mutants would live (binding defects, shadowed scopes, uncovered branches), say so
+with the house words — "survivor(s)" / "survived" — in the verdict or its detail line;
+"all would survive"/"SURVIVES" phrased without them scored a correct catch as a miss on
+2026-08-04 (calibration oracles anchor on the survivor vocabulary).
 A verdict of PASSES with any unmeasured segment is forbidden — unmeasured is its own line.

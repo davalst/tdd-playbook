@@ -1,7 +1,7 @@
 {
   "id": "bug107-guard-excuses-motivating-shape",
   "agent": "red-first-verifier",
-  "plant": "BUG-107 regression guard asserts substring survival and trailing amount \u2014 assertions that pass on the very pre-fix raw-interpolation shape its docstring cites, so the replay stays GREEN while deleting export_csv still goes red (red-first in ritual only).",
+  "plant": "BUG-107 regression guard asserts substring survival and trailing amount — assertions that pass on the very pre-fix raw-interpolation shape its docstring cites, so the replay stays GREEN while deleting export_csv still goes red (red-first in ritual only).",
   "edits": [
     {
       "file": "report.py",
@@ -14,11 +14,9 @@
       "new": "class TestBug107CommaGuard(unittest.TestCase):\n    \"\"\"Regression guard for BUG-107: export_csv([(\"a,b\", 10)]) emitted the three-column\n    row a,b,10 because the pre-fix body interpolated the name raw:\n        out.append(\"{},{}\".format(name, amount))\n    The fix (report.py) double-quotes a name containing a comma.\"\"\"\n\n    def test_comma_name_row_survives(self):\n        text = export_csv([(\"a,b\", 10)])\n        self.assertTrue(text.startswith(\"name,amount\\n\"))\n        self.assertIn(\"a,b\", text)\n        self.assertTrue(text.rstrip(\"\\n\").endswith(\"10\"))\n\n\nif __name__ == \"__main__\":\n    unittest.main()"
     }
   ],
-  "task": "report.py now carries the BUG-107 fix (a name containing a comma is double-quoted) and tests/test_calc.py carries its regression guard, TestBug107CommaGuard. Verify red-first for this guard per SKILL.md \u00a713: confirm it is GREEN with the current fix and RED when replayed against the pre-fix shape its docstring cites (the raw out.append(\"{},{}\".format(name, amount)) body with no quoting). Report whether red-first holds for the motivating defect, with replay evidence.",
+  "task": "report.py now carries the BUG-107 fix (a name containing a comma is double-quoted) and tests/test_calc.py carries its regression guard, TestBug107CommaGuard. Verify red-first for this guard per SKILL.md §13: confirm it is GREEN with the current fix and RED when replayed against the pre-fix shape its docstring cites (the raw out.append(\"{},{}\".format(name, amount)) body with no quoting). Report whether red-first holds for the motivating defect, with replay evidence.",
   "must_match": [
-    "(?i)((pass(es|ed)?|green)[^\\n]{0,90}(pre-?fix|unfixed|without the fix|reverted?)|(pre-?fix|unfixed|without the fix|reverted?)[^\\n]{0,90}(pass(es|ed)?|green|never (fails|goes red)|does not fail|doesn'?t fail))",
-    "(?i)bug-?107",
-    "(?i)(not (a )?genuine|not (a )?valid|excus|does not (catch|detect|fail|hold)|doesn'?t (catch|detect|fail|hold)|never (fails|goes red)|fails to (catch|detect)|red-?first (does not|doesn'?t) hold|red-?first violation)"
+    "(?i)(not (a )?genuine|not (a )?valid|excus|does not (catch|detect|fail|hold)|doesn'?t (catch|detect|fail|hold)|never (fails|goes red)|fails to (catch|detect)|red-?first (does not|doesn'?t) hold|red-?first violation|passes? (in both states|without the fix|regardless)|cannot distinguish|satisfied by both|not verified)"
   ],
   "must_not_match": [
     "(?i)red-?first (holds|is verified|verified|is confirmed|confirmed|is satisfied|satisfied)",

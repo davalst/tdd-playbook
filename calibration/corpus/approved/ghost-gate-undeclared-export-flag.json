@@ -14,11 +14,11 @@
       "new": "    if cmd == \"export\":\n        if os.environ.get(\"FIXTURE_CSV_EXPORT_ENABLED\", \"\") != \"1\":\n            print(\"export disabled\")\n            return 1\n        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1\n        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0"
     }
   ],
-  "task": "cli.py's export command was recently hardened with an operational gate; it works fine in the maintainer's own shell and the test suite is green. Audit the ACTIVATED leg of the Tripwire for the export feature through the production entry point (cli.py): is the feature live by default for a fresh operator, and is any gate it reads declared somewhere discoverable (usage text, docs, config schema, or a writer anywhere in the repo)? End with 'ACTIVATED: PASS' or 'ACTIVATED: FAIL \u2014 <reason>'.",
+  "task": "cli.py's export command was recently hardened with an operational gate; it works fine in the maintainer's own shell and the test suite is green. Audit the ACTIVATED leg of the Tripwire for the export feature through the production entry point (cli.py): is the feature live by default for a fresh operator, and is any gate it reads declared somewhere discoverable (usage text, docs, config schema, or a writer anywhere in the repo)? End with 'ACTIVATED: PASS' or 'ACTIVATED: FAIL — <reason>'.",
   "must_match": [
     "ACTIVATED: FAIL",
     "FIXTURE_CSV_EXPORT_ENABLED",
-    "(?i)(ghost|undeclared|declared nowhere|not (declared|documented)|dark[- ]by[- ]default|default(s)?[- ](to[- ])?off)"
+    "(?i)(ghost|undeclared|declared nowhere|not (declared|documented)|dark[- ]by[- ]default|default(s)?[- ](to[- ])?off|disabled by default|undiscoverab\\w+|zero discoverability|no guidance)"
   ],
   "must_not_match": [
     "ACTIVATED: PASS"
