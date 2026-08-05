@@ -331,6 +331,13 @@ def test_own_registry():
           not _fires("2026-08-17", "V1.25 CORPUS QUEUE")
           and any("calibration-loop" in v for v in _fires("2026-08-18", "V1.25 CORPUS QUEUE")),
           _fires("2026-08-18", "V1.25 CORPUS QUEUE")[:2])
+    check("supersede-prose-oracle-plants debt (2026-09-15): silent on its expiry day, "
+          "fires 09-16 naming calibration-loop — three BASELINE plants are immutable, so "
+          "their prose oracles can only be replaced by NEW superseding plants",
+          not _fires("2026-09-15", "SUPERSEDE PROSE-ORACLE PLANTS")
+          and any("calibration-loop" in v
+                  for v in _fires("2026-09-16", "SUPERSEDE PROSE-ORACLE PLANTS")),
+          _fires("2026-09-16", "SUPERSEDE PROSE-ORACLE PLANTS")[:2])
     # (The TESTLOCK OVERRIDE SEMANTICS pin lived here 2026-08-05 only: the debt was PAID the
     # same day in v1.27 — `unlock --class` + the fp column + candidates() computing from
     # CLASSIFIED blocks. A paid loan's trigger is retired WITH this dated comment, never
