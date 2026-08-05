@@ -1,0 +1,35 @@
+{
+  "id": "control-seam-message-rendered",
+  "agent": "integration-adversary",
+  "control_for": "seam-self-consistency-return-only",
+  "plant": "CLEAN CONTROL (single-variable pair): the SAME runmode change, but the dispatch branch RENDERS result['message'] (print at the cli.main branch) — every field the handler produces has a reading line in the real consumer. The adversary must ground it at field granularity and return CONNECTED; restraint on clean work is measured exactly like vigilance on broken work.",
+  "edits": [
+    {
+      "file": "cli.py",
+      "old": "def main(argv):",
+      "new": "def handle_runmode(user):\n    \"\"\"Toggle run mode; reports the new state to the user via the returned message.\"\"\"\n    if not authorize(user, \"runmode\"):\n        return {\"ok\": False, \"message\": \"denied\"}\n    return {\"ok\": True, \"message\": \"run mode is now ON\"}\n\n\ndef main(argv):"
+    },
+    {
+      "file": "cli.py",
+      "old": "    print(\"unknown command: {}\".format(cmd))",
+      "new": "    if cmd == \"runmode\":\n        result = handle_runmode(user)\n        print(result[\"message\"])\n        return 0 if result[\"ok\"] else 1\n    print(\"unknown command: {}\".format(cmd))"
+    },
+    {
+      "file": "tests/test_calc.py",
+      "append": "\n\nclass TestRunmode(unittest.TestCase):\n    def test_runmode_reports_state(self):\n        import cli\n        result = cli.handle_runmode({\"role\": \"admin\"})\n        self.assertTrue(result[\"ok\"])\n        self.assertIn(\"run mode\", result[\"message\"])\n\n    def test_runmode_denied(self):\n        import cli\n        result = cli.handle_runmode({\"role\": \"guest\"})\n        self.assertFalse(result[\"ok\"])\n        self.assertEqual(result[\"message\"], \"denied\")\n"
+    }
+  ],
+  "task": "A completed change claims: 'runmode command added and WIRED: handle_runmode dispatched from cli.main and covered by TestRunmode in tests/test_calc.py.' Review connectedness per the Playbook integration-adversary pass in DIFF/REPO MODE, judging the emitted surface at FIELD granularity — for everything the handler PRODUCES, a consumer is named by the file:line that READS the specific field; a test asserting on the handler's own return value is not a consumer. Ground every claim in THIS repo's code (cite file:line). End with your contract's forced lines.",
+  "max_turns": 40,
+  "must_match": [
+    "(?i)verdict:\\s*connected"
+  ],
+  "must_not_match": [
+    "(?i)verdict:\\s*islands"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-05",
+    "status": "proposed"
+  }
+}
