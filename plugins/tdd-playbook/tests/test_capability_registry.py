@@ -338,6 +338,18 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-09-16", "SUPERSEDE PROSE-ORACLE PLANTS")),
           _fires("2026-09-16", "SUPERSEDE PROSE-ORACLE PLANTS")[:2])
+    check("mutation-runner clean-run debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 naming calibration-loop — four of seven false alarms are its controls",
+          not _fires("2026-09-15", "MUTATION-RUNNER CLEAN-RUN DESCRIPTION")
+          and any("calibration-loop" in v
+                  for v in _fires("2026-09-16", "MUTATION-RUNNER CLEAN-RUN DESCRIPTION")),
+          _fires("2026-09-16", "MUTATION-RUNNER CLEAN-RUN DESCRIPTION")[:2])
+    check("oracle-normalisation debt (2026-09-15): silent on its expiry day, fires 09-16 "
+          "— deferred deliberately to avoid confounding a pre-registered cycle",
+          not _fires("2026-09-15", "ORACLE NORMALISATION PASS")
+          and any("calibration-loop" in v
+                  for v in _fires("2026-09-16", "ORACLE NORMALISATION PASS")),
+          _fires("2026-09-16", "ORACLE NORMALISATION PASS")[:2])
     check("pre-commit gate blind spot debt (2026-09-15): silent on its expiry day, fires "
           "09-16 — a gate that reads COMMITTED state gives a false green when run before "
           "the commit, which is how a repo-red commit reached origin on 2026-08-05",

@@ -215,6 +215,16 @@
           "what": "SUPERSEDE PROSE-ORACLE PLANTS (run-4 adjudication, 2026-08-05): csv-escape-fixed-at-call-site, shadowed-import-vacuous-suite and special-case-bypasses-both-copies still score on prose VOCABULARY, which run 4 proved is the weak link (correct agent verdicts scored down on adjectives; one regex could not match the word 'survives'). They are in the v1.22.0 baseline and therefore IMMUTABLE — check_scoreboard_integrity refused an edit attempt by the assistant and that refusal STANDS. The sanctioned path is NEW superseding plants carrying VERDICT+ARTIFACT anchors (two already carry standing WEAK-PLANT flags). Done = superseding plants approved in corpus/approved/, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
+        },
+        {
+          "what": "MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F — the one substantive item): four of the seven false alarms in run 4 are mutation-runner CONTROLS. The brief has accumulated refuse-conditions (vacuous scope, accounting reconciles, baseline green, cache busted, bindings checked) with NO matching description of what a certifiable clean run looks like, so on a clean run it hunts until it finds something. DOUBLY supported: the ledger has now scored FLAT on two independent fixture-side attempts at these same controls (L-20260804-*, L-20260805-01..03, 'wrong-fix'). PRE-REGISTERED DECISION RULE: my L-20260805-24/25/26 target the agents' actual stated run-4 reasons and are unmeasured — re-run FIRST (the engine's own sequencing: never change a verifier prompt while fixture fixes are pending measurement). If those come back FLAT, three fixture-side attempts across two sessions have failed and the cause is the brief: add the clean-run description. Done = either the entries land HIT, or the brief gains the description with its own ledger entry, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-09-15"
+        },
+        {
+          "what": "ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point): every agent emits markdown, so any oracle anchored on adjacent literal text is fragile — normalise agent text before matching (strip emphasis, collapse whitespace) and prefer verdict-line anchors over prose. DELIBERATELY NOT DONE THIS CYCLE: it changes how all 40 oracles match, and doing it now would confound the ten pre-registered predictions L-20260805-20..29 whose whole purpose is to measure per-scenario fixes — I would not know which change moved what. Do it in the cycle AFTER, with its own ledger entry. NOTE: normalisation would NOT have rescued the three immutable baseline plants (morphology and synonym misses, not emphasis) — those need superseding, tracked separately. Done = the pass lands with an entry, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-09-15"
         }
       ]
     },
