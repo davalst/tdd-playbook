@@ -344,6 +344,21 @@ def test_own_registry():
                   for c in reg.get("capabilities", [])
                   if c.get("id") == "civerd-release-gate"))
 
+    # v1.26 (seam-contract) dated triggers — same string-pinned boundary discipline:
+    check("seam-contract forwarding debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 naming civerd-release-gate — a recommendation doc nobody actioned is "
+          "the documented rot case this repo already paid for once",
+          not _fires("2026-09-15", "SEAM-CONTRACT RECOMMENDATION FORWARDED")
+          and any("civerd-release-gate" in v
+                  for v in _fires("2026-09-16", "SEAM-CONTRACT RECOMMENDATION FORWARDED")),
+          _fires("2026-09-16", "SEAM-CONTRACT RECOMMENDATION FORWARDED")[:2])
+    check("seam-contract report-back debt (2026-09-15): silent on its expiry day, fires "
+          "09-16 naming civerd-release-gate — the answers slot must not sit empty forever",
+          not _fires("2026-09-15", "SEAM-CONTRACT REPORT-BACK")
+          and any("civerd-release-gate" in v
+                  for v in _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")),
+          _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")[:2])
+
 
 def test_probe_survivor_gaps():
     """CIVerd's engine-owned planted-error probe, FIRST live firing (2026-07-28), planted
