@@ -940,6 +940,16 @@ def test_v126_seam_contract_pins():
           "test at the seam you don't own" in readme)
     check("README verify-list: vendored SKILL check names the seam rule + parity sweep",
           "§1 seam rule, the §6c family parity sweep" in readme)
+    with open(os.path.join(repo_root, "docs", "HACK_CATALOG.md")) as fh:
+        catalog = fh.read()
+    for label, needle in [
+        ("HACK_CATALOG: H11 entry", "### H11 — The self-consistency test"),
+        ("HACK_CATALOG: H11 partitioned from H9 (existence vs direction)",
+         "H9 is EXISTENCE"),
+        ("HACK_CATALOG: H11 map row", "| H11 | family parity sweeps"),
+        ("HACK_CATALOG: 2026.08 refresh-log row", "| 2026-08 | 2026.08 |"),
+    ]:
+        check(label, needle in catalog, "needle {!r} missing".format(needle))
     # planted-stripped twin (§13): the pins can fail — a surface missing the needles
     # must be detectable, not vacuously green
     stripped = "You run the Playbook §4 mutation pass. Report a clean result.\n"

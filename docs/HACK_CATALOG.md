@@ -1,7 +1,9 @@
-# The Hack Catalog — known agent test-gaming behaviors
+# The Hack Catalog — the Playbook's threat model (gaming AND honest-miss classes)
 
 **Versioned. Guards cite entry IDs. The catalog only grows.**
-Catalog version: **2026.07** (seeded from the July 2026 research corpus)
+Catalog version: **2026.08** (2026.07 seeded from the July 2026 research corpus; 2026.08
+adds H11 and widens the framing — H9/H10/H11 are honest-miss classes, not gaming: nobody
+is cheating, the failure survives BECAUSE everyone is sincere)
 
 This is the Playbook's threat model, made diffable. Every mechanical guard
 (`hooks/scripts/*`) that detects a gaming pattern cites the entry it defends against, so
@@ -155,6 +157,26 @@ the coverage it lacks, at the exact spot history proved it was needed.
   the rule; corpus plant class `guard-excuses-its-own-motivating-bug` calibrates the
   verifiers against it.
 
+### H11 — The self-consistency test: shared wrong belief about a seam
+Implementation and its tests are written from the SAME mistaken model of a caller's
+contract — they agree with each other perfectly and both disagree with production. A test
+cannot catch a mistake it also makes: red-first is honestly red, mutation score is 100%
+(mutant and assertion sit on the same side of the misunderstood seam — §4's stated blind
+spot), registration-level wiring evidence is real, and the user sees nothing. Partition
+from H9 (the sibling honest-miss): H9 is EXISTENCE — the double supplies a seam production
+lacks; H11 is DIRECTION — the test uses production's real shape, but both sides point at a
+value the consumer never reads. The review-checkable tell: every assertion reads an object
+the code under test constructed, and no representation of the consumer appears in the test.
+- Evidence: Cheliped, 2026-08-04 — `/runmode` and `/apps` handlers RETURNED
+  `CommandResult(message=...)` while the adapter contract was `ctx.post_message(...)`;
+  their tests asserted on the returned value; both commands shipped green and did nothing
+  visible on any surface.
+- Defense: §1's "test at the seam you don't own" (v1.26) — the value observed ARRIVING at
+  the consumer, never merely leaving; §0/§6c field-granularity emits (cite the LINE that
+  reads the field); §6c's family parity sweep — one vacuity-guarded test enumerating the
+  pluggable family from the real registry, asserting the host's contract per member (it
+  catches the author who never read the convention, which is this class's whole character).
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -169,6 +191,7 @@ the coverage it lacks, at the exact spot history proved it was needed.
 | H8 | doctor GUARDS-DARK (heartbeat vs latest commit) + run_calibration warning | engine guard_env for the adversarial variant (contracted) |
 | H9 | overmock_guard fabricated-seam pattern (planted: test_hooks G2e pair) | §1 seam-fabrication rule; §6a assembly suite |
 | H10 | — (mechanical replay is per-guard, not a standing hook) | §13 guard calibration + red-first-verifier/tripwire-auditor briefs + corpus plant class |
+| H11 | family parity sweeps (repo-local by construction; this repo: test_agents commands sweep + vacuity guard) | §1 seam rule + §0 field-granularity emits + integration-adversary brief + corpus plant pair seam-self-consistency-return-only / control-seam-message-rendered |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 
@@ -185,3 +208,4 @@ Log each refresh here:
 | Date | Version | What changed |
 |---|---|---|
 | 2026-07 | 2026.07 | Initial catalog: H1–H6 seeded from METR (Jun 2025), Anthropic system cards + Nov 2025 reward-hacking research, Kent Beck (Jun 2025), MSR 2026 over-mocking study, SpecBench + Verification Horizon (2026). |
+| 2026-08 | 2026.08 | H11 (self-consistency test — shared wrong belief about a seam; Cheliped seam-contract proposal). Framing widened: the catalog is the THREAT MODEL, gaming and honest-miss classes both (H9/H10/H11 are honest misses). Guard map gains the H11 row (family parity sweeps). Not from the literature sweep — from a live incident; the quarterly literature refresh clock is unchanged by this row's mid-quarter date. |
