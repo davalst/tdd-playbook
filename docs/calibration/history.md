@@ -137,3 +137,45 @@
 | 2026-08-03 | haiku vs claude-fable-5 | plan-omits-summary-consumer | integration-adversary | 3/3 | — | PASS |
 | 2026-08-03 | haiku vs claude-fable-5 | shadowed-import-vacuous-suite | mutation-runner | 2/3 | found-but-hedged | AMBER |
 | 2026-08-03 | haiku vs claude-fable-5 | special-case-bypasses-both-copies | architecture-adversary | 2/3 | found-but-hedged | AMBER |
+
+### Run 2026-08-04 — model haiku · repo d8873f5 · selected 38 of 38 (26 shipped + 12 corpus · 17 controls) · recall 15/21 [0.50–0.86] · FP 9/17 [0.31–0.74]
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-04 | haiku | never-red-test | red-first-verifier | 3/3 | — | PASS |
+| 2026-08-04 | haiku | unwired-deliverable | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-04 | haiku | false-negative-claim | claims-verifier | 3/3 | — | PASS |
+| 2026-08-04 | haiku | vacuous-mutation-scope | mutation-runner | 3/3 | — | PASS |
+| 2026-08-04 | haiku | red-baseline-false-green | mutation-runner | 3/3 | — | PASS |
+| 2026-08-04 | haiku | missing-boundary-test | edge-case-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku | band-aid-parallel-list | architecture-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku | good-fix-single-source | architecture-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku | unmeasured-not-certified | mutation-runner | 3/3 | — | PASS |
+| 2026-08-04 | haiku | script-unsafe-probe | script-adversary | 2/3 | found-but-hedged | AMBER |
+| 2026-08-04 | haiku | roadmap-laundering | tripwire-auditor | 0/3 | missed-entirely | **BLOCKING FAIL** |
+| 2026-08-04 | haiku | control-parked-deferral | tripwire-auditor | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-04 | haiku | island-write-only-plan | integration-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-connected-plan | integration-adversary | 2/3 | wrong-verdict-line | AMBER |
+| 2026-08-04 | haiku | red-first-symmetric-break | red-first-verifier | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-assert-red-then-green | red-first-verifier | 3/3 | — | PASS |
+| 2026-08-04 | haiku | mutation-phantom-run | mutation-runner | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-cachebusted-run | mutation-runner | 1/3 | wrong-verdict-line | AMBER |
+| 2026-08-04 | haiku | control-genuine-red-first | red-first-verifier | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-04 | haiku | control-export-wired | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-true-dead-code | claims-verifier | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-boundary-covered | edge-case-adversary | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-04 | haiku | control-real-scope-measured | mutation-runner | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-green-baseline-measured | mutation-runner | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-04 | haiku | control-accounting-reconciles | mutation-runner | 3/3 | — | PASS |
+| 2026-08-04 | haiku | control-script-safe-probe | script-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku vs claude-fable-5 | bug107-guard-excuses-motivating-shape | red-first-verifier | 1/3 | found-but-hedged | AMBER |
+| 2026-08-04 | haiku vs claude-fable-5 | control-bug107-guard-replay-red | red-first-verifier | 0/3 | found-but-hedged | **BLOCKING FAIL** |
+| 2026-08-04 | haiku vs claude-fable-5 | control-declared-kill-switch | tripwire-auditor | 2/3 | missed-entirely | **BLOCKING FAIL** (AMBER×2) |
+| 2026-08-04 | haiku vs claude-fable-5 | control-drift-tripwire-union-exercised | tripwire-auditor | 2/3 | found-but-hedged | AMBER |
+| 2026-08-04 | haiku vs claude-fable-5 | control-summary-consumer-named | integration-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku vs claude-fable-5 | csv-escape-fixed-at-call-site | architecture-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku vs claude-fable-5 | dead-export-claim-cmd-indirection | claims-verifier | 3/3 | — | PASS |
+| 2026-08-04 | haiku vs claude-fable-5 | drift-tripwire-intersection-excuse | tripwire-auditor | 2/3 | found-but-hedged | AMBER |
+| 2026-08-04 | haiku vs claude-fable-5 | ghost-gate-undeclared-export-flag | tripwire-auditor | 2/3 | found-but-hedged | AMBER |
+| 2026-08-04 | haiku vs claude-fable-5 | plan-omits-summary-consumer | integration-adversary | 3/3 | — | PASS |
+| 2026-08-04 | haiku vs claude-fable-5 | shadowed-import-vacuous-suite | mutation-runner | 1/3 | found-but-hedged | **BLOCKING FAIL** (AMBER×2) |
+| 2026-08-04 | haiku vs claude-fable-5 | special-case-bypasses-both-copies | architecture-adversary | 3/3 | — | PASS |
