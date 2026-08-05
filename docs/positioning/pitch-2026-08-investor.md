@@ -88,6 +88,37 @@ with.**
   checks ran on which version with what result — verifiable by anyone, offline,
   without trusting us or the vendor.
 
+## Who else is in this space (and why their existence helps)
+
+Serious, funded companies are now selling **code verification** for AI-written code —
+checking each change against an approved specification before it merges (Aviator Verify
+is the clearest example). This is good news twice over: it proves the pain and the budget
+are real, and their published reasoning lands on the same conclusion ours does — *"when
+the same model writes the code and reviews the code, it misses the same things both
+times. You have not added a check. You have added a mirror."*
+
+Here's the gap they leave open, and it's the whole reason we exist. **They check the
+work. Nobody checks the checker.** Their product answers "did this change do what the
+spec said?" It cannot answer *"of all the real defects that could hit us, what fraction
+does our safety net actually catch — and is that number going up or down?"* A safety rule
+that quietly stopped working looks exactly like a safety rule with nothing to catch. Only
+planted-defect inspection can tell those apart, and that requires a sealed test bank and
+years of history — which is what we've been building.
+
+Three practical differences, in buyer's language:
+
+- **They verify a change; we measure the whole safety net** — with an honest catch-rate
+  and false-alarm number, tracked over time.
+- **They assume the AI is trying to do the right thing; we assume it will take the
+  shortest path to "green."** Weakened tests, features that pass every check and never
+  actually get switched on — that's our territory, not theirs.
+- **Their records are trustworthy if you trust their system; ours are provable without
+  trusting anyone** — signed, open-format, checkable offline by an auditor years later.
+
+So they're closer to a partner than a rival today: **their customers are our best
+prospects** — a team that has invested in verification is exactly the team that will want
+to know how strong their verification actually is.
+
 ## Why we're different: everyone will promise better code — we prove it
 
 Every AI coding vendor already claims quality. As the money floods in, every one of
@@ -221,10 +252,12 @@ Our seat in this race is unusual, and we state it plainly:
 1. **The head-to-head number could disappoint.** Pre-committed to publishing either
    way; the proof business survives; the credibility of having published is itself a
    moat no competitor cheaply matches.
-2. **A platform giant builds something similar.** They can prove a check *ran*;
-   proving a check *works* requires the sealed bank, the community's failure shapes,
-   and years of history — the parts that can't be fast-followed. And the referee
-   shouldn't be owned by a player.
+2. **A platform giant — or a funded verification vendor — builds something similar.**
+   They can prove a check *ran*, and increasingly that a change met its spec. Proving a
+   check *works* requires the sealed bank, the community's failure shapes, and years of
+   accumulated history — the parts that can't be fast-followed, and the reason to start
+   the clock now rather than after the category is obvious. And the referee shouldn't be
+   owned by a player.
 3. **Models get so good the planted bugs stop fooling them.** Watched with a specific
    early-warning metric — and this is exactly the risk the community flywheel exists
    to retire: real-world failure shapes from thousands of codebases are the supply

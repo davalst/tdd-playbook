@@ -367,6 +367,13 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
 - **Ledger degenerates to boilerplate** → scope rule wrong; fix the rule, don't abandon
   the instrument.
 - **Attestation needs a format change** → stop; David; memproof-3 discussion.
+- **A verification vendor ships gate-strength measurement** (generalized 2026-08-05 from
+  the GitHub-shaped version after the Aviator Verify review — see
+  `docs/positioning/competitive-landscape-2026-08.md`): any competitor publishing
+  recall/false-positive numbers for customers' own gates, not just "the check ran,"
+  compresses the standalone play to the sealed bank and the accumulated history.
+  Response is unchanged and is why sequencing matters: accumulate now. Watch signal is
+  *published recall/FP numbers*, not more verification marketing copy.
 - **Saturation-on-arrival two cycles running** → adversary-tier authoring has hit the
   ceiling; incident mining becomes the sole corpus refill and the quarterly must say so.
 - **Contributor-IP leakage past the intake guard** → BLOCKING incident: intake pauses,
