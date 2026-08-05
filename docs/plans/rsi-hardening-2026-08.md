@@ -5,6 +5,10 @@ David) with his sequencing: Phase 0 authorized immediately (backfill committed w
 revision); Phases 1–4 stand ratified **conditional on Phase 0's §3 kill row not firing**
 at the ~2026-08-10 run. All three ⚑ decisions are resolved — recorded in place (§4,
 §6.1, §10) and in the ratification record (§12).
+**Addendum 2026-08-05 (same day):** Phase 4 expanded with the community shape-intake
+pipeline (§8.1) per the adopted positioning (`docs/positioning/pitch-2026-08-investor.md`
+v2 — open-source playbook, sealed exam, IP-safe hole reporting). New ⚑ Decision 3
+(launch timing) in §12.
 Prompted by: `docs/evaluations/two-agent-recursive-loops-2026-08.md` (external analysis of
 two-agent recursive-improvement loops, committed alongside this plan) and the RSI placement
 review performed in the same session.
@@ -73,6 +77,7 @@ This plan eats its own dogfood: the criteria are written before any phase runs.
 | 2 | Holdout live; power line printed; lift read lands with pre-registration hash | Lift ≤ stub-arm noise floor → the "process improves agents" claim dies (§11); verification-infra value stands |
 | 3 | A signed attestation bundle verifies via unmodified `verify_verdict.py` | Any pressure to change predicate/schema/reason strings → STOP, David decision |
 | 4 | Vitality trend feeds authoring targets each cycle | Adversary-tier authoring produces only saturated-on-arrival plants two cycles running → escalation ceiling reached; incident mining becomes the sole refill |
+| 4a | First community shape lands as an approved plant with a verified closure (fix's ledger entry CONFIRMED) | Any contributor-IP leakage past the intake guard is a BLOCKING incident — launch pauses, guard is fixed and replayed against the leaked artifact before intake reopens |
 
 ## 4. Phase 0 — the run we already owe (trigger: ~2026-08-10 live run)
 
@@ -284,6 +289,47 @@ scoreboard without trusting the publisher — memrebel's whole point.
 - **Escalation-ceiling watch:** the vitality saturated-share trend is the early-warning
   line (kill row in §3). Read it at each quarterly alongside the dataflow trend.
 
+### 8.1 Community shape intake (added 2026-08-05; triggered by the open-source launch)
+
+Generalizes incident mining from one founder to a community, per pitch v2. The contract:
+**adopters report the SHAPE of a hole, never their source** — a situation description
+plus a reproduction on *synthetic* fixture code — and the pipeline turns shapes into
+sealed-bank plants with provenance. Four deliverables, each with planted-input tests:
+
+1. **Shape-report schema** (`calibration/shapes/`, public by design): defect-class
+   description · synthetic reproduction fixture · which agent/guard *should* have caught
+   it · contributor's synthetic-fixture attestation · status
+   (`reported → plant-authored → contributor-confirmed → approved → closed`).
+2. **IP guard at intake — BLOCKING, the reputational load-bearer.** Mechanical rejection
+   of reports whose fixture content trips secret/credential patterns, license headers,
+   URLs/emails/org identifiers, or a size ceiling (large fixtures are how real code
+   arrives "as an example"). Red-first planted tests: a report seeded with a fake secret
+   / a company-named module / an oversized fixture → each rejected with the reason;
+   paired clean control accepted. Per §13 v1.25, when the first real near-miss occurs,
+   the guard is replayed against that artifact and the shape is frozen as a fixture.
+3. **Pipeline extension:** shape → `author_plants.py` (adversary authors a plant *from
+   the shape*, never from contributor code) → contributor confirms shape-match →
+   `--approve` (human, pair quota unchanged) → dev/holdout assignment per the §6.1
+   class split. Plants record `shape_id` + contributor + authoring model — provenance
+   the pitch sells. Depends on the `create` capability (OWNED DATED DEBT, expires
+   2026-09-15) — now doubly load-bearing: community shapes will usually need new
+   fixture files.
+4. **Closure verification — the step everyone else skips, mechanically enforced.** A
+   shape may move to `closed` ONLY when its derived plant has been live-calibrated AND
+   the corresponding fix's ledger entry scored CONFIRMED. Planted test: a shape marked
+   closed with an unscored or REFUTED ledger entry → red.
+
+Integration surface: consumes shape reports (public) + `author_plants` pipeline; emits →
+sealed bank (holdout-bound plants), ledger entries (closure), scoreboard provenance
+columns; activation through the real intake path, not a self-assembling fixture;
+reverse sweep: no shape without a terminal status — stalled shapes surface as dated
+debt, never silence. §6c flow rows: `shape → intake guard → author_plants → approved
+plant (liveness: planted IP-violation red)` and `closure claim → ledger CONFIRMED →
+status closed (liveness: planted premature-close red)`. Tripwire four legs apply;
+registry entry `community-shape-intake` — **dark until launch** (ships-on-or-triggered:
+OFF here is correct until Decision 3 arms it, and the doctor's dark inventory is where
+it waits).
+
 ## 9. Sequencing · owners · triggers
 
 Ordered so **every prefix is a coherent stopping point** (house rule):
@@ -296,6 +342,7 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
 | 2d–2e | Lift read (pre-registered) + cross-tier row | David (needs `claude` binary + budget) | quarterly clock; before **2026-11-01** debt expiry |
 | 3 | CIVerd checks + attestation (Appendix A prompt) | CIVerd session | after v1.26 tags (advisory), required at v1.27 |
 | 4 | Incident mining + ceiling watch | standing | each cycle / quarterly |
+| 4a | Community shape intake (§8.1) — build after v1.27, arm at open-source launch | agent session (build); David (⚑ Decision 3: launch timing) | recommended: launch after v1.27 + first lift read is stated (the number should precede the crowd) |
 
 ## 10. Release-gate and version deltas
 
@@ -322,6 +369,11 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
 - **Attestation needs a format change** → stop; David; memproof-3 discussion.
 - **Saturation-on-arrival two cycles running** → adversary-tier authoring has hit the
   ceiling; incident mining becomes the sole corpus refill and the quarterly must say so.
+- **Contributor-IP leakage past the intake guard** → BLOCKING incident: intake pauses,
+  the guard is fixed and replayed against the leaked artifact (§13 v1.25), the shape is
+  frozen as a planted fixture, and intake reopens only after the planted test is red-first
+  green. The community flywheel's entire premise is "your IP never leaves the building";
+  one silent exception would cost more than the flywheel earns.
 
 ## 12. Ratification record — 2026-08-05
 
@@ -333,6 +385,7 @@ recommendations verbatim:
 | 0 — timing | Phase 0 authorized immediately (backfill committed with this revision); Phases 1–4 ratified conditional on Phase 0's §3 kill row not firing at the ~2026-08-10 run |
 | 1 — holdout privacy | Private sibling repo for holdout classes, content hashes recorded here; standing rule effective now: holdout never in anything published — the scoreboard ships results + signed verdicts, never plants |
 | 2 — v2.0 gate | Both conditions adopted, with the honesty-gate softener: the lift read must be *completed and stated*, not *good* |
+| 3 — open-source launch (added 2026-08-05) | **Direction adopted** with pitch v2: playbook open-sourced, exam sealed, community shape intake per §8.1. ⚑ **Launch timing remains open** — recommended after v1.27 ships and the first lift read is stated, so the number precedes the crowd |
 
 Consequence for CIVerd (folded into Appendix A): verdict bundles are publishable
 artifacts, so captured check output must never embed plant or fixture content — exit
@@ -361,6 +414,13 @@ when a gate-surface diff since the baseline tag lacks a covering ledger
 entry. CIVerd already runs tdd-playbook's check_staleness.py as a
 `staleness` check on the daily timer — read how that check is registered
 and executed first; both deliverables follow that exact pattern.
+
+Forward context, not new scope: tdd-playbook is also adding a community
+shape-intake pipeline (plan §8.1 — public shape reports become
+sealed-bank plants). This changes NOTHING in your two deliverables; it
+raises the stakes on HARD CONSTRAINT 2 below, because community-derived
+plants are holdout-bound and attestation bundles will circulate in an
+open-source community. Do not add intake-side checks in this task.
 
 DELIVERABLE 1 — `ledger-coverage` daily check.
 Add a check that runs `python3 calibration/ledger.py check
