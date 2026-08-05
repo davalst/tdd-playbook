@@ -1,7 +1,10 @@
 # RSI Hardening — Closing the Update Loop on the Verification Substrate
 
-Date: 2026-08-05 · Repo: `davalst/tdd-playbook` · Status: **PROPOSED** (awaiting David's
-ratification; decision points marked ⚑)
+Date: 2026-08-05 · Repo: `davalst/tdd-playbook` · Status: **RATIFIED** (2026-08-05,
+David) with his sequencing: Phase 0 authorized immediately (backfill committed with this
+revision); Phases 1–4 stand ratified **conditional on Phase 0's §3 kill row not firing**
+at the ~2026-08-10 run. All three ⚑ decisions are resolved — recorded in place (§4,
+§6.1, §10) and in the ratification record (§12).
 Prompted by: `docs/evaluations/two-agent-recursive-loops-2026-08.md` (external analysis of
 two-agent recursive-improvement loops, committed alongside this plan) and the RSI placement
 review performed in the same session.
@@ -75,19 +78,22 @@ This plan eats its own dogfood: the criteria are written before any phase runs.
 
 No new machinery. Two actions, in order:
 
-1. **Backfill the ledger for `976364f`** (and the 08-03 oracle fixes it confirmed held).
-   Each adjudication line in that commit message is already an implicit prediction — make
-   them explicit rows in `calibration/ledger.md` (schema in §5) *before* the re-run, so the
-   re-run becomes **ledger cycle 1** at zero marginal cost. Example row: the
-   `control-genuine-red-first` fixture-value fix → expected: `control-genuine-red-first`
-   moves 0/3 → 3/3, mechanism `fixture now rounding-sensitive`.
+1. **Backfill the ledger for `976364f`** — **DONE 2026-08-05, this commit:**
+   `calibration/ledger.md` seeded with 14 open entries (one per scenario the 08-04
+   adjudication touched, derived from `oracle-changes.md` + the commit, each with baseline
+   and expected direction) plus 4 **already-scored** entries for the 2026-08-03 fixes,
+   which the 08-04 run scored: 3 CONFIRMED, 1 REFUTED with disposition
+   (`control-cachebusted-run` — the 08-03 oracle anchor didn't resolve it; the real cause
+   was the implausible mutant counts, found 08-04). The instrument's first refutation is
+   on the books before the tool exists.
 2. **Run the ~2026-08-10 live calibration** (David; real `claude` binary, non-root, per
    CLAUDE.md). Its history append is scored against the backfilled entries by hand this
-   once (ledger.py may not exist yet); the hand-scoring becomes the acceptance fixture for
+   once (ledger.py doesn't exist yet); the hand-scoring becomes the acceptance fixture for
    `ledger.py score` in Phase 1.
 
-⚑ **Decision 0 (David):** ratify this plan before or after the 08-10 run — Phase 0 is
-worth doing either way and requires only the ledger *file*, not the tool.
+⚑ **Decision 0 — RESOLVED (2026-08-05):** Phase 0 approved immediately; the rest of the
+plan is ratified conditional on Phase 0's score (§3 kill row). The 08-10 run is therefore
+both a calibration and this plan's own first prediction test.
 
 ## 5. Phase 1 — the improvement ledger (v1.26; the RSI core)
 
@@ -187,13 +193,20 @@ reopened here), plus three additions from the analysis:
 
 ### 6.1 Holdout split — with the contamination decision made explicit
 
-As ratified, plus: ⚑ **Decision 1 (David): where does holdout live?** A plant published in
-a public repo is *burned on a model-generation fuse* — future doer models train on the
-answer key (the GSM8k→GSM1k lesson). Options: **(a)** private sibling repo/submodule for
-holdout classes (recommended — the integrity checker's corpus-immutability rule extends
-across the boundary via recorded content hashes in the public repo, so privacy doesn't
-weaken auditability); **(b)** accept scheduled burning and budget authoring to outpace the
-fuse. Either is coherent; unstated is not.
+As ratified, plus: ⚑ **Decision 1 — RESOLVED (2026-08-05): option (a), plus a standing
+rule effective immediately.** A plant published in a public repo is *burned on a
+model-generation fuse* — future doer models train on the answer key (the GSM8k→GSM1k
+lesson). Resolution:
+
+- **Standing rule, effective now:** holdout material never appears in anything
+  open-sourced or published — including the WS5 public scoreboard, which publishes
+  *results and signed verdicts*, never plants. This rule outlives any future
+  "let's open-source the repo" decision and must be re-cited in that decision.
+- **Mechanism:** holdout classes live in a **private sibling repo**; this repo records
+  each holdout plant's **content hash**, so the integrity checker's corpus-immutability
+  rule extends across the boundary — privacy without weakening auditability. Required
+  before the first holdout assignment at `--approve` or before any repo-visibility
+  change, whichever comes first.
 
 Mechanism: `holdout` assignment at `--approve` (class grain, pair rides along);
 `run_calibration.py` selects the dev form by default, `--form holdout` for quarterly
@@ -277,9 +290,9 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
 
 | Step | What | Owner | Trigger / due |
 |---|---|---|---|
-| 0 | Ledger backfill for `976364f` + live re-run scores it | David (run) + agent (backfill) | ~2026-08-10 run |
+| 0 | Ledger backfill for `976364f` (**done 2026-08-05**) + live re-run scores it | David (run) | ~2026-08-10 run |
 | 1 | `ledger.py` + tests + gate wiring + integrity protection → **v1.26** | agent session | after 0 scores; nothing else ships first if 0's kill row fires |
-| 2a–2c | Holdout split (⚑ Decision 1) · vitality · power line → **v1.27** | agent session; David decides 1 | next authoring cycle (split assigned at `--approve`, so before the next batch) |
+| 2a–2c | Holdout split (Decision 1 resolved: private sibling + public hashes) · vitality · power line → **v1.27** | agent session; David creates the private repo | next authoring cycle (split assigned at `--approve`, so before the next batch) |
 | 2d–2e | Lift read (pre-registered) + cross-tier row | David (needs `claude` binary + budget) | quarterly clock; before **2026-11-01** debt expiry |
 | 3 | CIVerd checks + attestation (Appendix A prompt) | CIVerd session | after v1.26 tags (advisory), required at v1.27 |
 | 4 | Incident mining + ceiling watch | standing | each cycle / quarterly |
@@ -291,10 +304,13 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
   rule.
 - **v1.27:** holdout mechanism + leakage tripwire + vitality + power line; CIVerd
   `ledger-coverage` promoted to required.
-- ⚑ **Decision 2 (David) — v2.0 gate:** recommend adding to the existing "≥1 month live
-  calibration history" gate: **≥1 scored lift read on holdout** and **≥2 ledger cycles
-  with a reported confirmation rate**. Rationale: v2.0's positioning claim is "measured
-  process improvement"; these are the two numbers that make the claim falsifiable.
+- ⚑ **Decision 2 — RESOLVED (2026-08-05): adopted.** The v2.0 gate is now the existing
+  "≥1 month live calibration history" **plus**: **(a) ≥1 lift read on holdout, completed
+  and its result stated in the positioning** — an honesty gate, not a score threshold: a
+  disappointing lift number doesn't block v2.0, an *unstated* one does — and **(b) ≥2
+  ledger cycles with a reported confirmation rate**. Rationale: v2.0's positioning claim
+  is "measured process improvement"; these are the two numbers that make the claim
+  falsifiable, and they must be learned privately before being claimed publicly.
 
 ## 11. Kill criteria, restated once
 
@@ -307,6 +323,21 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
 - **Saturation-on-arrival two cycles running** → adversary-tier authoring has hit the
   ceiling; incident mining becomes the sole corpus refill and the quarterly must say so.
 
+## 12. Ratification record — 2026-08-05
+
+David reviewed the three decision points in plain-language form and adopted all three
+recommendations verbatim:
+
+| Decision | Resolution |
+|---|---|
+| 0 — timing | Phase 0 authorized immediately (backfill committed with this revision); Phases 1–4 ratified conditional on Phase 0's §3 kill row not firing at the ~2026-08-10 run |
+| 1 — holdout privacy | Private sibling repo for holdout classes, content hashes recorded here; standing rule effective now: holdout never in anything published — the scoreboard ships results + signed verdicts, never plants |
+| 2 — v2.0 gate | Both conditions adopted, with the honesty-gate softener: the lift read must be *completed and stated*, not *good* |
+
+Consequence for CIVerd (folded into Appendix A): verdict bundles are publishable
+artifacts, so captured check output must never embed plant or fixture content — exit
+codes, counts, and content hashes only.
+
 ---
 
 ## Appendix A — CIVerd session prompt (verbatim; also delivered in-session)
@@ -314,8 +345,10 @@ Ordered so **every prefix is a coherent stopping point** (house rule):
 ```
 Build the engine-side half of tdd-playbook's RSI hardening plan
 (tdd-playbook: docs/plans/rsi-hardening-2026-08.md, branch
-claude/tdd-playbook-rsi-analysis-ekw8up). Two deliverables, one hard
-constraint. CIVerd's own conventions apply throughout: fail-closed
+claude/tdd-playbook-rsi-analysis-ekw8up — RATIFIED 2026-08-05; this
+Phase-3 work is triggered by tdd-playbook's v1.26 tag, so build now,
+arm on the tag). Two deliverables, two hard constraints. CIVerd's own
+conventions apply throughout: fail-closed
 (absence of evidence is RED), the signing key never touches the process
 that runs hostile code, every new check ships with a planted-error test
 plus a clean control, and the runner installs only pytest.
@@ -361,6 +394,18 @@ must stay green, and memrebel is frozen. New check NAMES are config, not
 format, and are fine. If you find the attestation genuinely cannot be
 expressed without a schema or predicate change, STOP and report — that
 is a memproof-3-class decision for David, not an implementation detail.
+
+HARD CONSTRAINT 2 — bundles are publishable; plants are secret
+(Decision 1, ratified 2026-08-05). Attestation bundles will feed a
+public scoreboard, and tdd-playbook's holdout calibration plants are
+secure test items (private sibling repo; only content hashes are
+public). Therefore any check output captured into a bundle must record
+exit codes, counts, and content HASHES only — never fixture bodies,
+plant content, or captured stdout that could embed them. If a
+validator's stdout may contain fixture text, capture a digest of the
+stream, not the stream. Add a planted test for this: a scratch run
+whose check stdout contains a marker string -> the issued bundle must
+NOT contain the marker anywhere in its signed bytes.
 
 TESTS (planted-error convention, e2e on a scratch repo):
 1. Scratch playbook-shaped repo with a gate-surface diff and no ledger
