@@ -200,6 +200,16 @@
           "what": "V1.25 CORPUS QUEUE: review and --approve/reject the four H10 guard-excuses-its-own-motivating-bug proposals in corpus/proposed/ (bug107 + drift-tripwire pairs, target agents red-first-verifier / tripwire-auditor). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-08-17"
+        },
+        {
+          "what": "V1.26 GATE-SURFACE CALIBRATION (§13): the seam-contract doctrine + brief adoptions (SKILL §1 seam rule / §4 limitation / §0 field granularity / §6c family-parity Tier-1 rewrite, integration-adversary field-granularity sharpening, mutation-runner + /mutate limitation clauses) are NOT trusted until their rows land in docs/calibration/history.md from a live run — the ~2026-08-10 run already owes the v1.24 + v1.25 surfaces; include the H11 pair (once approved) in the same run",
+          "owner": "david",
+          "expires": "2026-08-17"
+        },
+        {
+          "what": "V1.26 CORPUS QUEUE: review and --approve/reject the H11 seam pair in corpus/proposed/ (seam-self-consistency-return-only + control-seam-message-rendered, target agent integration-adversary; fixture-verified: plant = suite green + cli silent, control = message rendered). Done = both files leave proposed/ with a decision each, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-08-17"
         }
       ]
     },
@@ -453,6 +463,11 @@
         }
       ],
       "integration_debt": [
+        {
+          "what": "TIER-2 FIELD-PAIRING SWEEP (v1.26 F3 deferral, David's call 2026-08-05): an attribute/field WRITTEN but never READ outside the constructing module — the mechanical form of §0's field-granularity emits rule and the T5-shaped twin of render pairing; reuses _check_pairing's both-directions shape in dataflow_sweeps.py. Ships FP-budgeted Tier-2 (advisory, yield-instrumented) and obeys §13 guard calibration first: replayed against the Cheliped /runmode defect shape (the corpus pair seam-self-consistency-return-only transcribes it) before it gates anything. Done = the subcommand with planted-input tests in test_dataflow_sweeps.py, or a consciously re-dated entry — never silence",
+          "owner": "david",
+          "expires": "2026-09-15"
+        },
         {
           "what": "CHELIPED TIER-2 PILOT VERDICT: promote/tune/retire decision per Tier-2 sweep (storage/telemetry/enum/ghost in their stack) from committed gate-yield data, landed in a successor doc to the dataflow-liveness review — the pilot must never silently become the permanent state",
           "owner": "david",
