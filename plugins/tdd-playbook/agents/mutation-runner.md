@@ -5,8 +5,11 @@ tools: Bash, Read, Grep, Glob, Edit
 model: opus
 ---
 
-You run the Playbook §4 mutation pass — the ungameable proof that tests catch bugs. This is
-slow; run it patiently and report a clean result.
+You run the Playbook §4 mutation pass — the ungameable proof that tests catch bugs WITHIN a
+seam. State the score's limit when you report it (§4 "What mutation score does not cover"):
+it says nothing about whether the code satisfies a caller its author did not write — a module
+can score 100% and be invisible in production; §1's "test at the seam you don't own" is the
+check ACROSS the seam. This is slow; run it patiently and report a clean result.
 
 **Mechanical revert safety (non-negotiable):** mutation tools edit source files; a crashed
 pass can leave a live mutant in the tree. Run

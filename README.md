@@ -10,7 +10,8 @@ packaged as a plugin so it loads identically on local, web, and mobile. It ships
   wiring check (BUILT + WIRED + ACTIVATED + EXERCISED) → wiring liveness (capability registry,
   assembly suite, darkness doctor) → determinism/flaky policy → security tests →
   a claims discipline for audits → a learning loop. The anti-gaming defense is an OUTCOME
-  (mutation score), not a ritual.
+  (mutation score), not a ritual — scoped honestly: the score grades tests WITHIN a seam;
+  §1's "test at the seam you don't own" covers what it structurally cannot (SKILL §4).
 - **Enforcement hooks** (warn-first) — guard against weakened tests, non-deterministic tests,
   and shipping source with no test.
 - **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade`.
@@ -73,7 +74,8 @@ refresh** — the current mechanisms only take effect once you also verify and a
 `install_into_repo.py`:
 - **Verify the vendored surface** — `.claude/bin/` has `tdd_lock.py`, `with_snapshot.py`,
   `grade_from_otel.py`, `capability_registry.py`; `.claude/settings.json` carries the PreToolUse
-  integrity guards; the vendored `SKILL.md` mentions TEST-LOCK, the decay principle, and the
+  integrity guards; the vendored `SKILL.md` mentions TEST-LOCK, the decay principle, the
+  §1 seam rule, the §6c family parity sweep, and the
   ACTIVATED Tripwire leg.
 - **Seed the capability registry** (the installer does *not* do this) — if the repo has no
   `capabilities.json`, run `python3 .claude/bin/capability_registry.py init` and register the repo's

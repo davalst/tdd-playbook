@@ -99,8 +99,8 @@ mechanisms.
 2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
    capability_registry.py, and dataflow_sweeps.py (with its _debt.py sibling); confirm
    .claude/settings.json has the PreToolUse guards; confirm the vendored SKILL.md mentions
-   TEST-LOCK, the decay principle, the ACTIVATED Tripwire leg (§6a wiring liveness), and
-   §6c Dataflow Liveness.
+   TEST-LOCK, the decay principle, the ACTIVATED Tripwire leg (§6a wiring liveness),
+   §6c Dataflow Liveness, and the §1 seam rule + §6c family parity sweep (v1.26).
 
 3. SEED THE REGISTRY (if this repo has no capabilities.json yet — don't wait for the next
    feature; the existing features are the ones already dark): run
@@ -148,6 +148,15 @@ mechanisms.
      fails for the reason it was built. And a test double may fake behavior but never
      supply an attribute/method/seam production lacks (build doubles with
      create_autospec/equivalent so a missing seam raises).
+   - §1 seam rule + §6c family parity sweep (v1.26): test at the seam you don't own — a
+     test whose every assertion reads an object your own code constructed, with no
+     representation of the consumer, is a SELF-consistency test (it would still pass with
+     the other side of the seam deleted); and where N pluggable members share a host
+     (handlers, hooks, adapters, middleware), ONE vacuity-guarded repo-local test
+     enumerates the family from the REAL registry and asserts the host's contract per
+     member. Plan-time, emits→consumer is answered at FIELD granularity (cite the line
+     that reads the field). A 100% mutation score does not cover any of this — the score
+     is blind across a misunderstood seam (§4).
    - The Tripwire has FOUR legs now: BUILT + WIRED + ACTIVATED + EXERCISED, with wiring
      proven through the PRODUCTION composition root (self-assembling fixtures don't count).
    - The registry only GROWS as features land; `validate` joins the release gate and

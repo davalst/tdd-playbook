@@ -27,8 +27,14 @@ Per deliverable:
 - **Integration surface** (§0 — islands are cheapest to catch here). Five answers, each grounded
   in this repo (consult `capabilities.json` if the repo has one):
   - *Consumes:* which existing subsystems this plugs into — "none" stated, never implied.
-  - *Emits → named consumer:* who READS everything this produces; "nobody yet" becomes an
-    integration-debt entry with an owner + expiry, never a silent write-only loop. For
+  - *Emits → named consumer:* who READS everything this produces — at FIELD granularity: cite
+    the file:line in the consumer that reads the specific field, not the subsystem that receives
+    the object (a consumer that ignores the field is no consumer — the H11 tell); "nobody yet"
+    becomes an
+    integration-debt entry with an owner + expiry, never a silent write-only loop. And if the
+    plan adds members to a pluggable family consumed by a shared host (handlers, hooks,
+    adapters, middleware), name the repo's §6c FAMILY PARITY SWEEP that will cover them — or
+    add authoring it (vacuity-guarded, enumerated from the real registry) as a deliverable. For
     feature/multi-deliverable/migration work, render this as the §6c FLOW TABLE —
     `flow · producer · consumer · liveness test`, one row per flow — so an empty consumer
     cell is visible (it means dated debt, or the flow doesn't ship). A MIGRATION deliverable

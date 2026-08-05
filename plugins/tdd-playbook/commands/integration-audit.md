@@ -52,7 +52,9 @@ darkness classes:**
   registry's R-WRITE-ONLY granularity); field/value/event-INSTANCE-level dangling goes
   here; exemption-prose inconsistency is class 5, but an exemption used AS a darkness
   hatch stays class 2. The standing mechanism to name in step 5 is the Tier-1 sweep
-  (`dataflow_sweeps.py`) or a Tier-2 pairing sweep with its FP budget.
+  (`dataflow_sweeps.py`), a Tier-2 pairing sweep with its FP budget, or — for a pluggable
+  family consumed by a shared host — the repo-local §6c FAMILY PARITY SWEEP (enumerated from
+  the real registry, vacuity-guarded).
 
 **3. Claims discipline (§12) — non-negotiable here, because every juicy finding is a NEGATIVE:**
 - "X is dead / never wired / never called" requires the EXHAUSTIVE sweep (all reference,

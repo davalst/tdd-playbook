@@ -117,10 +117,12 @@ def test_agents():
 
 
 def test_commands():
+    names = []
     for fn in sorted(os.listdir(COMMANDS)):
         if not fn.endswith(".md"):
             continue
         name = fn[:-3]
+        names.append(name)
         with open(os.path.join(COMMANDS, fn)) as fh:
             text = fh.read()
         fm = frontmatter(text)
@@ -129,6 +131,13 @@ def test_commands():
         if name in LOOP_CLOSING_COMMANDS:
             check("/{}: closes its loop (Loop closed contract)".format(name),
                   "Loop closed:" in text)
+    # Family-parity vacuity guard (v1.26 G5 dogfood, §6c): this loop IS the repo's family
+    # sweep over commands/ — before v1.26 an empty or mis-globbed listing passed green
+    # having tested nothing. The count comes from an INDEPENDENT roster (the loop-closing
+    # contract set), never `>= 0` / a literal this file could drift with.
+    check("commands family sweep: enumeration non-vacuous (independent-roster count)",
+          bool(names) and LOOP_CLOSING_COMMANDS <= set(names),
+          sorted(LOOP_CLOSING_COMMANDS - set(names)))
     with open(os.path.join(COMMANDS, "claims.md")) as fh:
         check("/claims: cites the mechanical gate", "verify_citations.py" in fh.read())
     with open(os.path.join(COMMANDS, "tripwire.md")) as fh:
@@ -877,6 +886,61 @@ def test_v125_downstream_pins():
           and "| H10 | —" not in stripped)
 
 
+def test_v126_seam_contract_pins():
+    """v1.26 (seam-contract): the new doctrine's load-bearing phrases across EVERY surface
+    that carries them — SKILL body, the score-delivering brief/command (G1/F1: agents
+    receive briefs, not SKILL), the plan/audit commands, and the downstream ADOPT surfaces
+    outside rule (d)'s protected set. Without needles a later edit can silently drop the
+    correction from the one surface a reader actually sees."""
+    repo_root = os.path.dirname(os.path.dirname(ROOT))
+    skill = open(os.path.join(
+        ROOT, "skills", "tdd-playbook", "SKILL.md")).read()
+    for label, needle in [
+        ("SKILL §1: seam rule present", "Test at the seam you don't own"),
+        ("SKILL §1: self-consistency tell present", "SELF-CONSISTENCY test"),
+        ("SKILL §1: deleted-other-side corollary present",
+         "other side of the seam DELETED"),
+        ("SKILL §4: limitation note present", "What mutation score does NOT cover"),
+        ("SKILL §0: field granularity present", "at FIELD granularity"),
+        ("SKILL §6c: family parity sweep is the Tier-1 bullet, tiered not orphaned",
+         "family\n  parity sweep"),
+        ("SKILL §6c: vacuity guard mandatory on the enumerator",
+         "vacuity guard on the enumerator count MANDATORY"),
+    ]:
+        check(label, needle in skill, "needle {!r} missing".format(needle))
+    for fname, base, label, needle in [
+        ("mutation-runner.md", AGENTS,
+         "score-delivering brief carries the limitation",
+         "What mutation score does not cover"),
+        ("mutate.md", COMMANDS, "score-delivering command carries the limitation",
+         "What mutation score does not cover"),
+        ("tdd-plan.md", COMMANDS, "plan command asks for the family parity sweep",
+         "FAMILY PARITY SWEEP"),
+        ("tdd-plan.md", COMMANDS, "plan command emits at field granularity",
+         "at FIELD granularity"),
+        ("integration-audit.md", COMMANDS,
+         "audit command enumerates the family parity sweep as a standing mechanism",
+         "FAMILY PARITY SWEEP"),
+    ]:
+        with open(os.path.join(base, fname)) as fh:
+            check("{}: {}".format(fname[:-3], label), needle in fh.read(),
+                  "needle {!r} missing".format(needle))
+    with open(os.path.join(repo_root, "CLAUDE.md")) as fh:
+        check("CLAUDE.md ADOPT: v1.26 seam bullet present",
+              "§1 seam rule + §6c family parity sweep (v1.26)" in fh.read())
+    with open(os.path.join(repo_root, "README.md")) as fh:
+        readme = fh.read()
+    check("README: mutation-score claim carries its scope",
+          "test at the seam you don't own" in readme)
+    check("README verify-list: vendored SKILL check names the seam rule + parity sweep",
+          "§1 seam rule, the §6c family parity sweep" in readme)
+    # planted-stripped twin (§13): the pins can fail — a surface missing the needles
+    # must be detectable, not vacuously green
+    stripped = "You run the Playbook §4 mutation pass. Report a clean result.\n"
+    check("planted: brief stripped of the limitation detected",
+          "What mutation score does not cover" not in stripped)
+
+
 def test_v125_planted_fixtures():
     """The v1.25 pins must be able to FAIL (§13 calibrate-the-checker)."""
     stripped = ("SKILL where a guard is trusted after ordinary red-first and a double "
@@ -910,7 +974,7 @@ def main():
                test_v124_doctrine, test_v124_planted_fixtures,
                test_v124_gate_surfaces, test_v124_gate_surfaces_planted,
                test_v125_doctrine, test_v125_downstream_pins,
-               test_v125_planted_fixtures):
+               test_v125_planted_fixtures, test_v126_seam_contract_pins):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

@@ -50,7 +50,14 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
   well, and never connected). Four mandatory answers:
   - *Consumes:* which EXISTING subsystems this plugs into (event bus, memory, config UI, telemetry,
     hooks). "None" must be stated, never implied.
-  - *Emits → named consumer:* everything this produces names WHO reads it. A write-only loop is not
+  - *Emits → named consumer:* everything this produces names WHO reads it — at FIELD granularity:
+    cite the file:line in the CONSUMER that reads the specific field, not the subsystem that
+    receives the object. "The adapter consumes my result" is true and useless when the adapter
+    ignores the field (the H11 tell); if you cannot cite a line, the field is write-only, and
+    write-only is not "integrated." This converts a question answerable from memory into one
+    answered from the code. Granularity partition, stated once: capability/topic-level write-only
+    is the registry's R-WRITE-ONLY (§6a); field/value-INSTANCE-level dangling is this rule and
+    §6c's sweeps. A write-only loop is not
     a design; "nobody yet" becomes an integration-debt entry with an OWNER and an EXPIRY (§7's
     quarantine rules — a loan, not a landfill). For feature/multi-deliverable/migration work this
     answer is a TABLE, not a sentence — `flow · producer · consumer · liveness test` — so an empty
@@ -167,6 +174,23 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   `create_autospec`/equivalent so a missing production attribute RAISES, or assert
   `hasattr(ProductionType, seam)` for the seam under test; the `overmock` guard flags
   fabricated-seam doubles.
+- **Test at the seam you don't own.** When your code hands a value to a caller you did not write,
+  the test must observe the value ARRIVING at that caller — the real caller, or a stub standing in
+  its position — never merely LEAVING yours. The review-checkable tell: if every assertion reads an
+  object your own code constructed and the test contains no representation of the consumer at all,
+  it is a SELF-CONSISTENCY test, not a contract test — it can only confirm you agree with yourself
+  (origin: Cheliped 2026-08 — two commands whose handlers RETURNED `message` while the adapter
+  contract was `post_message`; the tests asserted on the return, so implementation and tests shared
+  the same wrong belief and both disagreed with production. A test cannot catch a mistake it also
+  makes — HACK_CATALOG H11). The corollary is the trigger question below applied at the seam: if
+  the test would still pass with the other side of the seam DELETED, you tested yourself. The error
+  is invisible from inside the mistaken belief — only the SHAPE of the test (no consumer present)
+  is checkable without already knowing the contract, which is why this is a rule, not an
+  instruction to be careful. Partition among §1's seam-shaped rules: outcome-not-proxy governs WHAT
+  you assert; seam-fabrication governs what a double may SUPPLY; the fixture-value trap governs
+  which VALUES can fail; THIS rule governs which SIDE of the seam the assertion observes. §6's
+  composition-root rule is the assembly-level twin, §6c the flow-level home, and the durable
+  mechanical guard for a whole pluggable family at once is §6c's family parity sweep.
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
   guarantee of test quality. The guarantee is §3–§4 (+ the TEST-LOCK above).
 - **Tests that cannot fail — the fixture-VALUE trap.** Red-first proves a test fails without the
@@ -230,6 +254,15 @@ a generator finds the boundaries I'd never list (research: ~35–50% higher edge
 This is the ungameable check that tests actually catch bugs (100% coverage can assert nothing).
 The integrity of the gate ITSELF — the documented ways a green verdict can mean nothing was
 measured — lives in §4a; this section is how to run mutation WELL.
+
+**What mutation score does NOT cover (the seam blind spot).** A mutation score is a statement
+about your tests' sensitivity to changes in YOUR code; it says nothing about whether your code
+satisfies a caller you did not write. When test and code share the same wrong belief about a seam,
+the mutant and the assertion sit on the SAME side of it: mutate the message a broken handler
+returns and the return-reading test kills it — score 100%, user still sees nothing (the H11
+origin case, Cheliped 2026-08). Mutation testing is the anti-performative check WITHIN a seam;
+§1's "test at the seam you don't own" is the check ACROSS one. Neither substitutes for the other —
+a high score is a claim about the code's interior, never global assurance of production behavior.
 
 **Scope — what goes on the roster.**
 - Run a mutation pass on CRITICAL modules only (auth, money, permissions, lifecycle, core algorithms) —
@@ -617,8 +650,21 @@ proves parity for the seam it replaces, and every "wired" claim is proven at the
   interception · T7 event never fired on a surface. One successful strangler migration caused five
   of the twelve origin escapes — migrations are the highest-yield hunting ground.
 - **Standing sweeps, in two decidability tiers.** Tier 1 EXACT (no false positives by
-  construction): render pairing (template keys ↔ placeholders, BOTH directions) · registration
-  uniqueness + dispatch-order reachability · exemption-prose consistency (a claim like "always-on"
+  construction): render pairing (template keys ↔ placeholders, BOTH directions) · the **family
+  parity sweep** — registration uniqueness + dispatch-order reachability + HOST-CONTRACT parity:
+  where N pluggable members share a host (command handlers, hooks, span processors, tool adapters,
+  middleware), ONE repo-local test enumerates the family FROM THE REAL REGISTRY and asserts the
+  host's contract for every member, with a vacuity guard on the enumerator count MANDATORY (§4a's
+  vacuous-pass rule applied to sweeps — the origin author's first version imported a registry
+  accessor that did not exist; only the count assertion surfaced it). This flow kind is repo-local
+  BY CONSTRUCTION — only the repo's own test can import the real registry, so a generic scanner
+  cannot cover it (unlike the pairing sweeps the reference tool ships); one test per family, not
+  per member, and it catches the member written by someone who never read the convention — the H11
+  failure mode (evidence it is doctrine, not a tip: one repo independently invented this shape
+  three times after three different incidents — features registry, hook seam parity, command
+  output parity; Cheliped 2026-08). Naming: SURFACE parity (§0) is about interfaces, CONSUMER
+  parity (below) about migrations, FAMILY parity about registry members × host contract. ·
+  exemption-prose consistency (a claim like "always-on"
   checked against the artifact holding the real default). Tier 1 sweeps are MANDATORY where the
   flow kind exists, and BLOCKING. Tier 2 HEURISTIC (name-glob / pattern scoped): storage pairing ·
   telemetry pairing · enum-value readers · ghost gates (undeclared `*_enabled`-shaped reads).

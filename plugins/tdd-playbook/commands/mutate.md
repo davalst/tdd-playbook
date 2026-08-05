@@ -6,7 +6,9 @@ argument-hint: <critical module(s) to mutation-test>
 Run a **mutation-testing pass** (Playbook §4) on the CRITICAL modules: $ARGUMENTS
 
 This is the ungameable check that tests actually catch bugs (100% coverage can assert
-nothing). Steps:
+nothing) — within a seam: the score is blind where test and code share the same wrong belief
+about a caller's contract (§4 "What mutation score does not cover"; §1's seam rule is the
+check across one). Steps:
 1. Pick the right tool for this repo's stack (`mutmut`/`cosmic-ray` for Python,
    `Stryker` for JS/TS, etc.). Scope to the named critical modules only — never the whole
    repo (mutant explosion). Critical = auth, money, permissions, lifecycle, core algorithms.
