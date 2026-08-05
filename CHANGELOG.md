@@ -3,6 +3,56 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.26.0 — 2026-08-05
+
+**Seam contract — a test cannot catch a mistake it also makes.** Adopts the Cheliped
+seam-contract proposal (`/runmode`/`/apps` shipped green through every gate and did
+nothing visible: handlers returned `message`, the adapter contract was `post_message`,
+and the tests asserted on the return — implementation and tests shared one wrong belief).
+Both plan-review adversaries dispatched (ISLANDS 5 / MIXED 4); all findings folded.
+
+- **§1 "Test at the seam you don't own":** the value must be observed ARRIVING at the
+  caller you did not write, never merely leaving yours. Review-checkable tells: every
+  assertion reads an object your own code constructed with no consumer represented =
+  SELF-CONSISTENCY test; corollary (the §1 trigger question at the seam) — if the test
+  still passes with the other side of the seam DELETED, you tested yourself. Partition
+  sentence locates it among §1's seam-shaped rules.
+- **§4 "What mutation score does NOT cover":** the score grades tests against YOUR code
+  and is structurally blind where test and code sit on the same side of a misunderstood
+  seam (100% and invisible in production). Landed on ALL FOUR claim-bearing surfaces —
+  SKILL §4, the mutation-runner brief, /mutate, README (G1/F1: agents receive briefs,
+  not SKILL; the score-delivering surface must carry the limit).
+- **§0 emits at FIELD granularity** (+ /tdd-plan mirror): cite the file:line in the
+  consumer that reads the specific field; granularity partition stated once
+  (topic → registry R-WRITE-ONLY; field-instance → §0/§6c). integration-adversary brief
+  sharpened to match ("a consumer is named by the LINE that reads the specific field";
+  dangling-flows demand gains received-but-never-read fields).
+- **§6c family parity sweep — the Tier-1 registration bullet rewritten in place (F2):**
+  registration uniqueness + dispatch-order reachability + HOST-CONTRACT parity as ONE
+  repo-local, vacuity-guarded test enumerating the family from the REAL registry
+  (repo-local by construction — a generic scanner cannot import arbitrary registries;
+  resolves the doctrine-declared-but-never-implemented scanner entry). Parity naming
+  disambiguated (surface/consumer/family). /integration-audit standing mechanisms +
+  /tdd-plan prompt gain it (G6). Dogfood (G5): this repo's own commands family sweep
+  gained the mandatory independent-roster vacuity guard it lacked.
+- **HACK_CATALOG 2026.08:** H11 (self-consistency test) with the H9 partition
+  (existence vs direction); framing widened to threat-model (honest-miss classes named);
+  H11 guard-map row = family parity sweeps + the corpus pair.
+- **Corpus:** H11 pair live-authored and fixture-verified (plant: suite green + cli
+  silent, exit 0 — the origin shape; control: single variable flipped, message rendered),
+  queued for approval. §13 deviations stated: the motivating artifact is cross-repo, so
+  the pair cites the proposal doc + HACK_CATALOG H11, not a local pre-fix sha; the prose
+  family-parity doctrine itself carries no calibration artifact — the pair calibrates the
+  adversary leg.
+- **CIVerd (Phase 0, house channel):** `docs/recommendations/civerd-seam-contract-2026-08.md`
+  — one engine ask (parity-sweep vacuity check class, planted-probe calibrated), the
+  armed-surface piece restated as David's dated root-config action (mechanism shipped
+  2026-08-03), repo-side parity-roster precondition named. SEAM-CONTRACT FORWARDED +
+  REPORT-BACK debts (2026-09-15, string-pinned) so the doc cannot rot unactioned.
+- Debts: V1.26 GATE-SURFACE CALIBRATION + V1.26 CORPUS QUEUE (2026-08-17), TIER-2
+  FIELD-PAIRING SWEEP deferral (2026-09-15, David's call — the mechanical form of field
+  granularity gets its own red-first cycle). All boundary-pair pinned.
+
 ## 1.25.0 — 2026-08-04
 
 **Guard calibration — a guard is not trusted until it has failed on the bug that birthed
