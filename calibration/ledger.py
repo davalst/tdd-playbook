@@ -394,6 +394,27 @@ def _floor_from(blocks, covered):
 
 # ----------------------------------------------------------------- commands
 
+def baseline_or_epoch(resolve, baseline_rev, epoch):
+    """Classify what history this environment can actually see.
+
+    Returns (rev, state): ("<sha>", "baseline") when the requested baseline resolves;
+    (epoch_sha, "epoch") when it does not but the EPOCH does — coverage is only ever
+    required since the epoch, so scoping there loses nothing and keeps ENFORCEMENT; and
+    (None, "unmeasured") when neither resolves, which means this clone has no history to
+    diff against (the engine's runner clones shallowly). Found live 2026-08-06: a shallow
+    clone made `check` exit 3 and held the repo red on the engine for two days on an
+    ENVIRONMENT property, not a violation. A gate that cannot run where it is judged must
+    SAY so — it must neither fabricate a violation nor silently pass.
+    """
+    rev = resolve(baseline_rev)
+    if rev:
+        return rev, "baseline"
+    epoch_full = resolve(epoch) if epoch else None
+    if epoch_full:
+        return epoch_full, "epoch"
+    return None, "unmeasured"
+
+
 def cmd_check(args):
     repo = args.repo
     ledger_text = _read(os.path.join(repo, args.ledger))
@@ -410,11 +431,14 @@ def cmd_check(args):
                   "pre-registration", file=sys.stderr)
             return 3
         head = resolve("HEAD")
-        rev = resolve(args.baseline_rev)
-        if not rev:
-            print("ledger UNREADABLE: --baseline-rev {} does not resolve"
-                  .format(args.baseline_rev), file=sys.stderr)
-            return 3
+        rev, _state = baseline_or_epoch(resolve, args.baseline_rev, epoch)
+        if rev is None:
+            print("ledger UNMEASURED: neither --baseline-rev {} nor the EPOCH {} resolves "
+                  "in this clone — no history to diff against (a shallow clone cannot "
+                  "perform coverage). Reported, not fabricated: coverage is enforced where "
+                  "history exists (the developer's tree and any full clone). Deepen the "
+                  "clone to restore enforcement here.".format(args.baseline_rev, epoch))
+            return 0
         # THE EPOCH. Coverage is required only for changes at or after the commit that
         # introduced the ledger. With four releases untagged, `git describe` resolves to a
         # baseline long predating this instrument, and requiring entries back to it would

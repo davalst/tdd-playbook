@@ -1185,6 +1185,35 @@ def _ledger_tests():
     could look like it works while pre-registering nothing."""
     print("\n[improvement ledger (v1.27)]")
     import ledger as L
+
+    # PLANTED (2026-08-06, found live): the engine's runner clones SHALLOWLY, so the
+    # baseline rev does not resolve there and `check` exited 3 — failing the suite on an
+    # ENVIRONMENT property rather than a real violation, and holding the repo red on the
+    # engine for two days. Two distinct states must be distinguished:
+    #   (i) baseline unresolvable but the EPOCH resolves -> scope to the epoch and ENFORCE
+    #       (coverage is only ever required since the epoch, so nothing is lost);
+    #   (ii) no history at all -> UNMEASURED, reported loudly, exit 0 (a gate that cannot
+    #        run where it is judged must say so; it must not fabricate a violation, and it
+    #        must not silently pass either).
+    check("ledger: helper exists to classify a missing baseline",
+          hasattr(L, "baseline_or_epoch"))
+    if hasattr(L, "baseline_or_epoch"):
+        epoch = "e" * 40
+        def res_no_tag(r):
+            return None if r == "v1.22.0" else (epoch if r.startswith("e") else None)
+        rev, state = L.baseline_or_epoch(res_no_tag, "v1.22.0", "e" * 7)
+        check("ledger: unresolvable baseline falls back to the EPOCH and still enforces",
+              rev == epoch and state == "epoch", (rev, state))
+        def res_none(r):
+            return None
+        rev2, state2 = L.baseline_or_epoch(res_none, "v1.22.0", "e" * 7)
+        check("ledger: no history at all -> UNMEASURED, never a fabricated violation",
+              rev2 is None and state2 == "unmeasured", (rev2, state2))
+        def res_all(r):
+            return {"v1.22.0": "a" * 40}.get(r) or (epoch if r.startswith("e") else None)
+        rev3, state3 = L.baseline_or_epoch(res_all, "v1.22.0", "e" * 7)
+        check("ledger: a resolvable baseline is unchanged (enforcement path intact)",
+              rev3 == "a" * 40 and state3 == "baseline", (rev3, state3))
     import history_format as hf
 
     blocks, _ = hf.parse_run_blocks(
