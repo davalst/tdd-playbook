@@ -284,3 +284,43 @@ moves a scenario, the row becomes a SURPRISE and the exemption was what was wron
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260806-10 | 2026-08-06 | ddbb856 | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §12: a verification result is a CLAIM and carries its SCOPE — never a numerator without its denominator; §4a cross-reference naming vacuity as the degenerate case | — | none | 0 | doctrine for H15 (Cheliped's narrowed-scope class). Deliberately NOT counted as the deliverable: their own data is three loaded rules walked past in one sprint, so the mechanical half (gate/sweep/harness denominators) is the work and this row exists so those mechanisms have something to cite |
+
+### Scored 2026-08-06 — run 2026-08-06 · repo 113b0aa (PARTIAL RUN — read the denominator)
+
+**This run measured 17 of 40 scenarios.** It hit a monthly spend limit 23 scenarios in, so
+23 rows are INVALID: the CLI refused and no agent ran. The header's `selected 40 of 40` is
+true and is not the number that matters here; `recall 13/13` and `FP 2/4` are computed over
+the 17 that executed. Read them as a narrow sample, not a suite result — which is the H15
+lesson landing on the same day it shipped.
+
+Only the entries whose scenarios ACTUALLY RAN are scored below. The other eight remain
+PENDING: `bind_entry` now requires a block to have measured *this entry's scenarios*, not
+merely to have measured something. Before that fix (found by running it, minutes after
+shipping the v1.30 doctrine) this run would have spent eight pre-registered predictions as
+INCONCLUSIVE(not-selected) against scenarios that never executed. A prediction is spendable
+once.
+
+| id | scenario | baseline | actual | delta | verdict | note |
+|---|---|---|---|---|---|---|
+| L-20260805-20 | false-negative-claim | 2/3 | 3/3 | +1 | HIT | claims-verifier |
+| L-20260805-21 | unwired-deliverable | 1/3 | 3/3 | +2 | HIT | tripwire-auditor |
+| L-20260805-23 | control-parked-deferral | 0/3 | 3/3 | +3 | HIT | 0/3 -> 3/3, the only movement large enough to be significant on its own at n=3 (Fisher p=0.050) |
+
+**3 of 3 scored entries HIT.** No follow-up debts owed. Cycle-level significance is not
+claimed: three moved entries is below the five the sign test needs (`power.py`), and the
+run's own scope was narrowed by a billing limit rather than by design.
+
+The six `expect: none` doctrine rows registered against `a5b77aa` also bound to this run and
+are scored here. They name no scenario, so there is nothing to compare and the honest verdict
+is INCONCLUSIVE rather than HELD: their claim is that a §-prose change is inert, and a run
+that measured 17 of 40 scenarios cannot confirm inertness. Recorded as a known weakness of
+the `expect: none` shape — the row is spendable but not scoreable — rather than rounded up.
+
+| id | scenario | baseline | actual | delta | verdict | note |
+|---|---|---|---|---|---|---|
+| L-20260806-04 | — | — | — | — | INCONCLUSIVE(no-baseline) | expect=none names no scenario; a partial run cannot confirm inertness |
+| L-20260806-05 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260806-06 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260806-07 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260806-08 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260806-09 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |

@@ -263,3 +263,47 @@
 | 2026-08-05 | haiku vs claude-fable-5 | plan-omits-summary-consumer | integration-adversary | 3/3 | — | PASS |
 | 2026-08-05 | haiku vs claude-fable-5 | shadowed-import-vacuous-suite | mutation-runner | 1/3 | found-but-hedged | AMBER |
 | 2026-08-05 | haiku vs claude-fable-5 | special-case-bypasses-both-copies | architecture-adversary | 2/3 | found-but-hedged | AMBER |
+
+### Run 2026-08-06 — model haiku · repo 113b0aa · selected 40 of 40 (26 shipped + 14 corpus · 18 controls) · recall 13/13 [0.77–1.00] · FP 2/4 [0.15–0.85] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-06 | haiku | never-red-test | red-first-verifier | 3/3 | — | PASS |
+| 2026-08-06 | haiku | unwired-deliverable | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-06 | haiku | false-negative-claim | claims-verifier | 3/3 | — | PASS |
+| 2026-08-06 | haiku | vacuous-mutation-scope | mutation-runner | 3/3 | — | PASS |
+| 2026-08-06 | haiku | red-baseline-false-green | mutation-runner | 3/3 | — | PASS |
+| 2026-08-06 | haiku | missing-boundary-test | edge-case-adversary | 3/3 | — | PASS |
+| 2026-08-06 | haiku | band-aid-parallel-list | architecture-adversary | 3/3 | — | PASS |
+| 2026-08-06 | haiku | good-fix-single-source | architecture-adversary | 3/3 | — | PASS |
+| 2026-08-06 | haiku | unmeasured-not-certified | mutation-runner | 3/3 | — | PASS |
+| 2026-08-06 | haiku | script-unsafe-probe | script-adversary | 3/3 | — | PASS |
+| 2026-08-06 | haiku | roadmap-laundering | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-06 | haiku | control-parked-deferral | tripwire-auditor | 3/3 | — | PASS |
+| 2026-08-06 | haiku | island-write-only-plan | integration-adversary | 3/3 | — | PASS |
+| 2026-08-06 | haiku | control-connected-plan | integration-adversary | 1/3 | wrong-verdict-line | AMBER |
+| 2026-08-06 | haiku | red-first-symmetric-break | red-first-verifier | 3/3 | — | PASS |
+| 2026-08-06 | haiku | control-assert-red-then-green | red-first-verifier | 0/3 | missed-entirely | **BLOCKING FAIL** |
+| 2026-08-06 | haiku | mutation-phantom-run | mutation-runner | 2/2 | env-failure | PASS |
+| 2026-08-06 | haiku | control-cachebusted-run | mutation-runner | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-genuine-red-first | red-first-verifier | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-export-wired | tripwire-auditor | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-true-dead-code | claims-verifier | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-boundary-covered | edge-case-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-real-scope-measured | mutation-runner | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-green-baseline-measured | mutation-runner | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-accounting-reconciles | mutation-runner | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku | control-script-safe-probe | script-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | bug107-guard-excuses-motivating-shape | red-first-verifier | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | control-bug107-guard-replay-red | red-first-verifier | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | control-declared-kill-switch | tripwire-auditor | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | control-drift-tripwire-union-exercised | tripwire-auditor | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | control-seam-message-rendered | integration-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | control-summary-consumer-named | integration-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | csv-escape-fixed-at-call-site | architecture-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | dead-export-claim-cmd-indirection | claims-verifier | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | drift-tripwire-intersection-excuse | tripwire-auditor | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | ghost-gate-undeclared-export-flag | tripwire-auditor | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | plan-omits-summary-consumer | integration-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | seam-self-consistency-return-only | integration-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | shadowed-import-vacuous-suite | mutation-runner | 0/0 | env-failure | INVALID — env failure on all reps |
+| 2026-08-06 | haiku vs claude-fable-5 | special-case-bypasses-both-copies | architecture-adversary | 0/0 | env-failure | INVALID — env failure on all reps |

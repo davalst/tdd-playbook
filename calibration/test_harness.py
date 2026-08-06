@@ -1238,6 +1238,23 @@ def _nonexecution_tests():
     check("nonexecution: CONTROL a real block still binds it",
           b_live is not None, b_live)
 
+    # PLANTED (live, 2026-08-06): a PARTIALLY invalid run. The spend limit hit 23 scenarios
+    # in, so the block was 17 measured / 23 INVALID. It measured *something*, so the coarse
+    # "did anything run" guard bound it — and scoring would have spent EIGHT pre-registered
+    # predictions as INCONCLUSIVE(not-selected) against scenarios that never executed.
+    # A prediction is spendable once. This is H15 inside the fix for H15: a true fact about
+    # the block, answering a different question than the caller asked.
+    partial = hdr + ("| 2026-09-01 | m | ran | a1 | 3/3 | — | PASS |\n"
+                     "| 2026-09-01 | m | never | a1 | 0/0 | — | INVALID — env failure |\n")
+    pb, _ = hf.parse_run_blocks(partial)
+    check("nonexecution: PLANTED a scenario INVALID in a partly-measured run does NOT bind",
+          L.bind_entry({**entry, "scenarios": ["never"]}, pb, res,
+                       lambda a, c: True)[0] is None,
+          "an unrun scenario must not spend its prediction")
+    check("nonexecution: CONTROL a scenario that DID run in the same block still binds",
+          L.bind_entry({**entry, "scenarios": ["ran"]}, pb, res,
+                       lambda a, c: True)[0] is not None)
+
     # CONTROL: a normal run still records. Without this the guard could 'work' by never
     # recording anything, which is the same failure with the sign flipped.
     with tempfile.TemporaryDirectory() as d:

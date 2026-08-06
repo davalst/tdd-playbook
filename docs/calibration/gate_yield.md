@@ -15,3 +15,6 @@ One committed row per gate per calibration cycle. blocks/warns = frictions fired
 | 2026-08-05 | testlock | 1 | 0 | 2 | 0 |
 | 2026-08-06 | testlock | 6 | 0 | 4 | 0 | 0 |
 | 2026-08-06 | testweaken | 1 | 0 | 0 | 0 | 0 |
+| 2026-08-06 | exhaustive | 0 | 2 | 0 | 0 | 0 |
+| 2026-08-06 | exitcode | 0 | 24 | 0 | 0 | 0 |
+| 2026-08-06 | redlock | 0 | 1 | 0 | 0 | 0 |

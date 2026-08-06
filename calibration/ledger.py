@@ -232,9 +232,20 @@ def form_matches(block, form):
     return b == form or b == "all"
 
 
-def block_measured(block):
-    """Did this run block measure ANYTHING? A block whose every row is INVALID is an
-    environment failure — the CLI refused (spend/rate limit, auth) and no agent ran.
+def block_measured(block, scenarios=None):
+    """Did this run block measure the thing being asked about?
+
+    `scenarios` narrows the question from "did anything run" to "did THESE run", and that
+    distinction is the whole point. 2026-08-06, live: a run hit the spend limit 23 scenarios
+    in, so the block was 17 measured / 23 INVALID. It measured *something*, so the coarse
+    check bound it — and scoring would have spent EIGHT pre-registered predictions as
+    INCONCLUSIVE(not-selected) against scenarios that never executed. A prediction can only
+    be spent once; spending it on a scenario the run never reached is worse than leaving it
+    pending, because the ledger then reads as priced.
+
+    This is the narrowed-scope class (H15) inside the fix for the narrowed-scope class: the
+    v1.29 guard reported a true fact about the block and answered a different question than
+    the caller was asking.
 
     2026-08-06: a live run hit a monthly spend limit on all 40 scenarios. Nothing had
     executed, yet the block was a perfectly well-formed descendant of 19 pending entries'
@@ -243,6 +254,9 @@ def block_measured(block):
     spent once; spending it on noise is worse than leaving it pending.
     """
     rows = block.get("rows") or []
+    if scenarios:
+        want = set(scenarios)
+        return any(r.get("kind") != "INVALID" and r.get("scenario") in want for r in rows)
     return any(r.get("kind") != "INVALID" for r in rows)
 
 
@@ -257,8 +271,8 @@ def bind_entry(entry, blocks, resolve, is_ancestor, form="dev"):
     for b in blocks:
         if not b["repo_sha"] or b["repo_sha"] == "unknown":
             continue
-        if not block_measured(b):
-            continue          # an environment failure never scores a prediction
+        if not block_measured(b, entry.get("scenarios")):
+            continue          # this run did not measure THIS entry — never scores it
         full = resolve(b["repo_sha"])
         if not full or full == base:
             continue
@@ -609,6 +623,11 @@ def cmd_score(args):
         print("ledger UNREADABLE: {}".format(exc), file=sys.stderr)
         return 3
     blocks, _sk = hfmt.parse_run_blocks(_read(os.path.join(repo, args.history)))
+    # forms is loaded HERE too: cmd_check loaded it and cmd_score referenced it, so `score`
+    # raised NameError on every invocation from v1.29 until 2026-08-06. Nothing caught it —
+    # the tests exercise the pure functions (bind_entry, score_cell) and never ran the CLI
+    # path. A tested core behind an unexercised entrypoint is the §6a wiring gap in one file.
+    forms = load_forms(repo)
     covered = {s for e in registered for s in e["scenarios"]}
     floor, _stats = _floor_from(blocks, covered)
     done = {s["id"] for s in scored}
