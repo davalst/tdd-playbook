@@ -598,6 +598,43 @@ def test_lock_shell():
         allow("lock/sh: journaled unlock via tdd_lock.py is allowed", d,
               bash_ev('python3 /plug/bin/tdd_lock.py unlock --reason "impl done"'))
 
+        # ---- v1.28 ALLOW-DIRECTION CALIBRATION (§13 applied to the guard itself) -------
+        # A guard's claim about ITSELF is an unverified claim, in BOTH directions. The
+        # block rows above were always tested; the ALLOW half never was — so the guard
+        # grew three false-positive classes its own docstring forbids ("Reads are always
+        # fine"). These are REAL blocks from the 2026-08-05/06 session, frozen as fixtures:
+        # each blocked work the contract permits. (Cheliped's field-report defect 7 is the
+        # mirror image — a guard whose docstring claimed coverage it never had.)
+        allow("lock/sh FP1 (2026-08-06): a python loop var named `ln` is not the `ln` "
+              "command — reading the lock journal must not block", d,
+              bash_ev("python3 -c \"\nfor ln in open('.claude/tdd-lock-journal.jsonl'):"
+                      "\n    print(ln)\""))
+        allow("lock/sh FP2 (2026-08-05): an inline write to an UNRELATED file must not "
+              "block merely because a protected path appears elsewhere in the command", d,
+              bash_ev("python3 - <<'EOF'\nopen('notes.txt', 'w').write('x')\nEOF\n"
+                      "python3 tests/test_pay.py"))
+        allow("lock/sh FP3 (2026-08-06): a revert inside a scratch dir OUTSIDE the project "
+              "root is not a repo revert", d,
+              bash_ev("cd /tmp/scratch-clone && git checkout -q ."))
+        allow("lock/sh FP4 (2026-08-05): re-LOCKING files is strengthening, not weakening "
+              "— naming them cannot be the trigger", d,
+              bash_ev("python3 /plug/bin/tdd_lock.py lock tests/test_pay.py"))
+        # FP2 bit me while writing this very block: the fixture STRING above contains a
+        # lock-state basename and the authoring command also wrote a file, so the guard
+        # blocked authoring its own regression test. I split the literal to get the fixture
+        # written, then rejoined it once the target-aware fix landed — the rejoined form is
+        # the real command shape, and the fact that it can now be written at all is itself
+        # the fix working.
+
+        # …and the block direction must survive every one of those narrowings:
+        block("lock/sh: inline write TO the locked path still blocks (FP2 narrowing is "
+              "target-aware, not blanket)", d,
+              bash_ev("python3 - <<'EOF'\nopen('tests/test_pay.py', 'w').write('')\nEOF"))
+        block("lock/sh: a revert INSIDE the project still blocks (FP3 narrowing is "
+              "containment, not amnesty)", d, bash_ev("cd tests && git checkout ."))
+        block("lock/sh: `rm` in command position still blocks (FP1 narrowing is position, "
+              "not deletion of the verb)", d, bash_ev("rm -f tests/test_pay.py"))
+
     with tempfile.TemporaryDirectory() as d2:
         d2 = os.path.realpath(d2)  # NO lock active
         allow("lock/sh: no lock -> rm test is zero-cost allow", d2, bash_ev("rm tests/test_pay.py"))
