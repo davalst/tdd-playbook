@@ -324,3 +324,24 @@ the `expect: none` shape — the row is spendable but not scoreable — rather t
 | L-20260806-07 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
 | L-20260806-08 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
 | L-20260806-09 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+
+### Registered 2026-08-06 (third) — baseline a54e772 (Cheliped's correction to v1.30's §12)
+
+Cheliped audited the claim I put in SKILL.md and refuted half of it. I had written that every
+mechanical guard that fired caught something the prose did not — true, and it implies
+"mechanisms found everything", which their own 27-commit record does not support. Three of
+their highest-impact defects came from OUTSIDE any mechanism: a human seeing a symptom (the
+App Store launching in a browser, for days, on every full-suite run), a peer's message (my
+note about their `opt()`, which surfaced 11 defects none of their gates could see because the
+gates were the broken thing), and someone chasing an anomaly that did not fit.
+
+Their sharpened rule is strictly better and is what lands here instead: **a mechanism cannot
+detect its own absence.** ruff not running was invisible to ruff; bandit not running was
+invisible to bandit; the summary asserting they had run was the thing that was wrong. And
+their caveat, which I would not have thought to add: a LIVENESS plant and a DETECTION plant
+are different tests — proving the reporting fires does not prove the gate is configured to
+catch the right things.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260806-11 | 2026-08-06 | a54e772 | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §12: correct the mechanisms-found-everything overclaim to "a mechanism cannot detect its own absence"; add liveness-plant vs detection-plant | — | none | 0 | a correction to text shipped hours earlier in v1.30, refuted by the peer whose data it cited — the doctrine row it replaces was itself an overclaim, which is the §12 claims discipline applied to §12 |
