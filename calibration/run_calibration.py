@@ -264,11 +264,54 @@ def turns_for(scenario):
         return MAX_TURNS
 
 
+# Signatures of the CLI refusing to do the work AT ALL. These are not agent output — they
+# are the harness being told "no doer ran". They arrive on STDOUT with exit 0, which is why
+# the old rc-and-empty-stdout test could not see them.
+#
+# THE INCIDENT (2026-08-06, live, David's run). Every one of 40 scenarios returned
+# "You've hit your monthly spend limit". No agent executed. The harness scored it as
+# recall 1/22 and FP 18/18 and APPENDED it to the scoreboard — a fabricated row asserting
+# that seven verification agents had catastrophically regressed, when what had actually
+# happened was a billing ceiling. It also poisoned VITALITY (39 "failing" plants) and the
+# ledger's noise floor, and 19 pre-registered predictions were one commit away from being
+# scored against it.
+#
+# The old rule asked "nonzero exit AND empty stdout?" — a PROXY for "did the doer run?".
+# It was literally true and described something else, which is the most expensive kind of
+# green. Ask about non-execution directly.
+NONEXECUTION_SIGNATURES = (
+    "hit your monthly spend limit",
+    "hit your usage limit",
+    "rate limit",
+    "Invalid API key",
+    "authentication_error",
+    "Credit balance is too low",
+    "Please run /login",
+)
+# NO LENGTH FLOOR, deliberately. The first version of this fix also refused any turn under
+# 200 chars, on the theory that a real verdict is longer than a limit notice. Its own clean
+# CONTROL caught it: legitimate verdicts ARE short ("RED-FIRST: NOT VERIFIED — the test
+# passes in both states" is 55 chars), so the floor rejected real agent turns as environment
+# failures. That is the SAME defect sign-flipped — a false env_failure drops a genuine agent
+# MISS out of the denominator and flatters recall. Length is a proxy; the signature list
+# above is the thing itself. Only a literally empty turn is non-execution.
+MIN_REAL_OUTPUT = 0
+
+
+def nonexecution_reason(text):
+    """The signature that proves the doer never ran, or None. Pure, so it is testable
+    without a CLI and can be planted against."""
+    low = (text or "").lower()
+    for sig in NONEXECUTION_SIGNATURES:
+        if sig.lower() in low:
+            return sig
+    return None
+
+
 def run_agent(scenario, root, claude_bin, model):
     """One rep. Returns (status, output), status in {ok, timeout, env_failure} — typed at the
-    seam that HOLDS the returncode/exception (arch-F4). env_failure = nonzero exit with empty
-    stdout: the doer never ran (the 2026-07-09 root-permission case); it is not an agent
-    failure and is excluded from n. FileNotFoundError propagates (fatal, short-circuits)."""
+    seam that HOLDS the returncode/exception (arch-F4). env_failure = the doer never ran; it
+    is not an agent failure and is excluded from n. FileNotFoundError propagates (fatal)."""
     prompt = (agent_body(scenario["agent"])
               + "\n\n# TASK (work in the current directory; it is a git repo)\n"
               + scenario["task"])
@@ -284,6 +327,16 @@ def run_agent(scenario, root, claude_bin, model):
         return "timeout", "[TIMEOUT after {}s]".format(TIMEOUT_S)
     if p.returncode != 0 and not p.stdout.strip():
         return "env_failure", "[env failure rc={}]\n{}".format(p.returncode, p.stderr[-800:])
+    # The doer was REFUSED, not wrong. These arrive on stdout with exit 0, so they must be
+    # matched on content — see NONEXECUTION_SIGNATURES for the 2026-08-06 incident.
+    both = (p.stdout or "") + "\n" + (p.stderr or "")
+    sig = nonexecution_reason(both)
+    if sig:
+        return "env_failure", "[env failure: the CLI refused to run — {!r}]\n{}".format(
+            sig, both.strip()[:800])
+    if not p.stdout.strip():
+        return "env_failure", ("[env failure: exit 0 with no output at all — the doer "
+                               "produced no turn]\n{}").format(both.strip()[:800])
     return "ok", p.stdout + ("\n[stderr]\n" + p.stderr if p.returncode != 0 else "")
 
 
@@ -630,6 +683,20 @@ def main(argv=None):
     meta = {"selected": len(scenarios), "total": len(all_scenarios),
             "shipped": len(shipped), "corpus": len(corpus), "controls": controls_total,
             "recall": recall, "fp": fp}
+    # A mostly-INVALID run is RECORDED, not suppressed — the row is honest non-data, and
+    # "we tried and the environment refused" is worth knowing. INVALID is already excluded
+    # from recall/FP, from the staleness clock, and from vitality. What it must NOT do is
+    # silently consume a pre-registered ledger prediction, which is handled at the binder.
+    invalid = [r for r in results if r["verdict"].startswith("INVALID")]
+    if results and len(invalid) >= max(1, len(results) // 2):
+        print("\nENVIRONMENT FAILURE — {} of {} scenarios never executed (the CLI refused: "
+              "spend/rate limit, auth, or an empty turn). This run is a reading of the "
+              "ENVIRONMENT, not of the agents. It is recorded as INVALID so the attempt is "
+              "visible, but it measures NOTHING: recall/FP exclude it, it does not refresh "
+              "the staleness clock, and it will not score any pre-registered prediction. "
+              "Fix the cause and re-run.".format(len(invalid), len(results)), file=sys.stderr)
+        print("   e.g. {}".format(", ".join(r["sc"]["id"] for r in invalid[:4])),
+              file=sys.stderr)
     append_history(args.history, args.model, results, meta)
     # Weak-plant streak (2026-07-28 sweep): a plant no verifier has EVER missed teaches
     # nothing — an adversary authoring easy plants inflates recall while the gate decays.

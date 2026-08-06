@@ -232,9 +232,24 @@ def form_matches(block, form):
     return b == form or b == "all"
 
 
+def block_measured(block):
+    """Did this run block measure ANYTHING? A block whose every row is INVALID is an
+    environment failure — the CLI refused (spend/rate limit, auth) and no agent ran.
+
+    2026-08-06: a live run hit a monthly spend limit on all 40 scenarios. Nothing had
+    executed, yet the block was a perfectly well-formed descendant of 19 pending entries'
+    baselines — so binding would have consumed all 19 predictions and scored them
+    INCONCLUSIVE(not-selected) against a run that never happened. A prediction can only be
+    spent once; spending it on noise is worse than leaving it pending.
+    """
+    rows = block.get("rows") or []
+    return any(r.get("kind") != "INVALID" for r in rows)
+
+
 def bind_entry(entry, blocks, resolve, is_ancestor, form="dev"):
     """(block or None, reason). The earliest run block measuring a tree that is a STRICT
-    descendant of the entry's baseline, AND drawn from the entry's own plant population."""
+    descendant of the entry's baseline, drawn from the entry's own plant population, and
+    which actually MEASURED something."""
     base = resolve(entry["baseline_sha"])
     if not base:
         return None, "unbindable-sha"
@@ -242,6 +257,8 @@ def bind_entry(entry, blocks, resolve, is_ancestor, form="dev"):
     for b in blocks:
         if not b["repo_sha"] or b["repo_sha"] == "unknown":
             continue
+        if not block_measured(b):
+            continue          # an environment failure never scores a prediction
         full = resolve(b["repo_sha"])
         if not full or full == base:
             continue

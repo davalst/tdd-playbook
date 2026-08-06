@@ -1151,6 +1151,107 @@ def _child_env_capture_exclusion_tests():
             os.environ["TDD_PLAYBOOK_HOOK_CAPTURE"] = prior
 
 
+def _nonexecution_tests():
+    """PLANTED (2026-08-06, replaying a LIVE incident — §13 guard calibration).
+
+    David ran the full suite and every one of 40 scenarios came back
+    "You've hit your monthly spend limit". No agent executed. The harness scored it
+    recall 1/22, FP 18/18, and APPENDED it to the scoreboard — a permanent row asserting
+    that seven verification agents had catastrophically regressed, when a billing ceiling
+    had been reached. It also poisoned the vitality reading (39 plants "failing") and the
+    ledger's noise floor, and 19 pre-registered predictions were one commit from being
+    scored against pure noise.
+
+    The old test was `returncode != 0 and not stdout` — a PROXY for "did the doer run?".
+    The refusal arrives on STDOUT with exit 0, so the proxy was literally true and described
+    something else. Both directions are pinned below: the refusal must be detected, and a
+    real agent turn must NOT be swept up with it."""
+    print("\n[non-execution detection (2026-08-06 incident)]")
+    import run_calibration as rc
+
+    # The verbatim tail from the incident.
+    LIVE = ("You've hit your monthly spend limit · raise it at "
+            "claude.ai/settings/usage?from=cc_cli_limit_message")
+    check("nonexecution: PLANTED the real spend-limit message is detected",
+          rc.nonexecution_reason(LIVE) is not None, rc.nonexecution_reason(LIVE))
+    for sig in ("You've hit your usage limit for now",
+                "API Error: rate limit exceeded",
+                "Invalid API key · Please run /login",
+                "Credit balance is too low"):
+        check("nonexecution: {!r} is detected".format(sig[:34]),
+              rc.nonexecution_reason(sig) is not None, sig)
+
+    # CONTROL: a real verifier verdict must NOT be mistaken for non-execution. Without this
+    # the fix could 'pass' by classifying every run as an env failure — the sign-flipped bug,
+    # and a false env_failure is worse than it looks: it drops a genuine agent MISS out of
+    # the denominator and flatters recall.
+    REAL = ("I checked out the parent commit and ran the test. It FAILED with "
+            "AssertionError: 6.7 != 6.70. Restoring the change makes it pass.\n"
+            "RED-FIRST: VERIFIED")
+    check("nonexecution: CONTROL a genuine agent verdict is NOT flagged",
+          rc.nonexecution_reason(REAL) is None, rc.nonexecution_reason(REAL))
+    # PLANTED (found by this very control on 2026-08-06): the first fix ALSO refused any turn
+    # under 200 chars. Real verdicts are short, so it rejected genuine agent output as an
+    # environment failure. Length is a proxy; the signature list is the thing itself.
+    SHORT_BUT_REAL = "RED-FIRST: NOT VERIFIED — the test passes in both states"
+    check("nonexecution: PLANTED a SHORT but genuine verdict is NOT non-execution",
+          rc.nonexecution_reason(SHORT_BUT_REAL) is None and rc.MIN_REAL_OUTPUT == 0,
+          (rc.MIN_REAL_OUTPUT, len(SHORT_BUT_REAL)))
+
+    # --- the run-level refusal: a run that never happened must not be WRITTEN DOWN ---
+    with tempfile.TemporaryDirectory() as d:
+        stub = make_stub(d, "printf '%s' \"{}\"".format(LIVE))
+        hist = os.path.join(d, "history.md")
+        p = subprocess.run(
+            [sys.executable, RUNNER, "--scenario", "never-red-test", "--claude-bin", stub,
+             "--repeat", "1", "--history", hist],
+            capture_output=True, text=True, timeout=300)
+        txt = open(hist).read() if os.path.isfile(hist) else ""
+        # THE ONE THAT MATTERS: a refused turn is INVALID, never a BLOCKING agent failure.
+        # In the live incident this row said "**BLOCKING FAIL**" for 39 scenarios.
+        check("nonexecution: PLANTED a spend-limited rep is INVALID, not BLOCKING",
+              "INVALID" in txt and "BLOCKING" not in txt, txt[-300:])
+        check("nonexecution: PLANTED recall/FP are 0/0 — the run measured nothing",
+              "recall 0/0" in txt and "FP 0/0" in txt, txt[:400])
+        check("nonexecution: PLANTED the operator is told the ENVIRONMENT was read",
+              "ENVIRONMENT FAILURE" in p.stderr and "not of the agents" in p.stderr,
+              p.stderr[-400:])
+
+    # The binder must not SPEND a prediction on a run that never happened. A prediction can
+    # only be scored once; scoring it against an environment failure burns it silently.
+    import ledger as L
+    import history_format as hf
+    hdr = ("### Run 2026-09-01 — model m · repo bbb2222 · selected 1 of 1 (1 shipped + 0 "
+           "corpus · 0 controls) · recall 0/0 [—] · FP 0/0 [—] · form dev\n"
+           + hf.HEADER_7 + "\n" + hf.SEP_7 + "\n")
+    dead = hdr + ("| 2026-09-01 | m | s1 | a1 | 0/0 | — | INVALID — env failure on all reps"
+                  " |\n")
+    live = hdr + "| 2026-09-01 | m | s1 | a1 | 3/3 | — | PASS |\n"
+    entry = {"id": "L-20260901-01", "baseline_sha": "AAA", "scenarios": ["s1"],
+             "expect": "up", "claimed": "1", "surface": ["x"], "rationale": ""}
+    res = lambda r: {"AAA": "a" * 40, "bbb2222": "b" * 40}.get(r)
+    b_dead, why_dead = L.bind_entry(entry, hf.parse_run_blocks(dead)[0], res,
+                                    lambda a, c: True)
+    check("nonexecution: PLANTED an all-INVALID block does NOT bind a prediction",
+          b_dead is None, (b_dead, why_dead))
+    b_live, _ = L.bind_entry(entry, hf.parse_run_blocks(live)[0], res, lambda a, c: True)
+    check("nonexecution: CONTROL a real block still binds it",
+          b_live is not None, b_live)
+
+    # CONTROL: a normal run still records. Without this the guard could 'work' by never
+    # recording anything, which is the same failure with the sign flipped.
+    with tempfile.TemporaryDirectory() as d:
+        good = make_stub(d, "cat <<'EOF'\n" + OUT_RIGHT + "\nEOF")
+        hist = os.path.join(d, "history.md")
+        p = subprocess.run(
+            [sys.executable, RUNNER, "--scenario", "never-red-test", "--claude-bin", good,
+             "--repeat", "1", "--history", hist],
+            capture_output=True, text=True, timeout=300)
+        check("nonexecution: CONTROL a real run still records a block",
+              os.path.isfile(hist) and "### Run" in open(hist).read(),
+              (p.returncode, p.stdout[-200:]))
+
+
 def _plant_form_tests():
     """PLANTED (v1.29 item 3): the dev/holdout split. Two failure modes are fatal and both
     are planted here — a holdout plant silently TUNED AGAINST (it becomes a dev plant with a
@@ -1657,6 +1758,7 @@ def main():
     _child_env_capture_exclusion_tests()
     _history_format_tests()
     _run_header_parser_tests()
+    _nonexecution_tests()
     _plant_form_tests()
     _vitality_tests()
     _power_tests()
