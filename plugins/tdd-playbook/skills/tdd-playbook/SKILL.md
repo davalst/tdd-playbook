@@ -228,7 +228,17 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
 Run each deliverable methodically through this checklist; write tests for the ones that genuinely apply:
 boundaries/limits · empty/null/missing · malformed/invalid/wrong-type input · permission & auth NEGATIVE
 cases · state/lifecycle transitions + idempotency/double-submit/re-entry · concurrency/ordering/retries/
-duplicates · failure & error paths + rollback/cleanup · scale/large input · second-order/cross-surface.
+duplicates · failure & error paths + rollback/cleanup · scale/large input · second-order/cross-surface ·
+**adversarial content** — injection into human-facing text, logs, and inter-process payloads
+(newlines/CR/control chars, field forgery, truncation-to-mislead).
+- The adversarial-content line is its own question, not a rephrasing of auth-negative: **for every
+  string that reaches a human, a log, or another process, which parts can an ADVERSARY influence, and
+  can they change its MEANING rather than just its content?** Tests overwhelmingly check PRESENCE
+  ("the card contains the right fields") and almost never FORGEABILITY ("an attacker cannot add one").
+  Origin: a human-facing approval card built from newline-joined `key: value` lines with model-authored
+  values interpolated raw — a crafted value rendered a COMPLETE, well-formed card ending `expose: no`,
+  pushing the real `expose: YES` off a phone screen, while a trailing `#` commented the injection out
+  for `sh -c` so the command still ran. It defeated the exact consent boundary the code implemented.
 - The COUNT is derived from real failure modes, one-line justification each — NOT a quota to pad (Goodhart).
 - A `@pytest.mark.edge` count is NOT a quality metric (marker theater). Quality is measured in §4.
 
@@ -704,6 +714,11 @@ enumeration unprompted — the flow table in §0 is where it lands.
 - **Quarantine entries carry an OWNER and an EXPIRY** (e.g. `@pytest.mark.flaky(expires="2026-08-01")`
   or a dated comment the suite checks): an expired quarantine FAILS the suite. Quarantine-without-
   deadline is how flake graveyards form — the marker is a loan, not a landfill.
+- **A quarantine marker is not real until something DESELECTS it.** The marker is a claim about the
+  gate's behaviour, and a claim about a gate is unverified until tested (§13). Ship one test that a
+  known-quarantined case does not block the gate — otherwise a "quarantined" test is either still
+  failing the build or, worse, silently deselected by nothing at all and merely believed to be
+  handled. Same shape as the expiry rule: the mechanism, not the intent, is the control.
 - **Hunt order-dependence with `pytest-randomly`** (shuffles collection order + seeds randomness each run,
   prints the seed to reproduce). A suite green across seeds is provably order-independent. Combine with
   `--count=N` (`pytest-repeat`) in a BLOCKING `flake-detect` job to surface both repeat- and order-flakiness.
@@ -723,6 +738,12 @@ enumeration unprompted — the flow table in §0 is where it lands.
 - Run `/security-review` (CC) on any diff touching security-relevant surfaces — auth/session, routes/tools
   accepting input, file/secret handling, external webhooks/ingest, deserialization, permissions, SQL — and
   as a final pass before merging a feature. Skip purely cosmetic/test-only diffs (noise).
+- **Run it at the PHASE BOUNDARY that introduces the surface, not at merge.** The moment a phase adds
+  a network-facing endpoint, an auth/consent decision, or a new subprocess/exec seam, review THAT phase
+  — a merge-time pass reviews a design already built on top of the flaw, when the finding is expensive
+  and reads as rework. Three of the nine defects in the field report that produced this rule were
+  consent/exec-seam defects that a boundary-time review would have caught while the seam was one commit
+  old.
 - Beyond review, WRITE security tests: negative authz (denied → 403/refused), input fuzzing/injection on
   untrusted surfaces, rate-limit. Keep dependency/SAST scanning in CI (supply chain).
 - **LLM-app repos: layer adversarial red-teaming on top of the floor** (e.g. [DeepTeam](https://github.com/confident-ai/deepteam) —
@@ -805,6 +826,26 @@ unverified NEGATIVE about a file it never read.)
 - **§1's trigger question governs evidence too:** before citing, ask what would still be true if
   the claim were false — evidence that survives the defect is a proxy, not proof (one canonical
   statement lives in §1; this is the claims-side application, not a copy).
+- **A guard block is a claim you owe three clauses on, and a RECORD — not a narration.** When any
+  guard blocks you, state and record: (1) what it objected to; (2) whether that action was
+  performed by ANY other route — yes/no, no hedge; (3) what you dropped or changed instead.
+  "I re-ran it in pieces" is behaviourally identical to "I split it until something got through",
+  and a reader cannot tell them apart from the transcript — which is exactly how the H-class
+  write-around hides. Record it with `bin/guard_note.py record` so the answer survives the
+  session: the HOOK writes the block count mechanically, you write only the responses, and
+  `gate_yield rollup` prints `blocks N · accounted M · UNACCOUNTED N−M` per cycle. Silence
+  therefore shows up as an unaccounted count, never as a clean record. A `yes` on clause (2) is
+  a FINDING with its own alarm — the whole instrument exists to make that one answer visible.
+- **A test that CLAIMS exhaustiveness must be able to fail for the right reason.** When a test's
+  name or message says *every / all / no other / exhaustive*, state in ONE line what a violating
+  case would look like and how this test would see it. If you cannot write that line, the test
+  asserts your INVENTORY, not the property — it proves the right thing happens on the paths you
+  listed, which is not the same claim. (Origin: a parity test asserting "no site does X outside the
+  one seam" — genuinely exhaustive for deletions, and structurally blind to a path that deletes
+  nothing. It could not have failed on the actual bug. Its author, its reviewer and two later
+  sessions all read the name as the guarantee.) The same rule governs a guard, scanner or fixture
+  claiming coverage in its own docstring — see §13's guard-calibration rule, which is this rule
+  applied to verification machinery.
 - **Cite-or-refuse, and NEGATIVES need exhaustive search:** "X is never called / unreachable / not
   wired / dead" requires grepping ALL reference/assignment sites and citing the SWEEP. Citing one
   file where X *should* appear proves nothing — the refutation usually lives in a file you didn't
@@ -895,6 +936,19 @@ visible — never "trust the agent more."
   WIRED and engaged (config drift, aux-model swaps, intent rerouting; built ≠ wired applies to the
   loop itself). A planted error surviving to publication is a BLOCKING failure; the floor only
   rises. A verification loop that never fails a planted error is theater.
+- **A guard's claim about ITSELF is an unverified claim — in BOTH directions.** Verification
+  machinery (a guard, a scanner, a conftest block, a fixture) states its own coverage in a
+  docstring, and that claim is the one nobody re-checks, because checking it feels like
+  distrusting the safety net. So every blocking guard ships a two-directional calibration table:
+  it must BLOCK what it claims to block **and ALLOW what it claims to allow**. Both halves have
+  bitten. Block-direction: a "block privileged commands" guard matched program basenames
+  case-sensitively while the only copy on the host lived in a capitalised app bundle — so running
+  the suite reconfigured the developer's machine for months, and the guard's docstring, the project
+  handoff and three later docstrings all repeated the false claim. Allow-direction: this repo's
+  TEST-LOCK guard promised "reads are always fine" and blocked a read, because its write-verb list
+  matched a Python loop variable named `ln`. Freeze each real false positive AND each real bypass
+  as a dated fixture; narrowing a guard is not amnesty, so the block rows must survive every
+  narrowing.
 - **Guard calibration — a guard born from a specific defect is not trusted until it has been
   REPLAYED against the motivating artifact.** Red-first proves a test CAN fail; it does not prove
   it fails for the reason it was built — the documented case (Cheliped, 2026-08) is a guard that

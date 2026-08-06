@@ -63,7 +63,8 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude`. The installer is **reconciling**: it prunes
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
 three integrity guards (`test_lock_guard`, `snapshot_guard`, `overmock_guard`) plus the advisory
-guards — so a refresh can't leave dead hook references behind. **Your own non-Playbook hooks are
+ones (`exitcode_guard`, `exhaustive_claim_guard`, `flaky_guard`, `red_lock`, …) — so a refresh
+can't leave dead hook references behind. **Your own non-Playbook hooks are
 preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
 marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
 de-dupes by name.

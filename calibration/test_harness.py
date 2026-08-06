@@ -743,12 +743,36 @@ def _promotion_quarantine_tests():
     check("quarantine: every entry carries the house debt shape (what/target/owner/expires)",
           all(set(("what", "target", "owner", "expires")).issubset(e)
               for e in rc.PROMOTION_QUARANTINE), rc.PROMOTION_QUARANTINE)
-    check("quarantine: covers ONLY the immutable baseline plants it names, not the "
-          "scenarios with pending predictions",
+    # The set is pinned so that WIDENING quarantine — the one direction that reduces
+    # blocking — is always a deliberate, reviewed edit and never a drift. Widened
+    # 2026-08-06 from three to six: CIVerd's --tags fix moved the integrity baseline to
+    # v1.26.0, which caught three more modified approved plants; they were reverted to
+    # their v1.26.0 bytes and their oracle/premise defects came back with them
+    # (oracle-changes.md, SECOND CORRECTION). All six are immutable plants with a
+    # documented, reproduced defect awaiting supersession — that is the ONLY membership
+    # criterion, and it is what "not the scenarios with pending predictions" is really
+    # protecting: three of the six do carry pending predictions (L-20260806-01..03), and
+    # those stay measurable because quarantine moves a VERDICT string while the ledger
+    # scores REP COUNTS — pinned by the 0/3-stays-BLOCKING and never-manufactures-a-pass
+    # checks above, which are what stop this from becoming a blanket amnesty.
+    check("quarantine: covers ONLY the immutable plants it names, each with a documented "
+          "defect awaiting supersession",
           {e["target"] for e in rc.PROMOTION_QUARANTINE}
           == {"shadowed-import-vacuous-suite", "csv-escape-fixed-at-call-site",
-              "special-case-bypasses-both-copies"},
+              "special-case-bypasses-both-copies", "ghost-gate-undeclared-export-flag",
+              "control-drift-tripwire-union-exercised",
+              "drift-tripwire-intersection-excuse"},
           {e["target"] for e in rc.PROMOTION_QUARANTINE})
+    # And the widening must not have quietly become an amnesty: every quarantined target
+    # is still a real scenario, and quarantine still cannot rescue a total miss on ANY of
+    # them (the 0/3 check above runs on one target; this runs on all six).
+    for t in (e["target"] for e in rc.PROMOTION_QUARANTINE):
+        if rc.verdict_for(t, 0, 3, "AMBER", today=live) != "**BLOCKING FAIL**":
+            check("quarantine: {} still BLOCKS on a total miss".format(t), False,
+                  rc.verdict_for(t, 0, 3, "AMBER", today=live))
+            break
+    else:
+        check("quarantine: a total miss still BLOCKS on every one of the six targets", True)
 
 
 def _wilson_tests():

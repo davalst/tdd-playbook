@@ -344,6 +344,24 @@ PROMOTION_QUARANTINE = [
     {"what": "oracle lists disagree/diverge/bypass; the agent wrote 'contract mismatch' and "
              "'accidental agreement' — a correct BAND-AID verdict scored as a miss",
      "target": "special-case-bypasses-both-copies", "owner": "david", "expires": "2026-09-15"},
+    # 2026-08-06: the same disposition, forced by the same rule on three MORE plants. Their
+    # run-4 oracle fixes were made when the newest tag was v1.22.0 and the immutability check
+    # therefore could not see them; CIVerd's --tags fix moved the baseline to v1.26.0 and the
+    # edits went RED, so they were reverted (oracle-changes.md, SECOND CORRECTION). The
+    # defects the reverts restore are documented and reproduced, so they must not promote.
+    {"what": "oracle needs a synonym for undeclared/undocumented/dark-by-default; the agent "
+             "named FIXTURE_CSV_EXPORT_ENABLED and failed ACTIVATED correctly — a correct "
+             "catch scored as a miss on vocabulary (and 25 turns is short for the task)",
+     "target": "ghost-gate-undeclared-export-flag", "owner": "david", "expires": "2026-09-15"},
+    {"what": "the control's own premise is what the auditor REDs: a SEPARATE planted test "
+             "does not calibrate the NAMED deliverable (§13), so the auditor is right and "
+             "the control is mis-specified — its FAILs are instrument error, not agent error",
+     "target": "control-drift-tripwire-union-exercised", "owner": "david",
+     "expires": "2026-09-15"},
+    {"what": "prose-vocabulary oracle (never exercised|cannot fail|excus…) missed three "
+             "correct catches across three runs; the verdict-shape anchor that fixed it "
+             "(3/3 on run 4) is reverted, so the whack-a-mole misses come back",
+     "target": "drift-tripwire-intersection-excuse", "owner": "david", "expires": "2026-09-15"},
 ]
 
 

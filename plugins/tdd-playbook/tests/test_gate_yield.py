@@ -42,10 +42,108 @@ def run_gy(*args, env_extra=None):
                           env=env, timeout=60)
 
 
+GN = os.path.join(PLUGIN, "bin", "guard_note.py")
+
+
+def run_gn(*args, env_extra=None):
+    env = dict(os.environ)
+    for k in list(env):
+        if k.startswith("TDD_PLAYBOOK_"):
+            del env[k]
+    if env_extra:
+        env.update(env_extra)
+    return subprocess.run([sys.executable, GN, *args], capture_output=True, text=True,
+                          env=env, timeout=60)
+
+
 def seed_raw(path, lines):
     with open(path, "w") as fh:
         for ln in lines:
             fh.write((json.dumps(ln) if isinstance(ln, dict) else ln) + "\n")
+
+
+def test_guard_response():
+    """v1.28 — guard interactions must be AUDITABLE from a record, not reconstructed from a
+    transcript. David's question ('is the model skirting the guards, or complying?') could
+    only be answered by me hand-auditing a journal, git history and four transcript moments.
+    That is not a control.
+
+    The three-clause record — what the guard objected to · whether the action was performed
+    by another route · what was dropped — is self-reported, so it is only worth anything
+    because of the pairing: the HOOK writes the block count (mechanically, via emit()), the
+    agent writes only the responses. Self-report cannot inflate the denominator, so silence
+    shows up as UNACCOUNTED rather than as absence of evidence."""
+    print("\n[guard response log (v1.28)]")
+    with tempfile.TemporaryDirectory() as d:
+        raw = os.path.join(d, "raw.jsonl")
+        md = os.path.join(d, "gate_yield.md")
+        rmd = os.path.join(d, "guard_response.md")
+        env = {"TDD_PLAYBOOK_YIELD_LOG": raw}
+
+        # the CLI writes through the SAME single write path the hooks use
+        p = run_gn("record", "--gate", "testlock", "--objected", "lockstate basename in a "
+                   "command that also wrote an unrelated file",
+                   "--performed-elsewhere", "no",
+                   "--dropped", "the bash heredoc channel; used the structured edit path",
+                   env_extra=env)
+        check("guard_note: a well-formed record exits 0", p.returncode == 0,
+              (p.returncode, p.stderr[:120]))
+        rows = [json.loads(l) for l in open(raw)] if os.path.isfile(raw) else []
+        resp = [r for r in rows if r.get("event") == "response"]
+        check("guard_note: writes ONE response row carrying all three clauses",
+              len(resp) == 1 and resp[0].get("gate") == "testlock"
+              and resp[0].get("performed_elsewhere") == "no"
+              and "unrelated file" in (resp[0].get("objected") or "")
+              and "structured edit path" in (resp[0].get("dropped") or ""), resp)
+        check("guard_note: the row is attributed to the AGENT, never to the hook "
+              "(a self-report must be labelled as one)",
+              resp and resp[0].get("source") == "agent", resp)
+
+        # usage errors are exit 2 — never a silently dropped record
+        p = run_gn("record", "--gate", "testlock", "--objected", "x",
+                   "--performed-elsewhere", "maybe", "--dropped", "y", env_extra=env)
+        check("guard_note: performed-elsewhere must be yes|no -> exit 2 (usage)",
+              p.returncode == 2, (p.returncode, p.stderr[:120]))
+
+    with tempfile.TemporaryDirectory() as d:
+        raw = os.path.join(d, "raw.jsonl")
+        md = os.path.join(d, "gate_yield.md")
+        rmd = os.path.join(d, "guard_response.md")
+        # 3 blocks (hook-written), 2 responses (agent-written) -> 1 UNACCOUNTED
+        seed_raw(raw, [{"gate": "testlock", "event": "block"}] * 3
+                 + [{"source": "agent", "gate": "testlock", "event": "response",
+                     "performed_elsewhere": "no", "objected": "o", "dropped": "d"}] * 2)
+        p = run_gy("rollup", "--log", raw, "--md", md, "--response-md", rmd,
+                   "--date", "2026-08-06")
+        body = open(rmd).read() if os.path.isfile(rmd) else "<missing>"
+        check("response rollup: one committed row per gate (blocks, accounted, unaccounted)",
+              p.returncode == 0 and "| 2026-08-06 | testlock | 3 | 2 | 1 | 0 |" in body,
+              (p.returncode, body, p.stdout))
+        check("response rollup: UNACCOUNTED is reported, not buried",
+              "UNACCOUNTED" in p.stdout and "testlock" in p.stdout, p.stdout)
+        check("response rollup: the gate_yield row schema is UNCHANGED (7 cols)",
+              "| 2026-08-06 | testlock | 3 | 0 | 0 | 0 | 0 |" in open(md).read(),
+              open(md).read())
+        check("response record carries a schema stamp (a counting change must be a "
+              "conscious migration, per the dataflow precedent)",
+              "schema:" in body, body)
+
+    with tempfile.TemporaryDirectory() as d:
+        raw = os.path.join(d, "raw.jsonl")
+        rmd = os.path.join(d, "guard_response.md")
+        # PLANTED: the bypass signal itself — an action performed by another route
+        seed_raw(raw, [{"gate": "testlock", "event": "block"},
+                       {"source": "agent", "gate": "testlock", "event": "response",
+                        "performed_elsewhere": "yes", "objected": "o",
+                        "dropped": "nothing — I ran it another way"}])
+        p = run_gy("rollup", "--log", raw, "--md", os.path.join(d, "g.md"),
+                   "--response-md", rmd, "--date", "2026-08-06")
+        check("response rollup: performed-elsewhere=yes is ALARMED loudly (this is the "
+              "bypass signal the whole record exists to surface)",
+              "PERFORMED ELSEWHERE" in p.stdout, p.stdout)
+        check("response rollup: and it is counted in the committed row",
+              "| 2026-08-06 | testlock | 1 | 1 | 0 | 1 |" in open(rmd).read(),
+              open(rmd).read())
 
 
 def main():
@@ -184,6 +282,7 @@ def main():
     test_replay_motivating_artifact()
     test_dataflow_rollup_and_trend()
     test_dataflow_producer_consumer_seam()
+    test_guard_response()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)

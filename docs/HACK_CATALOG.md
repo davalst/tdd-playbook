@@ -2,8 +2,9 @@
 
 **Versioned. Guards cite entry IDs. The catalog only grows.**
 Catalog version: **2026.08** (2026.07 seeded from the July 2026 research corpus; 2026.08
-adds H11 and widens the framing — H9/H10/H11 are honest-miss classes, not gaming: nobody
-is cheating, the failure survives BECAUSE everyone is sincere)
+adds H11–H14 and widens the framing — H9/H10/H11/H13/H14 are honest-miss classes, not
+gaming: nobody is cheating, the failure survives BECAUSE everyone is sincere. H13/H14 come
+from a field report of nine defects in one sprint in which every gate fired and worked)
 
 This is the Playbook's threat model, made diffable. Every mechanical guard
 (`hooks/scripts/*`) that detects a gaming pattern cites the entry it defends against, so
@@ -199,6 +200,51 @@ becomes once the count is deliberate.
   `gate-wrong` share and every mismatch (§13); retirement stays a human call with the R4.3
   demotion shape, never automatic from the count.
 
+### H13 — The guard's self-claim, unverified in either direction
+A guard, scanner or fixture states its own coverage in a docstring, and that sentence is the
+one nobody re-checks, because checking the safety net feels like distrusting it. The claim
+then propagates: a handoff quotes the docstring, later docstrings quote the handoff, and the
+belief is load-bearing across sessions before anyone runs it. It fails in BOTH directions and
+both have shipped. Doesn't block what it says it blocks → the protected thing was never
+protected and everyone was calm about it. Doesn't allow what it says it allows → a false
+positive on ordinary work, which teaches the operator to route around the guard, and the
+routing-around is indistinguishable from the bypass the guard exists to stop (H2/H5).
+- Evidence (block direction): Cheliped, 2026-08 — a guard meant to block privileged commands
+  matched program basenames case-sensitively while the only copy on the host lived in a
+  capitalised app bundle, so running the test suite reconfigured the developer's machine for
+  months; the guard's docstring, the project handoff and three later docstrings all repeated
+  the false claim.
+- Evidence (allow direction): this repo, 2026-08-05 — `test_lock_guard`'s docstring promised
+  "reads are always fine" and it blocked a READ of the unlock journal, because its write-verb
+  list matched a Python loop variable named `ln`. Two further false-positive classes were
+  found in the same read: a write verb anywhere in a quoted string, and a heredoc writing an
+  unrelated file outside the project root.
+- Defense: every blocking guard ships a TWO-DIRECTIONAL calibration table — the BLOCK rows are
+  every documented bypass, the ALLOW rows are the guard's own stated contract, and each real
+  false positive or real bypass is frozen as a dated fixture (§13). Narrowing a guard is not
+  amnesty: the block rows must survive every narrowing, which is what stops an FP fix from
+  quietly becoming a hole. Planted pair: `test_hooks.py` v1.28 ALLOW-DIRECTION CALIBRATION
+  (FP1–FP4 + the three block rows), `test_exitcode`, `test_exhaustive_claim`.
+
+### H14 — Exhaustiveness asserted, never falsifiable
+A test named or messaged *every / all / no other / exhaustive* is read by its author, its
+reviewer and every later session as the guarantee the name states, and the name is free. The
+test usually enumerates an INVENTORY — the cases someone listed — which is a real but much
+weaker claim, and the gap between the two is invisible at exactly the moments it matters,
+because the failure mode is a case nobody thought to list. This is the quiet cousin of H4: not
+an assertion-free test, but an assertion whose SCOPE is fiction. It survives mutation testing
+untouched — mutants perturb the listed paths, and the score is blind to the path that was
+never enumerated (§4).
+- Evidence: Cheliped, 2026-08 — a parity test asserting "no site does X outside the one seam"
+  was genuinely exhaustive over deletions and structurally blind to a path that deleted
+  nothing but mutated state. It could not have failed on the real bug; three sessions cited
+  it as proof the property held.
+- Defense: a test claiming exhaustiveness states in ONE line what a violating case looks like
+  and how this test would SEE it; if that line can't be written, the name is renamed to the
+  claim actually made (§12). Prefer enumeration from the REAL registry over a literal list
+  (§6c family parity). Mechanical reminder: `exhaustive_claim_guard.py` (warn), itself
+  calibrated in both directions per H13.
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -215,6 +261,8 @@ becomes once the count is deliberate.
 | H10 | — (mechanical replay is per-guard, not a standing hook) | §13 guard calibration + red-first-verifier/tripwire-auditor briefs + corpus plant class |
 | H11 | family parity sweeps (repo-local by construction; this repo: test_agents commands sweep + vacuity guard) | §1 seam rule + §0 field-granularity emits + integration-adversary brief + corpus plant pair seam-self-consistency-return-only / control-seam-message-rendered |
 | H12 | tdd_lock `--class` asymmetric bar (gate-wrong refused under 30 chars) + `class_mismatch` flag recorded-never-corrected (planted: test_tdd_lock reason-class pair) | `/grade` gate-wrong-share + mismatch read; R4.3 human demotion call — the count never retires a gate by itself |
+| H13 | two-directional calibration table per blocking guard (planted: test_hooks v1.28 ALLOW-DIRECTION block — FP1–FP4 + surviving block rows); exitcode_guard for the discarded-verdict cousin | §13 guard self-claims are unverified claims; guard_note + `blocks · accounted · UNACCOUNTED` makes a routed-around block visible |
+| H14 | exhaustive_claim_guard (warn; planted: test_hooks test_exhaustive_claim, both directions) | §12 violating-case line; §6c family parity enumerates from the REAL registry; NOT covered by §4 mutation score |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 

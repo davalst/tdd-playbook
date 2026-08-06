@@ -93,7 +93,8 @@ mechanisms.
 1. REFRESH: Clone https://github.com/davalst/tdd-playbook (shallow is fine) to a temp
    directory and run: python3 <clone>/scripts/install_into_repo.py <this repo's root>
    The installer is reconciling: it prunes stale playbook hooks from .claude/settings.json
-   and adds current ones (test_lock_guard, snapshot_guard, overmock_guard). My own
+   and adds current ones (test_lock_guard, snapshot_guard, overmock_guard, and the
+   advisory exitcode_guard + exhaustive_claim_guard). My own
    non-playbook hooks must survive — verify that before committing.
 
 2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
@@ -128,6 +129,10 @@ mechanisms.
    - Integrity guards BLOCK by default (test weakening, snapshot auto-updates, exit calls
      in tests). If one blocks you, that's the system working — fix the source, don't look
      for a way around it. Demotion is TDD_PLAYBOOK_HOOK_<NAME>=warn, but ask me first.
+     And RECORD the block (§12, v1.28): `python3 .claude/bin/guard_note.py record --gate
+     <name> --objected "..." --performed-elsewhere yes|no --dropped "..."`. Splitting a
+     blocked command into pieces looks identical to complying with it; the record is what
+     tells the two apart, and unaccounted blocks are reported every calibration cycle.
    - Use /tdd-lock after committing red tests for feature work; unlock only via /tdd-unlock
      with a real journaled reason.
    - /edge, /mutate, /probe — and now /tdd-plan and /integration-audit — end by dispatching

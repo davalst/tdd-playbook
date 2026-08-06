@@ -223,3 +223,47 @@ control's premise was false and the agent proved it). The same commit also corre
 | L-20260805-27 | 2026-08-05 | c6042d1 | calibration/scenarios.json | control-boundary-covered fixture gains a genuinely-rounding test (33.33 -> 6.67) | control-boundary-covered | up | 3 | the agent proved BOTH rounding tests used values needing no rounding — the gap it named was real and in scope, so the control's premise must become true |
 | L-20260805-28 | 2026-08-05 | c6042d1 | calibration/corpus/approved/ghost-gate-undeclared-export-flag.json | must_match -> [ACTIVATED: FAIL, FIXTURE_CSV_EXPORT_ENABLED]; vocabulary needle dropped | ghost-gate-undeclared-export-flag | up | 1 | the lost rep named the undeclared flag and failed ACTIVATED correctly but missed a synonym list; verdict+artifact is the discrimination |
 | L-20260805-29 | 2026-08-05 | c6042d1 | calibration/corpus/approved/control-drift-tripwire-union-exercised.json | planted motivating shape folded INTO the named test; must_match anchored on `Tripwire: 1/1` | control-drift-tripwire-union-exercised | up | 2 | the auditor correctly held that a SEPARATE planted test does not calibrate the NAMED deliverable; the control now meets the §13 bar it is graded against |
+
+### Registered 2026-08-06 — baseline a5b77aa
+
+**Pre-registered for a REVERT, not an improvement.** CIVerd's engine, once it fetched tags
+(`c752c6b`), ran the integrity check against v1.26.0 instead of v1.22.0 and found three
+approved corpus plants modified. They are the 2026-08-05 run-4 oracle changes registered above
+as L-20260805-28/29 plus the intersection-excuse verdict anchor. Those edits were made when the
+newest tag was v1.22.0, in which two of the three files did not yet exist — so the immutability
+check could not see them, and my journal entry of the day said so explicitly ("none of which the
+immutability rule covers"). That sentence reasoned from the baseline WINDOW rather than from the
+RULE. Cutting v1.25.0/v1.26.0 moved the window and made it false. The rule is unconditional:
+approved plants are immutable, author a new one instead.
+
+So the three are reverted to their v1.26.0 bytes — the same disposition the floor already forced
+on csv-escape-fixed-at-call-site, shadowed-import-vacuous-suite and special-case-bypasses-both-
+copies on 2026-08-05, and the same refusal-to-work-around. Superseding stays the sanctioned path
+(dated debt on `calibration-loop`), and the three join PROMOTION_QUARANTINE so oracles now KNOWN
+defective cannot harden a false miss into a BLOCKING verdict while their replacements are
+authored. These entries predict the reps those edits were expected to recover go back.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260806-01 | 2026-08-06 | a5b77aa | calibration/corpus/approved/ghost-gate-undeclared-export-flag.json | REVERT to v1.26.0 bytes (vocabulary needle restored, max_turns 40 removed) | ghost-gate-undeclared-export-flag | down | 1 | undoing L-20260805-28: ghost-gate-undeclared-export-flag gets its synonym needle and its 25-turn budget back, so the rep that edit was registered to recover is given back |
+| L-20260806-02 | 2026-08-06 | a5b77aa | calibration/corpus/approved/control-drift-tripwire-union-exercised.json | REVERT to v1.26.0 bytes (separate planted test restored, `Tripwire: 1/1` anchor removed) | control-drift-tripwire-union-exercised | down | 2 | undoing L-20260805-29: control-drift-tripwire-union-exercised returns to the premise the auditor correctly called out (a SEPARATE planted test does not calibrate the NAMED deliverable), so its false FAILs return with it — the cost of the immutability rule on a false-positive control, paid visibly rather than argued away |
+| L-20260806-03 | 2026-08-06 | a5b77aa | calibration/corpus/approved/drift-tripwire-intersection-excuse.json | REVERT to v1.26.0 bytes (prose oracle restored in place of the verdict-shape anchor) | drift-tripwire-intersection-excuse | down | 1 | the 08-05 note credits the verdict anchor with 3/3 on run 4 for drift-tripwire-intersection-excuse; restoring the prose needle restores the vocabulary whack-a-mole that motivated the anchor |
+
+### Registered 2026-08-06 — baseline a5b77aa (v1.28.0 doctrine + guards)
+
+Written against the PRE-change tree: every edit below is still in the working tree and
+`a5b77aa` contains none of it, which is the property that makes a back-fill mechanically
+detectable. `expect: none` throughout — these are SKILL doctrine sections, and the surfaces
+where inertness would be a lie by construction (scenarios.json, corpus/approved, agents/)
+carry none of this change. That is a prediction in its own right and the next run prices it:
+if a §-prose addition ever moves a scenario, one of these rows becomes a SURPRISE and the
+"doctrine prose can legitimately be inert" exemption is the thing that was wrong.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260806-04 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §12 three-clause guard-block rule (what it objected to · performed elsewhere? · what was dropped) + record it via guard_note | — | none | 0 | doctrine + a recording obligation; the measurable half is the `blocks · accounted · UNACCOUNTED` line in gate_yield, not a scenario |
+| L-20260806-05 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §2 adversarial-content edge-case category (injection into human-facing text, logs, inter-process payloads) | — | none | 0 | new edge category from Cheliped's approval-card injection defect; no calibration scenario exercises it yet — authoring one is the corpus's job next cycle |
+| L-20260806-06 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §12 exhaustiveness rule: a test claiming every/all/no-other states what a violating case looks like and how it would see it | — | none | 0 | doctrine for H14; its mechanical half is exhaustive_claim_guard (warn), calibrated in both directions in test_hooks |
+| L-20260806-07 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §13 guard self-claims are unverified claims — two-directional calibration table per blocking guard | — | none | 0 | doctrine for H13; the block half is Cheliped's case-sensitivity defect, the allow half is this repo's own `ln` false positive |
+| L-20260806-08 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §9 `/security-review` at the phase boundary that introduces the surface, not at merge | — | none | 0 | timing change only; nothing in the suite measures when a human-invoked review runs, which is itself the honest reason this is `none` |
+| L-20260806-09 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §7 a quarantine marker is not real until something deselects it | — | none | 0 | closes the same claim-about-a-gate gap as §13, applied to the flaky marker |

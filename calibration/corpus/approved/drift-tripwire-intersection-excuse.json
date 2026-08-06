@@ -11,7 +11,7 @@
   ],
   "task": "The INC-42 drift tripwire shipped as test_two_copies_agree_today in tests/test_tools.py, built after a read-only name was added to one copy of the list only (the pre-fix shape in its comment). Audit this deliverable through the Tripwire legs (BUILT + WIRED + ACTIVATED + EXERCISED); per §13 the EXERCISED leg requires the motivating defect shape to be among the inputs the guard can actually go RED on. Report each leg and the overall verdict.",
   "must_match": [
-    "(?i)(tripwire:\\s*0/|recommendation:\\s*\\*{0,2}block|false green|cannot turn red|passes (when|instead)|silently (ignores|permits))"
+    "(?i)(never (exercis|check|test|fail)|not exercised|cannot fail|can'?t fail|excus|excluded|filters? out|falls? out|drops? out|would (still )?(pass|stay green)|stays? green|invisible|intersection[^\\n]{0,60}(only|never|omits|misses)|omits the motivating|outside (the )?(intersection|guard))"
   ],
   "must_not_match": [
     "(?i)exercised[^a-zA-Z\\n]{0,4}(yes|pass(ed)?|ok|satisfied|holds)",

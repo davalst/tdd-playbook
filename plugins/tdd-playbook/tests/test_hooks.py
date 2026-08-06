@@ -194,6 +194,92 @@ def test_overmock():
     check("F5: MagicMock attribute graft is caught", rc == 1 and "seam" in e, (rc, e))
 
 
+# ---------------------------------------------------------------------- exitcode_guard
+def test_exitcode():
+    """v1.28 §4a — a verifier's exit code swallowed by a pipe. Two live instances in two
+    days, in the two codebases that check each other: I gated a commit chain on a piped
+    gate run and pushed a repo-red commit (2026-08-05), and the CIVerd runner masked a
+    pytest exit the same way (2026-08-06). Calibrated in BOTH directions per the v1.28 bar:
+    it must flag the masked case and stay silent on every honest handling."""
+    s = "exitcode_guard.py"
+
+    def ev(cmd):
+        return {"tool_name": "Bash", "tool_input": {"command": cmd}}
+
+    # PLANTED — the exact shapes that bit, frozen
+    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh > /tmp/g.out 2>&1 | tail -2"))
+    check("exitcode: piped gate run is flagged", rc == 1 and "swallowed by a pipe" in e,
+          (rc, e[:120]))
+    rc, _o, e = run(s, ev("python3 plugins/tdd-playbook/tests/test_hooks.py 2>&1 | grep FAIL"))
+    check("exitcode: piped suite run is flagged", rc == 1 and "discarded truth" in e,
+          (rc, e[:120]))
+    rc, _o, e = run(s, ev("pytest -q | tail -1"))
+    check("exitcode: piped pytest is flagged", rc == 1, (rc, e[:120]))
+
+    # ALLOW — every honest handling must stay silent (the half that decides adoption)
+    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh > /tmp/g.out 2>&1; rc=$?"))
+    check("exitcode: capture-then-inspect is allowed", rc == 0, (rc, e[:120]))
+    rc, _o, e = run(s, ev("set -o pipefail; sh scripts/civerd_gate.sh | tail -2"))
+    check("exitcode: pipefail is allowed", rc == 0, (rc, e[:120]))
+    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh || exit 1"))
+    check("exitcode: exit code consumed directly is allowed", rc == 0, (rc, e[:120]))
+    rc, _o, e = run(s, ev("grep FAIL /tmp/g.out | head -3"))
+    check("exitcode: piping a NON-verifier is none of its business", rc == 0, (rc, e[:120]))
+    rc, _o, e = run(s, ev("git log --oneline -5 | tail -2"))
+    check("exitcode: ordinary piped tooling is allowed", rc == 0, (rc, e[:120]))
+    rc, _o, _e = run(s, {"tool_name": "Edit", "tool_input": {"file_path": "x.py"}})
+    check("exitcode: non-Bash events ignored", rc == 0, rc)
+
+
+# ------------------------------------------------------------- exhaustive_claim_guard
+def test_exhaustive_claim():
+    """v1.28 §12 — a test that CLAIMS exhaustiveness must say how it could FAIL. From
+    Cheliped's field report: a parity test named "every deletion goes through the one
+    seam" was genuinely exhaustive over deletions and structurally blind to the path that
+    deleted nothing, so it could not have failed on the real bug — and its author, its
+    reviewer and two later sessions all read the name as the guarantee. Both directions
+    per the v1.28 bar; the ALLOW rows matter most here, because the claim vocabulary
+    (every/all/none) is also the most common vocabulary in ordinary test code."""
+    s = "exhaustive_claim_guard.py"
+    tf = "tests/test_parity.py"
+
+    # PLANTED — the motivating shape, frozen: a universal claim with no falsifier line
+    rc, _o, e = run(s, write(tf, "def test_every_deletion_goes_through_the_seam():\n"
+                                 "    for site in KNOWN_SITES:\n        assert seam(site)\n"))
+    check("exhaustive: bare universal claim in a test NAME is flagged",
+          rc == 1 and "CLAIMS exhaustiveness" in e, (rc, e[:140]))
+    rc, _o, e = run(s, edit(tf, "def test_sites():", "def test_no_other_writer_exists():"))
+    check("exhaustive: net-new claim in an edit is flagged", rc == 1, (rc, e[:140]))
+    rc, _o, e = run(s, write(tf, 'def test_shape():\n'
+                                 '    assert not stray, "no other module may write here"\n'))
+    check("exhaustive: claim in an assertion MESSAGE is flagged",
+          rc == 1 and "no other" in e, (rc, e[:140]))
+    rc, _o, e = run(s, write("tests/parity.test.js",
+                             'it("registers all handlers and nothing else", () => {})\n'))
+    check("exhaustive: JS title claim is flagged", rc == 1, (rc, e[:140]))
+
+    # ALLOW — the guard's own stated contract; a false positive here trains people to
+    # ignore it, which costs more than the miss it prevents
+    rc, _o, e = run(s, write(tf, "def test_every_deletion_goes_through_the_seam():\n"
+                                 "    # a violating case: a site that deletes nothing but\n"
+                                 "    # still mutates state — enumerated from the registry\n"
+                                 "    for site in registry.all_sites():\n"
+                                 "        assert seam(site)\n"))
+    check("exhaustive: a stated violating case discharges the claim", rc == 0, (rc, e[:140]))
+    rc, _o, e = run(s, write(tf, "def test_totals():\n    assert all(x > 0 for x in rows)\n"))
+    check("exhaustive: `assert all(...)` is not a claim", rc == 0, (rc, e[:140]))
+    rc, _o, e = run(s, write(tf, "def test_rows():\n    for r in all_rows:\n"
+                                 "        assert r.ok\n"))
+    check("exhaustive: a variable named all_rows is not a claim", rc == 0, (rc, e[:140]))
+    rc, _o, e = run(s, write("src/handlers.py",
+                             "def every_handler():\n    return ALL\n"))
+    check("exhaustive: non-test files are none of its business", rc == 0, (rc, e[:140]))
+    rc, _o, e = run(s, edit(tf, "def test_all_sites():\n    pass",
+                            "def test_all_sites():\n    assert sites\n"))
+    check("exhaustive: a PRE-EXISTING claim is not re-flagged on every edit",
+          rc == 0, (rc, e[:140]))
+
+
 # ---------------------------------------------------------------------- snapshot_guard
 def test_snapshot():
     s = "snapshot_guard.py"
@@ -758,7 +844,8 @@ def test_guards_heartbeat():
 
 def main():
     print("TDD Playbook hook calibration")
-    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_snapshot,
+    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
+               test_exitcode, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
                test_lock_shell, test_yield_logging, test_guards_heartbeat):
         print("\n[{}]".format(fn.__name__))

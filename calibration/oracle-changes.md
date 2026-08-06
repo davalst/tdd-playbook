@@ -55,3 +55,20 @@ retro-authorize a weakening is an integrity RED. Entry format, one line each:
   demand for two of them. Registered as dated debt on calibration-loop. The verdict-anchor
   conversions that DID land are the post-baseline files (ghost-gate, union control) plus
   scenarios.json, none of which the immutability rule covers.
+- 2026-08-06 · SECOND CORRECTION (append-only), and it retracts the last sentence above.
+  "The verdict-anchor conversions that DID land are the post-baseline files (ghost-gate, union
+  control) plus scenarios.json, none of which the immutability rule covers" was reasoned from the
+  baseline WINDOW (newest tag then = v1.22.0, in which two of those files did not yet exist), not
+  from the RULE, which is unconditional: approved plants are immutable, author a new one instead.
+  Cutting v1.25.0/v1.26.0 moved the window and the same three edits went RED. CIVerd's engine found
+  it — after shipping its `--tags` fix (c752c6b) it ran the integrity check against v1.26.0 and
+  reported ghost-gate-undeclared-export-flag, control-drift-tripwire-union-exercised and
+  drift-tripwire-intersection-excuse as modified approved plants. Reverted to their v1.26.0 bytes,
+  same disposition and same refusal-to-work-around as the 2026-08-05 three. Superseding remains the
+  sanctioned path (dated debt on calibration-loop, now naming all six); all three are added to
+  PROMOTION_QUARANTINE so a known-defective oracle cannot harden a false miss into BLOCKING while
+  its replacement is authored. Pre-registered before the revert as L-20260806-01..03 (expect: down —
+  the reps those edits recovered are given back). NOTE the general lesson, which is bigger than the
+  three files: an integrity floor implemented against a moving baseline is WEAKEST on the newest
+  material — exactly the material most likely to be edited — so "the checker is green" answered a
+  narrower question than "the rule holds", and I quoted the checker.

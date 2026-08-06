@@ -138,6 +138,68 @@ def parse_md_rows(path):
     return out
 
 
+RESPONSE_SCHEMA = 1
+RESPONSE_MD_HEADER = (
+    "# Guard-response record (§12 v1.28 — was the block complied with, or routed around?)\n\n"
+    "One committed row per gate per cycle. `blocks` is written by the HOOKS (mechanical, via\n"
+    "_common.emit); `accounted` counts the agent's own three-clause responses recorded with\n"
+    "`bin/guard_note.py`. Self-report can move `accounted`; it cannot touch `blocks` — so an\n"
+    "agent that simply stays quiet produces a visible `unaccounted`, not a clean record.\n"
+    "`elsewhere` counts responses admitting the blocked action was performed by another\n"
+    "route: that column should be 0 forever, and any other value is a finding.\n\n"
+    "schema: {schema}\n\n"
+    "| date | gate | blocks | accounted | unaccounted | elsewhere |\n"
+    "|---|---|---|---|---|---|\n")
+
+
+def default_response_md():
+    explicit = os.environ.get("TDD_PLAYBOOK_RESPONSE_MD")
+    if explicit:
+        return explicit
+    yield_md = os.environ.get("TDD_PLAYBOOK_YIELD_MD")
+    if yield_md:
+        return os.path.join(os.path.dirname(yield_md), "guard_response.md")
+    return os.path.join(project_root(), "docs", "calibration", "guard_response.md")
+
+
+def _write_response_rows(path, date, per_gate):
+    """Append one row per gate that saw a block OR a response this cycle, and return the
+    lines to print. Written from the SAME drain pass as the yield rollup — a second pass
+    over a drained log would silently record zeros."""
+    rows, lines = [], []
+    for gate in sorted(per_gate):
+        c = per_gate[gate]
+        blocks, acc, elsewhere = c["block"], c["response"], c["elsewhere"]
+        if not blocks and not acc:
+            continue
+        unaccounted = max(0, blocks - acc)
+        rows.append((gate, blocks, acc, unaccounted, elsewhere))
+        if elsewhere:
+            lines.append(
+                "PERFORMED ELSEWHERE: {} — {} response(s) admit the blocked action was "
+                "carried out by another route. This is the move the guard exists to stop; "
+                "read them before anything else.".format(gate, elsewhere))
+        if unaccounted:
+            lines.append(
+                "UNACCOUNTED: {} — {} block(s) with no recorded response ({} of {} "
+                "accounted). Silence is not compliance: record the three clauses with "
+                "bin/guard_note.py, or the transcript is the only evidence there is."
+                .format(gate, unaccounted, acc, blocks))
+    if not rows:
+        return lines
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    new = not os.path.isfile(path)
+    with open(path, "a") as fh:
+        if new:
+            fh.write(RESPONSE_MD_HEADER.format(schema=RESPONSE_SCHEMA))
+        for gate, blocks, acc, unaccounted, elsewhere in rows:
+            fh.write("| {} | {} | {} | {} | {} | {} |\n".format(
+                date, gate, blocks, acc, unaccounted, elsewhere))
+    return lines
+
+
 def cmd_rollup(args):
     raw, skipped = read_raw(args.log)
     if skipped:
@@ -149,7 +211,14 @@ def cmd_rollup(args):
     for row in raw:
         gate = str(row.get("gate") or "unknown")
         counts = per_gate.setdefault(gate, {"block": 0, "warn": 0, "override": 0,
-                                            "suppressed": 0, "fp": 0})
+                                            "suppressed": 0, "fp": 0,
+                                            "response": 0, "elsewhere": 0})
+        if row.get("event") == "response":
+            counts["response"] += 1
+            if str(row.get("performed_elsewhere") or "").lower() == "yes":
+                counts["elsewhere"] += 1
+            continue          # `response` is a counts key, so the generic increment below
+                              # would double it — the arithmetic IS the instrument here
         ev = row.get("event")
         if ev in counts:
             counts[ev] += 1
@@ -170,9 +239,13 @@ def cmd_rollup(args):
             fh.write("| {} | {} | {} | {} | {} | {} | {} |\n".format(
                 args.date, gate, c["block"], c["warn"], c["override"], c["suppressed"],
                 c["fp"]))
+    response_lines = _write_response_rows(
+        getattr(args, "response_md", None) or default_response_md(), args.date, per_gate)
     os.remove(args.log)  # drained — the committed rollup is the durable record
     print("rollup: {} gate(s) recorded for {} in {} (raw log drained)".format(
         len(per_gate), args.date, args.md))
+    for ln in response_lines:
+        print(ln)
     return 0
 
 
@@ -354,6 +427,9 @@ def main(argv=None):
                          "consecutive growth cycles to flag (default 3)")
     ap.add_argument("--line", action="append", default=[],
                     help="dataflow-rollup: one dataflow_sweeps summary line (repeatable)")
+    ap.add_argument("--response-md", default=None,
+                    help="rollup: committed guard-response record (default: beside the "
+                         "yield record)")
     args = ap.parse_args(argv)
     if args.command in ("dataflow-rollup", "dataflow-trend"):
         args.md = args.md or default_dataflow_md()
