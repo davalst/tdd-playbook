@@ -395,23 +395,32 @@ def _floor_from(blocks, covered):
 # ----------------------------------------------------------------- commands
 
 def baseline_or_epoch(resolve, baseline_rev, epoch):
-    """Classify what history this environment can actually see.
+    """Classify what history this environment can actually see, EPOCH-FIRST.
 
-    Returns (rev, state): ("<sha>", "baseline") when the requested baseline resolves;
-    (epoch_sha, "epoch") when it does not but the EPOCH does — coverage is only ever
-    required since the epoch, so scoping there loses nothing and keeps ENFORCEMENT; and
-    (None, "unmeasured") when neither resolves, which means this clone has no history to
-    diff against (the engine's runner clones shallowly). Found live 2026-08-06: a shallow
-    clone made `check` exit 3 and held the repo red on the engine for two days on an
-    ENVIRONMENT property, not a violation. A gate that cannot run where it is judged must
-    SAY so — it must neither fabricate a violation nor silently pass.
+    Coverage is only ever required for gate-surface changes made AFTER the epoch, so the
+    epoch is the correct scope AND the widest one: a newer resolvable baseline would
+    silently narrow the window and skip changes made between the epoch and that baseline.
+    Returns (rev, state):
+      (epoch_sha, "epoch")     — the normal path wherever the epoch is reachable;
+      ("<sha>", "baseline")    — FALLBACK only when the epoch is unreachable but a
+                                 baseline is (a clone truncated after the epoch);
+      (None, "unmeasured")     — neither resolves: nothing to diff against.
+
+    ENVIRONMENT, verified 2026-08-06 rather than assumed: the engine's runner deepens the
+    clone to ~174 commits BEFORE the gate runs, so the epoch DOES resolve there — but it
+    fetches ancestry, not tags, so `--baseline-rev v1.22.0` resolves to nothing. That is
+    what made `check` exit 3 and held this repo's `tests` red for two days. (An earlier
+    commit message of mine blamed a 1-commit shallow clone; that mechanism was WRONG —
+    CIVerd measured the real depth and corrected it. The failing BRANCH was the same, which
+    is why the fix held; the story was not. Recorded here because a wrong mechanism in a
+    docstring is exactly the guard-self-claim class this release is about.)
     """
-    rev = resolve(baseline_rev)
-    if rev:
-        return rev, "baseline"
     epoch_full = resolve(epoch) if epoch else None
     if epoch_full:
         return epoch_full, "epoch"
+    rev = resolve(baseline_rev)
+    if rev:
+        return rev, "baseline"
     return None, "unmeasured"
 
 
@@ -433,19 +442,13 @@ def cmd_check(args):
         head = resolve("HEAD")
         rev, _state = baseline_or_epoch(resolve, args.baseline_rev, epoch)
         if rev is None:
-            print("ledger UNMEASURED: neither --baseline-rev {} nor the EPOCH {} resolves "
-                  "in this clone — no history to diff against (a shallow clone cannot "
-                  "perform coverage). Reported, not fabricated: coverage is enforced where "
-                  "history exists (the developer's tree and any full clone). Deepen the "
-                  "clone to restore enforcement here.".format(args.baseline_rev, epoch))
+            print("ledger UNMEASURED: neither the EPOCH {} nor --baseline-rev {} resolves "
+                  "in this clone — no history to diff against. Reported, not fabricated: "
+                  "coverage is enforced wherever the epoch is reachable. Deepen the clone "
+                  "to restore enforcement here.".format(epoch, args.baseline_rev))
             return 0
-        # THE EPOCH. Coverage is required only for changes at or after the commit that
-        # introduced the ledger. With four releases untagged, `git describe` resolves to a
-        # baseline long predating this instrument, and requiring entries back to it would
-        # demand pre-registration of changes already made — a contradiction in terms.
-        epoch_full = resolve(epoch)
-        if epoch_full and is_ancestor(rev, epoch_full):
-            rev = epoch_full
+        # (Scope is decided in baseline_or_epoch above: EPOCH-first, because coverage is
+        # only required for changes at or after the commit that introduced the ledger.)
         problems = []
         problems += schema_problems(registered, known_scenario_ids(repo), resolve)
         problems += no_effect_problems(registered)

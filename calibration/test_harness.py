@@ -1202,8 +1202,23 @@ def _ledger_tests():
         def res_no_tag(r):
             return None if r == "v1.22.0" else (epoch if r.startswith("e") else None)
         rev, state = L.baseline_or_epoch(res_no_tag, "v1.22.0", "e" * 7)
-        check("ledger: unresolvable baseline falls back to the EPOCH and still enforces",
+        check("ledger: unresolvable baseline still scopes to the EPOCH and enforces",
               rev == epoch and state == "epoch", (rev, state))
+        # CIVerd 2026-08-06: the EPOCH is the PRIMARY scope, not a fallback. Coverage is
+        # only ever required for changes AFTER the epoch, so scoping there is both the
+        # correct window and the widest one; a NEWER baseline would silently narrow it and
+        # skip gate-surface changes made between the epoch and that baseline.
+        def res_both(r):
+            return {"v9.9.9": "n" * 40}.get(r) or (epoch if r.startswith("e") else None)
+        rev4, state4 = L.baseline_or_epoch(res_both, "v9.9.9", "e" * 7)
+        check("ledger: EPOCH is PRIMARY — a newer resolvable baseline cannot narrow the "
+              "coverage window",
+              rev4 == epoch and state4 == "epoch", (rev4, state4))
+        def res_epochless(r):
+            return {"v1.22.0": "a" * 40}.get(r)
+        rev5, state5 = L.baseline_or_epoch(res_epochless, "v1.22.0", "e" * 7)
+        check("ledger: baseline is the FALLBACK when the epoch is unreachable",
+              rev5 == "a" * 40 and state5 == "baseline", (rev5, state5))
         def res_none(r):
             return None
         rev2, state2 = L.baseline_or_epoch(res_none, "v1.22.0", "e" * 7)
@@ -1212,8 +1227,8 @@ def _ledger_tests():
         def res_all(r):
             return {"v1.22.0": "a" * 40}.get(r) or (epoch if r.startswith("e") else None)
         rev3, state3 = L.baseline_or_epoch(res_all, "v1.22.0", "e" * 7)
-        check("ledger: a resolvable baseline is unchanged (enforcement path intact)",
-              rev3 == "a" * 40 and state3 == "baseline", (rev3, state3))
+        check("ledger: with both resolvable, the EPOCH governs (enforcement intact)",
+              rev3 == epoch and state3 == "epoch", (rev3, state3))
     import history_format as hf
 
     blocks, _ = hf.parse_run_blocks(
