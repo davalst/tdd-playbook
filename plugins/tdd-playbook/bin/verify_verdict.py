@@ -82,6 +82,16 @@ EXPECTED_PRESENT = ("staleness",)
 CI_CORE = ("tests",)
 
 
+# DO NOT PUT NON-CHECK TOKENS IN gate_cmd (2026-08-06). I floated exactly that as a "cheap
+# door" for carrying the integrity baseline rev off-box in an already-signed field — the
+# engine team refused it with a reason I had no way to see from here: their run classifier
+# requires EVERY &&-separated token to name a check the entry actually ran, which is what
+# stops a maintenance verdict from impersonating a release-deciding one. A
+# `--baseline-rev <sha>` token would make every verdict classify as unrecognized and be
+# REFUSED. Recorded at the call site rather than in a message, because the next session to
+# want a free field will start reading right here, and a rejected idea that leaves no trace
+# gets re-proposed. The baseline rev lives in their unsigned forensic journal by design; if
+# it ever needs to be signed, that is closed-schema work, not a field graft.
 def gate_cmd_checks(snapshot):
     """The check names an entry's gate_cmd claims to have run."""
     return {t.strip() for t in str(snapshot.get("gate_cmd") or "").split("&&") if t.strip()}

@@ -365,10 +365,23 @@ PROMOTION_QUARANTINE = [
 ]
 
 
-def quarantine_problems(today=None):
+def quarantine_problems(today=None, corpus_ids=None):
     """Expired or malformed quarantine entries, as loud strings. Fails closed: an expired
-    entry is REPORTED here and simultaneously stops protecting in verdict_for()."""
+    entry is REPORTED here and simultaneously stops protecting in verdict_for().
+
+    Also fails closed on the NAME-KEYED AUTHORIZATION shape (2026-08-06, from CIVerd's
+    engine sweep of the two-windows class): this quarantine suppresses promotion for a
+    scenario ID, and an id is a name. It is safe today only because every target is a
+    corpus/approved plant, which integrity rule (b) pins byte-identical — safe by ANOTHER
+    gate, and enforced by nothing. A target that lives only in scenarios.json would be
+    name-keyed authorization over MUTABLE content: the oracle can be rewritten legally
+    (journaled), and a quarantine granted for the OLD defect would go on suppressing
+    promotion for whatever the new one turns out to be. So the pairing is now the rule.
+    `corpus_ids` is injectable because a check nobody can plant against is not a check.
+    """
     today = today or datetime.date.today()
+    if corpus_ids is None:
+        corpus_ids = {c.get("id") for c in load_corpus()}
     out = []
     for e in PROMOTION_QUARANTINE:
         missing = [f for f in ("what", "target", "owner", "expires") if not e.get(f)]
@@ -381,6 +394,14 @@ def quarantine_problems(today=None):
         except ValueError:
             out.append("PROMOTION QUARANTINE {}: expires {!r} is not YYYY-MM-DD".format(
                 e["target"], e["expires"]))
+            continue
+        if e["target"] not in corpus_ids:
+            out.append(
+                "PROMOTION QUARANTINE {}: no approved plant carries that id — quarantine is "
+                "NAME-keyed, so a target whose content is mutable lets authorization granted "
+                "for the OLD defect carry over to whatever replaces it. Target an immutable "
+                "corpus/approved plant, or pin the content some other way first."
+                .format(e["target"]))
             continue
         if exp < today:
             out.append(

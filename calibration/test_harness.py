@@ -761,6 +761,22 @@ def _promotion_quarantine_tests():
           rc.quarantine_problems(past))
     check("quarantine: live quarantine reports no problem",
           rc.quarantine_problems(live) == [], rc.quarantine_problems(live))
+    # PLANTED (2026-08-06, from CIVerd's engine sweep): quarantine authorization is
+    # NAME-keyed — it suppresses promotion for a scenario id. Their finding, in their own
+    # engine, was the same shape: plan retirement keyed on a NAME while the content it was
+    # granted for could later change underneath it, so old evidence pre-authorizes new
+    # promises. Here it is safe only because all six targets are corpus/approved plants,
+    # which integrity rule (b) pins byte-identical — i.e. safe by ANOTHER gate and enforced
+    # by nothing. A target that lives only in scenarios.json is name-keyed authorization
+    # over MUTABLE content: the oracle can be rewritten legally (journaled), and a
+    # quarantine recorded for the OLD defect goes on suppressing promotion for whatever
+    # the new one turns out to be.
+    check("quarantine: PLANTED a target with no immutable plant behind it is refused",
+          any("mutable" in p or "no approved plant" in p
+              for p in rc.quarantine_problems(live, corpus_ids=set())),
+          rc.quarantine_problems(live, corpus_ids=set()))
+    check("quarantine: CONTROL the real targets all resolve to approved plants",
+          rc.quarantine_problems(live) == [], rc.quarantine_problems(live))
     check("quarantine: every entry carries the house debt shape (what/target/owner/expires)",
           all(set(("what", "target", "owner", "expires")).issubset(e)
               for e in rc.PROMOTION_QUARANTINE), rc.PROMOTION_QUARANTINE)
