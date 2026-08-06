@@ -59,6 +59,14 @@ def _git(repo, *args):
     return subprocess.run(["git", "-C", repo, *args], capture_output=True, timeout=60)
 
 
+def _rev_sha(repo, rev):
+    """The commit `rev` actually resolves to, short-form; the rev itself if git can't say.
+    Never raises: this only DECORATES a verdict, and a verdict must not fail on cosmetics."""
+    p = _git(repo, "rev-parse", "--short=12", "{}^{{commit}}".format(rev))
+    out = (p.stdout or b"").decode("utf-8", "replace").strip()
+    return out if p.returncode == 0 and out else rev
+
+
 def baseline_bytes(repo, rev, path):
     """File bytes at baseline, or None if the path did not exist there."""
     p = _git(repo, "cat-file", "-e", "{}:{}".format(rev, path))
@@ -223,20 +231,31 @@ def main(argv=None):
     except BaselineUnreadable as e:
         print("INTEGRITY UNKNOWN (fail closed): {}".format(e), file=sys.stderr)
         return 3
+    # NAME THE TREE YOU ACTUALLY DIFFED (2026-08-06, the CIVerd exchange). A rev is a LABEL
+    # and a tag is a moving pointer; the moving pointer is the whole bug class. On
+    # 2026-08-05 this printed "CLEAN vs v1.22.0" while the engine printed RED vs v1.26.0 on
+    # the same tree — both correct, neither output revealing they were asking different
+    # questions, and a day went into finding that out. The resolved sha appears on SUCCESS
+    # as well as failure: a green whose baseline you cannot name is exactly the case that
+    # hid this, and success is when nobody goes looking.
+    baseline_sha = _rev_sha(args.repo, args.baseline_rev)
+    named = args.baseline_rev if baseline_sha == args.baseline_rev else "{} ({})".format(
+        args.baseline_rev, baseline_sha)
     if journal_added.strip():
         # The journal mechanically authorizes whoever writes it (the engine's ratification
         # token is the hard counter) — locally, every authorization is at least LOUD:
         print("oracle-changes.md journal additions since {} (each authorizes the ids it "
-              "names — review them):".format(args.baseline_rev))
+              "names — review them):".format(named))
         for ln in journal_added.strip().splitlines():
             print("  | " + ln)
     if violations:
         for v in violations:
             print("INTEGRITY RED: " + v)
+        print("(compared against {})".format(named))
         return 2
     print("scoreboard integrity CLEAN vs {} (history append-only, corpus immutable+growing, "
           "oracles never weakened unjournaled, gate surfaces never removed unjournaled)"
-          .format(args.baseline_rev))
+          .format(named))
     return 0
 
 

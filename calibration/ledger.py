@@ -374,6 +374,26 @@ def _read(path):
         return ""
 
 
+def fresh_ids_from(appended_ids, scored):
+    """The ids that may still AUTHORIZE a gate-surface change: appended since the scope, and
+    not yet PRICED.
+
+    2026-08-06 — the second half of the moving-baseline lesson, found in this file hours
+    after I wrote the first half in a message to CIVerd. Freshness used to be measured from
+    `--baseline-rev` while the surface diff was measured from the EPOCH, so the control had
+    no fixed meaning: at the old tag no ledger.md existed, `git show` failed, the "added"
+    text was the WHOLE FILE and every entry read as fresh; the moment v1.28.0 was tagged the
+    added text became empty and NO entry could ever be fresh. Vacuous, then impossible, and
+    the flip was triggered by cutting a tag rather than by anything about the ledger.
+
+    The window is now the epoch, like the diff — and the meaning that survives is the one
+    that never depended on a window: a prediction already SCORED has been priced, so it
+    cannot be reused to authorize a later edit. That is what "new this cycle" was always
+    reaching for.
+    """
+    return {i for i in appended_ids if i not in {s["id"] for s in scored}}
+
+
 def _fresh_ids(repo, rev, ledger_rel, registered):
     """Entry ids appearing in ledger.md's text ADDED since the baseline — the same
     added-since-baseline mechanism the oracle/gate journals authorize through."""
@@ -452,9 +472,13 @@ def cmd_check(args):
         problems = []
         problems += schema_problems(registered, known_scenario_ids(repo), resolve)
         problems += no_effect_problems(registered)
+        # ONE window for both halves (2026-08-06): the surfaces are diffed from `rev` and
+        # the authorizing entries are read from `rev`. Two windows meant the verdict moved
+        # when a tag was cut — see fresh_ids_from.
         problems += coverage_problems(changed_gate_surfaces(repo, rev, head), registered,
-                                      _fresh_ids(repo, args.baseline_rev, args.ledger,
-                                                 registered),
+                                      fresh_ids_from(
+                                          _fresh_ids(repo, rev, args.ledger, registered),
+                                          scored),
                                       path_state, head, rev, epoch, is_ancestor)
         blocks, skipped = hfmt.parse_run_blocks(_read(os.path.join(repo, args.history)))
         bindings = [bind_entry(e, blocks, resolve, is_ancestor) for e in registered]

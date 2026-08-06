@@ -423,6 +423,27 @@ def _d3_integrity_tests():
         check("integrity: unchanged tree -> 0", run_ck(d).returncode == 0,
               (run_ck(d).returncode, run_ck(d).stdout, run_ck(d).stderr))
 
+        # 2026-08-06 (CIVerd exchange): a GREEN whose baseline you cannot name is the case
+        # that cost a day — my local run said "CLEAN vs v1.22.0" and the engine's said RED
+        # vs v1.26.0 on the same tree, and neither output revealed they were asking
+        # different questions. A LABEL is not an answer: a tag is a moving pointer, and the
+        # moving pointer IS the bug class. So the resolved sha must appear on success too.
+        git = lambda *a: subprocess.run(["git", "-C", d, *a], capture_output=True,  # noqa: E731
+                                        text=True, timeout=30)
+        head_sha = git("rev-parse", "HEAD").stdout.strip()
+        p = run_ck(d)
+        check("integrity: a CLEAN verdict names the resolved baseline SHA, not just the rev",
+              head_sha[:12] in p.stdout, (head_sha[:12], p.stdout))
+        # and on the failing path too — a RED that misnames its baseline sends the reader
+        # to the wrong tree, which is worse than a RED that says nothing
+        with open(path_in(d, "calibration", "corpus", "approved", "c1.json"), "w") as fh:
+            fh.write('{"id": "c1", "agent": "a1", "plant": "MUTATED", "task": "t"}\n')
+        p = run_ck(d)
+        check("integrity: a RED verdict names the resolved baseline SHA",
+              p.returncode == 2 and head_sha[:12] in (p.stdout + p.stderr),
+              (p.returncode, p.stdout, p.stderr))
+        git("checkout", "--", "calibration/corpus/approved/c1.json")
+
         # appended history rows are the normal case
         with open(path_in(d, "docs", "calibration", "history.md"), "a") as fh:
             fh.write("| 2026-08-10 | haiku | s1 | a1 | PASS |\n")
@@ -1353,6 +1374,17 @@ def _ledger_tests():
           cov(state(), set()) != [])
     check("ledger: PLANTED speculative entry (path never moved) does NOT cover",
           cov(state(moved=False), {e["id"]}) != [])
+    # 2026-08-06: "new this cycle" used to mean "appended since --baseline-rev", which made
+    # the control swing between vacuous (no ledger existed at the old tag, so EVERY entry
+    # read as fresh) and impossible (after a tag, NO entry does). Freshness is now scoped to
+    # the epoch like the diff, and the meaning that survives is this one: a prediction that
+    # has already been PRICED cannot authorize a later edit.
+    check("ledger: PLANTED an already-SCORED entry does not cover a fresh change",
+          L.fresh_ids_from({e["id"], "L-19990101-99"}, [{"id": e["id"]}])
+          == {"L-19990101-99"},
+          L.fresh_ids_from({e["id"], "L-19990101-99"}, [{"id": e["id"]}]))
+    check("ledger: CONTROL an unscored entry stays fresh",
+          L.fresh_ids_from({e["id"]}, []) == {e["id"]})
 
     bound = [(blocks[0], "bound")]
     check("ledger: PLANTED bound-but-unscored entry is a finding",
@@ -1407,6 +1439,25 @@ def _ledger_tests():
                            capture_output=True, text=True, timeout=180)
         check("ledger: `check` on THIS repo exits 0 (the gate step is not theatre)",
               p.returncode == 0, (p.returncode, p.stdout[-400:], p.stderr[-400:]))
+        # PLANTED (2026-08-06): civerd_gate.sh resolves its baseline with
+        # `git describe --tags --abbrev=0`, so CUTTING A TAG silently changes the question
+        # this gate asks — the moving-baseline class, in the code where I had just finished
+        # writing the lesson down. The verdict must not depend on which tag happens to be
+        # newest: coverage is scoped to the EPOCH, so the freshness window must be too.
+        # Before the fix this exited 1 with five false "gate surface changed with no
+        # covering ledger entry" lines, minutes after v1.28.0 was tagged.
+        newest = subprocess.run(["git", "-C", REPO, "describe", "--tags", "--abbrev=0"],
+                                capture_output=True, text=True, timeout=30)
+        if newest.returncode == 0 and newest.stdout.strip():
+            pn = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), "check",
+                                 "--baseline-rev", newest.stdout.strip()],
+                                capture_output=True, text=True, timeout=180)
+            check("ledger: `check` gives the SAME verdict under the newest tag as under an "
+                  "old one (cutting a tag must not manufacture a RED)",
+                  pn.returncode == p.returncode,
+                  (newest.stdout.strip(), pn.returncode, pn.stdout[-400:]))
+        else:
+            check("ledger: newest-tag baseline probe SKIPPED — no tags in this clone", True)
         gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
         check("ledger: civerd_gate.sh carries a blocking ledger.py check step",
               "ledger.py" in gate and "check" in gate, gate[-400:])
