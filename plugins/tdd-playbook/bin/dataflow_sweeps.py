@@ -790,6 +790,26 @@ def main(argv=None):
             print("dataflow_sweeps all: refusing a vacuous pass — no sweep section is "
                   "present in the config; nothing armed is nothing checked")
             return EXIT_VACUOUS
+        # H15 / §12: report the DENOMINATOR, and refuse a shortfall nobody declared.
+        # Found live 2026-08-06: 3 sweeps declared, 1 armed. `ghost_gates` and
+        # `exemption_prose` were simply absent from the config — `exemption_prose` was
+        # specified BLOCKING in v1.24 and had never run once — and this command printed one
+        # line about the one sweep that did run and exited 0, under a gate that then said
+        # "ALL suites green". Absence is not a decision; it has to be written down.
+        unarmed = sorted(set(_SECTION_OF) - set(armed))
+        declared = set(cfg.get("unarmed") or [])
+        print("dataflow_sweeps: {} of {} sweeps armed ({}){}".format(
+            len(armed), len(_SECTION_OF), " · ".join(sorted(armed)),
+            " · UNARMED: " + " · ".join(unarmed) if unarmed else ""))
+        undeclared = [s for s in unarmed if _SECTION_OF[s] not in declared]
+        if undeclared:
+            print("dataflow_sweeps all: refusing — {} declared sweep(s) are unarmed and "
+                  "UNDECLARED ({}). A sweep missing from the config is indistinguishable "
+                  "from one nobody wanted; list its section in the config's `unarmed` array "
+                  "with a reason, or arm it. Silence is not a decision."
+                  .format(len(undeclared),
+                          " · ".join(_SECTION_OF[s] for s in undeclared)))
+            return EXIT_VACUOUS
         codes = {}
         for sub in sorted(armed):
             codes[sub] = run_one(sub, cfg, base, as_of, args.strict, registry_path)

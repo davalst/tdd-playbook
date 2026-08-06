@@ -203,6 +203,26 @@ def test_exitcode():
     it must flag the masked case and stay silent on every honest handling."""
     s = "exitcode_guard.py"
 
+    # H15 / SCOPE DECISION, 2026-08-06 — DECIDED, not assumed. Cheliped asked whether a
+    # SELECTOR flag is in scope for this guard, and specified the plant that settles it: a
+    # suite with one failing test plus a marker that deselects it, reported as a pass. The
+    # answer is NO, and it is pinned here as an ALLOW row so a future session that widens
+    # the guard has to confront the decision rather than drift into it.
+    #
+    # Why: this hook fires on the Bash call, and at that moment a scoped run is
+    # indistinguishable from a scoped REPORT. Narrowing while iterating is normal and
+    # correct; a guard that flags it cries wolf and gets demoted, which is how a guard dies.
+    # The error lives at the reporting end, so the denominator rule (§12) covers it there —
+    # `N of M`, not a hook. See HACK_CATALOG H15.
+    for cmd in ('pytest -m "not flaky"',
+                'pytest -k "not docker" tests/',
+                "pytest --ignore=tests/integration",
+                "pytest --lf",
+                "pytest --maxfail=1 && echo done"):
+        check("exitcode: SELECTOR stays silent (decided out of scope, H15): " + cmd[:38],
+              run(s, {"tool_name": "Bash",
+                      "tool_input": {"command": cmd}})[0] == 0, cmd)
+
     def ev(cmd):
         return {"tool_name": "Bash", "tool_input": {"command": cmd}}
 

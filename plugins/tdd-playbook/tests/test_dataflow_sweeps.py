@@ -298,7 +298,8 @@ def test_ghost_gates():
         # dynamic attribute name -> UNRESOLVABLE count, never a silent pass
         write(td, "src/dyn.py", "v = getattr(cfg, name, True)\n")
         write(td, "src/declared.py", "class Config:\n    a_enabled = True\n")
-        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+        c = cfg(td, {"unarmed": ["render_pairing", "exemption_prose"],
+                     "ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
                                      "declared_fields": {"kind": "module",
                                                          "path": "src/declared.py"}}})
         rc, out = run(["ghost-gates", "--config", c])
@@ -378,7 +379,8 @@ def test_summary_format():
     with tempfile.TemporaryDirectory() as td:
         write(td, "src/ghost.py", 'v = getattr(cfg, "x_enabled", True)\n')
         write(td, "src/declared.py", "class Config:\n    z_enabled = False\n")
-        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+        c = cfg(td, {"unarmed": ["render_pairing", "exemption_prose"],
+                     "ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
                                      "declared_fields": {"kind": "module",
                                                          "path": "src/declared.py"}}})
         rc, out = run(["ghost-gates", "--config", c])
@@ -410,7 +412,8 @@ def test_fail_closed_scan():
         # converts a zero-checked scan into a pass)
         write(td, "src/dyn.py", "v = getattr(cfg, name, True)\n")
         write(td, "src/declared.py", "class Config:\n    a_enabled = True\n")
-        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+        c = cfg(td, {"unarmed": ["render_pairing", "exemption_prose"],
+                     "ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
                                      "declared_fields": {"kind": "module",
                                                          "path": "src/declared.py"}}})
         rc, out = run(["ghost-gates", "--config", c])
@@ -508,7 +511,10 @@ def test_all_subcommand():
     with tempfile.TemporaryDirectory() as td:
         write(td, "src/clean.py", 'Z = "{k}".format(k=2)\n')
         write(td, "capabilities.json", json.dumps(reg))
+        # v1.30 (H15): a config that leaves a DECLARED sweep unarmed must say so, or `all`
+        # refuses — absence and decision are otherwise indistinguishable.
         c = cfg(td, {"render_pairing": {"scan": ["src"]},
+                     "unarmed": ["ghost_gates"],
                      "exemption_prose": {"claims": [
                          {"what": "w", "claim": "always-on",
                           "artifact": "capabilities.json", "capability": "cap-on"}]}})
@@ -529,7 +535,8 @@ def test_all_subcommand():
         # ghost-gates stays advisory under `all` (Tier 2), --strict flips it
         write(td, "src/ghost.py", 'v = getattr(cfg, "x_enabled", True)\n')
         write(td, "src/declared.py", "class Config:\n    z_enabled = False\n")
-        c = cfg(td, {"ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
+        c = cfg(td, {"unarmed": ["render_pairing", "exemption_prose"],
+                     "ghost_gates": {"scan": ["src"], "gate_patterns": ["*_enabled"],
                                      "declared_fields": {"kind": "module",
                                                          "path": "src/declared.py"}}})
         rc, out = run(["all", "--config", c])

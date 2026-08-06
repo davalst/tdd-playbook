@@ -557,12 +557,19 @@ def cmd_check(args):
         # ONE window for both halves (2026-08-06): the surfaces are diffed from `rev` and
         # the authorizing entries are read from `rev`. Two windows meant the verdict moved
         # when a tag was cut — see fresh_ids_from.
-        problems += coverage_problems(changed_gate_surfaces(repo, rev, head), registered,
+        changed = changed_gate_surfaces(repo, rev, head)
+        problems += coverage_problems(changed, registered,
                                       fresh_ids_from(
                                           _fresh_ids(repo, rev, args.ledger, registered),
                                           scored),
                                       path_state, head, rev, epoch, is_ancestor)
         blocks, skipped = hfmt.parse_run_blocks(_read(os.path.join(repo, args.history)))
+        if skipped:
+            # plant_vitality reports this loudly; ledger used to bind it and throw it away.
+            problems.append(
+                "{} run header(s) in history.md did not parse, so the binder cannot see "
+                "those runs — a prediction can read PENDING forever because the run that "
+                "scored it was invisible".format(skipped))
         forms = load_forms(repo)
         bindings = [bind_entry(e, blocks, resolve, is_ancestor,
                                entry_form(e, forms)) for e in registered]
@@ -582,9 +589,14 @@ def cmd_check(args):
             print("ledger: {} finding(s) — WARN-ONLY, not failing".format(len(problems)))
             return 0
         return 1
-    print("ledger CLEAN: {} entr(ies), {} scored row(s); every changed gate surface since {} "
-          "is covered by a pre-registered entry".format(
-              len(registered), len(scored), (epoch or args.baseline_rev)[:7]))
+    # H15/§12: the claim is "every changed gate surface is covered" and the denominator
+    # printed used to be the count of LEDGER ENTRIES — the wrong set entirely. Drop a
+    # prefix from SURFACE_PATTERNS and zero surfaces get checked, under an identical line.
+    print("ledger CLEAN: covered {} of {} changed gate surface(s) since {} · {} entr(ies), "
+          "{} scored row(s){}".format(
+              len(changed), len(changed), (epoch or args.baseline_rev)[:7],
+              len(registered), len(scored),
+              " · {} unparsed run header(s) EXCLUDED".format(skipped) if skipped else ""))
     return 0
 
 

@@ -2,7 +2,7 @@
 
 **Versioned. Guards cite entry IDs. The catalog only grows.**
 Catalog version: **2026.08** (2026.07 seeded from the July 2026 research corpus; 2026.08
-adds H11–H14 and widens the framing — H9/H10/H11/H13/H14 are honest-miss classes, not
+adds H11–H15 and widens the framing — H9/H10/H11/H13/H14 are honest-miss classes, not
 gaming: nobody is cheating, the failure survives BECAUSE everyone is sincere. H13/H14 come
 from a field report of nine defects in one sprint in which every gate fired and worked)
 
@@ -245,6 +245,40 @@ never enumerated (§4).
   (§6c family parity). Mechanical reminder: `exhaustive_claim_guard.py` (warn), itself
   calibrated in both directions per H13.
 
+### H15 — The narrowed scope reported as the whole
+A verification command whose scope is narrowed BY ANY MEANS answers a narrower question than
+the one being reported, and the narrowing is invisible in the result. The selector family is
+large and nearly all of it is legitimate: `-m`/`-k` markers, `--ignore`, `--lf`, `--maxfail`,
+a path list, `testpaths`/`addopts` in a config file (invisible at the call site entirely),
+`-p no:randomly`, a glob, an `os.listdir`, a hardcoded roster, a config list of which checks
+are ARMED. What makes this a distinct class rather than an instance of H5 is that **there is
+no mistake to hunt for**: the quarantine is sanctioned, the exclusion is policy, the gate does
+exactly what its docs say. Only the report is wrong, and it is wrong by omission. A pipe that
+swallows an exit code is the same class wearing plumbing; a marker filter is the same class
+wearing governance, and the second is more dangerous precisely because it looks deliberate.
+The tell is a green with no denominator, or a denominator derived from the same filter it
+describes — `N of N` moves with the narrowing and cannot reveal it.
+- Evidence: Cheliped, 2026-08 — `-m "not flaky"` reported **"13754 passed"** while the
+  unfiltered suite was RED; CIVerd found the same class in three repos in two days. This repo,
+  same window: three §6c dataflow sweeps declared and ONE armed (`exemption_prose` specified
+  BLOCKING in v1.24 and never once run), under a top-level gate that printed "ALL suites
+  green" with no number anywhere; and the ledger's own anti-backfill clause had silently
+  become un-satisfiable, which is the same class inside the correction for it.
+- Defense: §12 — a verification result is a CLAIM and carries its SCOPE; never a numerator
+  without its denominator, and where a count can be independently expected, compare it against
+  that expectation rather than the filter (`test_agents`' independent-roster pattern is the
+  worked example). §4a's vacuity guard is this rule at scope=0. Mechanical: `civerd_gate.sh`
+  reports suites/checks/armed/baseline instead of "ALL"; `dataflow_sweeps all` reports
+  `A of B armed` and REFUSES an undeclared shortfall; the harness asserts every defined
+  section is registered; the SUITES roster carries a floor. Deliberately NOT a hook —
+  `exitcode_guard` stays silent on selector flags, because a PreToolUse hook cannot tell
+  RUNNING from REPORTING and a guard that cries wolf on normal scoped work gets demoted.
+- Corollary, from the same report and worth its own line: **having the rule loaded does not
+  prevent the error.** Cheliped had `parse it; a grep matches your own docstring` in context
+  and wrote `grep -c` anyway, inside the fix for this class — three loaded rules, three misses,
+  one sprint. Treat "the doctrine already covers it" as necessary but not sufficient evidence
+  that a class is handled (§12, §13).
+
 ## Guard ↔ entry map (kept current; a row with "—" is a known open gap)
 
 | Entry | Mechanical guard(s) | Behavioral defense |
@@ -263,6 +297,7 @@ never enumerated (§4).
 | H12 | tdd_lock `--class` asymmetric bar (gate-wrong refused under 30 chars) + `class_mismatch` flag recorded-never-corrected (planted: test_tdd_lock reason-class pair) | `/grade` gate-wrong-share + mismatch read; R4.3 human demotion call — the count never retires a gate by itself |
 | H13 | two-directional calibration table per blocking guard (planted: test_hooks v1.28 ALLOW-DIRECTION block — FP1–FP4 + surviving block rows); exitcode_guard for the discarded-verdict cousin | §13 guard self-claims are unverified claims; guard_note + `blocks · accounted · UNACCOUNTED` makes a routed-around block visible |
 | H14 | exhaustive_claim_guard (warn; planted: test_hooks test_exhaustive_claim, both directions) | §12 violating-case line; §6c family parity enumerates from the REAL registry; NOT covered by §4 mutation score |
+| H15 | denominator on every verdict surface — civerd_gate.sh suites/checks/armed/baseline; `dataflow_sweeps all` A-of-B armed + REFUSE on undeclared shortfall; harness section-registration invariant; SUITES floor; `test_agents` independent-roster pattern (planted: both directions per surface) | §12 a result carries its scope + §4a vacuity as the degenerate case; selectors DECIDED out of scope for exitcode_guard (pinned ALLOW row), because a PreToolUse hook cannot tell running from reporting |
 
 ## Refresh ritual (quarterly — the co-evolution mechanism, §13)
 

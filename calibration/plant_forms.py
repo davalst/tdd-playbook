@@ -57,6 +57,14 @@ LEAK_SCAN = (
     "plugins/tdd-playbook/commands",
     "calibration/scenarios.json",
 )
+# `.claude/worktrees` is DELIBERATELY NOT SCANNED, decided 2026-08-06 rather than assumed.
+# An audit flagged it as a gap — five live worktrees carry a full scenarios.json and the
+# agent briefs, 851 files, none of them scanned. On examination it is not a gap: a worktree
+# is ephemeral local state, not a vendoring surface, and its contents are copies of tracked
+# repo content that IS scanned. A holdout id introduced in a worktree is caught the moment it
+# merges into the tree this sweep reads. Scanning them would add 851 files of cost per gate
+# run for no signal. Recorded here because "we thought about it and said no" and "nobody
+# looked" are indistinguishable from the outside, which is the whole H15 lesson.
 VENDOR_DIRS = (".claude/skills", ".claude/agents", ".claude/commands", ".claude/bin",
                ".claude/hooks")
 
@@ -198,9 +206,10 @@ def leakage_problems(repo, holdout_ids, scan=LEAK_SCAN, vendor_dirs=VENDOR_DIRS)
     VACUOUS run — a tripwire that scanned nothing passes everything, which is the failure
     mode this whole family of checks exists to prevent.
     """
-    problems, scanned = [], 0
+    problems, scanned, roots_present = [], 0, 0
     targets = list(scan) + [d for d in vendor_dirs]
     for rel in targets:
+        seen_here = 0
         for relpath, path in _iter_files(repo, rel):
             try:
                 with open(path, "r", errors="replace") as fh:
@@ -208,6 +217,7 @@ def leakage_problems(repo, holdout_ids, scan=LEAK_SCAN, vendor_dirs=VENDOR_DIRS)
             except OSError:
                 continue
             scanned += 1
+            seen_here += 1
             for pid in sorted(holdout_ids):
                 if pid in body:
                     problems.append(
@@ -215,7 +225,10 @@ def leakage_problems(repo, holdout_ids, scan=LEAK_SCAN, vendor_dirs=VENDOR_DIRS)
                         "or a vendored tree is a burned plant (the doer can read it). Rotate "
                         "it to dev with a `burn-on-failure` entry and replenish holdout, or "
                         "remove the reference.".format(pid, relpath))
-    return problems, scanned
+        roots_present += 1 if seen_here else 0
+    # Report the ROOT count as well as the file count (H15/§12): a scan root that vanishes
+    # or is renamed drops silently out of a file total, which keeps looking plausible.
+    return problems, scanned, roots_present, len(targets)
 
 
 # ------------------------------------------------------------------ commands
@@ -245,7 +258,7 @@ def cmd_check(args):
     problems = form_problems(entries, shas)
     resolved = resolve_forms(entries)
     holdout = {i for i, f in resolved.items() if f == "holdout"}
-    leaks, scanned = leakage_problems(args.repo, holdout)
+    leaks, scanned, roots, roots_total = leakage_problems(args.repo, holdout)
     problems += leaks
     # VACUITY: with no holdout ids the tripwire cannot fail, so it must not read as a pass.
     # (Scanning zero FILES is a separate, worse failure and is always a finding.)
@@ -259,13 +272,14 @@ def cmd_check(args):
         return 0 if args.warn_only else 1
     if not holdout:
         print("plant_forms: {} entr(ies); NO holdout classes assigned yet — the tripwire "
-              "scanned {} files and could not have failed. Reported as unarmed, not green: "
-              "the first assignment is dated debt on the `plant-forms` capability."
-              .format(len(entries), scanned))
+              "scanned {} files across {} of {} roots and could not have failed. Reported "
+              "as unarmed, not green: the first assignment is dated debt on the "
+              "`plant-forms` capability.".format(len(entries), scanned, roots, roots_total))
         return 0
     print("plant_forms CLEAN: {} entr(ies) · {} holdout / {} dev · tripwire scanned {} files "
-          "with no leak".format(len(entries), len(holdout),
-                                len(resolved) - len(holdout), scanned))
+          "across {} of {} roots with no leak".format(
+              len(entries), len(holdout), len(resolved) - len(holdout), scanned,
+              roots, roots_total))
     return 0
 
 
@@ -295,10 +309,11 @@ def cmd_leakage(args):
         return 3
     resolved = resolve_forms(entries)
     holdout = {i for i, f in resolved.items() if f == "holdout"}
-    problems, scanned = leakage_problems(args.repo, holdout)
+    problems, scanned, roots, roots_total = leakage_problems(args.repo, holdout)
     for p in problems:
         print("PLANT-FORMS RED: " + p, file=sys.stderr)
-    print("leakage: {} holdout id(s) checked against {} file(s)".format(len(holdout), scanned))
+    print("leakage: {} holdout id(s) checked against {} file(s) across {} of {} "
+          "roots".format(len(holdout), scanned, roots, roots_total))
     return 1 if problems else 0
 
 

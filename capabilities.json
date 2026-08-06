@@ -252,6 +252,11 @@
           "what": "engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract \u00a72b + \u00a71.3 hard-floor listing) not yet implemented on srv1621832",
           "owner": "david",
           "expires": "2026-09-15"
+        },
+        {
+          "what": "SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 \u2014 DEFERRED, stated not dropped): three checks decide AUTHORIZATION by testing whether a name appears as a substring of prose \u2014 rule (c) `sid in journal_added`, rule (d) `h not in gate_added`, and ledger `_fresh_ids` `e['id'] in added`. A passing mention (a paragraph ABOUT a change, a quoted example, a docstring) grants authorization nobody wrote. This is Cheliped's grep-counts-docstrings error sitting in the integrity checker, which is worse than a count because it is a permission. v1.30 deliberately did NOT rewrite these: changing what authorizes an integrity decision needs its own red-first cycle and its own adversary pass, and doing it inside a doctrine release is how the doctrine release becomes the incident. ALSO OWED HERE: Cheliped's proposed lint \u2014 a check that counts or detects occurrences of a code construct in Python source must PARSE, not text-match \u2014 scoped as a Tier-2 advisory dataflow sweep. Done = a parsed one-line entry grammar the journals already document but nothing enforces, with planted tests proving a mere MENTION does not authorize, plus the lint, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-11-15"
         }
       ]
     },
@@ -510,6 +515,11 @@
           "what": "LAYER_10 PRE-FIX SHA REPORT-BACK (v1.25 tripwire-fold): the Cheliped pilot reports the pre-fix layer_10_autonomy_awareness blob sha; fill the slot in test_dataflow_sweeps.py::test_layer10_motivating_shape's docstring and hand the same sha to the engine-side replay recipe \u2014 the release that invented the sha-citation rule must not ship its own slot empty forever. Done = the sha in the docstring (grep '<reported back' returns nothing), or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
+        },
+        {
+          "what": "ARM THE TWO DARK SWEEPS (H15, v1.30): `ghost_gates` and `exemption_prose` are DECLARED in dataflow_sweeps._SECTION_OF and not armed \u2014 found live 2026-08-06, 1 of 3 armed, under a gate that printed 'ALL suites green'. `exemption_prose` was specified BLOCKING in v1.24 and has never run once. v1.30 makes the shortfall REPORTED and refuses it unless declared in the config's `unarmed` array, so the darkness is now a decision rather than an absence \u2014 but it is still darkness. Done = both armed with whatever they surface resolved, or a consciously re-dated entry recording the decision not to arm them",
+          "owner": "david",
+          "expires": "2026-09-30"
         }
       ],
       "notes": "PAID 2026-08-05: the dataflow-liveness upgrades proposal (docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md) was forwarded to the CIVerd engine backlog and ACTIONED \u2014 David confirms the engine-side work was built (2026-08-05); items 2/5 plus the shrink-protection arming had already landed 2026-08-03 per the doc's CORRECTIONS block. Only the forwarding was owed here; the boundary pin retires from test_capability_registry with this dated note \u2014 a paid loan, never a silent deletion."
@@ -612,6 +622,11 @@
           "what": "PRE-COMMIT GATE BLIND SPOT (found live 2026-08-05): the ledger coverage check reads COMMITTED state, so `sh scripts/civerd_gate.sh` run BEFORE `git commit` reports GREEN on a change it will reject once committed \u2014 that is exactly how 5a86043 reached origin and turned the engine's `tests` check red. The gate's own instructions and every rc-gated commit chain in this repo run it pre-commit. Fix = the check also inspects the working tree (staged + unstaged) so pre-commit and post-commit agree, with a planted test proving a pre-commit run REFUSES an uncovered gate-surface edit. Done = that planted test green, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
+        },
+        {
+          "what": "SELF-REFERENTIAL DENOMINATORS (H15, v1.30): ~9 verdict surfaces print a count derived from the same filter it describes, so it moves WITH the narrowing and cannot reveal it \u2014 the 16 suite tallies (`N passed`), capability_registry (`N capabilities` from the file being validated), verify_citations, with_snapshot's `clean`, plant_vitality's post-filter total, and gate_yield dataflow-trend (a sweep with too few rows is silently excluded). v1.30 fixed the load-bearing ones (gate, sweeps, harness, ledger, plant_forms); these remain. Done = an INDEPENDENT expectation per surface (the test_agents.py:138 roster pattern), or a recorded decision that a self-referential count is acceptable there and why",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ]
     },

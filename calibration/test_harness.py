@@ -1252,6 +1252,122 @@ def _nonexecution_tests():
               (p.returncode, p.stdout[-200:]))
 
 
+def _denominator_tests():
+    """PLANTED (H15, v1.30): a verification result must carry its SCOPE. Every check below
+    narrows a selector and asserts the REPORTED NUMBER MOVES — because a count that cannot
+    change is the same silence with a number printed next to it, which is strictly worse
+    (it looks like evidence). Origin: Cheliped 2026-08, `-m "not flaky"` reporting
+    "13754 passed" over a RED suite; and this repo the same week, 1 of 3 sweeps armed under
+    a gate that said "ALL suites green"."""
+    print("\n[denominators — a result carries its scope (H15)]")
+    import json as _json
+    sys.path.insert(0, os.path.join(REPO, "plugins", "tdd-playbook", "bin"))
+    import dataflow_sweeps as dfs
+
+    # --- the sweeps armed-ratio: an UNDECLARED shortfall must REFUSE ---
+    with tempfile.TemporaryDirectory() as d:
+        scan_dir = os.path.join(d, "src")
+        os.makedirs(scan_dir)
+        with open(os.path.join(scan_dir, "m.py"), "w") as fh:
+            fh.write('X = "{a}".format(a=1)\n')
+        cfgp = os.path.join(d, "sweeps.json")
+
+        def run_all(cfg):
+            with open(cfgp, "w") as fh:
+                _json.dump(cfg, fh)
+            return subprocess.run(
+                [sys.executable, os.path.join(REPO, "plugins", "tdd-playbook", "bin",
+                                              "dataflow_sweeps.py"), "all", "--config", cfgp],
+                capture_output=True, text=True, timeout=120)
+
+        armed_one = {"render_pairing": {"scan": ["src"]}}
+        p1 = run_all(armed_one)
+        # PLANTED: 1 of 3 armed with nothing said about the other 2 — the live shape.
+        check("denominator: PLANTED undeclared unarmed sweeps REFUSE (exit 3)",
+              p1.returncode == dfs.EXIT_VACUOUS, (p1.returncode, p1.stdout[-300:]))
+        check("denominator: the ratio is REPORTED, not merely enforced",
+              "1 of 3 sweeps armed" in p1.stdout, p1.stdout[:300])
+        # CONTROL: declaring the shortfall is what makes it a decision rather than an absence.
+        p2 = run_all(dict(armed_one, unarmed=["ghost_gates", "exemption_prose"]))
+        check("denominator: CONTROL a DECLARED shortfall is allowed through",
+              p2.returncode == dfs.EXIT_CLEAN, (p2.returncode, p2.stdout[-300:], p2.stderr[-200:]))
+        check("denominator: a declared shortfall still NAMES the unarmed sweeps",
+              "UNARMED" in p2.stdout, p2.stdout[:300])
+
+    # --- the harness registration invariant: parsed, not grepped ---
+    # (The live invariant runs in main(); here we plant against the same pure logic so the
+    # checker is calibrated rather than merely present.)
+    import ast as _ast
+    SRC = ("def _alpha_tests():\n    pass\n"
+           "def _beta_tests():\n    pass\n"
+           "def main():\n    _alpha_tests()\n")
+    tree = _ast.parse(SRC)
+    defined = {n.name for n in tree.body
+               if isinstance(n, _ast.FunctionDef)
+               and n.name.startswith("_") and n.name.endswith("_tests")}
+    mainf = next(n for n in tree.body
+                 if isinstance(n, _ast.FunctionDef) and n.name == "main")
+    called = {c.func.id for c in _ast.walk(mainf)
+              if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
+    check("denominator: PLANTED an unregistered section is DETECTED",
+          sorted(defined - called) == ["_beta_tests"], sorted(defined - called))
+    # PLANTED: a TEXT match would not have caught it — the name appears in this file's own
+    # source (in SRC above), which is exactly the grep-counts-docstrings error one level down.
+    check("denominator: the invariant PARSES rather than greps (a text match self-matches)",
+          "_beta_tests" in SRC and "_beta_tests" not in called)
+    # CONTROL: a fully-registered module reports nothing.
+    tree2 = _ast.parse(SRC.replace("    _alpha_tests()\n",
+                                   "    _alpha_tests()\n    _beta_tests()\n"))
+    main2 = next(n for n in tree2.body
+                 if isinstance(n, _ast.FunctionDef) and n.name == "main")
+    called2 = {c.func.id for c in _ast.walk(main2)
+               if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
+    check("denominator: CONTROL a fully-registered module is clean",
+          not (defined - called2), sorted(defined - called2))
+
+    # --- the leakage tripwire reports ROOTS, so a vanished root is visible ---
+    import plant_forms as pf
+    with tempfile.TemporaryDirectory() as d:
+        os.makedirs(os.path.join(d, "a"))
+        with open(os.path.join(d, "a", "f.md"), "w") as fh:
+            fh.write("nothing here\n")
+        _p, n_present, roots_present, roots_total = pf.leakage_problems(
+            d, {"zz"}, scan=("a",), vendor_dirs=())
+        _p2, n_gone, roots_gone, roots_total2 = pf.leakage_problems(
+            d, {"zz"}, scan=("a", "vanished"), vendor_dirs=())
+        check("denominator: PLANTED a scan root that does not exist lowers the ROOT count",
+              roots_present == 1 and roots_total == 1
+              and roots_gone == 1 and roots_total2 == 2,
+              (roots_present, roots_total, roots_gone, roots_total2))
+        check("denominator: the file count alone would NOT have revealed it",
+              n_present == n_gone, (n_present, n_gone))
+
+    # --- the gate script itself must count, and must refuse a vacuous glob ---
+    gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
+    check("denominator: civerd_gate.sh counts the suites it ran",
+          "SUITES=$((SUITES + 1))" in gate and "${SUITES} plugin suites" in gate, gate[-400:])
+    # The first version of THIS check was `"ALL suites green" not in gate` and it failed —
+    # on the comment two lines above the fix, which quotes the old string to explain why it
+    # is gone. That is Cheliped's grep-counts-docstrings error, reproduced inside the test
+    # for the class it describes, on the same afternoon. Look at the LINE THAT RUNS.
+    _echo = [ln for ln in gate.splitlines()
+             if ln.startswith("echo ") and "civerd_gate:" in ln]
+    check("denominator: the gate's ECHOED verdict no longer claims 'ALL suites green'",
+          _echo and not any("ALL suites green" in ln for ln in _echo), _echo)
+    check("denominator: PLANTED a glob matching NOTHING fails the gate closed",
+          'if [ "$SUITES" -eq 0 ]' in gate and "cannot be green" in gate)
+    check("denominator: the stale '110 planted checks' prose is gone (it read 272)",
+          "110 planted checks" not in gate)
+
+    # --- the ledger names the set its own claim is about ---
+    p = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), "check",
+                        "--baseline-rev", "v1.28.0"],
+                       capture_output=True, text=True, timeout=180)
+    check("denominator: ledger reports covered-N-of-M CHANGED SURFACES, not entry count",
+          "changed gate surface(s)" in p.stdout and "covered" in p.stdout,
+          (p.returncode, p.stdout[-300:]))
+
+
 def _plant_form_tests():
     """PLANTED (v1.29 item 3): the dev/holdout split. Two failure modes are fatal and both
     are planted here — a holdout plant silently TUNED AGAINST (it becomes a dev plant with a
@@ -1309,7 +1425,7 @@ def _plant_form_tests():
         with open(os.path.join(ag, "some-agent.md"), "w") as fh:
             fh.write("You are an agent. Watch out for holdout-plant-alpha specifically.\n")
         scan = ("plugins/tdd-playbook/agents",)
-        probs, scanned = pf.leakage_problems(d, {"holdout-plant-alpha"}, scan=scan,
+        probs, scanned, _r, _rt = pf.leakage_problems(d, {"holdout-plant-alpha"}, scan=scan,
                                              vendor_dirs=())
         check("leakage: PLANTED a holdout id inside an agent brief is a LEAK",
               len(probs) == 1 and "holdout-plant-alpha" in probs[0], probs)
@@ -1317,11 +1433,13 @@ def _plant_form_tests():
               "some-agent.md" in probs[0], probs)
         # CONTROL: a dev-form id in the same brief is fine — dev plants are meant to be
         # iterated against, and flagging them would make the tripwire cry wolf forever.
-        probs2, _ = pf.leakage_problems(d, {"a-dev-plant"}, scan=scan, vendor_dirs=())
+        probs2, _s2, _r2, _rt2 = pf.leakage_problems(d, {"a-dev-plant"}, scan=scan,
+                                                     vendor_dirs=())
         check("leakage: CONTROL a NON-holdout id in the same brief is allowed",
               probs2 == [], probs2)
         # VACUITY: scanning nothing must never read as a pass.
-        _p, n = pf.leakage_problems(d, {"x"}, scan=("does/not/exist",), vendor_dirs=())
+        _p, n, _r3, _rt3 = pf.leakage_problems(d, {"x"}, scan=("does/not/exist",),
+                                               vendor_dirs=())
         check("leakage: PLANTED scan roots that do not exist -> 0 files scanned (vacuous)",
               n == 0)
 
@@ -1803,6 +1921,7 @@ def main():
     _history_format_tests()
     _run_header_parser_tests()
     _nonexecution_tests()
+    _denominator_tests()
     _plant_form_tests()
     _vitality_tests()
     _power_tests()
@@ -2004,7 +2123,25 @@ def main():
     check("suite left repo docs/calibration/gate_yield.md untouched",
           after == _REPO_YIELD_MD_BEFORE, "record changed during the test run")
 
-    print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
+    # H15/§12: this tally is SELF-REFERENTIAL — it counts the checks that ran, so a section
+    # dropped from main() lowers it silently and still reads green. Compare the registered
+    # roster against the DEFINED one, an independent expectation, and PARSE it rather than
+    # grep it (a text match would count the name in this very comment).
+    import ast as _ast
+    _tree = _ast.parse(open(os.path.join(HERE, "test_harness.py")).read())
+    _defined = {n.name for n in _tree.body
+                if isinstance(n, _ast.FunctionDef)
+                and n.name.startswith("_") and n.name.endswith("_tests")}
+    _main = next(n for n in _tree.body
+                 if isinstance(n, _ast.FunctionDef) and n.name == "main")
+    _called = {c.func.id for c in _ast.walk(_main)
+               if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
+    _missing = sorted(_defined - _called)
+    check("harness: every defined _*_tests section is registered in main()",
+          not _missing,
+          "UNREGISTERED — defined but never run: {}".format(_missing))
+    print("\nharness: {} sections registered · {} passed, {} failed".format(
+        len(_defined), _results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
 
 

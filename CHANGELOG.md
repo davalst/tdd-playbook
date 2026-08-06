@@ -3,6 +3,48 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.30.0 — 2026-08-06
+
+**The narrowed scope reported as the whole (H15)** — a verification result is a CLAIM and
+carries its SCOPE. Adopts Cheliped's second field report: `-m "not flaky"` reported
+"13754 passed" while the unfiltered suite was RED. The quarantine was sanctioned, the
+exclusion was policy, the gate did what its docs said — every decision legitimate, only the
+report wrong. You cannot catch this class by hunting for mistakes.
+
+It is the generalisation of a rule this repo already had: §4a's vacuity guard is the same
+failure at scope=0. Everything between zero and complete is the same failure, quieter.
+
+- **Fixed an armed time bomb in the ledger.** `coverage_problems` compared each entry's
+  baseline against a FIXED rev (the EPOCH), which does not test "written before the change"
+  — it tests "this surface has not moved since the epoch", permanently false once a surface
+  legitimately changes. SKILL.md had crossed that line; once the covering entries were
+  scored and spent, no new entry could ever cover it and the gate would RED on every
+  doctrine edit. Replaced with an ancestry test (`is_ancestor` was already a parameter and
+  never used). My bug, from the fix for the moving-baseline defect — the same class one level
+  down, inside the correction, which is exactly the recursion the field report warns about.
+- **Live: 3 dataflow sweeps declared, 1 armed.** `ghost_gates` and `exemption_prose` were
+  absent from the config and never ran — `exemption_prose` was specified BLOCKING in v1.24.
+  `all` now reports `N of M armed` and REFUSES a shortfall that is not declared in the
+  config's `unarmed` array. Absence and decision are otherwise indistinguishable.
+- **The gate stopped saying "ALL suites green" with no number.** It now reports suites ·
+  harness checks · sweeps armed · ledger baseline, and fails closed on a glob matching
+  nothing. The stale "110 planted checks" prose (it read 272) is gone.
+- **The harness asserts every defined section is registered** — parsed, not grepped, because
+  a text match finds the name in its own comment.
+- **The ledger names the set its claim is about** (`covered N of M changed gate surfaces`,
+  not a count of ledger entries) and no longer discards `skipped` run headers.
+- §12 gains the scope rule and the corollary Cheliped supplied: **doctrine is
+  recall-at-authoring-time**, so "the rule already covers it" is necessary but not sufficient
+  — their sprint was three loaded rules, three misses. Ship the mechanism; the doctrine line
+  exists so the mechanism has something to cite.
+- Selectors are **decided out of scope** for `exitcode_guard`, pinned as ALLOW rows: the hook
+  fires on the call, where a scoped run and a scoped report are indistinguishable.
+- Three dated debts opened: arm the two dark sweeps (09-30), the ~9 self-referential
+  denominators (10-31), and substring-authorization in the integrity checker plus Cheliped's
+  parse-don't-text-match lint (11-15) — deferred deliberately, because rewriting what
+  authorizes an integrity decision inside a doctrine release is how the release becomes the
+  incident.
+
 ## 1.29.0 — 2026-08-06
 
 **The dev/holdout split — the reporting set stops being the set we tuned against.** Item 3
