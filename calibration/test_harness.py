@@ -1657,8 +1657,52 @@ def _ledger_tests():
 
     check("ledger: CONTROL a pre-registered entry covers its changed path",
           cov(state(), {e["id"]}) == [], cov(state(), {e["id"]}))
-    check("ledger: PLANTED back-filled entry does NOT cover (written after the change)",
-          cov(state(same_at_base=False), {e["id"]}) != [])
+
+    # --- coverage, modelled at THREE revs (2026-08-06) -----------------------------------
+    # The two-rev fake above cannot tell "this surface changed since the EPOCH" apart from
+    # "this entry's baseline already contains the change" — both render as differs-from-REV.
+    # That conflation is exactly why the defect below hid: the code was comparing the entry's
+    # baseline against a FIXED epoch and calling the result back-fill detection. Model the
+    # actual content at each rev instead, so the two situations are distinguishable.
+    def rev_state(content):
+        """path_state over a content map, e.g. {"EP": "v1", "BASE": "v2", "HEAD": "v3"}."""
+        def f(_path, a, b):
+            return "same" if content[a] == content[b] else "differs"
+        return f
+
+    def cov3(content, fresh=None):
+        return L.coverage_problems([P], [e], {e["id"]} if fresh is None else fresh,
+                                   rev_state(content), "HEAD", "EP", "EP",
+                                   lambda a, b: True)
+
+    # PLANTED — THE BOMB (live, armed on main 2026-08-06). A surface that legitimately moved
+    # since the epoch, then a correctly pre-registered entry, then the change. The old clause
+    # required baseline == EPOCH, which is false forever once a surface changes even once —
+    # so NO future entry could ever cover SKILL.md again and the gate would RED permanently
+    # on any doctrine edit, with a message that names the wrong cause.
+    check("ledger: PLANTED post-epoch baseline on a since-changed surface MUST cover",
+          cov3({"EP": "v1", "BASE": "v2", "HEAD": "v3"}) == [],
+          cov3({"EP": "v1", "BASE": "v2", "HEAD": "v3"}))
+    # CONTROL — the ordinary case must keep working: surface untouched since the epoch.
+    check("ledger: CONTROL baseline == epoch content still covers",
+          cov3({"EP": "v1", "BASE": "v1", "HEAD": "v2"}) == [])
+    # PLANTED — a REAL back-fill: the entry's baseline already contains the change, so
+    # nothing moved after it was written. This is what the old test MEANT to assert; its
+    # model of back-fill was the epoch comparison, which is a different thing.
+    check("ledger: PLANTED back-filled entry does NOT cover (baseline already has the change)",
+          cov3({"EP": "v1", "BASE": "v2", "HEAD": "v2"}) != [])
+    # PLANTED — speculative: the path never moved at all.
+    check("ledger: PLANTED speculative entry does NOT cover (the path never moved)",
+          cov3({"EP": "v1", "BASE": "v1", "HEAD": "v1"}) != [])
+    # PLANTED — a baseline that is not real prior history (typo'd, foreign, or fabricated
+    # sha). Without an ancestry test, any string that happens to satisfy the content compare
+    # would authorize; `is_ancestor` was already passed into this function and never used.
+    check("ledger: PLANTED a baseline that is NOT an ancestor of HEAD does NOT cover",
+          L.coverage_problems([P], [e], {e["id"]},
+                              rev_state({"EP": "v1", "BASE": "v2", "HEAD": "v3"}),
+                              "HEAD", "EP", "EP", lambda a, b: False) != [])
+    check("ledger: CONTROL a stale entry (not fresh this cycle) still does NOT cover",
+          cov3({"EP": "v1", "BASE": "v2", "HEAD": "v3"}, fresh=set()) != [])
     check("ledger: PLANTED stale entry not new this cycle does NOT cover",
           cov(state(), set()) != [])
     check("ledger: PLANTED speculative entry (path never moved) does NOT cover",
