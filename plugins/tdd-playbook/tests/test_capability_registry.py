@@ -408,6 +408,25 @@ def test_own_registry():
           and any("plant-forms" in v
                   for v in _fires("2026-10-16", "FIRST HOLDOUT ASSIGNMENT")),
           _fires("2026-10-16", "FIRST HOLDOUT ASSIGNMENT")[:2])
+    # v1.30 (H15, the narrowed-scope class) — each debt string-pinned like every other loan.
+    check("arm-dark-sweeps debt (2026-09-30): silent on its expiry day, fires 10-01 naming "
+          "dataflow-sweeps — 1 of 3 armed is now REPORTED, but it is still darkness",
+          not _fires("2026-09-30", "ARM THE TWO DARK SWEEPS")
+          and any("dataflow-sweeps" in v
+                  for v in _fires("2026-10-01", "ARM THE TWO DARK SWEEPS")),
+          _fires("2026-10-01", "ARM THE TWO DARK SWEEPS")[:2])
+    check("self-referential-denominator debt (2026-10-31): silent on its expiry day, fires "
+          "11-01 — a count derived from its own filter cannot reveal the narrowing",
+          not _fires("2026-10-31", "SELF-REFERENTIAL DENOMINATORS")
+          and any("gate-surface-ledger" in v
+                  for v in _fires("2026-11-01", "SELF-REFERENTIAL DENOMINATORS")),
+          _fires("2026-11-01", "SELF-REFERENTIAL DENOMINATORS")[:2])
+    check("substring-authorization debt (2026-11-15): silent on its expiry day, fires 11-16 "
+          "naming scoreboard-integrity — a mention is not a permission",
+          not _fires("2026-11-15", "SUBSTRING AUTHORIZATION")
+          and any("scoreboard-integrity" in v
+                  for v in _fires("2026-11-16", "SUBSTRING AUTHORIZATION")),
+          _fires("2026-11-16", "SUBSTRING AUTHORIZATION")[:2])
     check("saturation-K debt (2026-11-01): silent on its expiry day, fires 11-02 naming "
           "plant-vitality — K=4 was chosen before there was history to calibrate it",
           not _fires("2026-11-01", "SATURATION K IS PROVISIONAL")

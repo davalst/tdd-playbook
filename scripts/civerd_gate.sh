@@ -11,7 +11,7 @@
 #
 # Usage: civerd_gate.sh [suite_dir]
 #   no arg    -> the FULL gate: every plugins test suite via its real main() + the
-#                calibration harness (110 planted checks)
+#                calibration harness (which prints its own check tally)
 #   suite_dir -> run only test_*.py in that dir (the planted-test hook: a failing suite
 #                MUST fail the gate — see test_aaa_suites_via_main.py)
 set -u
@@ -24,9 +24,21 @@ if [ "${1:-}" != "" ]; then
 fi
 
 cd "$(dirname "$0")/.."
+# H15/§12: count what we ran. The final line used to say "ALL suites green" with no number
+# anywhere — so a suite renamed off the glob, or a glob that matched nothing, produced a
+# byte-identical green. A claim of completeness with an invisible selector is the whole class.
+SUITES=0
 for t in plugins/tdd-playbook/tests/test_*.py; do
+    [ -f "$t" ] || continue
     python3 "$t" || exit 1
+    SUITES=$((SUITES + 1))
 done
+# Fail closed on a vacuous glob: zero suites is not a pass, it is a broken checkout.
+if [ "$SUITES" -eq 0 ]; then
+    echo "civerd_gate: FAIL — the plugins suite glob matched NOTHING; a gate that ran no" \
+         "suites cannot be green" >&2
+    exit 1
+fi
 python3 calibration/test_harness.py || exit 1
 # v1.24 (§6c D13a): the repo sweeps ITSELF — this repo's own shipped bins carry literal
 # .format( render sites, so under "Tier 1 is mandatory where the flow kind exists" the
@@ -57,4 +69,4 @@ python3 calibration/ledger.py check --baseline-rev "$LEDGER_BASE" || exit 1
 # a vendored tree. BLOCKING: a burned holdout plant silently turns the reporting set back
 # into the tuning set, which is the one thing the split exists to prevent.
 python3 calibration/plant_forms.py check || exit 1
-echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep + ledger + plant-forms)"
+echo "civerd_gate: GREEN — ${SUITES} plugin suites · calibration harness · dataflow sweeps · ledger (baseline ${LEDGER_BASE}) · plant-forms. Each step printed its own denominator above; this line rolls them up and claims nothing they did not."

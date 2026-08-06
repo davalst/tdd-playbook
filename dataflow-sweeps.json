@@ -8,5 +8,10 @@
     ],
     "template_pairs": [],
     "exemptions": []
-  }
+  },
+  "_unarmed_comment": "H15/v1.30: these sweeps are DECLARED in dataflow_sweeps._SECTION_OF and deliberately not armed yet. Listing them here is what makes the darkness a decision rather than an absence \u2014 `all` REFUSES an unarmed sweep that is not named here. exemption_prose was specified BLOCKING in v1.24 and has never run; arming both is dated debt on dataflow-sweeps (expires 2026-09-30), because whatever they surface deserves its own cycle rather than being absorbed into a doctrine release.",
+  "unarmed": [
+    "ghost_gates",
+    "exemption_prose"
+  ]
 }

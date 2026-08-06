@@ -267,3 +267,20 @@ if a §-prose addition ever moves a scenario, one of these rows becomes a SURPRI
 | L-20260806-07 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §13 guard self-claims are unverified claims — two-directional calibration table per blocking guard | — | none | 0 | doctrine for H13; the block half is Cheliped's case-sensitivity defect, the allow half is this repo's own `ln` false positive |
 | L-20260806-08 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §9 `/security-review` at the phase boundary that introduces the surface, not at merge | — | none | 0 | timing change only; nothing in the suite measures when a human-invoked review runs, which is itself the honest reason this is `none` |
 | L-20260806-09 | 2026-08-06 | a5b77aa | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §7 a quarantine marker is not real until something deselects it | — | none | 0 | closes the same claim-about-a-gate gap as §13, applied to the flaky marker |
+
+### Registered 2026-08-06 (later) — baseline ddbb856 (the narrowed-scope class, v1.30)
+
+Written against the PRE-change tree: `ddbb856` contains the ledger coverage fix but none of
+the doctrine or denominator work below. **This block is the first real customer of that fix.**
+Under the previous rule its coverage would have been REFUSED — the clause required
+SKILL.md@baseline to equal SKILL.md@EPOCH, and SKILL.md has moved since the epoch, so no
+post-epoch baseline could ever satisfy it. That the rows below cover at all is the end-to-end
+proof, on a real change rather than a fixture.
+
+`expect: none` on the doctrine rows for the reason already recorded in the 08-06 block: SKILL
+prose is not in EFFECTFUL, and inertness is itself the prediction — if a §-prose addition ever
+moves a scenario, the row becomes a SURPRISE and the exemption was what was wrong.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260806-10 | 2026-08-06 | ddbb856 | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §12: a verification result is a CLAIM and carries its SCOPE — never a numerator without its denominator; §4a cross-reference naming vacuity as the degenerate case | — | none | 0 | doctrine for H15 (Cheliped's narrowed-scope class). Deliberately NOT counted as the deliverable: their own data is three loaded rules walked past in one sprint, so the mechanical half (gate/sweep/harness denominators) is the work and this row exists so those mechanisms have something to cite |

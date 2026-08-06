@@ -345,19 +345,36 @@ def no_effect_problems(registered):
 
 def coverage_problems(changed_paths, registered, fresh_ids, path_state, head, rev, epoch,
                       is_ancestor):
-    """A changed gate surface needs a covering entry. Coverage is sha-cited: the entry must be
-    NEW this cycle, name the path, have been written while the path was still in its baseline
-    state (i.e. BEFORE the change), and the path must actually have moved since."""
+    """A changed gate surface needs a covering entry: NEW this cycle, naming the path, whose
+    baseline is real prior history, and where the path actually MOVED after that baseline.
+
+    2026-08-06 — the anti-backfill clause used to read
+    `path_state(p, e["baseline_sha"], rev) != "same"`, comparing the entry's baseline against
+    a FIXED rev (the EPOCH, after the epoch-first fix). That does not test "was this written
+    before the change"; it tests "has this surface moved since the epoch" — which becomes
+    permanently false the first time a surface legitimately changes. SKILL.md crossed that
+    line, so once the entries covering it were scored and spent, NO future entry could ever
+    cover it again: the gate would RED on every doctrine edit, blaming a missing
+    pre-registration that had in fact been written correctly. Un-satisfiable, and silent
+    until the moment someone tried.
+
+    Anti-backfill is fully carried by the OTHER clause and always was. A back-filled entry
+    names a baseline that already contains the change, so the path did not move after it —
+    `differs` refuses it. The epoch comparison was redundant when it passed and a time bomb
+    when it failed. Replaced by an ancestry test on the baseline, which is the property that
+    was actually missing: a sha nobody can place in history proves nothing about ordering.
+    (`is_ancestor` was already a parameter here and never used — its own small tell.)
+    """
     out = []
     for p in sorted(changed_paths):
         covered = False
         for e in registered:
             if e["id"] not in fresh_ids or p not in e["surface"]:
                 continue
-            if path_state(p, e["baseline_sha"], rev) != "same":
-                continue          # back-filled: the change already existed when written
+            if not is_ancestor(e["baseline_sha"], head):
+                continue          # not real prior history: cannot establish "written before"
             if path_state(p, e["baseline_sha"], head) != "differs":
-                continue          # speculative: the path never actually moved
+                continue          # back-filled (baseline already has it) or never moved
             covered = True
             break
         if not covered:
@@ -540,12 +557,19 @@ def cmd_check(args):
         # ONE window for both halves (2026-08-06): the surfaces are diffed from `rev` and
         # the authorizing entries are read from `rev`. Two windows meant the verdict moved
         # when a tag was cut — see fresh_ids_from.
-        problems += coverage_problems(changed_gate_surfaces(repo, rev, head), registered,
+        changed = changed_gate_surfaces(repo, rev, head)
+        problems += coverage_problems(changed, registered,
                                       fresh_ids_from(
                                           _fresh_ids(repo, rev, args.ledger, registered),
                                           scored),
                                       path_state, head, rev, epoch, is_ancestor)
         blocks, skipped = hfmt.parse_run_blocks(_read(os.path.join(repo, args.history)))
+        if skipped:
+            # plant_vitality reports this loudly; ledger used to bind it and throw it away.
+            problems.append(
+                "{} run header(s) in history.md did not parse, so the binder cannot see "
+                "those runs — a prediction can read PENDING forever because the run that "
+                "scored it was invisible".format(skipped))
         forms = load_forms(repo)
         bindings = [bind_entry(e, blocks, resolve, is_ancestor,
                                entry_form(e, forms)) for e in registered]
@@ -565,9 +589,14 @@ def cmd_check(args):
             print("ledger: {} finding(s) — WARN-ONLY, not failing".format(len(problems)))
             return 0
         return 1
-    print("ledger CLEAN: {} entr(ies), {} scored row(s); every changed gate surface since {} "
-          "is covered by a pre-registered entry".format(
-              len(registered), len(scored), (epoch or args.baseline_rev)[:7]))
+    # H15/§12: the claim is "every changed gate surface is covered" and the denominator
+    # printed used to be the count of LEDGER ENTRIES — the wrong set entirely. Drop a
+    # prefix from SURFACE_PATTERNS and zero surfaces get checked, under an identical line.
+    print("ledger CLEAN: covered {} of {} changed gate surface(s) since {} · {} entr(ies), "
+          "{} scored row(s){}".format(
+              len(changed), len(changed), (epoch or args.baseline_rev)[:7],
+              len(registered), len(scored),
+              " · {} unparsed run header(s) EXCLUDED".format(skipped) if skipped else ""))
     return 0
 
 
