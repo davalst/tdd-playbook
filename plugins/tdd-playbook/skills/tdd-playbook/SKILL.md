@@ -380,7 +380,10 @@ nothing. These are the documented false-green modes — each has bitten a real g
   debt — §6's BUILT-vs-WIRED applied to the gate itself (observed: 8 rostered modules with cost lines and
   a suite shim but in NO gate invocation, twice in one week — the second repeating a mistake the repo's own
   CI script documented six days earlier).
-- **Every scoped gate needs a VACUITY GUARD — on TWO axes, scope AND execution.** *Scope:* a
+- **Every scoped gate needs a VACUITY GUARD — on TWO axes, scope AND execution.** (This is the
+  DEGENERATE case of §12's scope rule: a result carries its denominator, and zero is just the
+  loudest denominator. Everything between zero and complete fails the same way, quieter.)
+  *Scope:* a
   pattern matching ZERO generated mutants (typo'd function name, module dropped from the tool
   config) must FAIL LOUDLY ("refusing a vacuous pass"), never read as green — a gate that can pass
   by testing nothing is the one gaming vector scope-based gating opens. Count that denominator from
@@ -882,6 +885,28 @@ unverified NEGATIVE about a file it never read.)
   points at the actual grep/read/probe so the line is auditable against the transcript. Where a
   mechanical seam exists (e.g. a repo's own grounding/claims hooks), the SEAM emits the count — a
   self-reported N/N is narration with a colon in it.
+- **A verification result is a CLAIM, and a claim carries its SCOPE — never report a numerator
+  without its denominator.** A suite result, a sweep, a check, an audit: each answers the question
+  its SELECTOR asked, not the question the reader hears. Selectors are everywhere and nearly always
+  legitimate — `-m`/`-k` markers, `--ignore`, `--lf`, `--maxfail`, a path list, `testpaths` in a
+  config file (invisible at the call site), a glob, an `os.listdir`, a hardcoded roster, a config
+  list of which checks are ARMED. **The narrowing is rarely the error; the silence is.** So a green
+  states what it covered — `checked N`, `selected N of M`, `N of M armed`, `scanned N files` — and
+  where the count can be independently expected, it is compared against that EXPECTATION rather
+  than derived from the same filter it describes: a self-referential `N of N` moves with the
+  narrowing and cannot reveal it (the working form: a roster this file cannot drift with, never
+  `>= 0`). §4a's vacuity guard is this rule at its degenerate point, scope narrowed to zero;
+  everything between zero and complete is the same failure at a smaller magnitude. (Origin:
+  Cheliped, 2026-08 — `-m "not flaky"` reported "13754 passed" while the unfiltered suite was RED.
+  The quarantine was sanctioned, the exclusion was policy, the gate did what its docs said: every
+  decision legitimate, only the report wrong. You cannot catch this class by hunting for mistakes.)
+- **Doctrine is recall-at-authoring-time, and authoring is when attention is elsewhere.** "The rule
+  already covers it" is necessary but NOT sufficient evidence that a class is handled — the useful
+  number is not whether a rule exists but how often a LOADED rule gets walked past. (Origin:
+  Cheliped, 2026-08 — three rules in context the whole time, three misses in one sprint, including
+  a `grep -c` that counted docstrings written inside the fix for that very class. Every mechanical
+  guard that fired caught something the prose did not.) So when a class is named, ship the
+  mechanism; the doctrine line exists so the mechanism has something to cite, not instead of it.
 
 ## 13. The learning loop — grade the process, calibrate with planted errors
 **The decay principle (why this section exists):** every gate is a DECAYING asset —
