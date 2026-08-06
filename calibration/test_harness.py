@@ -1190,6 +1190,23 @@ def _nonexecution_tests():
             "RED-FIRST: VERIFIED")
     check("nonexecution: CONTROL a genuine agent verdict is NOT flagged",
           rc.nonexecution_reason(REAL) is None, rc.nonexecution_reason(REAL))
+
+    # PLANTED (live, 2026-08-06): the agent was blocked by PERMISSIONS and said so clearly.
+    # Scored BLOCKING FAIL on a CLEAN CONTROL, so it counted as a false positive and FP read
+    # 2/4 when the truth was 1/3. The environment refusing is not the agent missing.
+    BLOCKED = ("I need permissions to complete the red-first verification. I'm currently "
+               "blocked by permission requirements for Edit and Bash.")
+    check("nonexecution: PLANTED a permission-blocked agent is env failure, not a miss",
+          rc.nonexecution_reason(BLOCKED) is not None, rc.nonexecution_reason(BLOCKED))
+    # CONTROL, and it is the one that matters: an agent ANALYSING permissions must not be
+    # swept up. A false env_failure drops a real agent MISS out of the denominator and
+    # flatters recall — the same defect sign-flipped, which is why the signatures are
+    # first-person-blocked phrasings rather than the bare word "permission".
+    ANALYSIS = ("The probe runs cat under the target uid; file permissions are 0600 and the "
+                "control checks both the exit code and the permission error text. Granting "
+                "write permission here would be a finding. VERDICT: SCRIPT-SAFE")
+    check("nonexecution: CONTROL an agent ANALYSING permissions is NOT flagged",
+          rc.nonexecution_reason(ANALYSIS) is None, rc.nonexecution_reason(ANALYSIS))
     # PLANTED (found by this very control on 2026-08-06): the first fix ALSO refused any turn
     # under 200 chars. Real verdicts are short, so it rejected genuine agent output as an
     # environment failure. Length is a proxy; the signature list is the thing itself.
@@ -1647,6 +1664,18 @@ def _power_tests():
           excl["uncovered"] == all_in["uncovered"] - len(covered), (all_in, excl))
     check("noise floor: the real record shows genuine unexplained movement (>=1 class move)",
           excl["class_moves"] >= 1 and excl["moved_1"] >= 1, excl)
+
+    # PLANTED (live, 2026-08-06): a run where 23 of 40 scenarios never executed reported 8 of
+    # 16 uncovered scenarios as "changed verdict class" — because PASS -> INVALID counted as
+    # movement. Non-execution reported as noise, inside the instrument built to measure noise.
+    rows_a = [{"scenario": "s1", "runs": "3/3", "kind": "PASS"}]
+    rows_b = [{"scenario": "s1", "runs": "0/0", "kind": "INVALID"}]
+    check("noise floor: PLANTED a PASS -> INVALID transition is NOT a verdict-class move",
+          pw.noise_floor(rows_a, rows_b, [])["class_moves"] == 0,
+          pw.noise_floor(rows_a, rows_b, []))
+    check("noise floor: CONTROL a real PASS -> BLOCKING transition still counts",
+          pw.noise_floor(rows_a, [{"scenario": "s1", "runs": "0/3",
+                                   "kind": "BLOCKING"}], [])["class_moves"] == 1)
 
 
 def _ledger_tests():

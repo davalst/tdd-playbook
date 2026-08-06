@@ -105,6 +105,13 @@ def noise_floor(rows_a, rows_b, covered=()):
             d = abs(pb[0] - pa[0])
             moved_1 += d >= 1
             moved_2 += d >= 2
+        # An INVALID row is the ENVIRONMENT refusing, not the plant behaving differently.
+        # Counting PASS->INVALID as a verdict-class move inflated the floor to 8 of 16 on
+        # 2026-08-06, when 23 scenarios had simply never run — the noise floor reporting
+        # non-execution as noise, which is this repo's own narrowed-scope class inside the
+        # instrument that exists to measure it.
+        if "INVALID" in (a[s].get("kind"), b[s].get("kind")):
+            continue
         if a[s].get("kind") != b[s].get("kind"):
             class_moves += 1
     return {"shared": len(shared), "uncovered": len(uncovered), "moved_1": moved_1,
