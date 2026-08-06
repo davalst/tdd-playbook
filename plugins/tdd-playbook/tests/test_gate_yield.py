@@ -31,11 +31,23 @@ def check(name, cond, detail=""):
         print("  FAIL - {}  {}".format(name, detail))
 
 
+# Response-record isolation (the G5 class again, found 2026-08-06). `run_gy` strips every
+# TDD_PLAYBOOK_* var, and only 2 of 7 rollup call sites passed --response-md, so
+# default_response_md() fell through to the REPO's real docs/calibration/guard_response.md
+# and this suite wrote 64 fabricated rows into a committed instrument record. Redirect it
+# unconditionally here rather than relying on every future call site remembering the flag.
+_RESP_ISO = tempfile.mkdtemp(prefix="gy-resp-iso-")
+_REPO_RESPONSE_MD = os.path.join(REPO, "docs", "calibration", "guard_response.md")
+_REPO_RESPONSE_BEFORE = (open(_REPO_RESPONSE_MD, "rb").read()
+                         if os.path.isfile(_REPO_RESPONSE_MD) else None)
+
+
 def run_gy(*args, env_extra=None):
     env = dict(os.environ)
     for k in list(env):
         if k.startswith("TDD_PLAYBOOK_"):
             del env[k]
+    env["TDD_PLAYBOOK_RESPONSE_MD"] = os.path.join(_RESP_ISO, "guard_response.md")
     if env_extra:
         env.update(env_extra)
     return subprocess.run([sys.executable, GY, *args], capture_output=True, text=True,
@@ -283,6 +295,17 @@ def main():
     test_dataflow_rollup_and_trend()
     test_dataflow_producer_consumer_seam()
     test_guard_response()
+
+    # PLANTED-BY-CONSTRUCTION (2026-08-06): this suite drove the real gate_yield.py 7 times
+    # and must have left the repo's committed instrument records byte-identical. It did not,
+    # for two days, and nobody noticed because nothing asserted it — the same shape as the
+    # 2026-07-28 G5 incident one file over. An instrument whose own record is test exhaust
+    # measures nothing.
+    after = (open(_REPO_RESPONSE_MD, "rb").read()
+             if os.path.isfile(_REPO_RESPONSE_MD) else None)
+    check("suite left the repo's real guard_response.md untouched",
+          after == _REPO_RESPONSE_BEFORE,
+          "committed record was written by the test suite")
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)

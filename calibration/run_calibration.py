@@ -425,6 +425,14 @@ def promotion_quarantined(sid, today=None):
     return False
 
 
+def _form_of(sid, resolved):
+    """An id with no register entry is `dev`. Absence is a decision and this is the safe
+    one — an unassigned plant gets tuned against, never quietly reported as a clean
+    holdout measurement. (Mirrors plant_forms.form_of; kept local so a missing register
+    module cannot break selection entirely.)"""
+    return resolved.get(sid, "dev")
+
+
 def verdict_for(sid, k, n, last, today=None):
     """The verdict for one scenario's reps. Extracted from main() so the promotion rule is
     testable at a seam rather than only through a live model run."""
@@ -469,6 +477,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Run planted-defect calibration of the agents.")
     ap.add_argument("--agent", help="only scenarios for this agent")
     ap.add_argument("--scenario", help="only this scenario id")
+    ap.add_argument("--form", choices=("dev", "holdout", "all"), default="dev",
+                    help="which plant form to run: dev (default, the tuning set) · holdout "
+                         "(the quarterly reporting set, never tuned against) · all")
     ap.add_argument("--repeat", type=int, default=DEFAULT_REPEAT, metavar="K",
                     help="reps per scenario (default {}; one roll is a coin flip, not a "
                          "measurement — §5a)".format(DEFAULT_REPEAT))
@@ -508,6 +519,26 @@ def main(argv=None):
     if stale is not None and stale > 100:
         print("DECAY WARNING: docs/HACK_CATALOG.md last refreshed ~{} days ago — the "
               "quarterly ritual is due (a stale catalog is a decaying gate, §13).".format(stale))
+    # v1.29 item 3: the dev/holdout split. dev is the tuning set (run every cycle); holdout
+    # is the reporting set, read quarterly and never tuned against — otherwise the number we
+    # quote externally is the one the tuning loop has been iterating on. Forms live in an
+    # append-only register beside the corpus, NOT in the plant files (rule (b) pins those
+    # byte-identical forever, and burn-on-failure has to be able to change a form).
+    resolved_forms = {}
+    try:
+        import plant_forms as _pf
+        resolved_forms = _pf.resolve_forms(
+            _pf.parse_register(open(os.path.join(REPO, _pf.REGISTER)).read()))
+    except Exception as e:
+        # An unreadable register must not silently select everything as dev — that is how a
+        # holdout plant gets tuned against without anyone deciding to.
+        if args.form != "all":
+            print("FATAL: --form {} requested but the plant-form register is unreadable "
+                  "({}). Refusing to guess a split.".format(args.form, e), file=sys.stderr)
+            return 2
+    if args.form != "all":
+        scenarios = [s for s in scenarios
+                     if _form_of(s["id"], resolved_forms) == args.form]
     if args.agent:
         scenarios = [s for s in scenarios if s["agent"] == args.agent]
     if args.scenario:
@@ -685,6 +716,21 @@ def main(argv=None):
             print("ledger: unmeasured (ledger.py not present)")
     except Exception as e:
         print("ledger: unmeasured (ledger unavailable: {})".format(e))
+
+    # v1.29: has this plant population stopped discriminating? A saturated plant reads as a
+    # rising score while measuring nothing, so the authoring cycle needs the number in front
+    # of it. A POINTER only — never a gate, never a deletion driver (R4: the corpus grows).
+    try:
+        vit = os.path.join(HERE, "plant_vitality.py")
+        if os.path.isfile(vit):
+            p = subprocess.run([sys.executable, vit, "--form", args.form],
+                               capture_output=True, text=True, timeout=120)
+            if p.stdout.strip():
+                print(p.stdout.strip())
+        else:
+            print("vitality: unmeasured (plant_vitality.py not present)")
+    except Exception as e:
+        print("vitality: unmeasured (vitality unavailable: {})".format(e))
     return 1 if failed else 0
 
 

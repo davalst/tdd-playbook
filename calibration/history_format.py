@@ -28,8 +28,16 @@ SEP_7 = "|---|---|---|---|---|---|---|"
 _RUN_HEADER = re.compile(
     r"^### Run (\d{4})-(\d{2})-(\d{2}) — model (.+?) · repo (\S+) · "
     r"selected (\d+) of (\d+) \((\d+) shipped \+ (\d+) corpus · (\d+) controls\) · "
-    r"recall (\d+)/(\d+) \S+ · FP (\d+)/(\d+) \S+\s*$")
+    r"recall (\d+)/(\d+) \S+ · FP (\d+)/(\d+) \S+"
+    r"(?: · form (dev|holdout|all))?\s*$")
 _RUN_MARKER = "### Run "
+# v1.29: `form` is an OPTIONAL trailing clause, and that is load-bearing. Every block written
+# before the dev/holdout split lacks it, and a required group would make all 12 of them stop
+# matching — parse_run_blocks would report them as `skipped`, and ledger.py (which binds and
+# scores against these blocks, and does NOT assert the skipped count) would silently see an
+# empty history and report every entry as PENDING. A header field added without a default is
+# how a reader goes quietly blind to its own past.
+_FORM_DEFAULT = "dev"
 
 
 def _kind(verdict):
@@ -116,6 +124,9 @@ def parse_run_blocks(text):
             "selected": int(g[5]), "total": int(g[6]), "shipped": int(g[7]),
             "corpus": int(g[8]), "controls": int(g[9]),
             "recall": (int(g[10]), int(g[11])), "fp": (int(g[12]), int(g[13])),
+            # A pre-v1.29 block has no form clause. It was, by definition, the whole corpus
+            # with nothing held out — which is exactly `dev`.
+            "form": g[14] or _FORM_DEFAULT,
             "line_no": i + 1, "_start": i,
         })
     for j, b in enumerate(blocks):
@@ -164,11 +175,15 @@ def append_run_block(path, meta, rows):
         fh.write(
             "\n### Run {date} — model {model} · repo {repo_sha} · selected {selected} of "
             "{total} ({shipped} shipped + {corpus} corpus · {controls} controls) · "
-            "recall {r0}/{r1} {rci} · FP {f0}/{f1} {fci}\n".format(
+            "recall {r0}/{r1} {rci} · FP {f0}/{f1} {fci} · form {form}\n".format(
                 r0=meta["recall"][0], r1=meta["recall"][1],
                 rci=interval_cell(*meta["recall"]),
                 f0=meta["fp"][0], f1=meta["fp"][1],
-                fci=interval_cell(*meta["fp"]), **{
+                fci=interval_cell(*meta["fp"]),
+                # `form` is written ALWAYS from here on, defaulted for callers that predate
+                # the split. Reading is optional (old blocks lack it); writing is not, or a
+                # holdout run would be indistinguishable from a dev run in the record.
+                form=meta.get("form", _FORM_DEFAULT), **{
                     k: meta[k] for k in ("date", "model", "repo_sha", "selected", "total",
                                          "shipped", "corpus", "controls")}))
         fh.write(HEADER_7 + "\n" + SEP_7 + "\n")

@@ -51,4 +51,10 @@ if [ -z "$LEDGER_BASE" ]; then
     exit 1
 fi
 python3 calibration/ledger.py check --baseline-rev "$LEDGER_BASE" || exit 1
-echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep + ledger)"
+# v1.29 (item 3): the dev/holdout register must stay well-formed, every in-repo form
+# assignment must still hash-match the plant it names (name-keyed authorization over content
+# that rule (b) pins — the d5dec34 class), and no holdout id may appear in a gate surface or
+# a vendored tree. BLOCKING: a burned holdout plant silently turns the reporting set back
+# into the tuning set, which is the one thing the split exists to prevent.
+python3 calibration/plant_forms.py check || exit 1
+echo "civerd_gate: ALL suites green (plugins loop + calibration harness + dataflow self-sweep + ledger + plant-forms)"

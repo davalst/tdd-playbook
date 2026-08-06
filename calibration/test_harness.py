@@ -1151,6 +1151,178 @@ def _child_env_capture_exclusion_tests():
             os.environ["TDD_PLAYBOOK_HOOK_CAPTURE"] = prior
 
 
+def _plant_form_tests():
+    """PLANTED (v1.29 item 3): the dev/holdout split. Two failure modes are fatal and both
+    are planted here — a holdout plant silently TUNED AGAINST (it becomes a dev plant with a
+    reporting label), and a holdout id LEAKED into a surface the doer reads (the plant is
+    burned but still counted as clean). A third is subtler: form assignment is NAME-keyed, so
+    an entry whose content hash does not pin the plant it names is the d5dec34 shape."""
+    print("\n[plant forms + leakage tripwire (v1.29)]")
+    import plant_forms as pf
+
+    # --- resolution: the LATEST entry wins, and absence means dev ---
+    entries = [
+        {"date": "2026-08-06", "plant_id": "p1", "form": "holdout",
+         "content_sha256": "a" * 64, "reason": "initial"},
+        {"date": "2026-09-01", "plant_id": "p1", "form": "dev",
+         "content_sha256": "a" * 64, "reason": "burn-on-failure"},
+    ]
+    resolved = pf.resolve_forms(entries)
+    # A BURN is an append, never an edit — rule (b) pins approved plants byte-identical
+    # forever, so a form that can change cannot live inside the plant file.
+    check("forms: a burn appends and the LATEST entry wins (holdout -> dev)",
+          resolved["p1"] == "dev", resolved)
+    check("forms: the earlier entry survives as the audit trail",
+          len(entries) == 2 and entries[0]["form"] == "holdout")
+    # PLANTED: an unassigned plant must be dev. If absence meant holdout, every legacy plant
+    # would silently become a 'clean' measurement it had been tuned against for months.
+    check("forms: PLANTED an id with NO entry resolves to dev, the safe direction",
+          pf.form_of("never-registered", resolved) == "dev")
+
+    # --- name-keyed authorization: the hash must pin what the name resolves to ---
+    shas = {"p1": "b" * 64}
+    E = lambda **k: dict({"date": "2026-08-06", "plant_id": "p1", "form": "holdout",
+                          "content_sha256": "b" * 64, "reason": "initial"}, **k)
+    check("forms: CONTROL a matching hash is clean", pf.form_problems([E()], shas) == [],
+          pf.form_problems([E()], shas))
+    check("forms: PLANTED a hash that does not match the named plant is REFUSED",
+          pf.form_problems([E(content_sha256="c" * 64)], shas) != [])
+    check("forms: PLANTED an unpinned assignment (no hash) is REFUSED — the d5dec34 shape",
+          pf.form_problems([E(content_sha256="")], shas) != [])
+    check("forms: PLANTED `private` claimed for a plant that IS in the corpus is REFUSED",
+          pf.form_problems([E(content_sha256=pf.PRIVATE)], shas) != [])
+    check("forms: PLANTED a hash for an id no plant carries is REFUSED (nothing verifies it)",
+          pf.form_problems([E(plant_id="ghost", content_sha256="d" * 64)], shas) != [])
+    check("forms: CONTROL `private` for a privately-held plant is accepted",
+          pf.form_problems([E(plant_id="held-privately", content_sha256=pf.PRIVATE)],
+                           shas) == [])
+    check("forms: PLANTED an unknown form value is REFUSED",
+          pf.form_problems([E(form="sometimes")], shas) != [])
+    check("forms: PLANTED an assignment with no reason is REFUSED (not auditable)",
+          pf.form_problems([E(reason="")], shas) != [])
+
+    # --- the leakage tripwire ---
+    with tempfile.TemporaryDirectory() as d:
+        ag = os.path.join(d, "plugins", "tdd-playbook", "agents")
+        os.makedirs(ag)
+        with open(os.path.join(ag, "some-agent.md"), "w") as fh:
+            fh.write("You are an agent. Watch out for holdout-plant-alpha specifically.\n")
+        scan = ("plugins/tdd-playbook/agents",)
+        probs, scanned = pf.leakage_problems(d, {"holdout-plant-alpha"}, scan=scan,
+                                             vendor_dirs=())
+        check("leakage: PLANTED a holdout id inside an agent brief is a LEAK",
+              len(probs) == 1 and "holdout-plant-alpha" in probs[0], probs)
+        check("leakage: the finding names the file so it is actionable",
+              "some-agent.md" in probs[0], probs)
+        # CONTROL: a dev-form id in the same brief is fine — dev plants are meant to be
+        # iterated against, and flagging them would make the tripwire cry wolf forever.
+        probs2, _ = pf.leakage_problems(d, {"a-dev-plant"}, scan=scan, vendor_dirs=())
+        check("leakage: CONTROL a NON-holdout id in the same brief is allowed",
+              probs2 == [], probs2)
+        # VACUITY: scanning nothing must never read as a pass.
+        _p, n = pf.leakage_problems(d, {"x"}, scan=("does/not/exist",), vendor_dirs=())
+        check("leakage: PLANTED scan roots that do not exist -> 0 files scanned (vacuous)",
+              n == 0)
+
+    # --- the register parser ---
+    good = ("# Plant form register\n\n## Entries\n\n"
+            "| date | plant_id | form | content_sha256 | reason |\n"
+            "|---|---|---|---|---|\n"
+            "| 2026-08-06 | p1 | holdout | {} | initial |\n".format("a" * 64))
+    check("forms: a well-formed register parses one entry",
+          len(pf.parse_register(good)) == 1, pf.parse_register(good))
+    try:
+        pf.parse_register(good.replace("| initial |", "|"))
+        check("forms: PLANTED a misshaped row REFUSES (never silently dropped)", False)
+    except pf.RegisterUnreadable:
+        check("forms: PLANTED a misshaped row REFUSES (never silently dropped)", True)
+
+    # --- the real repo ---
+    resolved_real = pf.resolve_forms(
+        pf.parse_register(open(os.path.join(REPO, pf.REGISTER)).read()))
+    real_shas = pf.corpus_shas(REPO)
+    check("forms: the real register is well-formed against the real corpus",
+          pf.form_problems(
+              pf.parse_register(open(os.path.join(REPO, pf.REGISTER)).read()),
+              real_shas) == [])
+    check("forms: every legacy corpus plant resolves to dev with NO byte change to it",
+          all(pf.form_of(i, resolved_real) == "dev" for i in real_shas) and len(real_shas) >= 14,
+          {i: pf.form_of(i, resolved_real) for i in sorted(real_shas)})
+    p = subprocess.run([sys.executable, os.path.join(HERE, "plant_forms.py"), "check"],
+                       capture_output=True, text=True, timeout=120)
+    check("forms: `plant_forms.py check` on THIS repo exits 0 (the gate step is real)",
+          p.returncode == 0, (p.returncode, p.stdout[-300:], p.stderr[-300:]))
+    gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
+    check("forms: civerd_gate.sh carries a blocking plant_forms check step",
+          "plant_forms.py check" in gate, gate[-300:])
+
+
+def _vitality_tests():
+    """PLANTED (v1.29): a plant every agent passes every time has stopped measuring anything,
+    and a corpus of them reads as a rising score. The instrument must not flatter a young
+    corpus either — `insufficient` is a real answer and must not be rounded to a healthy one."""
+    print("\n[plant vitality (v1.29)]")
+    import plant_vitality as pv
+
+    P = ["PASS"] * 6
+    check("vitality: 6 consecutive PASS is SATURATED at K=4",
+          pv.classify(P, 4)[0] == pv.SATURATED, pv.classify(P, 4))
+    # PLANTED: an all-green streak SHORTER than K must not be called saturated — that would
+    # retire a plant on 2 lucky rolls.
+    check("vitality: PLANTED 2 consecutive PASS is NOT saturated at K=4",
+          pv.classify(["PASS", "PASS"], 4)[0] != pv.SATURATED,
+          pv.classify(["PASS", "PASS"], 4))
+    check("vitality: a young all-green history is INSUFFICIENT, not discriminating",
+          pv.classify(["PASS", "PASS"], 4)[0] == pv.INSUFFICIENT)
+    check("vitality: a currently-red plant is FAILING regardless of its past",
+          pv.classify(["PASS"] * 8 + ["BLOCKING"], 4)[0] == pv.FAILING)
+    check("vitality: a mixed history at full length is DISCRIMINATING",
+          pv.classify(["BLOCKING", "PASS", "AMBER", "PASS", "PASS"], 4)[0]
+          == pv.DISCRIMINATING,
+          pv.classify(["BLOCKING", "PASS", "AMBER", "PASS", "PASS"], 4))
+    check("vitality: no measured runs is INSUFFICIENT, never saturated",
+          pv.classify([], 4)[0] == pv.INSUFFICIENT)
+
+    # PLANTED: an INVALID row is an env failure, not evidence about the plant. Counting it
+    # would let a broken sandbox mark a plant 'failing' and drive an unnecessary fix.
+    import history_format as hf
+    txt = ("### Run 2026-09-01 — model m · repo aaa1111 · selected 1 of 1 (1 shipped + 0 "
+           "corpus · 0 controls) · recall 1/1 [—] · FP 0/1 [—]\n" + hf.HEADER_7 + "\n"
+           + hf.SEP_7 + "\n"
+           "| 2026-09-01 | m | s1 | a1 | 0/0 | — | INVALID — env failure on all reps |\n")
+    st = pv.scenario_streaks(hf.parse_run_blocks(txt)[0])
+    check("vitality: PLANTED an INVALID row is excluded, not counted as a failure",
+          st.get("s1", []) == [], st)
+
+    # form separation: a holdout streak and a dev streak are different measurements
+    two = (txt.replace("INVALID — env failure on all reps", "PASS").replace("0/0", "3/3")
+           + "\n### Run 2026-09-02 — model m · repo bbb2222 · selected 1 of 1 (1 shipped + 0 "
+             "corpus · 0 controls) · recall 1/1 [—] · FP 0/1 [—] · form holdout\n"
+           + hf.HEADER_7 + "\n" + hf.SEP_7 + "\n"
+           "| 2026-09-02 | m | s1 | a1 | 3/3 | — | PASS |\n")
+    blocks, _sk = hf.parse_run_blocks(two)
+    dev_only = pv.scenario_streaks(blocks, "dev")
+    check("vitality: PLANTED a holdout run does not lengthen a DEV plant's streak",
+          len(dev_only.get("s1", [])) == 1, dev_only)
+    check("vitality: the holdout run is visible when asked for",
+          len(pv.scenario_streaks(blocks, "holdout").get("s1", [])) == 1)
+
+    # the summary line must lead with insufficiency when the corpus is young
+    young = {pv.SATURATED: 0, pv.DISCRIMINATING: 1, pv.FAILING: 0, pv.INSUFFICIENT: 9}
+    check("vitality: PLANTED a young corpus reports INSUFFICIENT first, never a clean score",
+          "insufficient history" in pv.summary_line(young), pv.summary_line(young))
+    mature = {pv.SATURATED: 3, pv.DISCRIMINATING: 9, pv.FAILING: 2, pv.INSUFFICIENT: 1}
+    check("vitality: CONTROL a mature corpus reports the ordinary rollup",
+          "saturated" in pv.summary_line(mature)
+          and "insufficient history" not in pv.summary_line(mature),
+          pv.summary_line(mature))
+
+    p = subprocess.run([sys.executable, os.path.join(HERE, "plant_vitality.py")],
+                       capture_output=True, text=True, timeout=120)
+    check("vitality: runs against the REAL scoreboard and emits its tail line",
+          p.returncode == 0 and "VITALITY:" in p.stdout, (p.returncode, p.stdout[-200:]))
+
+
 def _run_header_parser_tests():
     """PLANTED (v1.27 D1): history_format WRITES the `### Run` header and, until now, nothing
     read it back. The ledger needs `repo` to bind an entry to the first run measuring a tree
@@ -1485,6 +1657,8 @@ def main():
     _child_env_capture_exclusion_tests()
     _history_format_tests()
     _run_header_parser_tests()
+    _plant_form_tests()
+    _vitality_tests()
     _power_tests()
     _ledger_tests()
     _staleness_invalid_tests()
