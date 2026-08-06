@@ -3,6 +3,48 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.29.0 — 2026-08-06
+
+**The dev/holdout split — the reporting set stops being the set we tuned against.** Item 3
+of the ratified deletion-ratchet plan, deferred since v1.22. Today one corpus serves both
+loops: "fix the agent, never the plant" means we iterate until a plant passes and then quote
+the catch rate on that plant. A holdout set is the only way the number we publish is not the
+one the tuning loop has been shaping.
+
+- **`calibration/plant-forms.md` + `plant_forms.py`.** The form lives in an APPEND-ONLY
+  register beside the corpus, not in the plant files. The obvious design — `_meta.form` —
+  is unbuildable: rule (b) pins every approved plant byte-identical forever, which blocks
+  back-filling the 14 legacy plants (foreseen) and also blocks **burn-on-failure** (not
+  foreseen), because a holdout plant that fails must rotate into dev and that is a change to
+  a file that can never change. A burn is now an append; the corpus only grows and so does
+  its form record. An id with no entry is `dev` — absence is a decision, and that is the safe
+  direction: an unassigned plant gets tuned against, never quietly reported as clean.
+- **Every entry pins a `content_sha256`.** Form assignment is name-keyed, and yesterday's
+  `d5dec34` lesson is that name-keyed authorization is only sound when something pins the
+  content behind the name — asserted, not assumed. `check` recomputes the hash for any id in
+  the corpus and refuses a mismatch; a privately-held body records `private` and the tool
+  says it could not verify rather than implying it did.
+- **The leakage tripwire.** A holdout id in a gate surface or a vendored tree is a burned
+  plant. Blocking in `civerd_gate.sh`, with a vacuity guard: scanning zero files is a
+  finding, and an unarmed tripwire reports itself unarmed instead of green. `history.md` is
+  deliberately NOT scanned — the scoreboard records every id by design, and the first draft
+  would have burned every holdout plant the instant it ran. Ids are public; BODIES are not.
+- **`form` joins the run-block header**, optional on read so all 12 pre-split blocks still
+  parse (a required group would have made `parse_run_blocks` skip them and the ledger go
+  silently blind to its own history), mandatory on write. `ledger.py` gained form-matched
+  binding and baselines: a holdout run must never become a dev entry's comparator, or a
+  cross-population delta gets presented as an effect.
+- **`plant_vitality.py`** — saturated / discriminating / failing / insufficient per plant,
+  as an authoring-cycle pointer and never a gate or a deletion driver. First real reading:
+  **11 saturated, 11 discriminating, 13 failing, 3 insufficient**. K=4 is provisional and
+  carries a dated debt saying so.
+- **Fixed a live instrument-record leak:** `test_gate_yield.py` drove the real rollup seven
+  times while only two call sites passed `--response-md`, so 88 fixture-dated rows had been
+  written into the committed `docs/calibration/guard_response.md` — the 2026-07-28 G5 class,
+  one file over. Redirected at the source, pinned by a byte-identity check, and the
+  fabricated rows removed with a dated correction in the file. The two real rows stand.
+- No SKILL.md change, deliberately: the doer must not learn which plants are held out.
+
 ## 1.28.0 — 2026-08-06
 
 **Guard calibration in BOTH directions — a guard's claim about itself is an unverified

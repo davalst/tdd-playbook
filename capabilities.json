@@ -614,6 +614,86 @@
           "expires": "2026-09-15"
         }
       ]
+    },
+    {
+      "id": "plant-forms",
+      "summary": "plant_forms.py + calibration/plant-forms.md \u2014 the dev/holdout split. dev is the tuning set; holdout is the reporting set, read quarterly and never tuned against, so the externally quoted number is not the one the tuning loop has been iterating on. Forms live in an APPEND-ONLY register beside the corpus (rule (b) pins approved plants byte-identical forever, and burn-on-failure must be able to change a form), each entry pinning a content sha256 because name-keyed authorization over mutable content is the d5dec34 shape. Includes the leakage tripwire: a holdout id in a gate surface or a vendored tree is a burned plant.",
+      "user_facing": false,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "blocking `plant_forms.py check` step in scripts/civerd_gate.sh; the SPLIT itself is unarmed until the first holdout assignment \u2014 see the dated debt below, which is the trigger, not a hope"
+      },
+      "wired_by": [
+        "scripts/civerd_gate.sh (blocking check step)",
+        "calibration/run_calibration.py (--form selection; dev by default)",
+        "calibration/ledger.py (entry_form + form-matched binding and baselines)",
+        "calibration/check_scoreboard_integrity.py (rule (a) append-only over the register)",
+        "calibration/history_format.py (the `form` clause in the run-block header)"
+      ],
+      "exercised_by": [
+        "calibration/test_harness.py::_plant_form_tests"
+      ],
+      "consumes": [
+        "calibration/corpus/approved/*.json (content hashes that pin each name)"
+      ],
+      "emits": [
+        {
+          "topic": "resolved plant forms (dev/holdout per plant id)",
+          "consumers": [
+            "calibration/run_calibration.py --form selection",
+            "calibration/plant_vitality.py (per-population streaks)",
+            "calibration/ledger.py (a holdout run must never baseline a dev entry)"
+          ]
+        }
+      ],
+      "integration_debt": [
+        {
+          "what": "FIRST HOLDOUT ASSIGNMENT (v1.29, David's ships-on-or-triggered rule): the split mechanism is BUILT, WIRED and BLOCKING, but zero plants are assigned to holdout, so the leakage tripwire cannot fail and `check` reports itself UNARMED rather than green. Two things are owed: (1) David creates the PRIVATE SIBLING REPO for holdout plant bodies (Decision 1, ratified 2026-08-05 \u2014 holdout material never appears in anything published); (2) the next authoring cycle assigns whole plant CLASSES to holdout at --approve, pair-riding via control_for, recording each body's sha256 (or `private`). Until then the quarterly LIFT read stays hard-blocked, which is the downstream cost. Done = >=1 holdout class in calibration/plant-forms.md with `plant_forms.py check` reporting an ARMED tripwire, or a consciously re-dated entry",
+          "owner": "david",
+          "expires": "2026-10-15"
+        }
+      ]
+    },
+    {
+      "id": "plant-vitality",
+      "summary": "plant_vitality.py \u2014 does a plant still DISCRIMINATE, or has the agent memorised it? Per-scenario streaks from the scoreboard: saturated / discriminating / failing / insufficient. Feeds the AUTHORING cycle (a saturated plant names the target for its next harder sibling; a saturated class is a rotation-to-holdout candidate) and the quarterly review. Never a deletion driver and never a gate \u2014 the corpus only grows (R4), so this answers the absolute question, never the comparative one.",
+      "user_facing": false,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "VITALITY tail line printed by every run_calibration run"
+      },
+      "wired_by": [
+        "calibration/run_calibration.py (end-of-run VITALITY pointer, per --form)",
+        "calibration/author_plants.py (the authoring cycle reads it to pick targets)"
+      ],
+      "exercised_by": [
+        "calibration/test_harness.py::_vitality_tests"
+      ],
+      "consumes": [
+        "docs/calibration/history.md run blocks (history_format.parse_run_blocks)"
+      ],
+      "emits": [
+        {
+          "topic": "VITALITY rollup (saturated/discriminating/failing/insufficient per form)",
+          "consumers": [
+            "calibration/run_calibration.py end-of-run tail",
+            "docs/calibration/quarterly.md (the escalation-ceiling watch: a rising saturated share means adversary-tier authoring has hit its ceiling)"
+          ]
+        }
+      ],
+      "integration_debt": [
+        {
+          "what": "SATURATION K IS PROVISIONAL (v1.29): K=4 consecutive all-green runs was chosen BEFORE there was enough history to calibrate it \u2014 the repo has ~12 runs and the corpus grew recently, so the first reading (11 saturated / 11 discriminating / 13 failing / 3 insufficient) is a number whose threshold nobody has validated. Done = K revisited against a quarter of real history and either confirmed with the evidence recorded in quarterly.md, or changed, or a consciously re-dated entry. Until then the SATURATED count is a prompt for the authoring cycle, never a fact about a plant",
+          "owner": "david",
+          "expires": "2026-11-01"
+        }
+      ]
     }
   ]
 }

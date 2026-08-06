@@ -256,11 +256,17 @@ def test_own_registry():
     reg = mod.load_registry(mod.find_registry(repo_root))
     v_after = mod.validate(reg, _dt.date(2026, 11, 2))
     v_on = mod.validate(reg, _dt.date(2026, 11, 1))
-    check("quarterly debt: violation string present at 2026-11-02",
-          any("quarterly" in v for v in v_after),
+    # The needle is the debt's own NAME, not the bare word "quarterly" (tightened 2026-08-06).
+    # As written it matched any violation merely MENTIONING the quarterly read, so the v1.29
+    # plant-forms debt — which cites it as a downstream cost and expires two weeks earlier —
+    # tripped an assertion about a different debt entirely. A boundary pin whose needle can be
+    # satisfied by unrelated prose is not pinning the boundary it names.
+    check("QUARTERLY BUNDLE debt: violation string present at 2026-11-02",
+          any("QUARTERLY BUNDLE" in v for v in v_after),
           [v for v in v_after][:3])
-    check("quarterly debt: NOT expired on its own expiry day (strictly-after rule)",
-          not any("quarterly" in v for v in v_on), [v for v in v_on][:3])
+    check("QUARTERLY BUNDLE debt: NOT expired on its own expiry day (strictly-after rule)",
+          not any("QUARTERLY BUNDLE" in v for v in v_on),
+          [v for v in v_on if "QUARTERLY BUNDLE" in v][:3])
 
     # STRING-PINNED boundary proofs for the v1.23 briefs debts (David's ships-on-or-
     # triggered rule, 2026-07-30: anything shipped OFF must carry an ARMED trigger).
@@ -393,6 +399,21 @@ def test_own_registry():
                   for v in _fires("2026-10-16",
                                   "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")),
           _fires("2026-10-16", "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")[:2])
+    # v1.29 (the dev/holdout split). The mechanism ships BLOCKING but the split itself is
+    # unarmed — zero holdout plants — so per the ships-on-or-triggered rule the arming has a
+    # DATE that REDs the suite, not a hope that someone remembers.
+    check("first-holdout-assignment debt (2026-10-15): silent on its expiry day, fires 10-16 "
+          "naming plant-forms — a split with nothing held out is a tripwire that cannot fail",
+          not _fires("2026-10-15", "FIRST HOLDOUT ASSIGNMENT")
+          and any("plant-forms" in v
+                  for v in _fires("2026-10-16", "FIRST HOLDOUT ASSIGNMENT")),
+          _fires("2026-10-16", "FIRST HOLDOUT ASSIGNMENT")[:2])
+    check("saturation-K debt (2026-11-01): silent on its expiry day, fires 11-02 naming "
+          "plant-vitality — K=4 was chosen before there was history to calibrate it",
+          not _fires("2026-11-01", "SATURATION K IS PROVISIONAL")
+          and any("plant-vitality" in v
+                  for v in _fires("2026-11-02", "SATURATION K IS PROVISIONAL")),
+          _fires("2026-11-02", "SATURATION K IS PROVISIONAL")[:2])
     check("layer_10 sha report-back debt (2026-09-15): silent on its expiry day, fires "
           "09-16 naming dataflow-sweeps — the sha-citation rule's own slot must not sit "
           "empty forever in the release that invented the rule",

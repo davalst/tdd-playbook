@@ -46,6 +46,10 @@ GATE_JOURNAL = "calibration/gate-changes.md"
 # Append-only for the same reason as history.md — a prediction you can revise after seeing
 # the result is not a prediction.
 LEDGER = "docs/calibration/ledger.md"
+# (v1.29) the dev/holdout register. Append-only for the same reason as the
+# corpus is immutable: a form you can rewrite lets a holdout plant that was
+# tuned against be quietly reclassified as a clean measurement.
+PLANT_FORMS = "calibration/plant-forms.md"
 SKILL = "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
 AGENTS_DIR = "plugins/tdd-playbook/agents"
 COMMANDS_DIR = "plugins/tdd-playbook/commands"
@@ -133,7 +137,7 @@ def check(repo, rev):
     # each file's appended-since-baseline text — the journals authorize ONLY through it,
     # so a rewritten journal can never retro-authorize (and no per-file special cases).
     added, prefix_violations = appended_since_baseline(
-        repo, rev, (HISTORY, JOURNAL, GATE_JOURNAL, LEDGER))
+        repo, rev, (HISTORY, JOURNAL, GATE_JOURNAL, LEDGER, PLANT_FORMS))
     violations.extend(prefix_violations)
     journal_added = added[JOURNAL]
 

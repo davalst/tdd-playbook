@@ -193,27 +193,75 @@ def score_cell(baseline, actual, expect, claimed, floor_reps=0):
     return ("HIT" if d >= int(claimed or 1) else "PARTIAL"), d
 
 
-def bind_entry(entry, blocks, resolve, is_ancestor):
+def entry_form(entry, resolved_forms):
+    """The plant population an entry belongs to, from the forms of the scenarios it names.
+
+    An entry naming scenarios from BOTH populations has no single honest comparator, so it
+    is reported rather than silently scored against one of them.
+    """
+    forms = {resolved_forms.get(s, "dev") for s in entry.get("scenarios") or []}
+    if not forms:
+        return "dev"
+    if len(forms) > 1:
+        return "mixed"
+    return forms.pop()
+
+
+def load_forms(repo):
+    """{plant_id: form} from the append-only register, or {} if it is absent/unreadable.
+    Empty resolves everything to `dev`, which is what the repo was before the split."""
+    try:
+        sys.path.insert(0, HERE)
+        import plant_forms as pf
+        with open(os.path.join(repo, pf.REGISTER)) as fh:
+            return pf.resolve_forms(pf.parse_register(fh.read()))
+    except Exception:
+        return {}
+
+
+def form_matches(block, form):
+    """Is this run block a legitimate comparator for a `form` entry? (v1.29)
+
+    dev and holdout are DIFFERENT PLANT POPULATIONS. Comparing a dev number against a
+    holdout number is a cross-population delta presented as an effect — the very thing the
+    split exists to stop. An `all` run contains both, so it can serve either. Blocks written
+    before the split carry no clause and default to `dev` (they WERE the whole corpus with
+    nothing held out).
+    """
+    b = block.get("form", "dev")
+    return b == form or b == "all"
+
+
+def bind_entry(entry, blocks, resolve, is_ancestor, form="dev"):
     """(block or None, reason). The earliest run block measuring a tree that is a STRICT
-    descendant of the entry's baseline."""
+    descendant of the entry's baseline, AND drawn from the entry's own plant population."""
     base = resolve(entry["baseline_sha"])
     if not base:
         return None, "unbindable-sha"
+    saw_other_form = False
     for b in blocks:
         if not b["repo_sha"] or b["repo_sha"] == "unknown":
             continue
         full = resolve(b["repo_sha"])
         if not full or full == base:
             continue
-        if is_ancestor(base, full):
-            return b, "bound"
-    return None, "pending"
+        if not is_ancestor(base, full):
+            continue
+        if not form_matches(b, form):
+            # A holdout run must not CONSUME a dev entry's binding: the scenario may not
+            # even be in that population, and the entry would score INCONCLUSIVE forever.
+            saw_other_form = True
+            continue
+        return b, "bound"
+    return None, ("pending-other-form" if saw_other_form else "pending")
 
 
-def baseline_row(scenario, blocks, bound):
-    """The scenario's row in the latest block STRICTLY BEFORE the bound one. Runs are sparse;
-    the last measurement before the scoring run is the only honest comparator."""
-    prior = [b for b in blocks if b["line_no"] < bound["line_no"]]
+def baseline_row(scenario, blocks, bound, form="dev"):
+    """The scenario's row in the latest SAME-FORM block strictly before the bound one. Runs
+    are sparse; the last measurement before the scoring run is the only honest comparator —
+    and only if it measured the same population."""
+    prior = [b for b in blocks
+             if b["line_no"] < bound["line_no"] and form_matches(b, form)]
     for b in reversed(prior):
         for r in b["rows"]:
             if r["scenario"] == scenario:
@@ -481,7 +529,9 @@ def cmd_check(args):
                                           scored),
                                       path_state, head, rev, epoch, is_ancestor)
         blocks, skipped = hfmt.parse_run_blocks(_read(os.path.join(repo, args.history)))
-        bindings = [bind_entry(e, blocks, resolve, is_ancestor) for e in registered]
+        forms = load_forms(repo)
+        bindings = [bind_entry(e, blocks, resolve, is_ancestor,
+                               entry_form(e, forms)) for e in registered]
         problems += unscored_problems(registered, scored, bindings)
         problems += followup_problems(scored, os.path.join(repo, REGISTRY), args.as_of)
     except LedgerUnreadable as exc:
@@ -520,11 +570,12 @@ def cmd_score(args):
     for e in registered:
         if e["id"] in done:
             continue
-        b, why = bind_entry(e, blocks, resolve, is_ancestor)
+        ef = entry_form(e, forms)
+        b, why = bind_entry(e, blocks, resolve, is_ancestor, ef)
         if b is None:
             continue
         for sc in (e["scenarios"] or ["—"]):
-            br = baseline_row(sc, blocks, b) if sc != "—" else None
+            br = baseline_row(sc, blocks, b, ef) if sc != "—" else None
             ar = actual_row(sc, b) if sc != "—" else None
             base = hfmt.split_runs(br["runs"]) if br else None
             act = hfmt.split_runs(ar["runs"]) if ar else None
