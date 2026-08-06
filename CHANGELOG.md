@@ -3,6 +3,79 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.28.0 — 2026-08-06
+
+**Guard calibration in BOTH directions — a guard's claim about itself is an unverified
+claim.** Two field reports and one question from David converged on the same spine. He
+watched a guard block a compound command and watched me "re-run it in pieces", and asked
+the right question: is that compliance, or the model routing around the guard? The audit
+said compliance in all four blocks — the flagged action was dropped every time, never
+performed by another route — but the question was better than the answer, because from
+outside the two are indistinguishable and my narration never said which it was.
+
+Then the guard itself turned out to be wrong. Its docstring promises "reads are always
+fine"; it blocked a READ of the unlock journal, because its write-verb list matched a
+Python loop variable named `ln`. Two more false-positive classes came out of the same
+read. Meanwhile Cheliped's field report carried the mirror image: a guard meant to block
+privileged commands matched program basenames case-sensitively while the only copy on the
+host lived in a capitalised app bundle, so running the test suite reconfigured the
+developer's machine for months — and the docstring, the handoff and three later docstrings
+all repeated the false claim. Nobody tests the safety net, because testing it feels like
+distrusting it.
+
+### The new house bar
+- **Every blocking guard ships a two-directional calibration table** — BLOCK rows are every
+  documented bypass, ALLOW rows are the guard's own stated contract, and each real false
+  positive or real bypass is frozen as a dated fixture. Narrowing a guard is not amnesty:
+  the block rows must survive every narrowing. (§13; HACK_CATALOG **H13**.)
+- **`test_lock_guard` fixed in three classes** and calibrated against all four of this
+  session's real false positives: write verbs now only count at a command position, an
+  inline write is matched against ITS OWN target path, and a `cd` outside the project root
+  takes the command out of scope.
+
+### Auditable guard interactions
+- **`bin/guard_note.py`** — at every guard block, record the three clauses: what it
+  objected to · whether that action was performed by ANY other route · what was dropped.
+  Rows ride the existing single write path (`_common.log_yield_event`) stamped
+  `source: "agent"`.
+- **`gate_yield rollup` prints `blocks N · accounted M · UNACCOUNTED N−M`** per gate into
+  `docs/calibration/guard_response.md`. The property that makes a self-report worth
+  anything: the HOOK writes the blocks, the agent writes only the responses — silence
+  cannot produce a clean record, only a visible unaccounted count. `PERFORMED ELSEWHERE`
+  is reported by name.
+
+### New advisory guards
+- **`exitcode_guard`** (PreToolUse Bash, warn) — a verifier piped into another command
+  reports the PIPE's status, not the checker's. Two live instances in two days in the two
+  repos that check each other: I gated a commit chain on a piped gate run and pushed a
+  repo-red commit; the CIVerd runner masked a pytest exit the same way.
+- **`exhaustive_claim_guard`** (PostToolUse, warn) — a test whose name or message claims
+  *every / all / no other / exhaustive* must say in one line what a violating case looks
+  like and how it would SEE it. Cheliped's parity test was genuinely exhaustive over
+  deletions and structurally blind to the path that deleted nothing; it could not have
+  failed on the real bug. (HACK_CATALOG **H14** — and note a 100% mutation score is blind
+  to it: mutants perturb the listed paths.)
+
+### Doctrine (Cheliped's five asks, all adopted)
+§2 adversarial content as its own edge category · §12 the exhaustiveness rule · §13 guard
+self-claims · §9 `/security-review` at the phase boundary that INTRODUCES the surface, not
+at merge · §7 a quarantine marker is not real until something deselects it.
+
+### Ledger and corpus integrity
+- **`calibration/ledger.py`: the EPOCH is now the primary baseline**, not a fallback —
+  CIVerd's correction. Their runner deepens to `--depth 200`, so my shallow-clone diagnosis
+  was wrong; the real mechanism is that the box has ZERO TAGS, so `--baseline-rev v1.22.0`
+  never resolves there. Right fix, wrong reason, corrected in the docstring rather than
+  only in a commit message.
+- **Three more approved corpus plants reverted to their v1.26.0 bytes.** Once CIVerd
+  shipped its `--tags` fix, the integrity check ran against v1.26.0 instead of v1.22.0 and
+  caught 2026-08-05 oracle edits that had been legal only because the older window could
+  not see the files. My journal entry that day said the rule did not cover them — reasoning
+  from the baseline WINDOW rather than the RULE, which is unconditional. Six plants now
+  await supersession; all six are in `PROMOTION_QUARANTINE` so a known-defective oracle
+  cannot harden a false miss into BLOCKING. The lesson generalises: an integrity floor
+  implemented against a moving baseline is weakest on the NEWEST material.
+
 ## 1.27.0 — 2026-08-05
 
 **The measured update loop — stop experiencing improvement and start verifying it.**
