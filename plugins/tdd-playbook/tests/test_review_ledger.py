@@ -95,6 +95,11 @@ def test_terminal_closure_evidence_and_range_are_executable():
           any("registered reviewer" in p for p in problems), problems)
     check("PLANTED nonexistent closure evidence is refused",
           any("closure_evidence target" in p for p in problems), problems)
+    check("PLANTED existing documentation line is not executable closure evidence",
+          not rl.closure_evidence_exists(REPO, "README.md:1"))
+    check("PLANTED existing but non-dispatched helper is not closure evidence",
+          not rl.closure_evidence_exists(
+              REPO, "plugins/tdd-playbook/tests/test_review_ledger.py::finding"))
     topology = rl.topology_problems([closed], lambda _base, _head: False)
     check("PLANTED non-ancestral review range is refused",
           any("base is not an ancestor" in p for p in topology), topology)

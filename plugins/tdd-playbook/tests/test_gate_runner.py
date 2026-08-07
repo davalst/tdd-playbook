@@ -257,14 +257,17 @@ def test_compact_runner_preserves_suite_directory_seam():
               len(good.stdout.splitlines()) <= 3, (good.returncode, good.stdout, good.stderr))
         with open(os.path.join(d, "test_bad.py"), "w") as fh:
             fh.write("import sys\nprint('FAIL - motivating failure')\n"
+                     "print('FAIL https://alice:console-secret@example.invalid/a')\n"
                      "print('token=top-secret')\n"
                      "[print('noise-%d' % i) for i in range(40)]\nsys.exit(1)\n")
         bad = subprocess.run(["sh", SHELL_GATE, d], cwd=REPO,
                              capture_output=True, text=True, timeout=30)
         check("compact runner: planted failure propagates with redacted detail",
               bad.returncode != 0 and "FAIL test_bad" in bad.stdout and
-              "motivating failure" in bad.stdout and
-              "top-secret" not in bad.stdout + bad.stderr,
+              "failure_signals=" in bad.stdout and
+              "motivating failure" not in bad.stdout and
+              "top-secret" not in bad.stdout + bad.stderr and
+              "console-secret" not in bad.stdout + bad.stderr,
               (bad.returncode, bad.stdout, bad.stderr))
 
 
