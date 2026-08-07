@@ -259,10 +259,33 @@ def test_lock_transaction_and_binding():
         check("lock transaction: same session text in another worktree is a competing owner",
               worktree_collision_refused
               and core.read_lock(main_ident)["source_worktree_id"] == main_ident["worktree_id"])
+        try:
+            core.clear_lock(side_ident, expected_generation=1,
+                            expected_lock_id=main_record["lock_id"],
+                            expected_session_id="shared-session",
+                            expected_worktree_id=side_ident["worktree_id"])
+        except core.ContractError:
+            cross_worktree_clear_refused = True
+        else:
+            cross_worktree_clear_refused = False
+        check("lock transaction: same session text cannot unlock from another worktree",
+              cross_worktree_clear_refused and core.read_lock(main_ident) is not None)
 
         core.clear_lock(main_ident, expected_generation=1,
                         expected_lock_id=main_record["lock_id"],
-                        expected_session_id="shared-session")
+                        expected_session_id="shared-session",
+                        expected_worktree_id=main_ident["worktree_id"])
+        try:
+            core.clear_lock(main_ident, expected_generation=1,
+                            expected_lock_id=main_record["lock_id"],
+                            expected_session_id="shared-session",
+                            expected_worktree_id=main_ident["worktree_id"])
+        except core.ContractError:
+            disappeared_clear_refused = True
+        else:
+            disappeared_clear_refused = False
+        check("lock transaction: clear-after-read disappearance cannot report success",
+              disappeared_clear_refused)
         merged = core.merge_lock(ident, current)
         binding = core.lock_binding(ident, merged)
         check("lock binding: current source revision is explicit", binding == "current", binding)
