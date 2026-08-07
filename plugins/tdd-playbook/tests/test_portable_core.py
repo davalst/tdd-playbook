@@ -213,6 +213,57 @@ def test_lock_transaction_and_binding():
         check("lock transaction: stale unlock cannot clear a newer lock generation",
               stale_clear_refused and core.read_lock(ident) is not None)
 
+        current = core.read_lock(ident)
+        try:
+            core.clear_lock(ident, expected_generation=current["generation"],
+                            expected_lock_id=current["lock_id"],
+                            expected_session_id="not-the-owner")
+        except core.ContractError:
+            nonowner_refused = True
+        else:
+            nonowner_refused = False
+        check("lock transaction: a non-owner cannot unlock an active run", nonowner_refused)
+
+        core.clear_lock(ident, expected_generation=current["generation"],
+                        expected_lock_id=current["lock_id"],
+                        expected_session_id=current["session_id"])
+        replacement = core.new_lock_record(ident, ["tests/test_pay.py"], "replacement")
+        core.merge_lock(ident, replacement)
+        try:
+            core.clear_lock(ident, expected_generation=current["generation"],
+                            expected_lock_id=current["lock_id"],
+                            expected_session_id=current["session_id"])
+        except core.ContractError:
+            aba_refused = True
+        else:
+            aba_refused = False
+        check("lock transaction: stale ABA clear cannot delete a replacement generation-1 lock",
+              aba_refused and core.read_lock(ident)["session_id"] == "replacement")
+
+        core.clear_lock(ident, expected_generation=1,
+                        expected_lock_id=replacement["lock_id"],
+                        expected_session_id="replacement")
+        side = os.path.join(d, "side")
+        _git(root, "worktree", "add", "-qb", "side-owner", side)
+        main_ident = core.resolve_repository(root)
+        side_ident = core.resolve_repository(side)
+        main_record = core.new_lock_record(main_ident, ["tests/test_pay.py"], "shared-session")
+        core.merge_lock(main_ident, main_record)
+        side_record = core.new_lock_record(side_ident, ["tests/test_pay.py"], "shared-session")
+        try:
+            core.merge_lock(side_ident, side_record)
+        except core.ContractError:
+            worktree_collision_refused = True
+        else:
+            worktree_collision_refused = False
+        check("lock transaction: same session text in another worktree is a competing owner",
+              worktree_collision_refused
+              and core.read_lock(main_ident)["source_worktree_id"] == main_ident["worktree_id"])
+
+        core.clear_lock(main_ident, expected_generation=1,
+                        expected_lock_id=main_record["lock_id"],
+                        expected_session_id="shared-session")
+        merged = core.merge_lock(ident, current)
         binding = core.lock_binding(ident, merged)
         check("lock binding: current source revision is explicit", binding == "current", binding)
         with open(os.path.join(root, "pay.py"), "a") as fh:

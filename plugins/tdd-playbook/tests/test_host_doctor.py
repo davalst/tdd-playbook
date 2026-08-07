@@ -106,6 +106,32 @@ def test_doctor_assurance():
               == "unmeasured", (empty.returncode, empty.stderr, report))
 
         identity = core.resolve_repository(root)
+        side = os.path.join(d, "side")
+        _git(root, "worktree", "add", "-qb", "side-evidence", side)
+        side_identity = core.resolve_repository(side)
+        for route, outcome, decision, assurance, stamp in (
+            ("structured_edit", "blocked", "block", "host_prevented",
+             "2026-08-07T09:00:00+00:00"),
+            ("structured_edit", "allowed", "allow", "host_observed",
+             "2026-08-07T09:00:01+00:00"),
+            ("shell", "blocked", "block", "host_prevented",
+             "2026-08-07T09:00:02+00:00"),
+            ("shell", "allowed", "allow", "host_observed",
+             "2026-08-07T09:00:03+00:00")):
+            core.append_event(side_identity, core.new_local_evidence_event(
+                side_identity, host="claude", host_version="1.2.3",
+                adapter_version="1.30.0", run_id="other-worktree",
+                event="capability_probe", decision=decision, assurance=assurance,
+                scope=route, details={"capability": "test-lock", "route": route,
+                                      "outcome": outcome, "control": outcome == "allowed",
+                                      "redactions": 0}, now=stamp))
+        cross = _doctor(root, "--as-of", "2026-08-07")
+        cross_report = json.loads(cross.stdout) if cross.returncode == 0 else {}
+        cross_value = cross_report["hosts"]["claude"]["capabilities"]["test-lock"]
+        check("doctor: paired evidence from another worktree is visible but not promoted",
+              cross_value["assurance"] == "unmeasured"
+              and cross_value.get("other_worktree_routes") == ["shell", "structured_edit"],
+              cross_value)
         event = core.new_local_evidence_event(
             identity, host="claude", host_version="1.2.3", adapter_version="1.30.0",
             run_id="probe-live", event="capability_probe", decision="block",
