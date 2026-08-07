@@ -254,6 +254,13 @@ def test_own_registry():
     # burned by, twice). Boundary: expires 2026-11-01 -> violating strictly AFTER.
     import datetime as _dt
     reg = mod.load_registry(mod.find_registry(repo_root))
+    host_doctor = next((c for c in reg.get("capabilities", [])
+                        if c.get("id") == "host-adapter-doctor"), None)
+    check("host-adapter-doctor is registered with its real CLI and behavioral suite",
+          host_doctor is not None
+          and "plugins/tdd-playbook/bin/tdd.py" in host_doctor.get("wired_by", [])
+          and "plugins/tdd-playbook/tests/test_host_doctor.py"
+          in host_doctor.get("exercised_by", []), host_doctor)
     v_after = mod.validate(reg, _dt.date(2026, 11, 2))
     v_on = mod.validate(reg, _dt.date(2026, 11, 1))
     # The needle is the debt's own NAME, not the bare word "quarterly" (tightened 2026-08-06).
