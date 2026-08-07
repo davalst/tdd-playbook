@@ -123,16 +123,13 @@ reminder.
 Everything mechanical is calibrated with planted inputs (a planted violation that slips past
 a check is a failure — §13 applied to ourselves):
 ```bash
-python3 plugins/tdd-playbook/tests/test_hooks.py          # hook guards
-python3 plugins/tdd-playbook/tests/test_with_snapshot.py  # mechanical revert safety
-python3 plugins/tdd-playbook/tests/test_agents.py         # agent/command structural contracts
-python3 plugins/tdd-playbook/tests/test_verify_citations.py
-python3 plugins/tdd-playbook/tests/test_capability_registry.py  # wiring-liveness registry (§6a)
-python3 plugins/tdd-playbook/tests/test_ed25519_verify.py   # stdlib Ed25519 verifier (RFC 8032 KAT + negatives)
-python3 plugins/tdd-playbook/tests/test_verify_verdict.py   # CIVerd release gate vs memrebel golden corpus
-python3 plugins/tdd-playbook/tests/test_release_verify.py   # executable release gate (no tag without a green verdict)
-python3 calibration/test_harness.py                       # the calibration harness itself
+sh scripts/civerd_gate.sh                       # complete AUTHORIZING local/CIVerd gate
+sh scripts/civerd_gate.sh affected --base HEAD~1  # NON-AUTHORIZING inner-loop diagnostic
 ```
+The affected command always reports `selected N of M` and falls back to the complete plan for
+unknown or assurance-bearing paths. Focused suite runs are diagnostics, never checkpoint or release
+evidence. Machine-owned gate, parity, and capability facts are rendered with provenance in
+[`docs/reference/current-state.md`](docs/reference/current-state.md).
 
 **Release verification (CIVerd, audit finding F4).** An independent CI engine on a VPS signs a
 verdict for each pushed commit; `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) checks

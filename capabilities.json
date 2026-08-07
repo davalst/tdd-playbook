@@ -752,6 +752,45 @@
       ]
     },
     {
+      "id": "generated-current-state-reference",
+      "summary": "Output-only current-state reference generated from the gate, parity, and capability authorities with content-hash provenance.",
+      "user_facing": false,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "plugins/tdd-playbook/tests/test_reference_docs.py in the dynamically discovered blessed gate roster"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/render_reference.py",
+        "docs/reference/current-state.md",
+        "README.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_reference_docs.py"
+      ],
+      "consumes": [
+        "gate-manifest.json and gate_plan.py",
+        "host-parity-policy.json, host-parity.json, and host_parity.py",
+        "capabilities.json"
+      ],
+      "emits": [
+        {
+          "topic": "docs/reference/current-state.md provenance-bound operational facts",
+          "consumers": [
+            "README operator link",
+            "architecture and release review"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 90,
+        "probe": "test_reference_docs plants both authority drift and a manual generated-output edit and requires the renderer check to refuse"
+      }
+    },
+    {
       "id": "host-parity-resolution",
       "summary": "Resolved host parity: compact acknowledged policy expands into an exact activation-bearing asset matrix consumed by packaging tests.",
       "user_facing": false,

@@ -20,6 +20,8 @@
     "plugins/tdd-playbook/bin/gate_runner.py",
     "plugins/tdd-playbook/bin/dataflow_sweeps.py",
     "plugins/tdd-playbook/bin/host_parity.py",
+    "plugins/tdd-playbook/bin/render_reference.py",
+    "docs/reference/current-state.md",
     "docs/architecture/host-parity-policy.json",
     "docs/architecture/host-parity.json",
     "capabilities.json",
