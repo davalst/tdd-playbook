@@ -1328,6 +1328,44 @@ def _denominator_tests():
         check("denominator: a declared shortfall still NAMES the unarmed sweeps",
               "UNARMED" in p2.stdout, p2.stdout[:300])
 
+    # --- DETECTION, not liveness (Cheliped's caution, 2026-08-06) ---
+    # Every check above proves the REPORTING fires: the ratio prints, the refusal refuses.
+    # None proves the armed sweep is pointed at anything. Their bandit came up clean on its
+    # first armed run only because the five HIGHs had been fixed minutes earlier — armed is
+    # not aimed. So plant a REAL violation inside the REAL config's REAL scan roots and
+    # assert the shipped configuration catches it. If `scan` ever drifts to a directory that
+    # holds nothing, `checked N` stays plausible and non-zero and every synthetic-config
+    # detection test in test_dataflow_sweeps.py keeps passing.
+    real_cfg = os.path.join(REPO, "dataflow-sweeps.json")
+    with open(real_cfg) as fh:
+        roots = (_json.load(fh).get("render_pairing") or {}).get("scan") or []
+    check("detection: the real config declares at least one scan root", bool(roots), roots)
+    planted = os.path.join(REPO, roots[0], "_h15_detection_plant.py") if roots else None
+    try:
+        if planted:
+            with open(planted, "w") as fh:
+                # a render-pairing violation: a template key with no matching placeholder
+                fh.write('BAD = "{present}".format(present=1, absent=2)\n')
+            p = subprocess.run(
+                [sys.executable, os.path.join(REPO, "plugins", "tdd-playbook", "bin",
+                                              "dataflow_sweeps.py"), "render-pairing",
+                 "--config", real_cfg],
+                capture_output=True, text=True, timeout=120)
+            check("detection: the SHIPPED config CATCHES a real violation in its own roots",
+                  p.returncode == 1 and "_h15_detection_plant" in p.stdout,
+                  (p.returncode, p.stdout[-300:]))
+    finally:
+        if planted and os.path.exists(planted):
+            os.remove(planted)
+    # CONTROL: with the plant removed the shipped config is clean again, so the check above
+    # cannot be passing because the sweep simply always fails.
+    p = subprocess.run(
+        [sys.executable, os.path.join(REPO, "plugins", "tdd-playbook", "bin",
+                                      "dataflow_sweeps.py"), "render-pairing",
+         "--config", real_cfg], capture_output=True, text=True, timeout=120)
+    check("detection: CONTROL the shipped config is clean once the plant is removed",
+          p.returncode == 0, (p.returncode, p.stdout[-200:]))
+
     # --- the harness registration invariant: parsed, not grepped ---
     # (The live invariant runs in main(); here we plant against the same pure logic so the
     # checker is calibrated rather than merely present.)

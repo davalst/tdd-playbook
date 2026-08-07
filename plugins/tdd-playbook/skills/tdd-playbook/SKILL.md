@@ -904,9 +904,29 @@ unverified NEGATIVE about a file it never read.)
   already covers it" is necessary but NOT sufficient evidence that a class is handled — the useful
   number is not whether a rule exists but how often a LOADED rule gets walked past. (Origin:
   Cheliped, 2026-08 — three rules in context the whole time, three misses in one sprint, including
-  a `grep -c` that counted docstrings written inside the fix for that very class. Every mechanical
-  guard that fired caught something the prose did not.) So when a class is named, ship the
-  mechanism; the doctrine line exists so the mechanism has something to cite, not instead of it.
+  a `grep -c` that counted docstrings, written inside the fix for that very class.) So when a class
+  is named, ship the mechanism; the doctrine line exists so the mechanism has something to cite,
+  not instead of it.
+- **A mechanism cannot detect its own absence.** ruff not running was invisible to ruff; bandit not
+  running was invisible to bandit; the gate summary was the thing asserting they had run.
+  Everything inside a mechanism's field of view, it found — and every failure OF the mechanism
+  layer came from outside it: a human seeing a symptom, a peer's message, or an anomaly that
+  didn't fit. So spend in two places, not one: mechanisms for what they can see, and something
+  STRUCTURALLY OUTSIDE them for "is this running at all?" That is the trust-boundary case
+  generalised past attestation — an independent engine catches you not only because you cannot
+  edit it, but because it asks a question your own gates cannot ask about themselves. The part a
+  repo CAN do for itself is make each gate assert its own liveness (a check that refuses an
+  undeclared shortfall; a selftest that plants an absent tool and asserts the verdict names it).
+  (Origin: Cheliped, 2026-08, audited across 27 commits and correcting their own earlier claim —
+  a suite opened the Mac App Store in a browser for days with every gate green, and no mechanism
+  was ever going to report it.)
+- **A LIVENESS plant and a DETECTION plant are different tests, and passing one says nothing about
+  the other.** Liveness proves the reporting fires; detection proves the gate is pointed at the
+  right things and would catch a real violation. A scanner can be armed, green, and aimed at an
+  empty directory — its count stays plausible and non-zero, and every synthetic-fixture test of
+  its logic keeps passing. So plant into the REAL configuration's REAL scope, not only into a
+  fixture. (Origin: Cheliped, 2026-08 — bandit came up clean on its first armed run only because
+  the five HIGH findings had been fixed minutes earlier; armed is not aimed.)
 
 ## 13. The learning loop — grade the process, calibrate with planted errors
 **The decay principle (why this section exists):** every gate is a DECAYING asset —
