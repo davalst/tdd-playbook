@@ -289,9 +289,12 @@ def merge_lock(identity, fresh):
     _validate_lock(identity, fresh)
     with _state_transaction(identity):
         existing = _read_lock_unlocked(identity)
-        if existing is not None and existing["session_id"] != fresh["session_id"]:
+        if existing is not None and (
+                existing["session_id"] != fresh["session_id"]
+                or existing["source_worktree_id"] != fresh["source_worktree_id"]):
             raise ContractError(
-                "competing active lock owned by session {!r}".format(existing["session_id"]))
+                "competing active lock owned by worktree/session {!r}/{!r}".format(
+                    existing["source_worktree_id"], existing["session_id"]))
         if existing is not None:
             protected = dict(existing["files"])
             protected.update(fresh["files"])
@@ -302,7 +305,8 @@ def merge_lock(identity, fresh):
         return fresh
 
 
-def clear_lock(identity, expected_generation=None):
+def clear_lock(identity, expected_generation=None, expected_lock_id=None,
+               expected_session_id=None):
     """Remove the authority only if the caller did not race a newer lock mutation."""
     with _state_transaction(identity):
         existing = _read_lock_unlocked(identity)
@@ -310,6 +314,10 @@ def clear_lock(identity, expected_generation=None):
             return False
         if expected_generation is not None and existing["generation"] != expected_generation:
             raise ContractError("active lock changed while unlock was in progress")
+        if expected_lock_id is not None and existing["lock_id"] != expected_lock_id:
+            raise ContractError("active lock was replaced while unlock was in progress")
+        if expected_session_id is not None and existing["session_id"] != expected_session_id:
+            raise ContractError("active lock is owned by another session")
         os.remove(lock_path(identity))
         return True
 

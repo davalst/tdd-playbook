@@ -50,15 +50,18 @@ configuration; it does not replace ordinary user review.
 ## Shared state and local evidence
 
 Lock creation/extension/clear uses one interprocess transaction file around the complete
-read/validate/mutate operation. A competing linked-worktree session is refused; a single session can
-extend its protected set; unlock uses a generation check so an older reader cannot clear a newer
-record. HEAD/worktree binding is retained for classification: another worktree can enforce the shared
+read/validate/mutate operation. Ownership is the worktree+session composite: a matching owner can
+extend its protected set, while another worktree is refused even if a host reuses a fallback session
+label. Unlock compares immutable lock ID, generation and session before removal, and journals only
+after that conditional clear succeeds; stale/non-owner/ABA clears cannot delete a replacement or
+claim an unlock that did not occur. HEAD/worktree binding is retained for classification: another worktree can enforce the shared
 lock, but a changed HEAD is `stale_revision` evidence rather than current red-first proof.
 
 Both live adapters are production producers for the doctor's local event consumer. While TEST-LOCK
 is active they append only redacted `blocked`/`allowed` route observations. Doctor requires a block
 and its clean control from the same run for every required route and exact SHA before reporting the
-manifest's declared assurance. Missing, partial, stale or wrong-SHA data remains `unmeasured`; the
+manifest's declared assurance. Evidence from another worktree at the same SHA is listed separately
+but not promoted. Missing, partial, stale, cross-worktree or wrong-SHA data remains `unmeasured`; the
 journal is still locally forgeable and cannot authorize release.
 
 ## Known bounded debt

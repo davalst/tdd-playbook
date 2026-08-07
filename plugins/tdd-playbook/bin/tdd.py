@@ -78,6 +78,7 @@ def _capability(manifest, capability, spec, events, identity, as_of):
                   and row.get("sha") == identity["head"]
                   and (row.get("details") or {}).get("capability") == capability]
     complete_by_route = {}
+    other_worktree_routes = set()
     saw_stale = False
     grouped = {}
     for row in candidates:
@@ -89,10 +90,14 @@ def _capability(manifest, capability, spec, events, identity, as_of):
         if age < 0 or age > max_age:
             saw_stale = True
             continue
-        grouped.setdefault((route, row.get("run_id")), []).append(row)
-    for (route, _run_id), rows in grouped.items():
+        scope = "current" if row.get("worktree_id") == identity["worktree_id"] else "other"
+        grouped.setdefault((scope, route, row.get("run_id")), []).append(row)
+    for (scope, route, _run_id), rows in grouped.items():
         outcomes = {(row.get("details") or {}).get("outcome") for row in rows}
         if {"blocked", "allowed"} <= outcomes:
+            if scope == "other":
+                other_worktree_routes.add(route)
+                continue
             newest = max(rows, key=lambda row: row["ts"])
             prior = complete_by_route.get(route)
             if prior is None or newest["ts"] > prior["ts"]:
@@ -101,9 +106,11 @@ def _capability(manifest, capability, spec, events, identity, as_of):
     if not complete:
         return {"assurance": "unmeasured", "trust": "local_unverified",
                 "stale": saw_stale, "required_routes": routes,
-                "observed_routes": sorted(complete_by_route)}
+                "observed_routes": sorted(complete_by_route),
+                "other_worktree_routes": sorted(other_worktree_routes)}
     return {"assurance": declared, "trust": "local_unverified", "stale": False,
             "required_routes": routes, "observed_routes": sorted(complete_by_route),
+            "other_worktree_routes": sorted(other_worktree_routes),
             "latest_probe": max(row["ts"] for row in complete_by_route.values())}
 
 

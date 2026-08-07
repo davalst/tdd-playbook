@@ -14,3 +14,17 @@ consumers. CIVerd's independent signed exact-SHA boundary was a verified non-fin
 The Codex verifier-agent calibration and remaining guard-family parity were already explicit dated
 debt and remain so. Neither changes CIVerd schemas, signing, plant ownership, baselines or release
 ratification.
+
+## Final refutation pass
+
+The adversaries re-reviewed `2fd9e35..1bcdb13` and reran the blessed gate. They closed every initial
+finding, then found three residual edge cases in the remediation; all were incorporated:
+
+| Residual | Final disposition |
+|---|---|
+| Generation-only unlock permitted clear/relock ABA, did not check the owner, and journaled before a failed clear. | Lock ID + generation + session are compared transactionally; journal/yield rows are written only after success. Non-owner and ABA plants added. |
+| Same fallback session text in two linked worktrees could merge owners and replace source binding. | Owner identity is the worktree+session composite; same-session/different-worktree race is refused and planted. |
+| Doctor promoted paired evidence from another worktree at the same SHA. | Current-worktree evidence is the only promotable set; other-worktree paired routes are visible separately and remain unmeasured. |
+
+Final architecture and integration rechecks after these changes are recorded in the implementation
+handoff; no CIVerd or release-boundary changes were introduced.

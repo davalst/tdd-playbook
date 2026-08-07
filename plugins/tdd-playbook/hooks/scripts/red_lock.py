@@ -64,7 +64,9 @@ def _identity(root):
 
 def _session_id():
     return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
-            or os.environ.get("CLAUDE_SESSION_ID") or "claude-auto-red")
+            or os.environ.get("CLAUDE_SESSION_ID")
+            or "local-worktree-{}".format(
+                hashlib.sha256(project_root().encode("utf-8")).hexdigest()[:16]))
 
 
 def _now():

@@ -118,9 +118,15 @@ def test_adapter_parity():
               status.returncode == 0 and "ACTIVE" in status.stdout, status.stdout)
         unlocked = _lock(side, "unlock", "--class", "phase", "--reason",
                          "linked worktree parity phase is complete and green")
-        check("claude adapter: sanctioned unlock from either worktree clears authority",
-              unlocked.returncode == 0 and core.read_lock(identity) is None,
+        check("claude adapter: non-owner worktree cannot clear shared authority",
+              unlocked.returncode == 1 and "another session" in unlocked.stderr
+              and core.read_lock(identity) is not None,
               (unlocked.returncode, unlocked.stderr))
+        owner_unlock = _lock(main, "unlock", "--class", "phase", "--reason",
+                             "owning worktree parity phase is complete and green")
+        check("claude adapter: owner worktree can journal and clear its authority",
+              owner_unlock.returncode == 0 and core.read_lock(identity) is None,
+              (owner_unlock.returncode, owner_unlock.stderr))
 
 
 def test_legacy_guard_import():

@@ -216,10 +216,19 @@ def cmd_unlock(args):
         sys.stderr.write(
             "tdd_lock: no --class given — recorded UNCLASSIFIED, so this unlock measures "
             "nothing either way. Pass --class {} next time.\n".format("|".join(REASON_CLASSES)))
+    if identity:
+        try:
+            clear_lock(identity, expected_generation=locked["generation"],
+                       expected_lock_id=locked["lock_id"],
+                       expected_session_id=_session_id())
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
+            return 1
+    else:
+        os.remove(path)
+    # Journal only after the conditional clear succeeds: a failed/stale CAS must never leave
+    # a false unlock row. The same rule governs the derived yield/override event.
     _journal(root, entry)
-    # R4 exhaust: an unlock classed `gate-wrong` is the one ADJUDICATED false-positive signal
-    # the yield instrument has — it lands in the same event log the hooks write (one store,
-    # one schema). reason_class rides in `extra`, which log_yield_event merges verbatim.
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                         "..", "hooks", "scripts"))
@@ -228,14 +237,6 @@ def cmd_unlock(args):
                         {"reason": reason, "reason_class": klass}, source="testlock")
     except Exception:
         pass
-    if identity:
-        try:
-            clear_lock(identity, expected_generation=locked["generation"])
-        except ContractError as exc:
-            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
-            return 1
-    else:
-        os.remove(path)
     print("tdd_lock: unlocked {} file(s). Reason journaled for /grade.".format(
         len(locked.get("files", {}))))
     return 0
