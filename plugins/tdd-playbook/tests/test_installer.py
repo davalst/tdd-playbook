@@ -77,10 +77,16 @@ def main():
               any("test_lock_guard.py" in c for c in cmds), cmds)
         check("current weakening guard installed",
               any("test_weakening_guard.py" in c for c in cmds), cmds)
+        check("portable host contract installed beside every adapter",
+              os.path.isfile(os.path.join(cdir, "bin", "host_contract.py")))
         # commands rewritten to the project namespace (no raw plugin var)
         check("plugin-root var rewritten",
               all("${CLAUDE_PLUGIN_ROOT}" not in c for c in cmds), cmds)
         check("marketplace block dropped", "enabledPlugins" not in settings, settings.keys())
+        with open(os.path.join(cdir, ".gitignore")) as fh:
+            ignores = set(fh.read().splitlines())
+        check("one-shot legacy migration marker is ignored downstream",
+              "tdd-lock.json.migrated" in ignores, sorted(ignores))
 
         # idempotence: re-run must not duplicate anything
         before = sorted(cmds)
