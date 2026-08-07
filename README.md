@@ -1,7 +1,9 @@
-# TDD Playbook — a Claude Code plugin
+# TDD Playbook — portable quality control for Claude Code and Codex
 
-A universal test-driven-development / QA workflow for [Claude Code](https://claude.com/claude-code),
-packaged as a plugin so it loads identically on local, web, and mobile. It ships:
+A universal test-driven-development / QA workflow with one canonical doctrine and thin host
+adapters. Claude Code remains the established plugin surface; Codex support begins with the
+real-host-calibrated TEST-LOCK prevention slice. Unsupported host capabilities are reported as
+unavailable or unmeasured, never rounded up. It ships:
 
 - **The doctrine** — an auto-firing `tdd-playbook` skill: reviewable TDD plan (with an
   integration surface, so features don't ship as islands) → red-first
@@ -69,6 +71,23 @@ preserved** (verify that before committing). Open a cloud session and it loads �
 marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
 de-dupes by name.
 
+## Install — Codex (per repo)
+
+Codex configuration is a separate adapter-owned surface. The installer never rewrites user-global
+Codex configuration and preserves non-Playbook project hooks:
+
+```bash
+python3 scripts/install_into_repo.py --host codex /path/to/your/repo
+# Install both independent host packages when a repo is used from both hosts:
+python3 scripts/install_into_repo.py --host all /path/to/your/repo
+```
+
+The legacy command without `--host` still installs Claude only. Codex project configuration is
+trust-gated by the host: review the generated project hook, trust the repository and hook when
+prompted, then run `python3 .codex/tdd-playbook/bin/tdd.py doctor`. A source file or static config
+match is not proof of activation; the adapter reports prevention only after a real-host planted
+block and paired clean control have been recorded for the installed host version.
+
 ### Re-vendoring / refreshing a downstream repo
 Re-running the installer is idempotent and updates the files, but that alone is **not the whole
 refresh** — the current mechanisms only take effect once you also verify and adopt them. After
@@ -124,7 +143,8 @@ catch (`calibration/`, results in `docs/calibration/`):
 ```bash
 python3 calibration/check_staleness.py             # deterministic: is the scoreboard stale? (F5)
 python3 calibration/run_calibration.py --dry-run   # free validation (CI) + R2 pairing invariant
-python3 calibration/run_calibration.py             # weekly, cheap model, hard caps, 3 reps/scenario
+python3 calibration/run_calibration.py             # Claude history.md; weekly live calibration
+python3 calibration/run_calibration.py --host codex --model <model>  # separate history-codex.md
 ```
 Since v1.17 each scenario runs 3× (one roll is a coin flip, not a measurement): `PASS` only at
 k/k, `AMBER` on a partial catch (nonzero; consecutive AMBER promotes to BLOCKING), and the run

@@ -4,7 +4,7 @@
 §13 applied to ourselves: the hooks are calibrated deterministically (tests/test_hooks.py);
 the AGENTS need a live model, so they are calibrated here on a schedule. Each scenario in
 scenarios.json plants a defect in a copy of calibration/fixture/, drives the agent headlessly
-(`claude -p`, cheap model, hard caps), and applies a DETERMINISTIC oracle: regexes the output
+(through the host_runner seam, cheap model, hard caps), and applies a DETERMINISTIC oracle: regexes the output
 must / must not match. No LLM judge — the oracle split governs our own calibration too.
 
 A plant surviving to a clean verdict is a BLOCKING failure (exit 1). Results append to
@@ -14,8 +14,8 @@ Usage:
     python3 calibration/run_calibration.py                 # all scenarios, live model
     python3 calibration/run_calibration.py --agent NAME    # one agent's scenarios
     python3 calibration/run_calibration.py --dry-run       # validate without model calls
-Environment: TDD_PLAYBOOK_CLAUDE_BIN (default "claude"), TDD_PLAYBOOK_CALIBRATION_MODEL
-(default "haiku"), TDD_PLAYBOOK_CALIBRATION_ARGS (extra args, whitespace-split — e.g.
+Environment: TDD_PLAYBOOK_CLAUDE_BIN / TDD_PLAYBOOK_CODEX_BIN, TDD_PLAYBOOK_CALIBRATION_MODEL
+(default "haiku"), TDD_PLAYBOOK_CALIBRATION_ARGS (host-specific extra args, whitespace-split — e.g.
 "--dangerously-skip-permissions" in a sandboxed CI container).
 """
 import argparse
@@ -31,6 +31,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import history_format  # noqa: E402  (the ONE owner of the scoreboard format — D0)
+import host_runner  # noqa: E402
 REPO = os.path.dirname(HERE)
 FIXTURE = os.path.join(HERE, "fixture")
 SCENARIOS = os.path.join(HERE, "scenarios.json")
@@ -322,36 +323,35 @@ def nonexecution_reason(text):
     return None
 
 
-def run_agent(scenario, root, claude_bin, model):
+def run_agent(scenario, root, host_bin, model, host="claude"):
     """One rep. Returns (status, output), status in {ok, timeout, env_failure} — typed at the
     seam that HOLDS the returncode/exception (arch-F4). env_failure = the doer never ran; it
     is not an agent failure and is excluded from n. FileNotFoundError propagates (fatal)."""
     prompt = (agent_body(scenario["agent"])
               + "\n\n# TASK (work in the current directory; it is a git repo)\n"
               + scenario["task"])
-    cmd = [claude_bin, "-p", prompt, "--model", model, "--max-turns", turns_for(scenario)]
     extra = os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split()
-    cmd.extend(extra)
     try:
-        # child_env: capture OFF for the nested claude — its turns ARE the answer key
+        # child_env: capture OFF for the nested host — its turns ARE the answer key
         from child_env import child_env
-        p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=TIMEOUT_S,
-                           env=child_env())
-    except subprocess.TimeoutExpired:
-        return "timeout", "[TIMEOUT after {}s]".format(TIMEOUT_S)
-    if p.returncode != 0 and not p.stdout.strip():
-        return "env_failure", "[env failure rc={}]\n{}".format(p.returncode, p.stderr[-800:])
+        result = host_runner.invoke(
+            host, host_bin, prompt, model, root, max_turns=turns_for(scenario),
+            timeout=TIMEOUT_S, env=child_env(), extra_args=extra)
+    except host_runner.RunnerError:
+        raise
+    if result.status != "ok":
+        return result.status, result.output
     # The doer was REFUSED, not wrong. These arrive on stdout with exit 0, so they must be
     # matched on content — see NONEXECUTION_SIGNATURES for the 2026-08-06 incident.
-    both = (p.stdout or "") + "\n" + (p.stderr or "")
+    both = result.output or ""
     sig = nonexecution_reason(both)
     if sig:
         return "env_failure", "[env failure: the CLI refused to run — {!r}]\n{}".format(
             sig, both.strip()[:800])
-    if not p.stdout.strip():
+    if not result.output.strip():
         return "env_failure", ("[env failure: exit 0 with no output at all — the doer "
                                "produced no turn]\n{}").format(both.strip()[:800])
-    return "ok", p.stdout + ("\n[stderr]\n" + p.stderr if p.returncode != 0 else "")
+    return "ok", result.output
 
 
 def dry_run(scenarios):
@@ -551,11 +551,23 @@ def main(argv=None):
                     help="reps per scenario (default {}; one roll is a coin flip, not a "
                          "measurement — §5a)".format(DEFAULT_REPEAT))
     ap.add_argument("--dry-run", action="store_true", help="validate without model calls")
+    ap.add_argument("--host", choices=("claude", "codex"), default="claude",
+                    help="host runner; histories and denominators remain host-specific")
+    ap.add_argument("--host-bin", help="host binary override (preferred portable option)")
     ap.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
     ap.add_argument("--model", default=os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "haiku"))
-    ap.add_argument("--history", default=DEFAULT_HISTORY,
-                    help='history file to append ("" to suppress)')
+    ap.add_argument("--history", default=None,
+                    help='history file to append (default is per-host; "" to suppress)')
     args = ap.parse_args(argv)
+
+    if args.history is None:
+        args.history = host_runner.default_history(args.host)
+    if args.host_bin:
+        selected_bin = args.host_bin
+    elif args.host == "claude":
+        selected_bin = args.claude_bin
+    else:
+        selected_bin = os.environ.get("TDD_PLAYBOOK_CODEX_BIN", "codex")
 
     if args.repeat < 1:
         print("--repeat must be >= 1")
@@ -638,10 +650,10 @@ def main(argv=None):
         for _rep in range(args.repeat):
             root = stage(sc)
             try:
-                status, out = run_agent(sc, root, args.claude_bin, args.model)
+                status, out = run_agent(sc, root, selected_bin, args.model, args.host)
             except FileNotFoundError:
-                print("FATAL: claude binary not found ({}) — set TDD_PLAYBOOK_CLAUDE_BIN "
-                      "or use --dry-run".format(args.claude_bin))
+                print("FATAL: {} binary not found ({}) — set --host-bin or the host env "
+                      "override, or use --dry-run".format(args.host, selected_bin))
                 return 2
             finally:
                 shutil.rmtree(root, ignore_errors=True)
@@ -711,7 +723,7 @@ def main(argv=None):
               "Fix the cause and re-run.".format(len(invalid), len(results)), file=sys.stderr)
         print("   e.g. {}".format(", ".join(r["sc"]["id"] for r in invalid[:4])),
               file=sys.stderr)
-    append_history(args.history, args.model, results, meta)
+    append_history(args.history, host_runner.model_identity(args.host, args.model), results, meta)
     # Weak-plant streak (2026-07-28 sweep): a plant no verifier has EVER missed teaches
     # nothing — an adversary authoring easy plants inflates recall while the gate decays.
     # Mechanical from the same prior rows the promotion check parsed; plants only (a

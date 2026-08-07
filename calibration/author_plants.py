@@ -39,6 +39,7 @@ sys.path.insert(0, HERE)
 # the roster grew to nine (§6a old-blind-to-new); a derived roster cannot re-freeze.
 from run_calibration import (agent_coverage_problems, known_agents,  # noqa: E402
                              load_scenarios, pairing_problems, validate_scenario)
+import host_runner  # noqa: E402
 
 
 def corpus_scenarios(which=("approved",)):
@@ -129,20 +130,22 @@ def adversary_prompt(category):
 
 def cmd_author(args):
     prompt = adversary_prompt(args.category)
-    cmd = [args.claude_bin, "-p", prompt, "--model", args.model]
-    cmd.extend(os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split())
+    selected_bin = (args.host_bin or args.claude_bin if args.host == "claude"
+                    else args.host_bin or os.environ.get("TDD_PLAYBOOK_CODEX_BIN", "codex"))
     try:
         # child_env: capture OFF for the adversary — its plant output IS the answer key
         from child_env import child_env
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=600,
-                           env=child_env())
+        result = host_runner.invoke(
+            args.host, selected_bin, prompt, args.model, HERE, timeout=600,
+            env=child_env(),
+            extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split())
     except FileNotFoundError:
-        print("FATAL: claude binary not found ({})".format(args.claude_bin))
+        print("FATAL: {} binary not found ({})".format(args.host, selected_bin))
         return 2
-    scenarios = extract_json_array(p.stdout)
+    scenarios = extract_json_array(result.output)
     if not scenarios:
         print("REJECTED: no parseable JSON array in adversary output")
-        print(p.stdout[-800:])
+        print(result.output[-800:])
         return 1
     os.makedirs(PROPOSED, exist_ok=True)
     # Individual validation first, then the R2 pair quota across the BATCH plus everything
@@ -236,6 +239,8 @@ def main(argv=None):
     ap.add_argument("--model", default=os.environ.get("TDD_PLAYBOOK_ADVERSARY_MODEL", "opus"),
                     help="adversary model — use >= the doer's tier")
     ap.add_argument("--category", help="focus category for this cycle")
+    ap.add_argument("--host", choices=("claude", "codex"), default="claude")
+    ap.add_argument("--host-bin", help="host binary override")
     ap.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
     ap.add_argument("--approve", metavar="ID", help="move a reviewed plant to approved/")
     ap.add_argument("--list", action="store_true")

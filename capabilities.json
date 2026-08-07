@@ -158,6 +158,7 @@
         "switch": "python3 calibration/run_calibration.py (weekly, David-run or scheduled; --dry-run is CI-only validation)"
       },
       "wired_by": [
+        "calibration/host_runner.py",
         "calibration/run_calibration.py",
         "calibration/author_plants.py"
       ],
@@ -172,6 +173,13 @@
             "v2.0 release gate",
             "check_scoreboard_integrity.py (append-only proof)"
           ]
+        },
+        {
+          "topic": "docs/calibration/history-codex.md (Codex-only live verifier rows; denominators never merged with Claude)",
+          "consumers": [
+            "Codex adapter assurance review",
+            "check_staleness.py when invoked explicitly for the Codex history"
+          ]
         }
       ],
       "liveness": {
@@ -179,6 +187,11 @@
         "probe": "calibration/check_staleness.py \u2014 mechanical history.md staleness gate (F5, INVALID rows never extend freshness), run in the release gate and as a CIVerd check"
       },
       "integration_debt": [
+        {
+          "what": "CODEX VERIFIER CALIBRATION: the runner seam and dry-run invariants are built, but no full live Codex verifier-agent calibration has landed. The 2026-08-07 real-host TEST-LOCK result (2/2 planted blocks, 0/2 false positives) proves only that adapter boundary. Done = paired live verifier/control rows in docs/calibration/history-codex.md with host/model/version and separate denominators; until then Codex verifier assurance is UNMEASURED.",
+          "owner": "david",
+          "expires": "2026-08-17"
+        },
         {
           "what": "PAID IN PART 2026-07-30: the first live run under the v1.17 instrument LANDED recall AND FP numbers (history.md run blocks, repo 1cf99f2/b5b30aa, 8 agents, repeat-3). The numbers then did their job: architecture-adversary, script-adversary, integration-adversary, claims-verifier at/near PASS; red-first-verifier, mutation-runner, tripwire-auditor showed BLOCKING failures dominated by wrong-verdict-line on CLEAN CONTROLS (forced-line contract buried or absent \u2014 mutation-runner's gate verdict was never a mandated line at all). Agent contracts fixed same day (explicit house-contract closing blocks; oracles unchanged \u2014 the mutation-runner forced line was worded to match the shipped control regexes). REMAINING BY EXPIRY: the 3-agent re-run (red-first-verifier, mutation-runner, tripwire-auditor) lands in history.md BEFORE the v1.23.0 tag \u2014 \u00a713: gate-surface changes are live-calibrated before trusted; v2.0 still gated on >=1 month sustained cadence.",
           "owner": "david",
