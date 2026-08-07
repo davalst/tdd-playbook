@@ -164,6 +164,65 @@ def test_concurrent_journal():
               sorted(row["seq"] for row in rows) == list(range(12)), rows)
 
 
+def test_lock_transaction_and_binding():
+    """PLANTED: concurrent agents cannot replace each other's protected-file authority."""
+    core = _core()
+    with tempfile.TemporaryDirectory() as d:
+        root = _repo(d)
+        with open(os.path.join(root, "tests", "test_other.py"), "w") as fh:
+            fh.write("def test_other():\n    assert True\n")
+        ident = core.resolve_repository(root)
+        first = core.new_lock_record(ident, ["tests/test_pay.py"], "session-a")
+        second = core.new_lock_record(ident, ["tests/test_other.py"], "session-b")
+        barrier = threading.Barrier(2)
+        outcomes = []
+
+        def contender(record):
+            barrier.wait()
+            try:
+                core.merge_lock(ident, record)
+                outcomes.append("won:" + record["session_id"])
+            except core.ContractError as exc:
+                outcomes.append("refused:" + str(exc))
+
+        threads = [threading.Thread(target=contender, args=(record,))
+                   for record in (first, second)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        active = core.read_lock(ident)
+        check("lock transaction: one competing session wins and one is named/refused",
+              len([row for row in outcomes if row.startswith("won:")]) == 1
+              and len([row for row in outcomes if "competing" in row]) == 1, outcomes)
+        check("lock transaction: the winning protection is never replaced by the loser",
+              len(active["files"]) == 1, active)
+
+        same_session = core.new_lock_record(
+            ident, ["tests/test_other.py"], active["session_id"])
+        merged = core.merge_lock(ident, same_session)
+        check("lock transaction: the same run can extend its lock without a lost update",
+              set(merged["files"]) == {"tests/test_pay.py", "tests/test_other.py"}, merged)
+        try:
+            core.clear_lock(ident, expected_generation=active["generation"])
+        except core.ContractError:
+            stale_clear_refused = True
+        else:
+            stale_clear_refused = False
+        check("lock transaction: stale unlock cannot clear a newer lock generation",
+              stale_clear_refused and core.read_lock(ident) is not None)
+
+        binding = core.lock_binding(ident, merged)
+        check("lock binding: current source revision is explicit", binding == "current", binding)
+        with open(os.path.join(root, "pay.py"), "a") as fh:
+            fh.write("y = 2\n")
+        _git(root, "add", "pay.py")
+        _git(root, "commit", "-qm", "advance")
+        advanced = core.resolve_repository(root)
+        check("lock binding: a HEAD advance is stale evidence, not silently current",
+              core.lock_binding(advanced, merged) == "stale_revision")
+
+
 def test_assurance_contract():
     core = _core()
     check("contract: assurance vocabulary is closed and trust-ordered",
@@ -181,7 +240,8 @@ def main():
     # Keep every predicate-bearing function explicitly invoked: this repo's script-style
     # suites otherwise create a green function that never ran.
     for fn in (test_worktree_state_identity, test_lock_policy, test_single_legacy_import,
-               test_concurrent_journal, test_assurance_contract):
+               test_concurrent_journal, test_lock_transaction_and_binding,
+               test_assurance_contract):
         try:
             fn()
         except Exception as exc:

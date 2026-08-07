@@ -16,6 +16,7 @@ PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = os.path.join(PLUGIN, "bin")
 ADAPTER = os.path.join(PLUGIN, "adapters", "codex", "pre_tool_test_lock.py")
 LOCK = os.path.join(BIN, "tdd_lock.py")
+DOCTOR = os.path.join(BIN, "tdd.py")
 sys.path.insert(0, BIN)
 
 _results = {"pass": 0, "fail": 0}
@@ -104,6 +105,16 @@ def test_codex_test_lock_routes():
         check("codex adapter: paired read-only test command is allowed",
               shell_control.returncode == 0 and shell_control.stderr == "",
               (shell_control.returncode, shell_control.stderr))
+        doctor = subprocess.run(
+            [sys.executable, DOCTOR, "doctor", "--json"], cwd=root, env=_env(root),
+            capture_output=True, text=True, timeout=30)
+        report = json.loads(doctor.stdout) if doctor.returncode == 0 else {}
+        value = (((report.get("hosts") or {}).get("codex") or {})
+                 .get("capabilities", {}).get("test-lock", {}))
+        check("codex adapter: native observation producer reaches doctor after paired routes",
+              value.get("assurance") == "host_prevented"
+              and set(value.get("observed_routes", [])) == {"structured_edit", "shell"},
+              (doctor.returncode, doctor.stderr, value))
 
 
 def test_codex_patch_path_security():
