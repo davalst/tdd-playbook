@@ -7,7 +7,7 @@ import json
 import os
 import tempfile
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.realpath(__file__))
 PLUGIN = os.path.dirname(HERE)
 REPO = os.path.dirname(os.path.dirname(PLUGIN))
 SCRIPT = os.path.join(PLUGIN, "bin", "review_ledger.py")
