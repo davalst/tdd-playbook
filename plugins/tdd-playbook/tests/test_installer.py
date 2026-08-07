@@ -97,11 +97,69 @@ def main():
               (len(before), len(after)))
 
     test_doctor()
+    test_codex_install_preserves_user_config()
     test_vendoring_containment()
     test_vendored_skill_equality()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
+
+
+def test_codex_install_preserves_user_config():
+    """Codex is a separate adapter surface: reconcile only our namespace and never touch
+    Claude state or a user's unrelated Codex hook groups."""
+    print("\n[codex install/reconciliation]")
+    mod = load_installer()
+    with tempfile.TemporaryDirectory() as target:
+        codex_dir = os.path.join(target, ".codex")
+        os.makedirs(codex_dir)
+        stale = {"matcher": "Bash", "hooks": [{
+            "type": "command",
+            "command": "python3 .codex/tdd-playbook/hooks/removed_guard.py"}]}
+        custom = {"matcher": "Bash", "hooks": [{
+            "type": "command", "command": "./scripts/my-codex-hook.sh",
+            "timeout": 7}]}
+        initial = {"description": "keep me", "hooks": {"PreToolUse": [stale, custom]}}
+        with open(os.path.join(codex_dir, "hooks.json"), "w") as fh:
+            json.dump(initial, fh, indent=2)
+            fh.write("\n")
+
+        rc = mod.main(["--host", "codex", target])
+        check("Codex installer runs clean", rc == 0, rc)
+        check("Codex-only install does not create or conflate .claude state",
+              not os.path.exists(os.path.join(target, ".claude")))
+        with open(os.path.join(codex_dir, "hooks.json")) as fh:
+            installed = json.load(fh)
+        commands = flat_commands(installed)
+        groups = installed.get("hooks", {}).get("PreToolUse", [])
+        check("Codex installer preserves unrelated top-level config",
+              installed.get("description") == "keep me", installed)
+        check("Codex installer preserves custom hook group semantically",
+              custom in groups and any("my-codex-hook.sh" in cmd for cmd in commands), groups)
+        check("Codex installer prunes stale adapter-owned hook entries",
+              not any("removed_guard.py" in cmd for cmd in commands), commands)
+        check("Codex installer wires TEST-LOCK for both native routes",
+              sum("pre_tool_test_lock.py" in cmd for cmd in commands) == 2, commands)
+        check("Codex runtime carries the shared contract and thin adapter",
+              os.path.isfile(os.path.join(codex_dir, "tdd-playbook", "bin",
+                                          "host_contract.py"))
+              and os.path.isfile(os.path.join(codex_dir, "tdd-playbook", "adapters",
+                                              "codex", "pre_tool_test_lock.py")))
+        stamp = os.path.join(codex_dir, ".tdd-playbook-version")
+        check("Codex package has its own version stamp", os.path.isfile(stamp), stamp)
+
+        before = installed
+        second = mod.main(["--host", "codex", target])
+        with open(os.path.join(codex_dir, "hooks.json")) as fh:
+            after = json.load(fh)
+        check("Codex reinstall is idempotent and preserves user config",
+              second == 0 and before == after, (second, before, after))
+
+    with tempfile.TemporaryDirectory() as target:
+        mod.main([target])
+        check("legacy default remains Claude-only for compatibility",
+              os.path.isdir(os.path.join(target, ".claude"))
+              and not os.path.exists(os.path.join(target, ".codex")))
 
 
 def _rewritten_canonical(mod):
