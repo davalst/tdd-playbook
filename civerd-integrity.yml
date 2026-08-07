@@ -4,6 +4,9 @@
 # path). Shrinking this list is itself a diff-integrity signal (§1: the manifest is in the
 # baseline inventory) — the two checks interlock.
 plant_targets:
+  - path: gate-manifest.json
+  - path: plugins/tdd-playbook/bin/gate_plan.py
+  - path: plugins/tdd-playbook/bin/gate_runner.py
   - path: plugins/tdd-playbook/bin/verify_verdict.py
   - path: plugins/tdd-playbook/bin/_ed25519_verify.py
   - path: plugins/tdd-playbook/bin/capability_registry.py

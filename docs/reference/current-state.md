@@ -4,13 +4,14 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `48c8efb0d5b722393cccbc7afbc15e60bf1f08532e551d473ccac87904a5d878`
-- `plugins/tdd-playbook/bin/gate_plan.py` — `9682d700fbc2fc7cfeba27ca46325835cdad4b1c78e56b44530db0045498093e`
+- `gate-manifest.json` — `cc0a49b156132f347eead42f80936c317c2197299d5f57ab2bfa54d9840fc878`
+- `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `93de437fe4a5c9caadf5350d0bc0a600b4bd6548b6c809c63a89eceedffdc868`
 - `docs/architecture/host-parity.json` — `677f89b9f93c8316387b4fb9cf75a00e136b58594db7dbd6659ff452643641cf`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
 - `capabilities.json` — `fe1863d8a7b4776dd81afadf4b0376c92a265db96a14353089510764d317c4f1`
-- `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `a4e510f6ecab89cb44cbdd457bd89d1b1a4b25e5b990acd69750205918196d76`
+- `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
+- `docs/reviews/index.json` — `87a5a0a55682c085c8be44893e7be0c3e199db0c594b357fdb89e74f672a71f2`
 
 ## Gate surface
 
@@ -20,6 +21,7 @@
 - Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_plan_block`, `test_portable_core`, `test_red_lock_portable`, `test_reference_docs`, `test_release_verify`, `test_review_ledger`, `test_tdd_lock`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
 - Acknowledged roster digest: `aa77e0a6e7beaafe6b96daf23ae9d7029681c15745223cbd77b4a2b2a6e70062`
+- Acknowledged execution-manifest digest: `e44abf2e54655f461df615f79d8fd1baed615db1cdf2be5416f0a7b8b333f3e4`
 
 ## Host parity
 

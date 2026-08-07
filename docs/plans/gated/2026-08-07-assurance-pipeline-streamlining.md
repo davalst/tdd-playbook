@@ -27,11 +27,14 @@ Extract the existing dynamic plugin-suite roster and fixed calibration/dataflow/
 stages into one stdlib gate-plan resolver consumed by both full and affected execution.  The
 shell entrypoint remains the stable public/CIVerd seam, including its planted suite-directory
 argument.  Successful stages print one denominator-bearing summary line; failures print a
-bounded diagnostic tail and a private full-log pointer.
+bounded diagnostic tail and a private sanitized-diagnostic pointer. Raw subprocess output is not
+persisted by default.
 
 Run records live under `<git-common-dir>/tdd-playbook/gate-runs/<uuid>/`, with 0700 directories,
-0600 files, atomic writes, bounded retention, and allowlisted index metadata.  Retained output
-is redacted independently of the evidence journal and is always local/non-authorizing.
+0600 files, atomic writes, concurrency-safe completed-run-only retention, and allowlisted index
+metadata. Retained diagnostics are allowlisted, bounded, and redacted independently of the evidence
+journal; raw-output hashes and byte counts support correlation without storing the transcript. All
+of it remains local/non-authorizing.
 
 Edge cases: non-Git checkout; detached/unborn HEAD; concurrent linked worktrees; log collision;
 secret-like output; binary/huge output; subprocess timeout/signal; missing fixed stage; zero-suite

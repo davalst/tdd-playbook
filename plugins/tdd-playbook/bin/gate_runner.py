@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import fcntl
 import json
 import os
 import re
@@ -19,13 +20,14 @@ import gate_plan  # noqa: E402
 PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO = os.path.dirname(os.path.dirname(PLUGIN))
 MANIFEST = os.path.join(REPO, "gate-manifest.json")
-MAX_LOG_BYTES = 1024 * 1024
+MAX_LOG_BYTES = 64 * 1024
 TAIL_LINES = 20
 
 _SECRET_PATTERNS = (
-    re.compile(r"(?i)(authorization\s*:\s*bearer\s+)[^\s]+"),
+    re.compile(r"(?i)(authorization\s*:\s*(?:bearer|basic)\s+)[^\s]+"),
     re.compile(r"(?i)((?:api[_-]?key|token|secret|password)\s*[:=]\s*)[^\s]+"),
     re.compile(r"\b(?:sk|gh[opusr])-[A-Za-z0-9_-]{8,}\b"),
+    re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"),
 )
 
 
@@ -34,6 +36,17 @@ def redact(value: str) -> str:
     for pattern in _SECRET_PATTERNS:
         out = pattern.sub(lambda m: (m.group(1) if m.lastindex else "") + "<redacted>", out)
     return out
+
+
+def _sanitized_diagnostic(raw: str) -> str:
+    """Persist only bounded diagnostic-shaped lines, never an implicit raw transcript."""
+    lines = redact(raw).splitlines()
+    selected = [line for line in lines if re.search(
+        r"^(?:PASS|FAIL|ERROR|Traceback|AssertionError|Result:|ALL \d+|\d+ passed,)",
+        line)]
+    excerpt = "\n".join(selected[:200])
+    encoded = excerpt.encode("utf-8", "replace")[:MAX_LOG_BYTES]
+    return encoded.decode("utf-8", "replace")
 
 
 def _atomic_private(path: str, text: str) -> None:
@@ -65,9 +78,11 @@ class RunStore:
     def write_stage(self, stage_id: str, raw: str) -> dict:
         safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", stage_id)
         encoded = raw.encode("utf-8", "replace")
-        clipped = encoded[-MAX_LOG_BYTES:]
-        prefix = b"[truncated to final 1048576 bytes]\n" if len(encoded) > len(clipped) else b""
-        body = redact((prefix + clipped).decode("utf-8", "replace"))
+        body = ("captured_output_sha256={}\nraw_bytes={}\n"
+                "diagnostic_excerpt_begin\n{}\n"
+                "diagnostic_excerpt_end\n").format(
+                    hashlib.sha256(encoded).hexdigest(), len(encoded),
+                    _sanitized_diagnostic(raw))
         path = os.path.join(self.path, safe_id + ".log")
         _atomic_private(path, body)
         return {"log": os.path.basename(path), "raw_bytes": len(encoded),
@@ -84,14 +99,21 @@ class RunStore:
         self.prune()
 
     def prune(self) -> None:
-        entries = []
-        for name in os.listdir(self.root):
-            path = os.path.join(self.root, name)
-            if os.path.isdir(path) and not os.path.islink(path):
-                entries.append((os.stat(path).st_mtime_ns, path))
-        for _mtime, path in sorted(entries)[:-self.keep]:
-            if os.path.realpath(path).startswith(os.path.realpath(self.root) + os.sep):
-                shutil.rmtree(path)
+        lock_path = os.path.join(self.root, ".prune.lock")
+        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        with os.fdopen(fd, "r+") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            entries = []
+            for name in os.listdir(self.root):
+                path = os.path.join(self.root, name)
+                if (path != self.path and os.path.isdir(path) and
+                        not os.path.islink(path) and
+                        os.path.isfile(os.path.join(path, "index.json"))):
+                    entries.append((os.stat(path).st_mtime_ns, path))
+            remove_count = max(0, len(entries) + 1 - self.keep)
+            for _mtime, path in sorted(entries)[:remove_count]:
+                if os.path.realpath(path).startswith(os.path.realpath(self.root) + os.sep):
+                    shutil.rmtree(path)
 
 
 def _git_text(*args: str) -> str:
@@ -130,6 +152,9 @@ def _count_label(output: str) -> str:
     match = re.search(r"(?m)^ALL (\d+) checks passed", output)
     if match:
         return "{} checks".format(match.group(1))
+    match = re.search(r"(?m)^Result:\s*(\d+)/(\d+) passed\s*$", output)
+    if match:
+        return "{} checks".format(match.group(2))
     return "checks reported in log"
 
 
@@ -210,12 +235,14 @@ def _run(plan: gate_plan.Plan) -> int:
         except Exception as exc:
             print("gate telemetry: index unavailable ({})".format(exc), file=sys.stderr)
     scope = "AUTHORIZING" if plan.authorizing else "NON-AUTHORIZING"
+    telemetry = store.path if store else "unavailable"
     if failed:
         print("civerd_gate: RED — {} — selected {} of {} stages — failed {}".format(
-            scope, len(plan.stages), plan.total_stages, failed))
+            scope, len(plan.stages), plan.total_stages, failed) + " — telemetry=" + telemetry)
         return 1
     print("civerd_gate: GREEN — {} — selected {} of {} stages — {}".format(
-        scope, len(plan.stages), plan.total_stages, "; ".join(plan.reasons)))
+        scope, len(plan.stages), plan.total_stages, "; ".join(plan.reasons)) +
+          " — telemetry=" + telemetry)
     return 0
 
 

@@ -40,7 +40,7 @@ def load_manifest(path: str) -> dict:
         data = json.load(fh)
     if data.get("schema_version") != 1:
         raise PlanError("gate manifest schema_version must be 1")
-    for field in ("suite_glob", "acknowledged_roster_sha256", "fixed_stages",
+    for field in ("suite_glob", "acknowledged_roster_sha256", "acknowledged_plan_sha256", "fixed_stages",
                   "force_full", "safe_rules"):
         if field not in data:
             raise PlanError("gate manifest missing '{}'".format(field))
@@ -54,6 +54,13 @@ def roster_digest(suite_ids: Iterable[str], fixed_ids: Iterable[str]) -> str:
     material = json.dumps({"suites": sorted(suite_ids), "fixed": list(fixed_ids)},
                           sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def execution_manifest_digest(manifest: dict) -> str:
+    material = {key: value for key, value in manifest.items()
+                if key not in ("acknowledged_roster_sha256", "acknowledged_plan_sha256")}
+    body = json.dumps(material, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
 def _suite_stages(root: str, manifest: dict) -> list[Stage]:
@@ -80,6 +87,11 @@ def _fixed_stages(manifest: dict) -> list[Stage]:
 
 
 def full_plan(root: str, manifest: dict) -> Plan:
+    execution_digest = execution_manifest_digest(manifest)
+    if execution_digest != manifest.get("acknowledged_plan_sha256"):
+        raise PlanError("execution manifest digest mismatch: review command/scope policy and "
+                        "acknowledge {} (manifest has {})".format(
+                            execution_digest, manifest.get("acknowledged_plan_sha256")))
     suites = _suite_stages(root, manifest)
     fixed = _fixed_stages(manifest)
     actual = roster_digest([s.id for s in suites], [s.id for s in fixed])

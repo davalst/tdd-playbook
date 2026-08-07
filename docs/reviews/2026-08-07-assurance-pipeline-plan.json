@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "id": "2026-08-07-assurance-pipeline-plan-review",
+  "kind": "plan",
   "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
   "review_range": {
     "base": "eb64eb75aea0698f00ae50863404034a8551d8e7",

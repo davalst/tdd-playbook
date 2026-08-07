@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import os
 import re
@@ -13,6 +14,17 @@ import sys
 VALID_STATUS = {"open", "incorporated", "rejected", "verified_closed"}
 BLOCKERS = {"P0", "P1"}
 SHA = re.compile(r"^[0-9a-f]{40}$")
+HASH = re.compile(r"^[0-9a-f]{64}$")
+INDEX_NAME = "index.json"
+ALLOWED_REVIEW_TAIL = ("docs/reviews/", "docs/reference/current-state.md")
+
+
+def file_hash(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def commit_exists(root: str, sha: str) -> bool:
@@ -35,6 +47,8 @@ def validate_record(record: dict, source: str, exists) -> list[str]:
     for field in ("id", "plan"):
         if not isinstance(record.get(field), str) or not record[field]:
             problems.append(prefix + field + " must be a non-empty string")
+    if record.get("kind") not in {"plan", "implementation"}:
+        problems.append(prefix + "kind must be plan or implementation")
     if not _strings(record.get("reviewers")):
         problems.append(prefix + "reviewers must be a non-empty string list")
     review_range = record.get("review_range") or {}
@@ -71,6 +85,9 @@ def validate_record(record: dict, source: str, exists) -> list[str]:
             problems.append(label + ".disposition is required for incorporated findings")
         if status == "rejected" and not finding.get("rationale"):
             problems.append(label + ".rationale is required for rejected findings")
+        if (record.get("kind") == "implementation" and severity in BLOCKERS and
+                status == "incorporated"):
+            problems.append(label + " implementation blocker must be verified_closed or rejected")
         if status == "verified_closed":
             remediation = finding.get("remediation_commit")
             if not SHA.fullmatch(remediation or "") or not exists(remediation):
@@ -82,8 +99,57 @@ def validate_record(record: dict, source: str, exists) -> list[str]:
     return problems
 
 
+def coverage_problems(records: list[dict], candidate: str, is_ancestor,
+                      tail_paths: list[str]) -> list[str]:
+    implementations = [record for record in records if record.get("kind") == "implementation"]
+    if not implementations:
+        return ["candidate {} has no implementation review".format(candidate)]
+    allowed_tail = all(path == "docs/reference/current-state.md" or
+                       path.startswith("docs/reviews/") for path in tail_paths)
+    for record in implementations:
+        head = (record.get("review_range") or {}).get("head", "")
+        if not is_ancestor(head, candidate) or not allowed_tail:
+            continue
+        blockers = [finding for finding in record.get("findings") or []
+                    if finding.get("severity") in BLOCKERS and
+                    finding.get("status") not in {"verified_closed", "rejected"}]
+        if not blockers:
+            return []
+    return ["candidate {} is not covered by a closed implementation review with a metadata-only tail"
+            .format(candidate)]
+
+
+def validate_index(directory: str, index: dict, baseline_records: list[dict]) -> list[str]:
+    problems = []
+    if index.get("schema_version") != 1 or not isinstance(index.get("records"), list):
+        return ["review index schema is invalid"]
+    records = index["records"]
+    if records[:len(baseline_records)] != baseline_records:
+        problems.append("review index is not append-only relative to release baseline")
+    indexed = set()
+    for row in records:
+        name = row.get("path")
+        expected = row.get("sha256")
+        if (not isinstance(name, str) or name == INDEX_NAME or os.path.basename(name) != name or
+                not name.endswith(".json") or not HASH.fullmatch(expected or "")):
+            problems.append("review index contains an invalid entry")
+            continue
+        indexed.add(name)
+        path = os.path.join(directory, name)
+        if not os.path.isfile(path):
+            problems.append("missing indexed review " + name)
+        elif file_hash(path) != expected:
+            problems.append("indexed review hash mismatch " + name)
+    actual = {os.path.basename(path) for path in glob.glob(os.path.join(directory, "*.json"))
+              if os.path.basename(path) != INDEX_NAME}
+    if actual - indexed:
+        problems.append("unindexed review record(s): " + ", ".join(sorted(actual - indexed)))
+    return problems
+
+
 def validate_directory(directory: str, exists) -> list[str]:
-    paths = sorted(glob.glob(os.path.join(directory, "*.json")))
+    paths = sorted(path for path in glob.glob(os.path.join(directory, "*.json"))
+                   if os.path.basename(path) != INDEX_NAME)
     if not paths:
         return [directory + ": no review records found"]
     problems = []
@@ -109,14 +175,67 @@ def validate_directory(directory: str, exists) -> list[str]:
     return problems
 
 
+def _git(root: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, timeout=20)
+
+
+def _records(directory: str) -> list[dict]:
+    records = []
+    for path in sorted(glob.glob(os.path.join(directory, "*.json"))):
+        if os.path.basename(path) != INDEX_NAME:
+            with open(path, encoding="utf-8") as fh:
+                records.append(json.load(fh))
+    return records
+
+
+def _baseline_index(root: str) -> list[dict]:
+    tag = _git(root, "describe", "--tags", "--abbrev=0")
+    if tag.returncode != 0:
+        return []
+    shown = _git(root, "show", "{}:docs/reviews/{}".format(tag.stdout.strip(), INDEX_NAME))
+    if shown.returncode != 0:
+        return []
+    return (json.loads(shown.stdout).get("records") or [])
+
+
+def validate_repository(root: str) -> list[str]:
+    directory = os.path.join(root, "docs", "reviews")
+    problems = validate_directory(directory, lambda sha: commit_exists(root, sha))
+    try:
+        with open(os.path.join(directory, INDEX_NAME), encoding="utf-8") as fh:
+            index = json.load(fh)
+        problems.extend(validate_index(directory, index, _baseline_index(root)))
+        records = _records(directory)
+    except (OSError, ValueError) as exc:
+        return problems + ["review index/records unreadable: " + str(exc)]
+    candidate_result = _git(root, "rev-parse", "HEAD")
+    if candidate_result.returncode != 0:
+        return problems + ["candidate HEAD is unavailable"]
+    candidate = candidate_result.stdout.strip()
+    implementations = [row for row in records if row.get("kind") == "implementation"]
+    covered = False
+    for record in implementations:
+        head = (record.get("review_range") or {}).get("head", "")
+        ancestry = lambda base, tip: _git(root, "merge-base", "--is-ancestor", base, tip).returncode == 0
+        diff = _git(root, "diff", "--name-only", head + ".." + candidate)
+        tail = diff.stdout.splitlines() if diff.returncode == 0 else ["<unavailable>"]
+        if not coverage_problems([record], candidate, ancestry, tail):
+            covered = True
+            break
+    if not covered:
+        problems.extend(coverage_problems(records, candidate,
+                                          lambda base, tip: _git(root, "merge-base", "--is-ancestor", base, tip).returncode == 0,
+                                          ["<non-metadata-or-unresolved-tail>"]))
+    return problems
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv not in ([], ["validate"]):
         print("usage: review_ledger.py [validate]", file=sys.stderr)
         return 2
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    problems = validate_directory(os.path.join(root, "docs", "reviews"),
-                                  lambda sha: commit_exists(root, sha))
+    problems = validate_repository(root)
     if problems:
         for problem in problems:
             print("review ledger: REFUSED — " + problem, file=sys.stderr)

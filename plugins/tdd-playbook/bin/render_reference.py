@@ -64,7 +64,7 @@ def render(root: str) -> str:
     debts = [(cap["id"], debt.get("id", "unnamed"), debt["owner"], debt["expires"])
              for cap in capabilities for debt in (cap.get("integration_debt") or [])]
     reviews = [_load(root, path) for path in provenance_inputs(root)
-               if path.startswith("docs/reviews/")]
+               if path.startswith("docs/reviews/") and not path.endswith("/index.json")]
     review_findings = [finding for review in reviews for finding in review.get("findings", [])]
 
     lines = [
@@ -88,6 +88,7 @@ def render(root: str) -> str:
         "- Suite IDs: {}".format(", ".join("`{}`".format(item) for item in suites) or "none"),
         "- Fixed IDs: {}".format(", ".join("`{}`".format(item) for item in fixed)),
         "- Acknowledged roster digest: `{}`".format(gate["acknowledged_roster_sha256"]),
+        "- Acknowledged execution-manifest digest: `{}`".format(gate["acknowledged_plan_sha256"]),
         "",
         "## Host parity",
         "",
