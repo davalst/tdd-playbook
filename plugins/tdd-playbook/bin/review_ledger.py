@@ -229,8 +229,21 @@ def closure_evidence_exists(root: str, target: str) -> bool:
     main = functions.get("main")
     if symbol not in functions or main is None:
         return False
-    return any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and
-               node.func.id == symbol for node in ast.walk(main))
+    if any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and
+           node.func.id == symbol for node in ast.walk(main)):
+        return True
+    for node in ast.walk(main):
+        if not isinstance(node, ast.For) or not isinstance(node.target, ast.Name):
+            continue
+        if not isinstance(node.iter, (ast.Tuple, ast.List)):
+            continue
+        members = {item.id for item in node.iter.elts if isinstance(item, ast.Name)}
+        invokes_loop_item = any(
+            isinstance(child, ast.Call) and isinstance(child.func, ast.Name) and
+            child.func.id == node.target.id for child in ast.walk(node))
+        if symbol in members and invokes_loop_item:
+            return True
+    return False
 
 
 def _baseline_index(root: str) -> list[dict]:
