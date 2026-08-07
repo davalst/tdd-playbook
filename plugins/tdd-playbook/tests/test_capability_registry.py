@@ -392,13 +392,11 @@ def test_own_registry():
           and any("gate-yield" in v
                   for v in _fires("2026-11-16", "DOWNSTREAM WRITE-ONLY EMITTER")),
           _fires("2026-11-16", "DOWNSTREAM WRITE-ONLY EMITTER")[:2])
-    check("worktree lock-bypass debt (2026-10-15): silent on its expiry day, fires 10-16 — "
-          "a worktree is an unlogged bypass of §1's strongest mechanism",
-          not _fires("2026-10-15", "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")
-          and any("gate-yield" in v
-                  for v in _fires("2026-10-16",
-                                  "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")),
-          _fires("2026-10-16", "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")[:2])
+    check("worktree lock-bypass: paid — debt GONE and the dated record survives",
+          not _fires("2026-10-16", "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE")
+          and any("PAID 2026-08-07" in (c.get("notes") or "")
+                  and "linked worktree" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", []) if c.get("id") == "gate-yield"))
     # v1.29 (the dev/holdout split). The mechanism ships BLOCKING but the split itself is
     # unarmed — zero holdout plants — so per the ships-on-or-triggered rule the arming has a
     # DATE that REDs the suite, not a hope that someone remembers.
