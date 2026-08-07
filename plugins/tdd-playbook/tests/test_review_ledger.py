@@ -104,6 +104,15 @@ def test_terminal_closure_evidence_and_range_are_executable():
           rl.closure_evidence_exists(
               REPO,
               "plugins/tdd-playbook/tests/test_gate_runner.py::test_full_plan_discovers_live_roster"))
+    with tempfile.TemporaryDirectory() as tmp:
+        os.makedirs(os.path.join(tmp, "tests"))
+        with open(os.path.join(tmp, "gate-manifest.json"), "w") as fh:
+            json.dump({"suite_glob": "tests/test_*.py"}, fh)
+        with open(os.path.join(tmp, "tests", "test_hidden.py"), "w") as fh:
+            fh.write("def test_hidden():\n    pass\n\n"
+                     "def main():\n    if False:\n        test_hidden()\n")
+        check("PLANTED blessed test behind if False is not executable evidence",
+              not rl.closure_evidence_exists(tmp, "tests/test_hidden.py::test_hidden"))
     topology = rl.topology_problems([closed], lambda _base, _head: False)
     check("PLANTED non-ancestral review range is refused",
           any("base is not an ancestor" in p for p in topology), topology)
