@@ -145,6 +145,9 @@ def test_codex_install_preserves_user_config():
                                           "host_contract.py"))
               and os.path.isfile(os.path.join(codex_dir, "tdd-playbook", "adapters",
                                               "codex", "pre_tool_test_lock.py")))
+        check("Codex package does not vendor undiscoverable Claude command/agent islands",
+              not os.path.exists(os.path.join(codex_dir, "tdd-playbook", "commands"))
+              and not os.path.exists(os.path.join(codex_dir, "tdd-playbook", "agents")))
         stamp = os.path.join(codex_dir, ".tdd-playbook-version")
         check("Codex package has its own version stamp", os.path.isfile(stamp), stamp)
 
