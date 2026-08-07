@@ -2,6 +2,7 @@
 """Validate append-only adversarial-review records and their closure evidence."""
 from __future__ import annotations
 
+import ast
 import glob
 import hashlib
 import json
@@ -203,24 +204,33 @@ def _records(directory: str) -> list[dict]:
     return records
 
 
-def _closure_evidence_exists(root: str, target: str) -> bool:
+def closure_evidence_exists(root: str, target: str) -> bool:
     if not isinstance(target, str) or target.startswith("/") or ".." in target.split("/"):
         return False
-    if "::" in target:
-        relative, symbol = target.split("::", 1)
-        path = os.path.join(root, relative)
-        if not os.path.isfile(path) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol):
+    if "::" not in target:
+        return False
+    relative, symbol = target.split("::", 1)
+    if not re.fullmatch(r"test_[A-Za-z0-9_]+", symbol):
+        return False
+    try:
+        with open(os.path.join(root, "gate-manifest.json"), encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        discovered = {os.path.relpath(path, root).replace(os.sep, "/") for path in
+                      glob.glob(os.path.join(root, manifest["suite_glob"]))
+                      if os.path.isfile(path)}
+        if relative not in discovered:
             return False
+        path = os.path.join(root, relative)
         with open(path, encoding="utf-8") as fh:
-            return re.search(r"^def\s+{}\s*\(".format(re.escape(symbol)), fh.read(), re.MULTILINE) is not None
-    match = re.fullmatch(r"(.+):(\d+)", target)
-    if not match:
+            tree = ast.parse(fh.read(), filename=path)
+    except (OSError, ValueError, SyntaxError, KeyError):
         return False
-    path = os.path.join(root, match.group(1))
-    if not os.path.isfile(path):
+    functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
+    main = functions.get("main")
+    if symbol not in functions or main is None:
         return False
-    with open(path, encoding="utf-8") as fh:
-        return 1 <= int(match.group(2)) <= sum(1 for _line in fh)
+    return any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and
+               node.func.id == symbol for node in ast.walk(main))
 
 
 def _baseline_index(root: str) -> list[dict]:
@@ -236,7 +246,7 @@ def _baseline_index(root: str) -> list[dict]:
 def validate_repository(root: str) -> list[str]:
     directory = os.path.join(root, "docs", "reviews")
     problems = validate_directory(directory, lambda sha: commit_exists(root, sha),
-                                  lambda target: _closure_evidence_exists(root, target))
+                                  lambda target: closure_evidence_exists(root, target))
     try:
         with open(os.path.join(directory, INDEX_NAME), encoding="utf-8") as fh:
             index = json.load(fh)

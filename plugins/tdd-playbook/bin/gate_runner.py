@@ -165,15 +165,10 @@ def _tail(output: str) -> str:
 
 
 def _failure_diagnostics(output: str) -> str:
-    lines = redact(output).splitlines()
-    signals = [line for line in lines
-               if re.search(r"(?:^|\s)(?:FAIL|ERROR|AssertionError|Traceback)(?:\s|:|-|$)", line)]
-    tail = lines[-TAIL_LINES:]
-    combined = []
-    for line in signals[:50] + tail:
-        if line not in combined:
-            combined.append(line)
-    return "\n".join(combined)
+    summary = json.loads(_sanitized_diagnostic(output))
+    return ("failure_signals={} error_signals={} output_sha256={}".format(
+        summary["fail_signals"], summary["error_signals"],
+        hashlib.sha256(output.encode("utf-8", "replace")).hexdigest()))
 
 
 def _run(plan: gate_plan.Plan) -> int:
