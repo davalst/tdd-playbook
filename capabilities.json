@@ -56,7 +56,7 @@
       "wired_by": [
         "plugins/tdd-playbook/hooks/hooks.json",
         "plugins/tdd-playbook/adapters/codex/hooks.json",
-        "docs/architecture/host-parity.json (exact canonical asset disposition)",
+        "docs/architecture/host-parity-policy.json -> host_parity.py -> generated host-parity.json",
         "plugins/tdd-playbook/commands/tdd-lock.md",
         "plugins/tdd-playbook/bin/host_contract.py (one Git-common-dir authority shared by linked worktrees)"
       ],
@@ -77,17 +77,26 @@
       ],
       "integration_debt": [
         {
+          "id": "claude-test-lock-refresh",
           "what": "CLAUDE TEST-LOCK REAL-HOST REFRESH: the migrated Claude transport is covered by subprocess parity fixtures, but was not freshly exercised through an authenticated Claude Code host in the 2026-08-07 portability build. Done = structured-edit and Bash planted blocks plus paired clean controls recorded by the production observation seam for the release SHA; until then doctor reports Claude UNMEASURED.",
           "owner": "david",
           "expires": "2026-08-17"
         },
         {
+          "id": "codex-guard-family-parity",
           "what": "CODEX GUARD-FAMILY PARITY: the 2026-08-07 adapter intentionally ships only TEST-LOCK. PostToolUse weakening/flaky/overmock/red-lock, UserPromptSubmit nudge/capture, Stop Tripwire/capture, and subagent lifecycle remain explicitly unavailable rather than inferred from one successful event family. Done = each canonical guard is mapped and real-host calibrated with its own plant + clean control, or explicitly retired/unavailable in the parity matrix with an owner-approved rationale",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
+          "id": "shell-classifier-adapter-boundary",
           "what": "SHELL CLASSIFIER ADAPTER BOUNDARY: the Codex TEST-LOCK wrapper temporarily imports the calibrated Claude shell classifier to avoid forking policy during the vertical slice. Done = extract a host-neutral command-action classifier only after a cross-host parity corpus proves every existing block and allow fixture, then make both transports consume it; never copy the heuristic into two adapters",
+          "owner": "david",
+          "expires": "2026-09-30"
+        },
+        {
+          "id": "codex-command-agent-discovery",
+          "what": "CODEX COMMAND/AGENT DISCOVERY: canonical command and verifier-agent Markdown remains unavailable in Codex until each asset is mapped to a native discovery surface and exercised in an installed scratch host. The installer must not vendor undiscoverable files meanwhile.",
           "owner": "david",
           "expires": "2026-09-30"
         }
@@ -741,6 +750,47 @@
           "expires": "2026-11-01"
         }
       ]
+    },
+    {
+      "id": "host-parity-resolution",
+      "summary": "Resolved host parity: compact acknowledged policy expands into an exact activation-bearing asset matrix consumed by packaging tests.",
+      "user_facing": false,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "python3 plugins/tdd-playbook/bin/host_parity.py check"
+      },
+      "wired_by": [
+        "docs/architecture/host-parity-policy.json",
+        "plugins/tdd-playbook/bin/host_parity.py",
+        "docs/architecture/host-parity.json (generated exact matrix)",
+        "scripts/install_into_repo.py"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_host_parity.py",
+        "plugins/tdd-playbook/tests/test_installer.py"
+      ],
+      "consumes": [
+        "plugins/tdd-playbook/commands/*.md and agents/*.md",
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "capabilities.json integration-debt identifiers"
+      ],
+      "emits": [
+        {
+          "topic": "docs/architecture/host-parity.json exact host disposition and activation matrix",
+          "consumers": [
+            "scratch-host installer activation test",
+            "architecture and release review"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 90,
+        "probe": "test_host_parity installs both hosts and proves every supported row is present and bound while unavailable rows are absent"
+      }
     },
     {
       "id": "host-adapter-doctor",

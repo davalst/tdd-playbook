@@ -54,7 +54,10 @@ COPY_TREES = [
 CODEX_COPY_TREES = [
     ("adapters", "adapters"),
     ("bin", "bin"),
-    ("hooks/scripts", "hooks/scripts"),
+]
+CODEX_COPY_FILES = [
+    ("hooks/scripts/_common.py", "hooks/scripts/_common.py"),
+    ("hooks/scripts/test_lock_guard.py", "hooks/scripts/test_lock_guard.py"),
 ]
 # files whose body references ${CLAUDE_PLUGIN_ROOT} and must be rewritten on copy
 REWRITE_EXT = {".md", ".py", ".json", ".sh"}
@@ -93,6 +96,17 @@ def _copy_tree(src: str, dest: str, rewrite=_rewrite) -> int:
                 os.chmod(d, 0o755)
             n += 1
     return n
+
+
+def _copy_file(src: str, dest: str, rewrite=_rewrite) -> int:
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(src, "r") as fh:
+        body = fh.read()
+    with open(dest, "w") as fh:
+        fh.write(rewrite(body))
+    if os.path.splitext(dest)[1] in (".py", ".sh"):
+        os.chmod(dest, 0o755)
+    return 1
 
 
 _PLUGIN_NS = "/.claude/hooks/scripts/"  # our vendored namespace — plugin-owned, reconciled
@@ -332,6 +346,9 @@ def _install_codex(target: str) -> None:
         src = os.path.join(PLUGIN, src_rel)
         if os.path.isdir(src):
             total += _copy_tree(src, os.path.join(runtime, dest_rel), _rewrite_codex)
+    for src_rel, dest_rel in CODEX_COPY_FILES:
+        total += _copy_file(os.path.join(PLUGIN, src_rel),
+                            os.path.join(runtime, dest_rel), _rewrite_codex)
     hooks_added = _merge_codex_hooks(codex_dir)
     with open(os.path.join(target, _CODEX_STAMP_REL), "w") as fh:
         fh.write(_canonical_version() + "\n")

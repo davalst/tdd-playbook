@@ -15,10 +15,12 @@ release-certification authority; every host observation below is local and forge
 | Subagent lifecycle | no current Playbook mapping | available host event, not mapped | unavailable | SubagentStart/Stop plant required |
 | Release certification | none | none | CIVerd-signed only | fresh signed GREEN exact-SHA verdict |
 
-The exact command/agent/guard inventory and each host's supported/unavailable disposition live in
-`host-parity.json`. A family-parity test derives the canonical roster from the real directories and
-Claude hook registry, so a newly added asset cannot silently disappear from one host. Codex packaging
-does not copy command/agent Markdown until a native discovery consumer exists.
+Compact human policy lives in `host-parity-policy.json`; `host_parity.py` expands it against the
+canonical command/agent directories and Claude hook registry into generated `host-parity.json`.
+The policy acknowledges the exact inventory digest, so a newly added asset cannot silently inherit a
+family default. Every supported row names its producer, installed target, native binding, activation
+prerequisite, and scratch-host liveness test. Codex packaging does not copy command/agent Markdown
+until a native discovery consumer exists.
 
 ## Codex contract discovery
 

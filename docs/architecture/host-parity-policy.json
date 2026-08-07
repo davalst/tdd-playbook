@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "acknowledged_inventory_sha256": "20556de9925685d7d9061158d3d9f4b722116a7d5e438ba3fc53ebc657a96861",
+  "defaults": {
+    "claude": {
+      "commands": {
+        "status": "supported",
+        "producer": "plugins/tdd-playbook/commands/{asset}.md",
+        "installed_target": ".claude/commands/{asset}.md",
+        "binding": "file:.claude/commands/{asset}.md",
+        "activation_prerequisite": "Claude project/plugin command discovery",
+        "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation"
+      },
+      "agents": {
+        "status": "supported",
+        "producer": "plugins/tdd-playbook/agents/{asset}.md",
+        "installed_target": ".claude/agents/{asset}.md",
+        "binding": "file:.claude/agents/{asset}.md",
+        "activation_prerequisite": "Claude project/plugin agent discovery",
+        "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation"
+      },
+      "guards": {
+        "status": "supported",
+        "producer": "plugins/tdd-playbook/hooks/scripts/{asset}.py",
+        "installed_target": ".claude/hooks/scripts/{asset}.py",
+        "binding": "hook:{asset}.py",
+        "activation_prerequisite": "Claude project trust and enabled hook configuration",
+        "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation"
+      }
+    },
+    "codex": {
+      "commands": {
+        "status": "unavailable",
+        "debt_ref": "test-lock/codex-command-agent-discovery",
+        "installed_target": ".codex/tdd-playbook/commands/{asset}.md"
+      },
+      "agents": {
+        "status": "unavailable",
+        "debt_ref": "test-lock/codex-command-agent-discovery",
+        "installed_target": ".codex/tdd-playbook/agents/{asset}.md"
+      },
+      "guards": {
+        "status": "unavailable",
+        "debt_ref": "test-lock/codex-guard-family-parity",
+        "installed_target": ".codex/tdd-playbook/hooks/scripts/{asset}.py"
+      }
+    }
+  },
+  "overrides": {
+    "codex": {
+      "guards": {
+        "test_lock_guard": {
+          "status": "supported",
+          "producer": "plugins/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
+          "installed_target": ".codex/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
+          "binding": "hook:pre_tool_test_lock.py",
+          "activation_prerequisite": "Codex project trust and explicit hook-definition trust",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation"
+        }
+      }
+    }
+  }
+}

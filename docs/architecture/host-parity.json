@@ -1,44 +1,559 @@
 {
-  "schema_version": 1,
-  "as_of": "2026-08-07",
   "assets": {
-    "commands": {
-      "claims": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "debug": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "edge": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "grade": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "integration-audit": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "mutate": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "probe": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "tdd-lock": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "tdd-plan": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "tdd-unlock": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "tripwire": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}}
-    },
     "agents": {
-      "architecture-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "claims-verifier": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "edge-case-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "integration-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "mutation-runner": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "planted-error-probe": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "red-first-verifier": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "script-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "tripwire-auditor": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "ux-probe-calibrator": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}}
+      "architecture-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/architecture-adversary.md",
+          "installed_target": ".claude/agents/architecture-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/architecture-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/architecture-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "claims-verifier": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/claims-verifier.md",
+          "installed_target": ".claude/agents/claims-verifier.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/claims-verifier.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/claims-verifier.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "edge-case-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/edge-case-adversary.md",
+          "installed_target": ".claude/agents/edge-case-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/edge-case-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/edge-case-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "integration-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/integration-adversary.md",
+          "installed_target": ".claude/agents/integration-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/integration-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/integration-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "mutation-runner": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/mutation-runner.md",
+          "installed_target": ".claude/agents/mutation-runner.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/mutation-runner.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/mutation-runner.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "planted-error-probe": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/planted-error-probe.md",
+          "installed_target": ".claude/agents/planted-error-probe.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/planted-error-probe.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/planted-error-probe.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "red-first-verifier": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/red-first-verifier.md",
+          "installed_target": ".claude/agents/red-first-verifier.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/red-first-verifier.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/red-first-verifier.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "script-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/script-adversary.md",
+          "installed_target": ".claude/agents/script-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/script-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/script-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "tripwire-auditor": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/tripwire-auditor.md",
+          "installed_target": ".claude/agents/tripwire-auditor.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/tripwire-auditor.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/tripwire-auditor.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "ux-probe-calibrator": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/ux-probe-calibrator.md",
+          "installed_target": ".claude/agents/ux-probe-calibrator.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/ux-probe-calibrator.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/ux-probe-calibrator.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      }
+    },
+    "commands": {
+      "claims": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/claims.md",
+          "installed_target": ".claude/commands/claims.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/claims.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/claims.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "debug": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/debug.md",
+          "installed_target": ".claude/commands/debug.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/debug.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/debug.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "edge": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/edge.md",
+          "installed_target": ".claude/commands/edge.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/edge.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/edge.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "grade": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/grade.md",
+          "installed_target": ".claude/commands/grade.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/grade.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/grade.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "integration-audit": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/integration-audit.md",
+          "installed_target": ".claude/commands/integration-audit.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/integration-audit.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/integration-audit.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "mutate": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/mutate.md",
+          "installed_target": ".claude/commands/mutate.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/mutate.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/mutate.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "probe": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/probe.md",
+          "installed_target": ".claude/commands/probe.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/probe.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/probe.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "tdd-lock": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/tdd-lock.md",
+          "installed_target": ".claude/commands/tdd-lock.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/tdd-lock.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/tdd-lock.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "tdd-plan": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/tdd-plan.md",
+          "installed_target": ".claude/commands/tdd-plan.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/tdd-plan.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/tdd-plan.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "tdd-unlock": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/tdd-unlock.md",
+          "installed_target": ".claude/commands/tdd-unlock.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/tdd-unlock.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/tdd-unlock.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "tripwire": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/tripwire.md",
+          "installed_target": ".claude/commands/tripwire.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/tripwire.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/tripwire.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      }
     },
     "guards": {
-      "build_completion_reminder": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "capture": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "exhaustive_claim_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "exitcode_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "flaky_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "intent_nudge": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "overmock_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "red_lock": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "snapshot_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
-      "test_lock_guard": {"claude": {"status": "supported"}, "codex": {"status": "supported"}},
-      "test_weakening_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}}
+      "build_completion_reminder": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:build_completion_reminder.py",
+          "installed_target": ".claude/hooks/scripts/build_completion_reminder.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/build_completion_reminder.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/build_completion_reminder.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "capture": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:capture.py",
+          "installed_target": ".claude/hooks/scripts/capture.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/capture.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/capture.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "exhaustive_claim_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:exhaustive_claim_guard.py",
+          "installed_target": ".claude/hooks/scripts/exhaustive_claim_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/exhaustive_claim_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/exhaustive_claim_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "exitcode_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:exitcode_guard.py",
+          "installed_target": ".claude/hooks/scripts/exitcode_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/exitcode_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/exitcode_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "flaky_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:flaky_guard.py",
+          "installed_target": ".claude/hooks/scripts/flaky_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/flaky_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/flaky_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "intent_nudge": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:intent_nudge.py",
+          "installed_target": ".claude/hooks/scripts/intent_nudge.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/intent_nudge.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/intent_nudge.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "overmock_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:overmock_guard.py",
+          "installed_target": ".claude/hooks/scripts/overmock_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/overmock_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/overmock_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "red_lock": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:red_lock.py",
+          "installed_target": ".claude/hooks/scripts/red_lock.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/red_lock.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/red_lock.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "snapshot_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:snapshot_guard.py",
+          "installed_target": ".claude/hooks/scripts/snapshot_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/snapshot_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/snapshot_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "test_lock_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:test_lock_guard.py",
+          "installed_target": ".claude/hooks/scripts/test_lock_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "activation_prerequisite": "Codex project trust and explicit hook-definition trust",
+          "binding": "hook:pre_tool_test_lock.py",
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "installed_target": ".codex/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
+          "status": "supported"
+        }
+      },
+      "test_weakening_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:test_weakening_guard.py",
+          "installed_target": ".claude/hooks/scripts/test_weakening_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/test_weakening_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/test_weakening_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      }
     }
-  }
+  },
+  "generated": true,
+  "inventory_sha256": "20556de9925685d7d9061158d3d9f4b722116a7d5e438ba3fc53ebc657a96861",
+  "schema_version": 2
 }

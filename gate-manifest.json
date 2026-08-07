@@ -19,6 +19,11 @@
     "plugins/tdd-playbook/bin/gate_plan.py",
     "plugins/tdd-playbook/bin/gate_runner.py",
     "plugins/tdd-playbook/bin/dataflow_sweeps.py",
+    "plugins/tdd-playbook/bin/host_parity.py",
+    "docs/architecture/host-parity-policy.json",
+    "docs/architecture/host-parity.json",
+    "capabilities.json",
+    "scripts/install_into_repo.py",
     "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py"
   ],
   "safe_rules": [
