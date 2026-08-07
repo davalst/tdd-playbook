@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-07-assurance-pipeline-plan-review",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "eb64eb75aea0698f00ae50863404034a8551d8e7",
+    "head": "398ff15f71fd64bff1ca2bbdb32f29ab645c04a4"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "STREAM-ARCH-1",
+      "severity": "P1",
+      "summary": "Independent affected and full rosters would recreate gate divergence.",
+      "evidence": ["scripts/civerd_gate.sh:19-72", "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py:31-49"],
+      "status": "incorporated",
+      "disposition": "D1 uses one resolver for dynamic full discovery and affected narrowing, with an acknowledged roster digest."
+    },
+    {
+      "id": "STREAM-ARCH-2",
+      "severity": "P1",
+      "summary": "Retained gate logs require an explicit privacy, concurrency, and retention contract.",
+      "evidence": ["plugins/tdd-playbook/bin/host_contract.py:377-401", "plugins/tdd-playbook/bin/host_contract.py:519-541"],
+      "status": "incorporated",
+      "disposition": "D1 specifies a private Git-common-dir run store, allowlisted metadata, independent redaction, atomic writes, and retention."
+    },
+    {
+      "id": "STREAM-ARCH-3",
+      "severity": "P1",
+      "summary": "A manual documentation ownership map would become a second authority.",
+      "evidence": ["plugins/tdd-playbook/bin/capability_registry.py:9-34", "plugins/tdd-playbook/tests/test_host_parity.py:40-66"],
+      "status": "incorporated",
+      "disposition": "D4 makes current state output-only and provenance-bound to existing gate, parity, and capability authorities."
+    },
+    {
+      "id": "STREAM-ARCH-4",
+      "severity": "P1",
+      "summary": "Family defaults could silently acknowledge a newly discovered host asset.",
+      "evidence": ["plugins/tdd-playbook/tests/test_host_parity.py:40-66"],
+      "status": "incorporated",
+      "disposition": "D3 requires a human-acknowledged canonical inventory digest before defaults expand."
+    },
+    {
+      "id": "STREAM-INT-1",
+      "severity": "P1",
+      "summary": "Affected scope must include committed, staged, unstaged, untracked, rename, delete, and submodule state.",
+      "evidence": ["capabilities.json:654", "scripts/civerd_gate.sh:19-72"],
+      "status": "incorporated",
+      "disposition": "D2 unions all Git worktree sources and falls back to full for every unclassifiable or assurance-bearing path."
+    },
+    {
+      "id": "STREAM-INT-2",
+      "severity": "P1",
+      "summary": "Host parity must prove installed activation rather than inventory labels.",
+      "evidence": ["scripts/install_into_repo.py:305-339", "plugins/tdd-playbook/tests/test_installer.py:108-162"],
+      "status": "incorporated",
+      "disposition": "D3 requires supported rows to identify binding and liveness, then verifies both installed host compositions in scratch repositories."
+    },
+    {
+      "id": "STREAM-INT-3",
+      "severity": "P1",
+      "summary": "A review findings ledger without a gate consumer would be write-only.",
+      "evidence": ["docs/architecture/portable-host-adversary-disposition.md:1", "scripts/civerd_gate.sh:31-71"],
+      "status": "incorporated",
+      "disposition": "D5 adds a dynamically discovered full-gate validator with unresolved-blocker, false-closure, duplicate-ID, and scope-SHA plants."
+    }
+  ]
+}

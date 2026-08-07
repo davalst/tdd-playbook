@@ -22,6 +22,8 @@
     "plugins/tdd-playbook/bin/host_parity.py",
     "plugins/tdd-playbook/bin/render_reference.py",
     "docs/reference/current-state.md",
+    "plugins/tdd-playbook/bin/review_ledger.py",
+    "docs/reviews/**",
     "docs/architecture/host-parity-policy.json",
     "docs/architecture/host-parity.json",
     "capabilities.json",

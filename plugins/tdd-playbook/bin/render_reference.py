@@ -22,6 +22,7 @@ PROVENANCE_INPUTS = (
     "capabilities.json",
 )
 OUTPUT = "docs/reference/current-state.md"
+VALID_REVIEW_STATUS = ("incorporated", "open", "rejected", "verified_closed")
 
 
 def file_hash(root: str, relative: str) -> str:
@@ -30,6 +31,12 @@ def file_hash(root: str, relative: str) -> str:
         for block in iter(lambda: fh.read(65536), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def provenance_inputs(root: str) -> tuple[str, ...]:
+    reviews = sorted(os.path.relpath(path, root).replace(os.sep, "/") for path in
+                     glob.glob(os.path.join(root, "docs", "reviews", "*.json")))
+    return PROVENANCE_INPUTS + tuple(reviews)
 
 
 def _load(root: str, relative: str):
@@ -56,6 +63,9 @@ def render(root: str) -> str:
     capabilities = registry.get("capabilities") or []
     debts = [(cap["id"], debt.get("id", "unnamed"), debt["owner"], debt["expires"])
              for cap in capabilities for debt in (cap.get("integration_debt") or [])]
+    reviews = [_load(root, path) for path in provenance_inputs(root)
+               if path.startswith("docs/reviews/")]
+    review_findings = [finding for review in reviews for finding in review.get("findings", [])]
 
     lines = [
         "# Generated current state",
@@ -66,7 +76,7 @@ def render(root: str) -> str:
         "",
     ]
     lines.extend("- `{}` — `{}`".format(path, file_hash(root, path))
-                 for path in PROVENANCE_INPUTS)
+                 for path in provenance_inputs(root))
     lines.extend([
         "",
         "## Gate surface",
@@ -96,6 +106,15 @@ def render(root: str) -> str:
             len(capabilities), len(debts)),
     ])
     lines.extend("- `{}/{}` — owner `{}`, expires `{}`".format(*row) for row in debts)
+    lines.extend([
+        "",
+        "## Adversarial review records",
+        "",
+        "- Review records: {}. Findings: {}.".format(len(reviews), len(review_findings)),
+    ])
+    for status in sorted(VALID_REVIEW_STATUS):
+        count = sum(1 for finding in review_findings if finding.get("status") == status)
+        lines.append("- `{}`: {}".format(status, count))
     return "\n".join(lines) + "\n"
 
 

@@ -752,6 +752,44 @@
       ]
     },
     {
+      "id": "adversarial-review-ledger",
+      "summary": "Consumed, append-only adversarial-review records with stable finding IDs, reviewed commit scope, dispositions, and verified closure evidence.",
+      "user_facing": false,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "plugins/tdd-playbook/tests/test_review_ledger.py in the dynamically discovered blessed gate roster"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/review_ledger.py",
+        "docs/reviews/*.json",
+        "plugins/tdd-playbook/bin/render_reference.py"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py"
+      ],
+      "consumes": [
+        "paired architecture/integration review findings and closure rechecks"
+      ],
+      "emits": [
+        {
+          "topic": "validated finding dispositions and closure evidence",
+          "consumers": [
+            "blessed full gate",
+            "generated current-state reference",
+            "release review"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 90,
+        "probe": "test_review_ledger plants an unresolved P1, an evidence-free closure, an invalid review SHA, and a duplicate finding ID"
+      }
+    },
+    {
       "id": "generated-current-state-reference",
       "summary": "Output-only current-state reference generated from the gate, parity, and capability authorities with content-hash provenance.",
       "user_facing": false,
