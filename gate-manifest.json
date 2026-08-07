@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
-  "acknowledged_roster_sha256": "ca1e261ea343e72325d93627be2b84152c4fb7797b853900babc5b7ad24c2b14",
+  "acknowledged_roster_sha256": "aa77e0a6e7beaafe6b96daf23ae9d7029681c15745223cbd77b4a2b2a6e70062",
   "fixed_stages": [
     {"id": "calibration", "argv": ["python3", "calibration/test_harness.py"]},
     {"id": "dataflow", "argv": ["python3", "plugins/tdd-playbook/bin/dataflow_sweeps.py", "all", "--config", "dataflow-sweeps.json"]},

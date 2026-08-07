@@ -48,7 +48,7 @@ def test_generated_reference_is_current():
 def test_provenance_hashes_cover_authorities():
     rr = load_module()
     rendered = rr.render(REPO)
-    for path in rr.PROVENANCE_INPUTS:
+    for path in rr.provenance_inputs(REPO):
         check("provenance includes hash for {}".format(path),
               "`{}` — `{}`".format(path, rr.file_hash(REPO, path)) in rendered)
 
@@ -56,7 +56,7 @@ def test_provenance_hashes_cover_authorities():
 def test_stale_or_manually_edited_output_is_refused():
     rr = load_module()
     with tempfile.TemporaryDirectory() as tmp:
-        for rel in rr.PROVENANCE_INPUTS:
+        for rel in rr.provenance_inputs(REPO):
             src = os.path.join(REPO, rel)
             dst = os.path.join(tmp, rel)
             os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -74,11 +74,21 @@ def test_stale_or_manually_edited_output_is_refused():
         check("PLANTED manual generated-doc edit is refused", rr.check(tmp))
 
 
+def test_review_summary_is_generated_from_consumed_records():
+    rr = load_module()
+    rendered = rr.render(REPO)
+    check("generated reference reports review packet and finding counts",
+          "Review records:" in rendered and "findings:" in rendered)
+    check("review JSON participates in provenance",
+          "`docs/reviews/" in rendered)
+
+
 if __name__ == "__main__":
     # The real committed output does not exist in the red-first commit. The blessed gate
     # must therefore execute this suite and refuse before implementation can round up.
     test_generated_reference_is_current()
     test_provenance_hashes_cover_authorities()
     test_stale_or_manually_edited_output_is_refused()
+    test_review_summary_is_generated_from_consumed_records()
     print("\nResult: {}/{} passed".format(PASSED, TOTAL))
     raise SystemExit(0 if PASSED == TOTAL else 1)
