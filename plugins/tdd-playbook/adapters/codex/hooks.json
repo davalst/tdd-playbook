@@ -1,0 +1,29 @@
+{
+  "description": "TDD Playbook Codex adapter hooks (adapter-owned groups only).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/adapters/codex/pre_tool_test_lock.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: test-lock guard (Codex patch)"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/adapters/codex/pre_tool_test_lock.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: test-lock guard (Codex shell)"
+          }
+        ]
+      }
+    ]
+  }
+}

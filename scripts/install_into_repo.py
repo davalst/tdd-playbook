@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Vendor the TDD Playbook plugin into a repo's .claude/ so it loads in CLOUD Claude Code.
+"""Install the TDD Playbook's Claude or Codex host package into a repository.
 
-Cloud/web/mobile sandboxes only see project-level config that's part of the repo clone — they do
-NOT reliably load plugins from an external marketplace, and never load your ~/.claude. So to make
-the Playbook available in a cloud session for a repo, its components must live committed under that
-repo's .claude/ directory. This script copies them there (preserving the plugin's internal layout
-so ${CLAUDE_PLUGIN_ROOT} simply maps to $CLAUDE_PROJECT_DIR/.claude), and merges the hooks into the
-repo's .claude/settings.json without clobbering existing hooks.
+Claude cloud/web/mobile sandboxes need the established vendored `.claude/` package.  Codex uses a
+separate `.codex/` package and hook registry.  This installer never conflates those vendor states:
+each reconciler prunes only its own command namespace and preserves unrelated host configuration.
+The default remains Claude-only for downstream compatibility; Codex and dual installs are explicit.
 
 Usage:
-    python3 scripts/install_into_repo.py [TARGET_REPO]   # default: current directory
+    python3 scripts/install_into_repo.py [TARGET_REPO]   # default: Claude, current directory
+    python3 scripts/install_into_repo.py --host codex [TARGET_REPO]
+    python3 scripts/install_into_repo.py --host all [TARGET_REPO]
     python3 scripts/install_into_repo.py --doctor [TARGET_REPO]   # version-skew check
-Then:  git -C TARGET_REPO add .claude && git commit && git push   # → loads in cloud
+Then commit the selected host directory.  Codex project hooks also require project trust and hook
+review; configuration present on disk is not proof that the native runtime invoked it.
 
 Re-run any time to refresh a repo after the canonical plugin updates (it overwrites the vendored
 copies; your repo-specific hooks in settings.json are preserved).
@@ -34,6 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.normpath(os.path.join(HERE, "..", "plugins", "tdd-playbook"))
 PLUGIN_ROOT_VAR = "${CLAUDE_PLUGIN_ROOT}"
 PROJECT_ROOT_VAR = "$CLAUDE_PROJECT_DIR/.claude"
+CODEX_PLUGIN_ROOT_VAR = "${PLUGIN_ROOT}"
+CODEX_PROJECT_ROOT_VAR = "$(git rev-parse --show-toplevel)/.codex/tdd-playbook"
 
 # (src subdir under the plugin, dest subdir under <repo>/.claude). Layout preserved so the
 # ${CLAUDE_PLUGIN_ROOT} → $CLAUDE_PROJECT_DIR/.claude rewrite keeps every internal path valid.
@@ -53,7 +56,11 @@ def _rewrite(text: str) -> str:
     return text.replace(PLUGIN_ROOT_VAR, PROJECT_ROOT_VAR)
 
 
-def _copy_tree(src: str, dest: str) -> int:
+def _rewrite_codex(text: str) -> str:
+    return text.replace(CODEX_PLUGIN_ROOT_VAR, CODEX_PROJECT_ROOT_VAR)
+
+
+def _copy_tree(src: str, dest: str, rewrite=_rewrite) -> int:
     n = 0
     for root, _dirs, files in os.walk(src):
         if "__pycache__" in root:
@@ -71,7 +78,7 @@ def _copy_tree(src: str, dest: str) -> int:
                 with open(s, "r") as fh:
                     body = fh.read()
                 with open(d, "w") as fh:
-                    fh.write(_rewrite(body))
+                    fh.write(rewrite(body))
             else:
                 shutil.copy2(s, d)
             if ext == ".py" or ext == ".sh":
@@ -139,7 +146,44 @@ def _merge_hooks(claude_dir: str) -> int:
     return added
 
 
+_CODEX_PLUGIN_NS = ".codex/tdd-playbook/"
+
+
+def _is_codex_plugin_group(group: dict) -> bool:
+    hooks = group.get("hooks", [])
+    return bool(hooks) and all(
+        _CODEX_PLUGIN_NS in (handler.get("command") or "") for handler in hooks)
+
+
+def _merge_codex_hooks(codex_dir: str) -> int:
+    """Reconcile adapter-owned Codex groups while preserving every unrelated entry."""
+    source = os.path.join(PLUGIN, "adapters", "codex", "hooks.json")
+    with open(source) as fh:
+        adapter_hooks = json.loads(_rewrite_codex(fh.read())).get("hooks", {})
+    path = os.path.join(codex_dir, "hooks.json")
+    settings: dict = {}
+    if os.path.isfile(path):
+        with open(path) as fh:
+            settings = json.load(fh)
+    existing = settings.setdefault("hooks", {})
+    for event in list(existing):
+        kept = [group for group in existing[event] if not _is_codex_plugin_group(group)]
+        if kept:
+            existing[event] = kept
+        else:
+            del existing[event]
+    added = 0
+    for event, groups in adapter_hooks.items():
+        existing.setdefault(event, []).extend(groups)
+        added += len(groups)
+    with open(path, "w") as fh:
+        json.dump(settings, fh, indent=4)
+        fh.write("\n")
+    return added
+
+
 _STAMP_REL = os.path.join(".claude", ".tdd-playbook-version")
+_CODEX_STAMP_REL = os.path.join(".codex", ".tdd-playbook-version")
 
 
 def _canonical_version() -> str:
@@ -250,19 +294,7 @@ def _merge_claude_gitignore(claude_dir: str) -> None:
                 fh.write(ln + "\n")
 
 
-def main(argv=None) -> int:
-    argv = argv if argv is not None else sys.argv[1:]
-    if argv and argv[0] == "--doctor":
-        target = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
-        return doctor(target)
-    target = os.path.abspath(argv[0]) if argv else os.getcwd()
-    if not os.path.isdir(target):
-        sys.stderr.write(f"target repo not found: {target}\n")
-        return 2
-    if not os.path.isdir(PLUGIN):
-        sys.stderr.write(f"plugin source not found: {PLUGIN}\n")
-        return 2
-
+def _install_claude(target: str) -> None:
     claude_dir = os.path.join(target, ".claude")
     os.makedirs(claude_dir, exist_ok=True)
     total = 0
@@ -274,15 +306,60 @@ def main(argv=None) -> int:
     _merge_claude_gitignore(claude_dir)
     with open(os.path.join(target, _STAMP_REL), "w") as fh:
         fh.write(_canonical_version() + "\n")
-
     print(f"Vendored {total} file(s) into {claude_dir}")
     print(f"Merged {hooks_added} hook group(s) into .claude/settings.json "
           f"(removed any marketplace/enabledPlugins block)")
+
+
+def _install_codex(target: str) -> None:
+    codex_dir = os.path.join(target, ".codex")
+    runtime = os.path.join(codex_dir, "tdd-playbook")
+    os.makedirs(runtime, exist_ok=True)
+    total = 0
+    for src_rel, dest_rel in COPY_TREES:
+        src = os.path.join(PLUGIN, src_rel)
+        if os.path.isdir(src):
+            total += _copy_tree(src, os.path.join(runtime, dest_rel), _rewrite_codex)
+    hooks_added = _merge_codex_hooks(codex_dir)
+    with open(os.path.join(target, _CODEX_STAMP_REL), "w") as fh:
+        fh.write(_canonical_version() + "\n")
+    print(f"Vendored {total} file(s) into {runtime}")
+    print(f"Merged {hooks_added} adapter-owned hook group(s) into .codex/hooks.json")
+
+
+def main(argv=None) -> int:
+    argv = argv if argv is not None else sys.argv[1:]
+    if argv and argv[0] == "--doctor":
+        target = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
+        return doctor(target)
+    host = "claude"
+    if argv[:1] == ["--host"]:
+        if len(argv) < 2 or argv[1] not in ("claude", "codex", "all"):
+            sys.stderr.write("--host needs claude|codex|all\n")
+            return 2
+        host = argv[1]
+        argv = argv[2:]
+    target = os.path.abspath(argv[0]) if argv else os.getcwd()
+    if len(argv) > 1:
+        sys.stderr.write("unexpected installer arguments: {}\n".format(" ".join(argv[1:])))
+        return 2
+    if not os.path.isdir(target):
+        sys.stderr.write(f"target repo not found: {target}\n")
+        return 2
+    if not os.path.isdir(PLUGIN):
+        sys.stderr.write(f"plugin source not found: {PLUGIN}\n")
+        return 2
+
+    if host in ("claude", "all"):
+        _install_claude(target)
+    if host in ("codex", "all"):
+        _install_codex(target)
     print("\nNext:")
-    print(f"  git -C {target} add .claude && git -C {target} commit -m "
-          f"'chore: vendor TDD Playbook for cloud' && git -C {target} push")
-    print("Then open a CLOUD session on the repo — skill + commands + agents + hooks load from "
-          "the clone (no marketplace needed).")
+    installed = ".claude" if host == "claude" else ".codex" if host == "codex" \
+        else ".claude .codex"
+    print(f"  git -C {target} add {installed} && git -C {target} commit -m "
+          f"'chore: vendor TDD Playbook host adapters' && git -C {target} push")
+    print("Then review/trust the installed host hooks before relying on enforcement.")
     return 0
 
 

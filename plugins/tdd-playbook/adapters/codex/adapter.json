@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "host": "codex",
+  "adapter_version": "1.30.0",
+  "max_probe_age_days": 14,
+  "capabilities": {
+    "test-lock": {
+      "declared_assurance": "host_prevented",
+      "required_routes": [
+        "structured_edit",
+        "shell"
+      ]
+    }
+  }
+}

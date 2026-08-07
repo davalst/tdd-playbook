@@ -55,12 +55,14 @@
       },
       "wired_by": [
         "plugins/tdd-playbook/hooks/hooks.json",
+        "plugins/tdd-playbook/adapters/codex/hooks.json",
         "plugins/tdd-playbook/commands/tdd-lock.md",
         "plugins/tdd-playbook/bin/host_contract.py (one Git-common-dir authority shared by linked worktrees)"
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_tdd_lock.py",
         "plugins/tdd-playbook/tests/test_host_adapters.py",
+        "plugins/tdd-playbook/tests/test_codex_adapter.py",
         "plugins/tdd-playbook/tests/test_red_lock_portable.py"
       ],
       "emits": [
@@ -71,7 +73,20 @@
             "gate_yield.py (journaled unlocks land as override events \u2014 the adjudicated false-positive signal)"
           ]
         }
-      ]
+      ],
+      "integration_debt": [
+        {
+          "what": "CODEX GUARD-FAMILY PARITY: the 2026-08-07 adapter intentionally ships only TEST-LOCK. PostToolUse weakening/flaky/overmock/red-lock, UserPromptSubmit nudge/capture, Stop Tripwire/capture, and subagent lifecycle remain explicitly unavailable rather than inferred from one successful event family. Done = each canonical guard is mapped and real-host calibrated with its own plant + clean control, or explicitly retired/unavailable in the parity matrix with an owner-approved rationale",
+          "owner": "david",
+          "expires": "2026-09-30"
+        },
+        {
+          "what": "SHELL CLASSIFIER ADAPTER BOUNDARY: the Codex TEST-LOCK wrapper temporarily imports the calibrated Claude shell classifier to avoid forking policy during the vertical slice. Done = extract a host-neutral command-action classifier only after a cross-host parity corpus proves every existing block and allow fixture, then make both transports consume it; never copy the heuristic into two adapters",
+          "owner": "david",
+          "expires": "2026-09-30"
+        }
+      ],
+      "notes": "CODEX 2026-08-07: installed Codex 0.147.0 invoked trusted repo-local PreToolUse and blocked both apply_patch and Bash plants; paired clean apply_patch and Bash controls reached the native tools. Project trust and exact hook-definition trust are separate activation gates. This is local host calibration, not release authority."
     },
     {
       "id": "citation-gate",
