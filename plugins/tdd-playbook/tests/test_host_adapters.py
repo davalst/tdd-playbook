@@ -99,6 +99,7 @@ def test_adapter_parity():
 
         structured = _guard(side, _edit(os.path.join(side, "tests", "test_pay.py")))
         shell = _guard(side, _bash("sed -i.bak 's/2/1/' tests/test_pay.py"))
+        state_attack = _guard(side, _bash("rm '{}'".format(core.lock_path(identity))))
         clean = _guard(side, _edit(os.path.join(side, "pay.py")))
         check("claude adapter: linked-worktree structured write is blocked",
               structured.returncode == 2 and "TEST-LOCK" in structured.stderr,
@@ -106,6 +107,9 @@ def test_adapter_parity():
         check("claude adapter: linked-worktree shell write is blocked",
               shell.returncode == 2 and "TEST-LOCK" in shell.stderr,
               (shell.returncode, shell.stderr))
+        check("claude adapter: shell cannot delete canonical lock authority",
+              state_attack.returncode == 2 and "STATE" in state_attack.stderr,
+              (state_attack.returncode, state_attack.stderr))
         check("claude adapter: clean source control remains allowed",
               clean.returncode == 0 and clean.stderr == "", (clean.returncode, clean.stderr))
 
