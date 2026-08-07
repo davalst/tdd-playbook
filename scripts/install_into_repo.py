@@ -41,6 +41,7 @@ COPY_TREES = [
     ("skills/tdd-playbook", "skills/tdd-playbook"),
     ("commands", "commands"),
     ("agents", "agents"),
+    ("adapters", "adapters"),
     ("bin", "bin"),
     ("hooks/scripts", "hooks/scripts"),
 ]

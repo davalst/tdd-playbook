@@ -707,6 +707,44 @@
           "expires": "2026-11-01"
         }
       ]
+    },
+    {
+      "id": "host-adapter-doctor",
+      "summary": "Portable adapter doctor: reports declared versus recently probed host capabilities, scope, staleness, and assurance without promoting local evidence into release authority.",
+      "user_facing": true,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "python3 plugins/tdd-playbook/bin/tdd.py doctor"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/tdd.py",
+        "plugins/tdd-playbook/adapters/*/adapter.json",
+        "scripts/install_into_repo.py (vendors adapters/ with bin/)"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_host_doctor.py"
+      ],
+      "consumes": [
+        "<git-common-dir>/tdd-playbook/events.jsonl (local_unverified capability probes)",
+        "plugins/tdd-playbook/adapters/*/adapter.json (declarations and required routes)"
+      ],
+      "emits": [
+        {
+          "topic": "host capability assurance report",
+          "consumers": [
+            "operator before trusting or calibrating a host adapter",
+            "release review as advisory context only; CIVerd remains authoritative"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 14,
+        "probe": "tdd doctor decays missing/stale route probes to unmeasured"
+      }
     }
   ]
 }

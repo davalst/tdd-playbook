@@ -33,6 +33,12 @@ ASSURANCE_LEVELS = (
     "ci_verified",
     "civerd_signed",
 )
+LOCAL_ASSURANCE_LEVELS = ASSURANCE_LEVELS[:4]
+EVIDENCE_DECISIONS = ("allow", "block", "detect", "capture", "report", "unavailable")
+EVIDENCE_DETAIL_KEYS = frozenset({
+    "capability", "route", "outcome", "reason_code", "test_id", "redactions",
+    "count", "control", "host_exit",
+})
 
 VERIFIER_BASENAMES = frozenset({
     "conftest.py", "pytest.ini", "tox.ini", "setup.cfg",
@@ -419,3 +425,50 @@ def release_authorizing(assurance):
     if assurance not in ASSURANCE_LEVELS:
         raise ContractError("unknown assurance level: {!r}".format(assurance))
     return assurance == "civerd_signed"
+
+
+def new_local_evidence_event(identity, host, host_version, adapter_version, run_id,
+                             event, decision, assurance, scope, details, now=None):
+    """Build an allowlisted, explicitly forgeable local observation.
+
+    CI and CIVerd assurance are intentionally impossible to mint through this API.  Their
+    records need the independent producer/signature path, not a more persuasive local JSON
+    field.  Raw commands, prompts, arguments, environment, and content are excluded by a
+    closed details vocabulary so secrets do not enter the durable journal by default.
+    """
+    _require_identity(identity)
+    strings = {"host": host, "host_version": host_version,
+               "adapter_version": adapter_version, "run_id": run_id,
+               "event": event, "scope": scope}
+    if any(not isinstance(value, str) or not value.strip() for value in strings.values()):
+        raise ContractError("evidence identity fields must be non-empty strings")
+    if decision not in EVIDENCE_DECISIONS:
+        raise ContractError("unknown evidence decision: {!r}".format(decision))
+    if assurance not in LOCAL_ASSURANCE_LEVELS:
+        raise ContractError("local evidence cannot mint assurance {!r}".format(assurance))
+    if not isinstance(details, dict) or not set(details).issubset(EVIDENCE_DETAIL_KEYS):
+        raise ContractError("evidence details contain non-allowlisted fields")
+    if any(isinstance(value, (dict, list, tuple, set, bytes)) for value in details.values()):
+        raise ContractError("evidence detail values must be scalar and redacted")
+    timestamp = now or _now()
+    try:
+        datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise ContractError("evidence timestamp must be ISO-8601")
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "host": host.strip(),
+        "host_version": host_version.strip(),
+        "adapter_version": adapter_version.strip(),
+        "repo_id": identity["repo_id"],
+        "worktree_id": identity["worktree_id"],
+        "sha": identity["head"],
+        "ts": timestamp,
+        "run_id": run_id.strip(),
+        "event": event.strip(),
+        "decision": decision,
+        "assurance": assurance,
+        "scope": scope.strip(),
+        "details": dict(details),
+        "trust": "local_unverified",
+    }

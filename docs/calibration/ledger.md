@@ -345,3 +345,17 @@ catch the right things.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260806-11 | 2026-08-06 | a54e772 | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §12: correct the mechanisms-found-everything overclaim to "a mechanism cannot detect its own absence"; add liveness-plant vs detection-plant | — | none | 0 | a correction to text shipped hours earlier in v1.30, refuted by the peer whose data it cited — the doctrine row it replaces was itself an overclaim, which is the §12 claims discipline applied to §12 |
+
+### Registered 2026-08-07 — baseline 3659abf (portable TEST-LOCK paths)
+
+These two rows were recovered when the post-commit gate caught what the pre-commit gate did
+not: `ledger.py` still reads committed state, the exact dated blind spot already registered
+as debt on `gate-surface-ledger`.  The cited baseline is nevertheless the actual pre-change
+tree (`3659abf`, immediately before `9296b9b`), not a post-change backfill; the coverage
+predicate can therefore independently verify both paths changed after it.  This incident is
+additional evidence for that existing debt, not a claim that late registration is normal.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260807-01 | 2026-08-07 | 3659abf | plugins/tdd-playbook/commands/grade.md | point `/grade` at the Git-common-dir event journal, retaining the legacy non-Git fallback | — | none | 0 | storage-path documentation only; no calibration scenario measures which local journal path the operator reads |
+| L-20260807-02 | 2026-08-07 | 3659abf | plugins/tdd-playbook/commands/tdd-unlock.md | document the canonical event journal and legacy non-Git fallback | — | none | 0 | storage-path documentation only; the runtime behavior is covered by planted adapter suites, not an agent-output scenario |
