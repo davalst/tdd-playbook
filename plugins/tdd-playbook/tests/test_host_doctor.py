@@ -122,6 +122,22 @@ def test_doctor_assurance():
                      "outcome": "blocked", "redactions": 0},
             now="2026-08-07T10:00:01+00:00")
         core.append_event(identity, shell_event)
+        partial = _doctor(root, "--as-of", "2026-08-07")
+        partial_report = json.loads(partial.stdout) if partial.returncode == 0 else {}
+        partial_value = partial_report["hosts"]["claude"]["capabilities"]["test-lock"]
+        check("doctor: planted blocks without paired clean controls stay unmeasured",
+              partial_value["assurance"] == "unmeasured", partial_value)
+
+        for route, stamp in (("structured_edit", "2026-08-07T10:00:02+00:00"),
+                             ("shell", "2026-08-07T10:00:03+00:00")):
+            control = core.new_local_evidence_event(
+                identity, host="claude", host_version="1.2.3", adapter_version="1.30.0",
+                run_id="probe-live", event="capability_probe", decision="allow",
+                assurance="host_observed", scope=route,
+                details={"capability": "test-lock", "route": route,
+                         "outcome": "allowed", "control": True, "redactions": 0},
+                now=stamp)
+            core.append_event(identity, control)
         measured = _doctor(root, "--as-of", "2026-08-07")
         measured_report = json.loads(measured.stdout) if measured.returncode == 0 else {}
         value = measured_report["hosts"]["claude"]["capabilities"]["test-lock"]
