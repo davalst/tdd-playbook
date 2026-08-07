@@ -1437,8 +1437,12 @@ def _denominator_tests():
               (p.returncode, verdicts, p.stderr[-200:]))
         check("denominator: the real verdict never claims unscoped 'ALL suites green'",
               verdicts and not any("ALL suites green" in line for line in verdicts), verdicts)
-    empty = dict(manifest)
+    empty = json.loads(json.dumps(manifest))
     empty["suite_glob"] = "plugins/tdd-playbook/tests/does-not-exist-*.py"
+    # This plant is testing vacuity after valid manifest acknowledgement; without
+    # re-acknowledging the deliberate in-memory fixture edit, the stronger execution-policy
+    # digest correctly refuses first and the plant never reaches the behavior it calibrates.
+    empty["acknowledged_plan_sha256"] = gp.execution_manifest_digest(empty)
     try:
         gp.full_plan(REPO, empty)
     except gp.PlanError as exc:
