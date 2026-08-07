@@ -198,8 +198,9 @@ def test_lock_transaction_and_binding():
         check("lock transaction: the winning protection is never replaced by the loser",
               len(active["files"]) == 1, active)
 
-        same_session = core.new_lock_record(
-            ident, ["tests/test_other.py"], active["session_id"])
+        missing = ("tests/test_pay.py" if "tests/test_pay.py" not in active["files"]
+                   else "tests/test_other.py")
+        same_session = core.new_lock_record(ident, [missing], active["session_id"])
         merged = core.merge_lock(ident, same_session)
         check("lock transaction: the same run can extend its lock without a lost update",
               set(merged["files"]) == {"tests/test_pay.py", "tests/test_other.py"}, merged)

@@ -15,6 +15,11 @@ release-certification authority; every host observation below is local and forge
 | Subagent lifecycle | no current Playbook mapping | available host event, not mapped | unavailable | SubagentStart/Stop plant required |
 | Release certification | none | none | CIVerd-signed only | fresh signed GREEN exact-SHA verdict |
 
+The exact command/agent/guard inventory and each host's supported/unavailable disposition live in
+`host-parity.json`. A family-parity test derives the canonical roster from the real directories and
+Claude hook registry, so a newly added asset cannot silently disappear from one host. Codex packaging
+does not copy command/agent Markdown until a native discovery consumer exists.
+
 ## Codex contract discovery
 
 The implementation is grounded in the official OpenAI Hooks contract, not the Claude wire
@@ -41,6 +46,20 @@ configuration; it does not replace ordinary user review.
   namespace.  It preserves unrelated hook groups and top-level host metadata.
 - Runtime lock/evidence state never lives in either vendor directory; both consume the
   Git-common-dir authority.
+
+## Shared state and local evidence
+
+Lock creation/extension/clear uses one interprocess transaction file around the complete
+read/validate/mutate operation. A competing linked-worktree session is refused; a single session can
+extend its protected set; unlock uses a generation check so an older reader cannot clear a newer
+record. HEAD/worktree binding is retained for classification: another worktree can enforce the shared
+lock, but a changed HEAD is `stale_revision` evidence rather than current red-first proof.
+
+Both live adapters are production producers for the doctor's local event consumer. While TEST-LOCK
+is active they append only redacted `blocked`/`allowed` route observations. Doctor requires a block
+and its clean control from the same run for every required route and exact SHA before reporting the
+manifest's declared assurance. Missing, partial, stale or wrong-SHA data remains `unmeasured`; the
+journal is still locally forgeable and cannot authorize release.
 
 ## Known bounded debt
 

@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-07",
+  "assets": {
+    "commands": {
+      "claims": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "debug": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "edge": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "grade": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "integration-audit": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "mutate": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "probe": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "tdd-lock": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "tdd-plan": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "tdd-unlock": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "tripwire": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}}
+    },
+    "agents": {
+      "architecture-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "claims-verifier": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "edge-case-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "integration-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "mutation-runner": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "planted-error-probe": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "red-first-verifier": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "script-adversary": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "tripwire-auditor": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "ux-probe-calibrator": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}}
+    },
+    "guards": {
+      "build_completion_reminder": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "capture": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "exhaustive_claim_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "exitcode_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "flaky_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "intent_nudge": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "overmock_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "red_lock": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "snapshot_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}},
+      "test_lock_guard": {"claude": {"status": "supported"}, "codex": {"status": "supported"}},
+      "test_weakening_guard": {"claude": {"status": "supported"}, "codex": {"status": "unavailable", "owner": "david", "expires": "2026-09-30"}}
+    }
+  }
+}

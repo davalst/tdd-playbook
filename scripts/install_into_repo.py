@@ -48,6 +48,14 @@ COPY_TREES = [
     ("bin", "bin"),
     ("hooks/scripts", "hooks/scripts"),
 ]
+# Codex's current native discovery surface consumes the hook runtime only.  Claude-shaped
+# commands/agents copied under a private runtime directory are not discoverable and therefore
+# become integration islands.  The parity manifest owns their unavailable/debt disposition.
+CODEX_COPY_TREES = [
+    ("adapters", "adapters"),
+    ("bin", "bin"),
+    ("hooks/scripts", "hooks/scripts"),
+]
 # files whose body references ${CLAUDE_PLUGIN_ROOT} and must be rewritten on copy
 REWRITE_EXT = {".md", ".py", ".json", ".sh"}
 
@@ -314,9 +322,13 @@ def _install_claude(target: str) -> None:
 def _install_codex(target: str) -> None:
     codex_dir = os.path.join(target, ".codex")
     runtime = os.path.join(codex_dir, "tdd-playbook")
+    # This namespace is adapter-owned. Rebuild it so formerly copied, now-unavailable assets
+    # do not survive a reconciliatory reinstall as ghost capabilities.
+    if os.path.isdir(runtime):
+        shutil.rmtree(runtime)
     os.makedirs(runtime, exist_ok=True)
     total = 0
-    for src_rel, dest_rel in COPY_TREES:
+    for src_rel, dest_rel in CODEX_COPY_TREES:
         src = os.path.join(PLUGIN, src_rel)
         if os.path.isdir(src):
             total += _copy_tree(src, os.path.join(runtime, dest_rel), _rewrite_codex)

@@ -32,8 +32,8 @@ from _common import read_event, emit, file_path_of, is_test_file  # noqa: E402
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                 "..", "..", "bin")))
 from host_contract import (ContractError, PENDING_FILENAME, append_event,
-                           lock_path as core_lock_path, new_lock_record, read_lock,
-                           read_state_json, resolve_repository, state_path, write_lock,
+                           lock_path as core_lock_path, merge_lock, new_lock_record, read_lock,
+                           read_state_json, resolve_repository, state_path,
                            write_state_json)  # noqa: E402
 
 NAME = "redlock"
@@ -184,10 +184,10 @@ def apply_run_outcome(root, verdict):
         locked_now.append(rel)
     if locked_now:
         if identity:
-            record = new_lock_record(identity, locked_now, _session_id())
-            existing.update(record["files"])
-            record["files"] = existing
-            write_lock(identity, record)
+            # Auto-red is a trusted extension of the active run, never a competing owner.
+            session = lock.get("session_id") or _session_id()
+            record = new_lock_record(identity, locked_now, session)
+            merge_lock(identity, record)
         else:
             _save(_lock_path(root), {"locked_at": _now(), "files": existing})
         _journal(root, {"ts": _now(), "event": "auto_lock_red",

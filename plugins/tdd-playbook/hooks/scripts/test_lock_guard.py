@@ -29,7 +29,8 @@ from _common import read_event, emit, file_path_of  # noqa: E402
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                 "..", "..", "bin")))
 from host_contract import (ContractError, import_legacy_lock, policy_decision,
-                           read_lock, resolve_repository)  # noqa: E402
+                           read_lock, record_capability_observation,
+                           resolve_repository)  # noqa: E402
 
 NAME = "testlock"
 
@@ -279,6 +280,27 @@ def bash_findings(cmd, lock, root):
     return []
 
 
+def record_observation(root, lock, event, route, findings):
+    """Best-effort Claude host-boundary observation; never weakens a block on I/O failure."""
+    if lock.get("_contract_error"):
+        return
+    try:
+        identity = resolve_repository(root)
+        manifest = os.path.realpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "..", "adapters",
+            "claude", "adapter.json"))
+        with open(manifest) as fh:
+            version = json.load(fh)["adapter_version"]
+        record_capability_observation(
+            identity, host="claude",
+            host_version=(event.get("host_version")
+                          or os.environ.get("TDD_PLAYBOOK_HOST_VERSION") or "unreported"),
+            adapter_version=version, run_id=lock["session_id"], route=route,
+            outcome="blocked" if findings else "allowed")
+    except (ContractError, OSError, ValueError, KeyError):
+        pass
+
+
 def main():
     event = read_event()
     root = project_root()
@@ -290,9 +312,13 @@ def main():
                     "silently disabling protection: {}".format(lock["_contract_error"])])
     if event.get("tool_name") == "Bash":
         cmd = (event.get("tool_input", {}) or {}).get("command", "")
-        emit(NAME, bash_findings(cmd, lock, root))
+        findings = bash_findings(cmd, lock, root)
+        record_observation(root, lock, event, "shell", findings)
+        emit(NAME, findings)
     else:
-        emit(NAME, edit_findings(event, lock, root))
+        findings = edit_findings(event, lock, root)
+        record_observation(root, lock, event, "structured_edit", findings)
+        emit(NAME, findings)
 
 
 if __name__ == "__main__":

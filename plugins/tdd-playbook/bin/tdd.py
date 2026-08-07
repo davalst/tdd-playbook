@@ -12,7 +12,7 @@ import os
 import sys
 
 from host_contract import (ASSURANCE_LEVELS, ContractError, read_events, read_lock,
-                           resolve_repository)
+                           lock_binding, resolve_repository)
 
 PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADAPTERS = os.path.join(PLUGIN, "adapters")
@@ -65,6 +65,10 @@ def _capability(manifest, capability, spec, events, identity, as_of):
     max_age = manifest.get("max_probe_age_days", 14)
     if not isinstance(max_age, int) or max_age < 1:
         raise ContractError("{} has invalid max_probe_age_days".format(manifest["host"]))
+    declared = spec.get("declared_assurance")
+    if declared not in ASSURANCE_LEVELS[:4]:
+        raise ContractError("{}:{} has invalid declared_assurance".format(
+            manifest["host"], capability))
     candidates = [row for row in events
                   if isinstance(row, dict)
                   and row.get("event") == "capability_probe"
@@ -73,8 +77,9 @@ def _capability(manifest, capability, spec, events, identity, as_of):
                   and row.get("repo_id") == identity["repo_id"]
                   and row.get("sha") == identity["head"]
                   and (row.get("details") or {}).get("capability") == capability]
-    latest_by_route = {}
+    complete_by_route = {}
     saw_stale = False
+    grouped = {}
     for row in candidates:
         route = (row.get("details") or {}).get("route")
         stamp = _timestamp(row.get("ts"))
@@ -84,19 +89,22 @@ def _capability(manifest, capability, spec, events, identity, as_of):
         if age < 0 or age > max_age:
             saw_stale = True
             continue
-        prior = latest_by_route.get(route)
-        if prior is None or row["ts"] > prior["ts"]:
-            latest_by_route[route] = row
-    complete = set(latest_by_route) == set(routes)
+        grouped.setdefault((route, row.get("run_id")), []).append(row)
+    for (route, _run_id), rows in grouped.items():
+        outcomes = {(row.get("details") or {}).get("outcome") for row in rows}
+        if {"blocked", "allowed"} <= outcomes:
+            newest = max(rows, key=lambda row: row["ts"])
+            prior = complete_by_route.get(route)
+            if prior is None or newest["ts"] > prior["ts"]:
+                complete_by_route[route] = newest
+    complete = set(complete_by_route) == set(routes)
     if not complete:
         return {"assurance": "unmeasured", "trust": "local_unverified",
                 "stale": saw_stale, "required_routes": routes,
-                "observed_routes": sorted(latest_by_route)}
-    assurance = min((row.get("assurance", "unmeasured") for row in latest_by_route.values()),
-                    key=ASSURANCE_LEVELS.index)
-    return {"assurance": assurance, "trust": "local_unverified", "stale": False,
-            "required_routes": routes, "observed_routes": sorted(latest_by_route),
-            "latest_probe": max(row["ts"] for row in latest_by_route.values())}
+                "observed_routes": sorted(complete_by_route)}
+    return {"assurance": declared, "trust": "local_unverified", "stale": False,
+            "required_routes": routes, "observed_routes": sorted(complete_by_route),
+            "latest_probe": max(row["ts"] for row in complete_by_route.values())}
 
 
 def doctor(args):
@@ -127,7 +135,8 @@ def doctor(args):
             "sha": identity["head"],
             "active_lock": None if lock is None else {
                 "files": len(lock["files"]), "source_worktree_id": lock["source_worktree_id"],
-                "head": lock["head"], "locked_at": lock["locked_at"]},
+                "head": lock["head"], "locked_at": lock["locked_at"],
+                "binding": lock_binding(identity, lock)},
             "hosts": hosts,
             "release_authority": "CIVerd signed exact-SHA verdict only",
         }

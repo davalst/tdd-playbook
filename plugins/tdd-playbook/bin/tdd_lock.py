@@ -40,7 +40,7 @@ import sys
 
 from host_contract import (ContractError, append_event, clear_lock, events_path,
                            import_legacy_lock, lock_path as core_lock_path,
-                           new_lock_record, read_lock, resolve_repository, write_lock)
+                           merge_lock, new_lock_record, read_lock, resolve_repository)
 
 # Closed vocabulary. No `other`/`misc` bucket — an open bucket becomes the dumping ground and
 # re-creates the ambiguity. Absent --class records `unclassified`, which is UNMEASURED (never
@@ -72,7 +72,11 @@ def _identity(root):
 def _session_id():
     return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
             or os.environ.get("CLAUDE_SESSION_ID")
-            or "local-pid-{}".format(os.getpid()))
+            # Some hosts do not export their turn id into Bash subprocesses.  A stable
+            # worktree fallback lets sequential CLI calls extend/unlock safely, while linked
+            # worktrees remain competing owners.  Same-worktree agents serialize+merge.
+            or "local-worktree-{}".format(
+                hashlib.sha256(project_root().encode("utf-8")).hexdigest()[:16]))
 
 
 def lock_path(root):
@@ -126,10 +130,8 @@ def cmd_lock(args):
             import_legacy_lock(identity, _session_id())
             fresh = new_lock_record(identity, args.files, _session_id())
             existing_record = read_lock(identity)
-            existing = dict((existing_record or {}).get("files", {}))
-            existing.update(fresh["files"])
-            fresh["files"] = existing
-            write_lock(identity, fresh)
+            fresh = merge_lock(identity, fresh)
+            existing = dict(fresh["files"])
             files = {rel: fresh["files"][rel]
                      for rel in fresh["files"] if rel not in (existing_record or {}).get("files", {})}
         except ContractError as exc:
@@ -227,7 +229,11 @@ def cmd_unlock(args):
     except Exception:
         pass
     if identity:
-        clear_lock(identity)
+        try:
+            clear_lock(identity, expected_generation=locked["generation"])
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
+            return 1
     else:
         os.remove(path)
     print("tdd_lock: unlocked {} file(s). Reason journaled for /grade.".format(

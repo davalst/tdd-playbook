@@ -19,12 +19,14 @@ import os
 import subprocess
 import tempfile
 import threading
+import uuid
 
 SCHEMA_VERSION = 1
 STATE_DIRNAME = "tdd-playbook"
 LOCK_FILENAME = "active-lock.json"
 EVENTS_FILENAME = "events.jsonl"
 PENDING_FILENAME = "pending-red.json"
+TRANSACTION_FILENAME = "lock-transaction.lock"
 ASSURANCE_LEVELS = (
     "unmeasured",
     "local_claim",
@@ -49,7 +51,7 @@ VERIFIER_BASENAMES = frozenset({
 })
 LOCK_STATE_BASENAMES = frozenset({
     "active-lock.json", "events.jsonl", "tdd-lock.json",
-    "tdd-lock-journal.jsonl", "tdd-pending-red.json",
+    "tdd-lock-journal.jsonl", "tdd-pending-red.json", TRANSACTION_FILENAME,
 })
 GUARD_BASENAMES = frozenset({
     "test_lock_guard.py", "snapshot_guard.py", "test_weakening_guard.py",
@@ -172,6 +174,8 @@ def new_lock_record(identity, files, session_id, now=None):
         "source_worktree_id": identity["worktree_id"],
         "head": identity["head"],
         "session_id": session_id.strip(),
+        "lock_id": uuid.uuid4().hex,
+        "generation": 1,
         "locked_at": now or _now(),
         "files": protected,
     }
@@ -227,15 +231,29 @@ def _validate_lock(identity, record):
         raise ContractError("lock common-dir identity mismatch")
     if not isinstance(record.get("files"), dict) or not record["files"]:
         raise ContractError("lock files must be a non-empty object")
+    # One-release compatibility for canonical schema-1 records created before transaction
+    # generations existed.  The next merge persists these deterministic defaults; this is
+    # not a second authority or a permissive schema fallback.
+    if "lock_id" not in record and record.get("session_id") and record.get("locked_at"):
+        seed = "{}:{}:{}".format(
+            record.get("repo_id"), record.get("session_id"), record.get("locked_at"))
+        record["lock_id"] = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    if "generation" not in record:
+        record["generation"] = 1
     for rel, digest in record["files"].items():
         normalized = normalize_target(identity, rel)
         if normalized != rel.replace(os.sep, "/"):
             raise ContractError("lock path is not canonical: {!r}".format(rel))
         if not isinstance(digest, str) or not digest:
             raise ContractError("lock digest is missing for {}".format(rel))
-    for key in ("source_worktree_id", "session_id", "locked_at"):
+    for key in ("source_root", "source_worktree_git_dir", "source_worktree_id",
+                "session_id", "lock_id", "locked_at"):
         if not isinstance(record.get(key), str) or not record[key]:
             raise ContractError("lock is missing {}".format(key))
+    if record.get("head") is not None and not isinstance(record.get("head"), str):
+        raise ContractError("lock head must be a string or null")
+    if not isinstance(record.get("generation"), int) or record["generation"] < 1:
+        raise ContractError("lock generation must be a positive integer")
     return record
 
 
@@ -258,19 +276,45 @@ def _atomic_json(path, value):
 
 def write_lock(identity, record):
     _validate_lock(identity, record)
-    _atomic_json(lock_path(identity), record)
+    with _state_transaction(identity):
+        _atomic_json(lock_path(identity), record)
 
 
-def clear_lock(identity):
-    """Remove the sole active authority; absence is idempotent for adapter cleanup."""
-    try:
+def merge_lock(identity, fresh):
+    """Create/extend the lock as one serialized transaction.
+
+    A different session is a competing owner and is refused rather than merged or allowed
+    to replace protections.  The same session can extend its protected set across commands.
+    """
+    _validate_lock(identity, fresh)
+    with _state_transaction(identity):
+        existing = _read_lock_unlocked(identity)
+        if existing is not None and existing["session_id"] != fresh["session_id"]:
+            raise ContractError(
+                "competing active lock owned by session {!r}".format(existing["session_id"]))
+        if existing is not None:
+            protected = dict(existing["files"])
+            protected.update(fresh["files"])
+            fresh = dict(fresh)
+            fresh["files"] = protected
+            fresh["generation"] = existing["generation"] + 1
+        _atomic_json(lock_path(identity), fresh)
+        return fresh
+
+
+def clear_lock(identity, expected_generation=None):
+    """Remove the authority only if the caller did not race a newer lock mutation."""
+    with _state_transaction(identity):
+        existing = _read_lock_unlocked(identity)
+        if existing is None:
+            return False
+        if expected_generation is not None and existing["generation"] != expected_generation:
+            raise ContractError("active lock changed while unlock was in progress")
         os.remove(lock_path(identity))
-    except FileNotFoundError:
-        return False
-    return True
+        return True
 
 
-def read_lock(identity):
+def _read_lock_unlocked(identity):
     path = lock_path(identity)
     try:
         with open(path) as fh:
@@ -280,6 +324,10 @@ def read_lock(identity):
     except (OSError, ValueError) as exc:
         raise ContractError("cannot read canonical lock: {}".format(exc))
     return _validate_lock(identity, record)
+
+
+def read_lock(identity):
+    return _read_lock_unlocked(identity)
 
 
 _THREAD_LOCKS = {}
@@ -309,6 +357,18 @@ def _exclusive_file(fh):
             yield
         finally:
             fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def _state_transaction(identity):
+    """Serialize the complete lock read/validate/mutate critical section."""
+    _require_identity(identity)
+    os.makedirs(identity["state_dir"], mode=0o700, exist_ok=True)
+    path = os.path.join(identity["state_dir"], TRANSACTION_FILENAME)
+    with _thread_lock(path):
+        with open(path, "a+") as fh:
+            with _exclusive_file(fh):
+                yield
 
 
 def append_event(identity, event):
@@ -370,11 +430,13 @@ def import_legacy_lock(identity, session_id):
         "source_worktree_id": identity["worktree_id"],
         "head": identity["head"],
         "session_id": session_id,
+        "lock_id": uuid.uuid4().hex,
+        "generation": 1,
         "locked_at": old.get("locked_at") or _now(),
         "files": files,
         "imported_from": ".claude/tdd-lock.json",
     }
-    write_lock(identity, record)
+    merge_lock(identity, record)
     os.replace(legacy, migrated)
     append_event(identity, {
         "schema_version": SCHEMA_VERSION,
@@ -385,6 +447,18 @@ def import_legacy_lock(identity, session_id):
         "ts": _now(),
     })
     return "imported"
+
+
+def lock_binding(identity, record):
+    """Describe whether an active lock can be evidence for this exact worktree revision."""
+    _validate_lock(identity, record)
+    if record["head"] != identity["head"]:
+        return "stale_revision"
+    if not os.path.isdir(record["source_worktree_git_dir"]):
+        return "source_worktree_missing"
+    if record["source_worktree_id"] != identity["worktree_id"]:
+        return "shared_from_other_worktree"
+    return "current"
 
 
 def _surface(rel, record):
@@ -472,3 +546,20 @@ def new_local_evidence_event(identity, host, host_version, adapter_version, run_
         "details": dict(details),
         "trust": "local_unverified",
     }
+
+
+def record_capability_observation(identity, host, host_version, adapter_version, run_id,
+                                  route, outcome):
+    """Production adapter writer for paired, redacted local TEST-LOCK observations."""
+    if outcome not in ("blocked", "allowed"):
+        raise ContractError("capability outcome must be blocked|allowed")
+    event = new_local_evidence_event(
+        identity, host=host, host_version=host_version,
+        adapter_version=adapter_version, run_id=run_id,
+        event="capability_probe", decision="block" if outcome == "blocked" else "allow",
+        assurance="host_prevented" if outcome == "blocked" else "host_observed",
+        scope=route,
+        details={"capability": "test-lock", "route": route, "outcome": outcome,
+                 "control": outcome == "allowed", "redactions": 0})
+    append_event(identity, event)
+    return event

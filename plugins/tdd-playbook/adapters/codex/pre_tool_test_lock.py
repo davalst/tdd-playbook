@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.join(PLUGIN, "hooks", "scripts"))
 
 from _common import emit, read_event  # noqa: E402
 from host_contract import (ContractError, import_legacy_lock, policy_decision,  # noqa: E402
-                           read_lock, resolve_repository)
+                           read_lock, record_capability_observation,
+                           resolve_repository)
 from test_lock_guard import _msg, bash_findings  # noqa: E402
 
 NAME = "testlock"
@@ -61,6 +62,21 @@ def patch_findings(command, identity, lock):
     return []
 
 
+def record_observation(identity, lock, event, route, findings):
+    """Best-effort local evidence; enforcement must survive an unwritable journal."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "adapter.json")) as fh:
+            version = json.load(fh)["adapter_version"]
+        record_capability_observation(
+            identity, host="codex",
+            host_version=(event.get("host_version")
+                          or os.environ.get("TDD_PLAYBOOK_HOST_VERSION") or "unreported"),
+            adapter_version=version, run_id=lock["session_id"], route=route,
+            outcome="blocked" if findings else "allowed")
+    except (ContractError, OSError, ValueError, KeyError):
+        pass
+
+
 def main():
     event = read_event()
     root = project_root(event)
@@ -75,9 +91,13 @@ def main():
     tool = event.get("tool_name")
     command = (event.get("tool_input") or {}).get("command", "")
     if tool == "Bash":
-        emit(NAME, bash_findings(command, lock, root))
+        findings = bash_findings(command, lock, root)
+        record_observation(identity, lock, event, "shell", findings)
+        emit(NAME, findings)
     elif tool == "apply_patch":
-        emit(NAME, patch_findings(command, identity, lock))
+        findings = patch_findings(command, identity, lock)
+        record_observation(identity, lock, event, "structured_edit", findings)
+        emit(NAME, findings)
     else:
         emit(NAME, ["TEST-LOCK active: unsupported Codex write route {!r}; refusing "
                     "unclassified mutation.".format(tool)])
