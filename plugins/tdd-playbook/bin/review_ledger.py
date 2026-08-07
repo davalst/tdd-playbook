@@ -227,21 +227,39 @@ def closure_evidence_exists(root: str, target: str) -> bool:
         return False
     functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
     main = functions.get("main")
-    if symbol not in functions or main is None:
+    if symbol not in functions:
         return False
-    if any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and
-           node.func.id == symbol for node in ast.walk(main)):
+
+    def dispatched(statements, wanted: str) -> bool:
+        for statement in statements:
+            if (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Call) and
+                    isinstance(statement.value.func, ast.Name) and
+                    statement.value.func.id == wanted):
+                return True
+            if isinstance(statement, ast.Try) and dispatched(statement.body, wanted):
+                return True
+            if isinstance(statement, ast.If) and isinstance(statement.test, ast.Constant):
+                branch = statement.body if statement.test.value else statement.orelse
+                if dispatched(branch, wanted):
+                    return True
+            if (isinstance(statement, ast.For) and isinstance(statement.target, ast.Name) and
+                    isinstance(statement.iter, (ast.Tuple, ast.List))):
+                members = {item.id for item in statement.iter.elts if isinstance(item, ast.Name)}
+                if wanted in members and dispatched(statement.body, statement.target.id):
+                    return True
+        return False
+
+    if main is not None and dispatched(main.body, symbol):
         return True
-    for node in ast.walk(main):
-        if not isinstance(node, ast.For) or not isinstance(node.target, ast.Name):
+    for statement in tree.body:
+        if not isinstance(statement, ast.If):
             continue
-        if not isinstance(node.iter, (ast.Tuple, ast.List)):
-            continue
-        members = {item.id for item in node.iter.elts if isinstance(item, ast.Name)}
-        invokes_loop_item = any(
-            isinstance(child, ast.Call) and isinstance(child.func, ast.Name) and
-            child.func.id == node.target.id for child in ast.walk(node))
-        if symbol in members and invokes_loop_item:
+        test = statement.test
+        is_main_guard = (isinstance(test, ast.Compare) and isinstance(test.left, ast.Name) and
+                         test.left.id == "__name__" and any(
+                             isinstance(item, ast.Constant) and item.value == "__main__"
+                             for item in test.comparators))
+        if is_main_guard and dispatched(statement.body, symbol):
             return True
     return False
 
