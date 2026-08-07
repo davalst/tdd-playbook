@@ -265,6 +265,17 @@ def test_doctor():
             with open(stamp, "w") as fh:
                 fh.write(canonical + "\n")
 
+            # PLANTED (REL-META-1, v1.31.0): Codex has its own runtime/stamp. A stale
+            # Codex install must fail doctor even when the Claude stamp is current.
+            mod.main(["--host", "codex", target])
+            codex_stamp = os.path.join(target, ".codex", ".tdd-playbook-version")
+            with open(codex_stamp, "w") as fh:
+                fh.write("0.0.1\n")
+            check("doctor catches stale Codex vendored stamp (exit 1)",
+                  mod.main(["--doctor", target]) == 1)
+            with open(codex_stamp, "w") as fh:
+                fh.write(canonical + "\n")
+
             # PLANTED: stale plugin cache (canonical version absent) -> doctor fails loudly
             os.rename(vdir, os.path.join(cache, "some-marketplace", "tdd-playbook", "0.9.0"))
             check("doctor catches PLUGIN CACHE skew (exit 1)",

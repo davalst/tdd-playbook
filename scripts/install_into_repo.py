@@ -235,18 +235,22 @@ def doctor(target: str) -> int:
     rc = 0
     print(f"canonical plugin version: {canonical}")
 
-    stamp = os.path.join(target, _STAMP_REL)
-    if not os.path.isfile(stamp):
-        print(f"vendored copy: none in {target} (fine if this repo is plugin-only; "
-              "run install_into_repo.py to vendor for cloud)")
-    else:
+    for host, relative, install_args in (
+            ("Claude", _STAMP_REL, ""),
+            ("Codex", _CODEX_STAMP_REL, "--host codex ")):
+        stamp = os.path.join(target, relative)
+        if not os.path.isfile(stamp):
+            print(f"{host} vendored copy: none in {target} (fine if this host is "
+                  "plugin-only; run install_into_repo.py to vendor for cloud)")
+            continue
         with open(stamp) as fh:
             vendored = fh.read().strip()
         if vendored == canonical:
-            print(f"vendored copy: {vendored} — in sync")
+            print(f"{host} vendored copy: {vendored} — in sync")
         else:
-            print(f"VENDORED SKEW: repo has {vendored}, canonical is {canonical} — "
-                  f"re-run: python3 scripts/install_into_repo.py {target}")
+            print(f"{host.upper()} VENDORED SKEW: repo has {vendored}, canonical is "
+                  f"{canonical} — re-run: python3 scripts/install_into_repo.py "
+                  f"{install_args}{target}")
             rc = 1
 
     cache = _cache_versions()
