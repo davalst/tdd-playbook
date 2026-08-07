@@ -29,6 +29,11 @@ def _git(cwd, *args):
                           text=True, timeout=30)
 
 
+def _adapter_version(host):
+    with open(os.path.join(PLUGIN, "adapters", host, "adapter.json")) as fh:
+        return json.load(fh)["adapter_version"]
+
+
 def _repo(base):
     root = os.path.join(base, "repo")
     os.makedirs(root)
@@ -47,7 +52,8 @@ def test_local_evidence_schema():
     with tempfile.TemporaryDirectory() as d:
         identity = core.resolve_repository(_repo(d))
         event = core.new_local_evidence_event(
-            identity, host="claude", host_version="1.2.3", adapter_version="1.31.0",
+            identity, host="claude", host_version="1.2.3",
+            adapter_version=_adapter_version("claude"),
             run_id="probe-1", event="capability_probe", decision="block",
             assurance="host_prevented", scope="structured_edit",
             details={"capability": "test-lock", "route": "structured_edit",
@@ -120,7 +126,7 @@ def test_doctor_assurance():
              "2026-08-07T09:00:03+00:00")):
             core.append_event(side_identity, core.new_local_evidence_event(
                 side_identity, host="claude", host_version="1.2.3",
-                adapter_version="1.30.0", run_id="other-worktree",
+                adapter_version=_adapter_version("claude"), run_id="other-worktree",
                 event="capability_probe", decision=decision, assurance=assurance,
                 scope=route, details={"capability": "test-lock", "route": route,
                                       "outcome": outcome, "control": outcome == "allowed",
@@ -133,7 +139,8 @@ def test_doctor_assurance():
               and cross_value.get("other_worktree_routes") == ["shell", "structured_edit"],
               cross_value)
         event = core.new_local_evidence_event(
-            identity, host="claude", host_version="1.2.3", adapter_version="1.30.0",
+            identity, host="claude", host_version="1.2.3",
+            adapter_version=_adapter_version("claude"),
             run_id="probe-live", event="capability_probe", decision="block",
             assurance="host_prevented", scope="structured_edit",
             details={"capability": "test-lock", "route": "structured_edit",
@@ -141,7 +148,8 @@ def test_doctor_assurance():
             now="2026-08-07T10:00:00+00:00")
         core.append_event(identity, event)
         shell_event = core.new_local_evidence_event(
-            identity, host="claude", host_version="1.2.3", adapter_version="1.30.0",
+            identity, host="claude", host_version="1.2.3",
+            adapter_version=_adapter_version("claude"),
             run_id="probe-live", event="capability_probe", decision="block",
             assurance="host_prevented", scope="shell",
             details={"capability": "test-lock", "route": "shell",
@@ -157,7 +165,8 @@ def test_doctor_assurance():
         for route, stamp in (("structured_edit", "2026-08-07T10:00:02+00:00"),
                              ("shell", "2026-08-07T10:00:03+00:00")):
             control = core.new_local_evidence_event(
-                identity, host="claude", host_version="1.2.3", adapter_version="1.30.0",
+                identity, host="claude", host_version="1.2.3",
+                adapter_version=_adapter_version("claude"),
                 run_id="probe-live", event="capability_probe", decision="allow",
                 assurance="host_observed", scope=route,
                 details={"capability": "test-lock", "route": route,

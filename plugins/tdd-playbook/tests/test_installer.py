@@ -100,6 +100,7 @@ def main():
     test_codex_install_preserves_user_config()
     test_vendoring_containment()
     test_vendored_skill_equality()
+    test_release_version_identity()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
@@ -195,6 +196,39 @@ def test_vendored_skill_equality():
         check("planted: stripped-§6c vendored copy detected by the equality check",
               tampered != expected and "## 6c. Dataflow Liveness" in expected,
               "plant did not change the text — is §6c in the canonical SKILL?")
+
+
+def test_release_version_identity():
+    """A release has one identity across the marketplace, plugin, and both host adapters."""
+    print("\n[release version identity]")
+    paths = {
+        "marketplace": os.path.join(REPO, ".claude-plugin", "marketplace.json"),
+        "plugin": os.path.join(REPO, "plugins", "tdd-playbook", ".claude-plugin",
+                               "plugin.json"),
+        "claude-adapter": os.path.join(REPO, "plugins", "tdd-playbook", "adapters",
+                                       "claude", "adapter.json"),
+        "codex-adapter": os.path.join(REPO, "plugins", "tdd-playbook", "adapters",
+                                      "codex", "adapter.json"),
+    }
+    loaded = {}
+    for name, path in paths.items():
+        with open(path) as fh:
+            loaded[name] = json.load(fh)
+    versions = {
+        "marketplace": loaded["marketplace"]["plugins"][0]["version"],
+        "plugin": loaded["plugin"]["version"],
+        "claude-adapter": loaded["claude-adapter"]["adapter_version"],
+        "codex-adapter": loaded["codex-adapter"]["adapter_version"],
+    }
+    check("release identity: marketplace, plugin, and adapters agree",
+          len(set(versions.values())) == 1, versions)
+
+    # PLANTED: freeze the exact skew caught while preparing v1.31.0 — a host adapter left at
+    # the previous release must make the shared identity predicate fail.
+    planted = dict(versions)
+    planted["codex-adapter"] = "previous-release-plant"
+    check("release identity: PLANTED stale host adapter is detected",
+          len(set(planted.values())) != 1, planted)
 
 
 def test_doctor():

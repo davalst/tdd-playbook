@@ -3,6 +3,30 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.31.0 — 2026-08-07
+
+**Portable host adapters and a smaller, evidence-bearing assurance pipeline.** TDD Playbook now
+has an evolutionary shared core for Claude Code and Codex while keeping CIVerd's signed,
+exact-commit certification boundary independent.
+
+- Added versioned host contracts, worktree-aware lock identity, atomic owner-bound lock/unlock,
+  normalized local evidence, host capability probes, and `tdd doctor` assurance reporting.
+- Added a planted Codex TEST-LOCK adapter and preserved Claude Code behavior through the shared
+  policy/state seam; unsupported host assets are explicit, dated parity debt rather than copied
+  runtime islands.
+- Added a single full/affected gate resolver. The no-argument gate remains the sole authorizing
+  CIVerd path; affected runs are explicitly diagnostic and fail back to full on unknown, dirty,
+  renamed, or gate-surface changes.
+- Replaced duplicated host-parity and current-state prose with acknowledged, provenance-bound
+  generated output plus scratch-install activation tests.
+- Added executable adversarial-review records with append-only indexing, candidate-SHA coverage,
+  registered closure reviewers, and reachable blessed-test evidence.
+- Made compact gate telemetry private, concurrent-run safe, bounded, and structurally summarized;
+  raw subprocess output and credentials are not retained or echoed.
+- Closed planted concurrency, cross-worktree, stale-evidence, unlock ABA, installer preservation,
+  manifest-integrity, secret-output, and review-liveness failure modes found during architecture
+  and integration adversary passes.
+
 ## 1.30.0 — 2026-08-06
 
 **The narrowed scope reported as the whole (H15)** — a verification result is a CLAIM and
