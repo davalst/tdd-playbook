@@ -220,7 +220,8 @@ def cmd_unlock(args):
         try:
             clear_lock(identity, expected_generation=locked["generation"],
                        expected_lock_id=locked["lock_id"],
-                       expected_session_id=_session_id())
+                       expected_session_id=_session_id(),
+                       expected_worktree_id=identity["worktree_id"])
         except ContractError as exc:
             sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
             return 1

@@ -53,7 +53,8 @@ Lock creation/extension/clear uses one interprocess transaction file around the 
 read/validate/mutate operation. Ownership is the worktree+session composite: a matching owner can
 extend its protected set, while another worktree is refused even if a host reuses a fallback session
 label. Unlock compares immutable lock ID, generation and session before removal, and journals only
-after that conditional clear succeeds; stale/non-owner/ABA clears cannot delete a replacement or
+after that conditional clear succeeds; the full worktree+session owner is checked, and a lock that
+disappears after the read is a refusal rather than success. Stale/non-owner/ABA clears cannot delete a replacement or
 claim an unlock that did not occur. HEAD/worktree binding is retained for classification: another worktree can enforce the shared
 lock, but a changed HEAD is `stale_revision` evidence rather than current red-first proof.
 

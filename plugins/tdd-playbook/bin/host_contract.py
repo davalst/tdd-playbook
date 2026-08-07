@@ -306,11 +306,15 @@ def merge_lock(identity, fresh):
 
 
 def clear_lock(identity, expected_generation=None, expected_lock_id=None,
-               expected_session_id=None):
+               expected_session_id=None, expected_worktree_id=None):
     """Remove the authority only if the caller did not race a newer lock mutation."""
     with _state_transaction(identity):
         existing = _read_lock_unlocked(identity)
         if existing is None:
+            if any(value is not None for value in (
+                    expected_generation, expected_lock_id, expected_session_id,
+                    expected_worktree_id)):
+                raise ContractError("active lock disappeared while unlock was in progress")
             return False
         if expected_generation is not None and existing["generation"] != expected_generation:
             raise ContractError("active lock changed while unlock was in progress")
@@ -318,6 +322,9 @@ def clear_lock(identity, expected_generation=None, expected_lock_id=None,
             raise ContractError("active lock was replaced while unlock was in progress")
         if expected_session_id is not None and existing["session_id"] != expected_session_id:
             raise ContractError("active lock is owned by another session")
+        if expected_worktree_id is not None \
+                and existing["source_worktree_id"] != expected_worktree_id:
+            raise ContractError("active lock is owned by another worktree")
         os.remove(lock_path(identity))
         return True
 

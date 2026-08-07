@@ -22,7 +22,7 @@ finding, then found three residual edge cases in the remediation; all were incor
 
 | Residual | Final disposition |
 |---|---|
-| Generation-only unlock permitted clear/relock ABA, did not check the owner, and journaled before a failed clear. | Lock ID + generation + session are compared transactionally; journal/yield rows are written only after success. Non-owner and ABA plants added. |
+| Generation-only unlock permitted clear/relock ABA, did not check the owner, and journaled before a failed clear. | Lock ID + generation + complete worktree/session owner are compared transactionally; disappearance after read is refused; journal/yield rows are written only after success. Non-owner, cross-worktree, ABA and clear-after-read plants added. |
 | Same fallback session text in two linked worktrees could merge owners and replace source binding. | Owner identity is the worktree+session composite; same-session/different-worktree race is refused and planted. |
 | Doctor promoted paired evidence from another worktree at the same SHA. | Current-worktree evidence is the only promotable set; other-worktree paired routes are visible separately and remain unmeasured. |
 
