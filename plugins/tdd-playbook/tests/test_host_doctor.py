@@ -114,6 +114,14 @@ def test_doctor_assurance():
                      "outcome": "blocked", "redactions": 0},
             now="2026-08-07T10:00:00+00:00")
         core.append_event(identity, event)
+        shell_event = core.new_local_evidence_event(
+            identity, host="claude", host_version="1.2.3", adapter_version="1.30.0",
+            run_id="probe-live", event="capability_probe", decision="block",
+            assurance="host_prevented", scope="shell",
+            details={"capability": "test-lock", "route": "shell",
+                     "outcome": "blocked", "redactions": 0},
+            now="2026-08-07T10:00:01+00:00")
+        core.append_event(identity, shell_event)
         measured = _doctor(root, "--as-of", "2026-08-07")
         measured_report = json.loads(measured.stdout) if measured.returncode == 0 else {}
         value = measured_report["hosts"]["claude"]["capabilities"]["test-lock"]
