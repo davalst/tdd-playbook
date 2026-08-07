@@ -4,6 +4,10 @@
     {
       "path": "2026-08-07-assurance-pipeline-plan.json",
       "sha256": "1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd"
+    },
+    {
+      "path": "2026-08-07-assurance-pipeline-implementation.json",
+      "sha256": "5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace"
     }
   ]
 }

@@ -10,8 +10,9 @@
 - `docs/architecture/host-parity.json` — `677f89b9f93c8316387b4fb9cf75a00e136b58594db7dbd6659ff452643641cf`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
 - `capabilities.json` — `fe1863d8a7b4776dd81afadf4b0376c92a265db96a14353089510764d317c4f1`
+- `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
-- `docs/reviews/index.json` — `87a5a0a55682c085c8be44893e7be0c3e199db0c594b357fdb89e74f672a71f2`
+- `docs/reviews/index.json` — `4d40be336f4ecb3d1b38d415df02c415e1af71389bbbacfaf45e64492b6580fb`
 
 ## Gate surface
 
@@ -83,8 +84,8 @@
 
 ## Adversarial review records
 
-- Review records: 1. Findings: 7.
+- Review records: 2. Findings: 17.
 - `incorporated`: 7
 - `open`: 0
 - `rejected`: 0
-- `verified_closed`: 0
+- `verified_closed`: 10

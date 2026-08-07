@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-07-assurance-pipeline-implementation-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "398ff15f71fd64bff1ca2bbdb32f29ab645c04a4",
+    "head": "b3e5979f9e748769838fe85b4b7313119f27150a"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "STREAM-POST-ARCH-1",
+      "severity": "P1",
+      "summary": "Executable gate commands were not covered by the acknowledged manifest digest.",
+      "evidence": ["plugins/tdd-playbook/bin/gate_plan.py:53-104", "gate-manifest.json:1-31"],
+      "status": "verified_closed",
+      "remediation_commit": "e948a26a3532ede4443050799afc9c2a9191182f",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_gate_runner.py::test_execution_manifest_digest_refuses_command_substitution"]
+    },
+    {
+      "id": "STREAM-POST-ARCH-2",
+      "severity": "P1",
+      "summary": "Persisted gate output could retain credentials and arbitrary failure text.",
+      "evidence": ["plugins/tdd-playbook/bin/gate_runner.py:25-120"],
+      "status": "verified_closed",
+      "remediation_commit": "6bc703d60c8723a301eacee3648aceb38e9f1e46",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_gate_runner.py::test_private_run_store_redacts_and_separates_concurrent_runs"]
+    },
+    {
+      "id": "STREAM-POST-ARCH-3",
+      "severity": "P1",
+      "summary": "Plan-only incorporated findings could satisfy review coverage without an implementation closure.",
+      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py:40-119"],
+      "status": "verified_closed",
+      "remediation_commit": "e948a26a3532ede4443050799afc9c2a9191182f",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_review_ledger.py::test_preimplementation_review_cannot_cover_candidate"]
+    },
+    {
+      "id": "STREAM-POST-ARCH-4",
+      "severity": "P2",
+      "summary": "Retention could delete a concurrent active run directory.",
+      "evidence": ["plugins/tdd-playbook/bin/gate_runner.py:99-120"],
+      "status": "verified_closed",
+      "remediation_commit": "e948a26a3532ede4443050799afc9c2a9191182f",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_gate_runner.py::test_retention_never_prunes_an_active_concurrent_run"]
+    },
+    {
+      "id": "STREAM-POST-ARCH-5",
+      "severity": "P2",
+      "summary": "Result N/N suites lost their denominator in compact success output.",
+      "evidence": ["plugins/tdd-playbook/bin/gate_runner.py:140-158"],
+      "status": "verified_closed",
+      "remediation_commit": "e948a26a3532ede4443050799afc9c2a9191182f",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_gate_runner.py::test_compact_count_parser_supports_repository_result_form"]
+    },
+    {
+      "id": "STREAM-POST-INT-1",
+      "severity": "P1",
+      "summary": "Review coverage did not bind the implementation range or candidate tail.",
+      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py:102-134", "plugins/tdd-playbook/bin/review_ledger.py:241-266"],
+      "status": "verified_closed",
+      "remediation_commit": "6bc703d60c8723a301eacee3648aceb38e9f1e46",
+      "closure_review": "integration-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_review_ledger.py::test_terminal_closure_evidence_and_range_are_executable"]
+    },
+    {
+      "id": "STREAM-POST-INT-2",
+      "severity": "P1",
+      "summary": "Review records could be deleted without invalidating the full gate.",
+      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py:122-147", "docs/reviews/index.json:1-10"],
+      "status": "verified_closed",
+      "remediation_commit": "e948a26a3532ede4443050799afc9c2a9191182f",
+      "closure_review": "integration-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_review_ledger.py::test_append_only_index_refuses_deleted_record"]
+    },
+    {
+      "id": "STREAM-POST-INT-3",
+      "severity": "P2",
+      "summary": "Telemetry availability was not explicit in the final gate verdict.",
+      "evidence": ["plugins/tdd-playbook/bin/gate_runner.py:153-245"],
+      "status": "verified_closed",
+      "remediation_commit": "e948a26a3532ede4443050799afc9c2a9191182f",
+      "closure_review": "integration-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_gate_runner.py::test_compact_runner_preserves_suite_directory_seam"]
+    },
+    {
+      "id": "STREAM-POST-SEC-1",
+      "severity": "P1",
+      "summary": "Console failure diagnostics could leak URL credentials even after persistent logs were structural.",
+      "evidence": ["plugins/tdd-playbook/bin/gate_runner.py:166-221"],
+      "status": "verified_closed",
+      "remediation_commit": "fb14a3ac8554797a537097b06495873181f2403a",
+      "closure_review": "integration-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_gate_runner.py::test_compact_runner_preserves_suite_directory_seam"]
+    },
+    {
+      "id": "STREAM-POST-EVIDENCE-1",
+      "severity": "P1",
+      "summary": "Closure evidence could name prose, undispatched tests, false branches, or negated main guards.",
+      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py:206-263"],
+      "status": "verified_closed",
+      "remediation_commit": "6ebfb56f4a9f20b6750bd52661b3826956ff049d",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": ["plugins/tdd-playbook/tests/test_review_ledger.py::test_terminal_closure_evidence_and_range_are_executable"]
+    }
+  ]
+}
