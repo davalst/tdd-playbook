@@ -113,6 +113,11 @@ def test_terminal_closure_evidence_and_range_are_executable():
                      "def main():\n    if False:\n        test_hidden()\n")
         check("PLANTED blessed test behind if False is not executable evidence",
               not rl.closure_evidence_exists(tmp, "tests/test_hidden.py::test_hidden"))
+        with open(os.path.join(tmp, "tests", "test_negated.py"), "w") as fh:
+            fh.write("def test_negated():\n    pass\n\n"
+                     "if __name__ != '__main__':\n    test_negated()\n")
+        check("PLANTED test behind negated main guard is not executable evidence",
+              not rl.closure_evidence_exists(tmp, "tests/test_negated.py::test_negated"))
     topology = rl.topology_problems([closed], lambda _base, _head: False)
     check("PLANTED non-ancestral review range is refused",
           any("base is not an ancestor" in p for p in topology), topology)
