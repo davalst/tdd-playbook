@@ -78,7 +78,7 @@ def test_review_summary_is_generated_from_consumed_records():
     rr = load_module()
     rendered = rr.render(REPO)
     check("generated reference reports review packet and finding counts",
-          "Review records:" in rendered and "findings:" in rendered)
+          "Review records:" in rendered and "Findings:" in rendered)
     check("review JSON participates in provenance",
           "`docs/reviews/" in rendered)
 
