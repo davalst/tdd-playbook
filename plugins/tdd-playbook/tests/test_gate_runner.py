@@ -200,7 +200,8 @@ def test_private_run_store_redacts_and_separates_concurrent_runs():
                "Authorization: Basic dXNlcjpzZWNyZXQ=\n"
                "ghp_abcdefghijklmnopqrstuvwxyz123456\n"
                "github_pat_abcdefghijklmnopqrstuvwxyz123456\n"
-               "https://example.invalid/?token=url-secret-value\n")
+               "https://example.invalid/?token=url-secret-value\n"
+               "FAIL url https://alice:really-secret@example.invalid/a\n")
         first.write_stage("one", raw)
         second.write_stage("one", "clean\n")
         body = open(os.path.join(first.path, "one.log")).read()
@@ -209,7 +210,7 @@ def test_private_run_store_redacts_and_separates_concurrent_runs():
         check("run store: secret-like values are absent", "secret-token" not in body and
               "sk-live-secret" not in body and "dXNlcjpzZWNyZXQ=" not in body and
               "ghp_" not in body and "github_pat_" not in body and
-              "url-secret-value" not in body, body)
+              "url-secret-value" not in body and "really-secret" not in body, body)
         check("run store: concurrent run ids get distinct paths", first.path != second.path)
         check("run store: private permissions are enforced",
               mode_dir == 0o700 and mode_file == 0o600, (oct(mode_dir), oct(mode_file)))

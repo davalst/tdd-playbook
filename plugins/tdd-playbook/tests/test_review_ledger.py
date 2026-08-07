@@ -83,6 +83,23 @@ def test_false_closure_and_scope_refused():
     check("PLANTED invalid review SHA is refused", any("review_range.head" in p for p in problems), problems)
 
 
+def test_terminal_closure_evidence_and_range_are_executable():
+    rl = load_module()
+    closed = record([finding("verified_closed")])
+    closed["kind"] = "implementation"
+    closed["findings"][0]["closure_review"] = "not-a-registered-reviewer"
+    closed["findings"][0]["closure_evidence"] = ["not-a-test-or-citation"]
+    problems = rl.validate_record(closed, "plant.json", lambda _sha: True,
+                                  lambda _target: False)
+    check("PLANTED unregistered closure reviewer is refused",
+          any("registered reviewer" in p for p in problems), problems)
+    check("PLANTED nonexistent closure evidence is refused",
+          any("closure_evidence target" in p for p in problems), problems)
+    topology = rl.topology_problems([closed], lambda _base, _head: False)
+    check("PLANTED non-ancestral review range is refused",
+          any("base is not an ancestor" in p for p in topology), topology)
+
+
 def test_directory_consumes_records_and_rejects_duplicate_ids():
     rl = load_module()
     with tempfile.TemporaryDirectory() as tmp:
@@ -145,6 +162,7 @@ def test_repository_review_records_are_valid():
 if __name__ == "__main__":
     test_unresolved_blocker_refused()
     test_false_closure_and_scope_refused()
+    test_terminal_closure_evidence_and_range_are_executable()
     test_directory_consumes_records_and_rejects_duplicate_ids()
     test_preimplementation_review_cannot_cover_candidate()
     test_append_only_index_refuses_deleted_record()
