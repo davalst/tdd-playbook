@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-07-v1.31.0-release-implementation-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "a7b31792f01c7c37ef4dbef6fddc6be08f59fad3",
+    "head": "bf250e72c2f70c38b15966ea5fb38ff2298ddb13"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "REL-META-1",
+      "severity": "P1",
+      "summary": "Installer doctor ignored the Codex runtime version stamp and could report a stale Codex vendor as healthy.",
+      "evidence": [
+        "scripts/install_into_repo.py:232-263",
+        "plugins/tdd-playbook/tests/test_installer.py:260-276"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "bf250e72c2f70c38b15966ea5fb38ff2298ddb13",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_doctor"
+      ]
+    },
+    {
+      "id": "REL-META-2",
+      "severity": "P1",
+      "summary": "The v1.31.0 release changes postdated the prior implementation review and therefore could not pass the authorizing review-coverage gate.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/review_ledger.py:102-135",
+        "docs/reviews/2026-08-07-assurance-pipeline-implementation.json:6-10"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "bf250e72c2f70c38b15966ea5fb38ff2298ddb13",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_preimplementation_review_cannot_cover_candidate",
+        "plugins/tdd-playbook/tests/test_installer.py::test_release_version_identity"
+      ]
+    }
+  ]
+}

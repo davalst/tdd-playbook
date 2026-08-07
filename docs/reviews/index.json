@@ -8,6 +8,10 @@
     {
       "path": "2026-08-07-assurance-pipeline-implementation.json",
       "sha256": "5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace"
+    },
+    {
+      "path": "2026-08-07-v1.31.0-release-implementation.json",
+      "sha256": "77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa"
     }
   ]
 }
