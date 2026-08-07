@@ -1414,22 +1414,39 @@ def _denominator_tests():
         check("denominator: the file count alone would NOT have revealed it",
               n_present == n_gone, (n_present, n_gone))
 
-    # --- the gate script itself must count, and must refuse a vacuous glob ---
-    gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
-    check("denominator: civerd_gate.sh counts the suites it ran",
-          "SUITES=$((SUITES + 1))" in gate and "${SUITES} plugin suites" in gate, gate[-400:])
-    # The first version of THIS check was `"ALL suites green" not in gate` and it failed —
-    # on the comment two lines above the fix, which quotes the old string to explain why it
-    # is gone. That is Cheliped's grep-counts-docstrings error, reproduced inside the test
-    # for the class it describes, on the same afternoon. Look at the LINE THAT RUNS.
-    _echo = [ln for ln in gate.splitlines()
-             if ln.startswith("echo ") and "civerd_gate:" in ln]
-    check("denominator: the gate's ECHOED verdict no longer claims 'ALL suites green'",
-          _echo and not any("ALL suites green" in ln for ln in _echo), _echo)
+    # --- exercise the shared gate plan and its real output consumer ---
+    import gate_plan as gp
+    manifest = gp.load_manifest(os.path.join(REPO, "gate-manifest.json"))
+    full = gp.full_plan(REPO, manifest)
+    live = sorted(os.path.basename(path)[:-3] for path in
+                  __import__("glob").glob(os.path.join(
+                      REPO, "plugins", "tdd-playbook", "tests", "test_*.py")))
+    planned = sorted(stage.id for stage in full.stages if stage.kind == "suite")
+    check("denominator: the shared full plan counts the exact live suite roster",
+          planned == live and full.total_stages == len(full.stages),
+          (len(planned), len(live), full.total_stages))
+    with tempfile.TemporaryDirectory() as d:
+        with open(os.path.join(d, "test_ok.py"), "w") as fh:
+            fh.write("print('1 passed, 0 failed')\n")
+        p = subprocess.run(["sh", os.path.join(REPO, "scripts", "civerd_gate.sh"), d],
+                           cwd=REPO, capture_output=True, text=True, timeout=30)
+        verdicts = [line for line in p.stdout.splitlines()
+                    if line.startswith("civerd_gate:")]
+        check("denominator: the real gate verdict reports selected N of M",
+              p.returncode == 0 and verdicts and "selected 1 of 1" in verdicts[-1],
+              (p.returncode, verdicts, p.stderr[-200:]))
+        check("denominator: the real verdict never claims unscoped 'ALL suites green'",
+              verdicts and not any("ALL suites green" in line for line in verdicts), verdicts)
+    empty = dict(manifest)
+    empty["suite_glob"] = "plugins/tdd-playbook/tests/does-not-exist-*.py"
+    try:
+        gp.full_plan(REPO, empty)
+    except gp.PlanError as exc:
+        vacuous_refused = "matched nothing" in str(exc)
+    else:
+        vacuous_refused = False
     check("denominator: PLANTED a glob matching NOTHING fails the gate closed",
-          'if [ "$SUITES" -eq 0 ]' in gate and "cannot be green" in gate)
-    check("denominator: the stale '110 planted checks' prose is gone (it read 272)",
-          "110 planted checks" not in gate)
+          vacuous_refused)
 
     # --- the ledger names the set its own claim is about ---
     p = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), "check",
@@ -1543,9 +1560,13 @@ def _plant_form_tests():
                        capture_output=True, text=True, timeout=120)
     check("forms: `plant_forms.py check` on THIS repo exits 0 (the gate step is real)",
           p.returncode == 0, (p.returncode, p.stdout[-300:], p.stderr[-300:]))
-    gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
-    check("forms: civerd_gate.sh carries a blocking plant_forms check step",
-          "plant_forms.py check" in gate, gate[-300:])
+    import gate_plan as gp
+    manifest = gp.load_manifest(os.path.join(REPO, "gate-manifest.json"))
+    forms = [stage for stage in gp.full_plan(REPO, manifest).stages
+             if stage.id == "plant-forms"]
+    check("forms: the shared full plan carries one blocking plant_forms check step",
+          len(forms) == 1 and forms[0].argv[-2].endswith("plant_forms.py")
+          and forms[0].argv[-1] == "check", forms)
 
 
 def _vitality_tests():
@@ -1993,9 +2014,13 @@ def _ledger_tests():
                   (newest.stdout.strip(), pn.returncode, pn.stdout[-400:]))
         else:
             check("ledger: newest-tag baseline probe SKIPPED — no tags in this clone", True)
-        gate = open(os.path.join(REPO, "scripts", "civerd_gate.sh")).read()
-        check("ledger: civerd_gate.sh carries a blocking ledger.py check step",
-              "ledger.py" in gate and "check" in gate, gate[-400:])
+        import gate_plan as gp
+        manifest = gp.load_manifest(os.path.join(REPO, "gate-manifest.json"))
+        ledger_stages = [stage for stage in gp.full_plan(REPO, manifest).stages
+                         if stage.id == "ledger"]
+        check("ledger: the shared full plan carries one blocking ledger check step",
+              len(ledger_stages) == 1 and "ledger.py" in ledger_stages[0].argv[1]
+              and "check" in ledger_stages[0].argv, ledger_stages)
 
 
 def main():

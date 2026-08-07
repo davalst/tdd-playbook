@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
+  "acknowledged_roster_sha256": "5c6848dc2c3a3b6a96a06119b36e1a15ea950b7c6fcdf8dc5d3f612d3c237cb9",
+  "fixed_stages": [
+    {"id": "calibration", "argv": ["python3", "calibration/test_harness.py"]},
+    {"id": "dataflow", "argv": ["python3", "plugins/tdd-playbook/bin/dataflow_sweeps.py", "all", "--config", "dataflow-sweeps.json"]},
+    {"id": "ledger", "argv": ["python3", "calibration/ledger.py", "check", "--baseline-rev", "{ledger_base}"]},
+    {"id": "plant-forms", "argv": ["python3", "calibration/plant_forms.py", "check"]}
+  ],
+  "force_full": [
+    "gate-manifest.json",
+    "scripts/civerd_gate.sh",
+    "civerd-integrity.yml",
+    "calibration/test_harness.py",
+    "calibration/ledger.py",
+    "calibration/plant_forms.py",
+    "dataflow-sweeps.json",
+    "plugins/tdd-playbook/bin/gate_plan.py",
+    "plugins/tdd-playbook/bin/gate_runner.py",
+    "plugins/tdd-playbook/bin/dataflow_sweeps.py",
+    "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py"
+  ],
+  "safe_rules": [
+    {"patterns": ["AGENTS.md", "CLAUDE.md"], "suites": ["test_agents"]},
+    {"patterns": ["plugins/tdd-playbook/bin/host_contract.py"], "suites": ["test_portable_core", "test_host_adapters", "test_host_doctor", "test_codex_adapter", "test_red_lock_portable", "test_tdd_lock", "test_installer"]},
+    {"patterns": ["plugins/tdd-playbook/bin/tdd.py"], "suites": ["test_host_doctor", "test_codex_adapter"]},
+    {"patterns": ["plugins/tdd-playbook/bin/tdd_lock.py"], "suites": ["test_tdd_lock", "test_host_adapters", "test_portable_core"]},
+    {"patterns": ["plugins/tdd-playbook/adapters/**"], "suites": ["test_codex_adapter", "test_host_adapters", "test_installer", "test_host_parity"]},
+    {"patterns": ["plugins/tdd-playbook/hooks/**"], "suites": ["test_hooks", "test_host_adapters", "test_tdd_lock", "test_red_lock_portable", "test_installer", "test_host_parity"]},
+    {"patterns": ["scripts/install_into_repo.py"], "suites": ["test_installer", "test_host_parity"]},
+    {"patterns": ["docs/architecture/host-parity*.json"], "suites": ["test_host_parity", "test_installer"]},
+    {"patterns": ["README.md", "docs/architecture/**", "docs/reference/**"], "suites": ["test_reference_docs"]}
+  ]
+}
