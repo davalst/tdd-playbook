@@ -58,7 +58,7 @@ def _repo():
 
 
 def _manifest(roster_digest):
-    return {
+    manifest = {
         "schema_version": 1,
         "suite_glob": "plugins/tdd/tests/test_*.py",
         "acknowledged_roster_sha256": roster_digest,
@@ -70,6 +70,12 @@ def _manifest(roster_digest):
             {"patterns": ["source.py"], "suites": ["test_one"]}
         ]
     }
+    material = {key: value for key, value in manifest.items()
+                if key not in ("acknowledged_roster_sha256", "acknowledged_plan_sha256")}
+    import hashlib
+    manifest["acknowledged_plan_sha256"] = hashlib.sha256(
+        json.dumps(material, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return manifest
 
 
 def test_full_plan_discovers_live_roster():
@@ -165,6 +171,24 @@ def test_roster_digest_refuses_silent_new_suite():
         td.cleanup()
 
 
+def test_execution_manifest_digest_refuses_command_substitution():
+    gp = _load("gate_plan")
+    td, root = _repo()
+    try:
+        manifest = _manifest(gp.roster_digest(["test_one"], ["fixed"]))
+        gp.full_plan(root, manifest)
+        manifest["fixed_stages"][0]["argv"] = ["python3", "-c", "pass"]
+        try:
+            gp.full_plan(root, manifest)
+        except gp.PlanError as exc:
+            refused = "execution manifest digest" in str(exc).lower()
+        else:
+            refused = False
+        check("manifest: PLANTED fixed-command substitution invalidates acknowledgement", refused)
+    finally:
+        td.cleanup()
+
+
 def test_private_run_store_redacts_and_separates_concurrent_runs():
     gr = _load("gate_runner")
     td, root = _repo()
@@ -172,14 +196,20 @@ def test_private_run_store_redacts_and_separates_concurrent_runs():
         common = os.path.join(root, ".git")
         first = gr.RunStore(common, "run-a", keep=5)
         second = gr.RunStore(common, "run-b", keep=5)
-        raw = "Authorization: Bearer secret-token\nAPI_KEY=sk-live-secret\n"
+        raw = ("Authorization: Bearer secret-token\nAPI_KEY=sk-live-secret\n"
+               "Authorization: Basic dXNlcjpzZWNyZXQ=\n"
+               "ghp_abcdefghijklmnopqrstuvwxyz123456\n"
+               "github_pat_abcdefghijklmnopqrstuvwxyz123456\n"
+               "https://example.invalid/?token=url-secret-value\n")
         first.write_stage("one", raw)
         second.write_stage("one", "clean\n")
         body = open(os.path.join(first.path, "one.log")).read()
         mode_dir = stat.S_IMODE(os.stat(first.path).st_mode)
         mode_file = stat.S_IMODE(os.stat(os.path.join(first.path, "one.log")).st_mode)
         check("run store: secret-like values are absent", "secret-token" not in body and
-              "sk-live-secret" not in body, body)
+              "sk-live-secret" not in body and "dXNlcjpzZWNyZXQ=" not in body and
+              "ghp_" not in body and "github_pat_" not in body and
+              "url-secret-value" not in body, body)
         check("run store: concurrent run ids get distinct paths", first.path != second.path)
         check("run store: private permissions are enforced",
               mode_dir == 0o700 and mode_file == 0o600, (oct(mode_dir), oct(mode_file)))
@@ -192,6 +222,27 @@ def test_private_run_store_redacts_and_separates_concurrent_runs():
         check("run store: PLANTED traversal-shaped run id is refused", traversal_refused)
     finally:
         td.cleanup()
+
+
+def test_retention_never_prunes_an_active_concurrent_run():
+    gr = _load("gate_runner")
+    td, root = _repo()
+    try:
+        common = os.path.join(root, ".git")
+        first = gr.RunStore(common, "run-a", keep=1)
+        second = gr.RunStore(common, "run-b", keep=1)
+        first.write_stage("one", "PASS one\n")
+        first.finalize({"schema_version": 1, "run_id": "run-a", "result": "GREEN"})
+        check("retention: finalized run never deletes a concurrent active directory",
+              os.path.isdir(second.path), second.path)
+    finally:
+        td.cleanup()
+
+
+def test_compact_count_parser_supports_repository_result_form():
+    gr = _load("gate_runner")
+    check("reporter: Result N/N retains a denominator",
+          gr._count_label("Result: 15/16 passed\n") == "16 checks")
 
 
 def test_compact_runner_preserves_suite_directory_seam():
@@ -222,7 +273,10 @@ def main():
                test_affected_scope_includes_worktree_changes,
                test_affected_fail_full_matrix,
                test_roster_digest_refuses_silent_new_suite,
+               test_execution_manifest_digest_refuses_command_substitution,
                test_private_run_store_redacts_and_separates_concurrent_runs,
+               test_retention_never_prunes_an_active_concurrent_run,
+               test_compact_count_parser_supports_repository_result_form,
                test_compact_runner_preserves_suite_directory_seam):
         try:
             fn()

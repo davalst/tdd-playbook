@@ -54,6 +54,7 @@ def record(findings=None):
     return {
         "schema_version": 1,
         "id": "2026-08-07-streamlining-plan-review",
+        "kind": "plan",
         "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
         "review_range": {"base": "b" * 40, "head": "c" * 40},
         "reviewers": ["architecture-adversary", "integration-adversary"],
@@ -96,10 +97,48 @@ def test_directory_consumes_records_and_rejects_duplicate_ids():
               any("duplicate finding id" in p for p in problems), problems)
 
 
+def test_preimplementation_review_cannot_cover_candidate():
+    rl = load_module()
+    plan_only = record()
+    problems = rl.coverage_problems([plan_only], "d" * 40,
+                                    lambda _base, _head: True, [])
+    check("PLANTED old plan-only review does not cover implementation candidate",
+          any("implementation review" in p for p in problems), problems)
+    implementation = record([finding("verified_closed")])
+    implementation["id"] = "implementation-review"
+    implementation["kind"] = "implementation"
+    implementation["review_range"] = {"base": "b" * 40, "head": "c" * 40}
+    control = rl.coverage_problems([implementation], "d" * 40,
+                                   lambda _base, _head: True,
+                                   ["docs/reviews/implementation.json",
+                                    "docs/reference/current-state.md"])
+    check("verified implementation review plus metadata-only tail covers candidate",
+          control == [], control)
+
+
+def test_append_only_index_refuses_deleted_record():
+    rl = load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = []
+        for name in ("one.json", "two.json"):
+            path = os.path.join(tmp, name)
+            with open(path, "w") as fh:
+                json.dump(record(), fh)
+            paths.append(path)
+        index = {"schema_version": 1, "records": [
+            {"path": os.path.basename(path), "sha256": rl.file_hash(path)} for path in paths
+        ]}
+        check("append-only index clean control passes",
+              rl.validate_index(tmp, index, []) == [])
+        os.unlink(paths[0])
+        problems = rl.validate_index(tmp, index, [])
+        check("PLANTED deletion of one valid review record is refused",
+              any("missing indexed review" in p for p in problems), problems)
+
+
 def test_repository_review_records_are_valid():
     rl = load_module()
-    problems = rl.validate_directory(os.path.join(REPO, "docs", "reviews"),
-                                     lambda sha: rl.commit_exists(REPO, sha))
+    problems = rl.validate_repository(REPO)
     check("repository review records are consumed and valid", problems == [], problems)
 
 
@@ -107,6 +146,8 @@ if __name__ == "__main__":
     test_unresolved_blocker_refused()
     test_false_closure_and_scope_refused()
     test_directory_consumes_records_and_rejects_duplicate_ids()
+    test_preimplementation_review_cannot_cover_candidate()
+    test_append_only_index_refuses_deleted_record()
     test_repository_review_records_are_valid()
     print("\nResult: {}/{} passed".format(PASSED, TOTAL))
     raise SystemExit(0 if PASSED == TOTAL else 1)
