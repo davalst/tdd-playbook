@@ -6,10 +6,9 @@ don't run `tdd_lock.py lock` by hand, so most freshly-written red tests stayed f
 editable and were rewritten mid-build (observed live 2026-07-19: three assumption-wrong
 tests silently rewritten to match behavior). This hook closes the adoption gap:
 
-  1. A write/edit to a TEST FILE records it as "pending red"
-     (.claude/tdd-pending-red.json — path relative to the project root).
+  1. A write/edit to a TEST FILE records it as "pending red" in core-owned Git state.
   2. A test-runner Bash command whose output shows FAILURES locks every pending file
-     (merged into .claude/tdd-lock.json in exactly cmd_lock's shape, journaled as
+     (merged into the canonical shared lock in exactly cmd_lock's shape, journaled as
      auto_lock_red) — the red phase is confirmed, so from here the test is read-only
      until green or an unlock with a journaled reason.
   3. A fully GREEN run clears pending without locking (that file's red window closed;
@@ -30,6 +29,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_event, emit, file_path_of, is_test_file  # noqa: E402
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                "..", "..", "bin")))
+from host_contract import (ContractError, PENDING_FILENAME, append_event,
+                           lock_path as core_lock_path, new_lock_record, read_lock,
+                           read_state_json, resolve_repository, state_path, write_lock,
+                           write_state_json)  # noqa: E402
 
 NAME = "redlock"
 
@@ -46,7 +51,20 @@ _GREEN_RE = re.compile(r"\b\d+ passed\b|\bok\b|\bPASS\b")
 
 def project_root():
     # realpath: mirrors tdd_lock.project_root (macOS /var -> /private/var)
-    return os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+    return os.path.realpath(os.environ.get("TDD_PLAYBOOK_PROJECT_ROOT")
+                            or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+
+
+def _identity(root):
+    try:
+        return resolve_repository(root)
+    except ContractError:
+        return None
+
+
+def _session_id():
+    return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
+            or os.environ.get("CLAUDE_SESSION_ID") or "claude-auto-red")
 
 
 def _now():
@@ -55,10 +73,16 @@ def _now():
 
 
 def _pending_path(root):
+    identity = _identity(root)
+    if identity:
+        return state_path(identity, PENDING_FILENAME)
     return os.path.join(root, ".claude", "tdd-pending-red.json")
 
 
 def _lock_path(root):
+    identity = _identity(root)
+    if identity:
+        return core_lock_path(identity)
     return os.path.join(root, ".claude", "tdd-lock.json")
 
 
@@ -80,6 +104,14 @@ def _save(path, data):
 
 
 def _journal(root, entry):
+    identity = _identity(root)
+    if identity:
+        portable = dict(entry)
+        portable.update({"schema_version": 1, "repo_id": identity["repo_id"],
+                         "worktree_id": identity["worktree_id"],
+                         "head": identity["head"], "session_id": _session_id()})
+        append_event(identity, portable)
+        return
     jp = os.path.join(root, ".claude", "tdd-lock-journal.jsonl")
     os.makedirs(os.path.dirname(jp), exist_ok=True)
     with open(jp, "a") as fh:
@@ -99,13 +131,18 @@ def record_pending(root, path):
     rel = os.path.relpath(ap, root)
     if rel.startswith(".."):
         return                                  # outside the project — not ours
-    lock = _load(_lock_path(root))
+    identity = _identity(root)
+    lock = (read_lock(identity) or {}) if identity else _load(_lock_path(root))
     if rel in (lock.get("files") or {}):
         return                                  # already locked — the guard owns it
-    pending = _load(_pending_path(root))
+    pending = read_state_json(identity, PENDING_FILENAME) if identity \
+        else _load(_pending_path(root))
     files = pending.setdefault("files", {})
     files[rel] = _now()
-    _save(_pending_path(root), pending)
+    if identity:
+        write_state_json(identity, PENDING_FILENAME, pending)
+    else:
+        _save(_pending_path(root), pending)
 
 
 def resolve_test_run(command, response_text):
@@ -123,16 +160,21 @@ def resolve_test_run(command, response_text):
 def apply_run_outcome(root, verdict):
     """Red run → lock all pending (that exist); green run → clear pending.
     Returns the list of newly locked rel-paths (for the announce)."""
-    pending = _load(_pending_path(root))
+    identity = _identity(root)
+    pending = read_state_json(identity, PENDING_FILENAME) if identity \
+        else _load(_pending_path(root))
     files = pending.get("files") or {}
     if not files:
         return []
     if verdict == "green":
-        _save(_pending_path(root), {"files": {}})
+        if identity:
+            write_state_json(identity, PENDING_FILENAME, {"files": {}})
+        else:
+            _save(_pending_path(root), {"files": {}})
         return []
     # red: merge into the lock in cmd_lock's exact shape
     locked_now = []
-    lock = _load(_lock_path(root))
+    lock = (read_lock(identity) or {}) if identity else _load(_lock_path(root))
     existing = lock.get("files") or {}
     for rel in sorted(files):
         ap = os.path.join(root, rel)
@@ -141,10 +183,19 @@ def apply_run_outcome(root, verdict):
         existing[rel] = _sha(ap)
         locked_now.append(rel)
     if locked_now:
-        _save(_lock_path(root), {"locked_at": _now(), "files": existing})
+        if identity:
+            record = new_lock_record(identity, locked_now, _session_id())
+            existing.update(record["files"])
+            record["files"] = existing
+            write_lock(identity, record)
+        else:
+            _save(_lock_path(root), {"locked_at": _now(), "files": existing})
         _journal(root, {"ts": _now(), "event": "auto_lock_red",
                         "files": locked_now})
-    _save(_pending_path(root), {"files": {}})
+    if identity:
+        write_state_json(identity, PENDING_FILENAME, {"files": {}})
+    else:
+        _save(_pending_path(root), {"files": {}})
     return locked_now
 
 

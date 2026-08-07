@@ -28,7 +28,8 @@ Release the **TEST-LOCK** (Playbook §1) — reason: $ARGUMENTS
 3. If the reason was "the test is wrong": fix the test, re-verify RED for the right reason
    (`red-first-verifier` on any doubt), re-lock, continue.
 
-The journal (`.claude/tdd-lock-journal.jsonl`) is read by `/grade`: frequent unlocks, unlock
+The journal (`<git-common-dir>/tdd-playbook/events.jsonl`; legacy non-Git scratch projects
+use `.claude/tdd-lock-journal.jsonl`) is read by `/grade`: frequent unlocks, unlock
 reasons that pattern-match "adjusted test to match output", and any entry carrying
 `class_mismatch: true` (a phase-shaped reason claiming `gate-wrong`) are graded as
 honor-system breaches (§13). The class also rides to the yield instrument, where only

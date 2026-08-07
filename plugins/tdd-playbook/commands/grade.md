@@ -13,7 +13,8 @@ Grade the CYCLE (spend → evidence → claims → outcome), not the narration. 
   touched, all measured. If it exits 1 (no telemetry), the card is labeled
   **"narration-grade (telemetry unavailable)"** — never dress an estimate as a measurement.
   Git history supplements either way (tests added vs source changed per commit).
-- **Read the TEST-LOCK journal** (`.claude/tdd-lock-journal.jsonl`, if present): frequent
+- **Read the TEST-LOCK journal** (`<git-common-dir>/tdd-playbook/events.jsonl`; legacy
+  non-Git scratch projects use `.claude/tdd-lock-journal.jsonl`): frequent
   unlocks, or reasons pattern-matching "adjusted test to match output", are honor-system
   breaches (H2) — they cap the grade. Report two counts from the `reason_class` field
   (v1.27): the **`gate-wrong` share** of unlocks (that class is the only one that can retire

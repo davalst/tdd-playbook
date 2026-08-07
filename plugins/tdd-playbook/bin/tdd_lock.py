@@ -11,9 +11,10 @@ while a lock is active, and to the verifier surface (conftest.py, test configs) 
     tdd_lock.py unlock --reason "..." [--class phase|feature-end|test-wrong|gate-wrong]
     tdd_lock.py status                # active lock, if any
 
-State: .claude/tdd-lock.json (the active lock — delete = unlock, but use `unlock` so the
-journal records WHY). Journal: .claude/tdd-lock-journal.jsonl, append-only across locks —
-an unlock without a reason is refused; frequent unlocks are a smell /grade must see.
+State: the Git common-dir's `tdd-playbook/active-lock.json` (one authority shared by linked
+worktrees).  Non-Git scratch projects retain the legacy `.claude` path.  Existing Git locks
+are imported once and the old source is consumed; there is no permanent dual-read mode.
+The append-only event journal records WHY an unlock happened for `/grade`.
 Exit codes: 0 ok · 1 refusal (bad unlock / nothing locked) · 2 usage.
 
 REASON CLASS (v1.27) — why it exists: gate_yield counted EVERY journaled unlock as a block
@@ -37,6 +38,10 @@ import os
 import re
 import sys
 
+from host_contract import (ContractError, append_event, clear_lock, events_path,
+                           import_legacy_lock, lock_path as core_lock_path,
+                           new_lock_record, read_lock, resolve_repository, write_lock)
+
 # Closed vocabulary. No `other`/`misc` bucket — an open bucket becomes the dumping ground and
 # re-creates the ambiguity. Absent --class records `unclassified`, which is UNMEASURED (never
 # a soft accept, never a zero): gate_yield's own rule is that absent data is not evidence.
@@ -51,16 +56,36 @@ _PHASE_RX = re.compile(
 
 
 def project_root():
-    # realpath: getcwd() resolves symlinks while CLAUDE_PROJECT_DIR may not
-    # (macOS /var -> /private/var), and mismatched roots produce garbage relpath keys
-    return os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+    # The neutral env is the adapter contract; CLAUDE_PROJECT_DIR remains compatible while
+    # existing hooks migrate. realpath also normalizes macOS /var -> /private/var.
+    return os.path.realpath(os.environ.get("TDD_PLAYBOOK_PROJECT_ROOT")
+                            or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+
+
+def _identity(root):
+    try:
+        return resolve_repository(root)
+    except ContractError:
+        return None
+
+
+def _session_id():
+    return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
+            or os.environ.get("CLAUDE_SESSION_ID")
+            or "local-pid-{}".format(os.getpid()))
 
 
 def lock_path(root):
+    identity = _identity(root)
+    if identity:
+        return core_lock_path(identity)
     return os.path.join(root, ".claude", "tdd-lock.json")
 
 
 def journal_path(root):
+    identity = _identity(root)
+    if identity:
+        return events_path(identity)
     return os.path.join(root, ".claude", "tdd-lock-journal.jsonl")
 
 
@@ -76,6 +101,18 @@ def _now():
 
 
 def _journal(root, entry):
+    identity = _identity(root)
+    if identity:
+        portable = dict(entry)
+        portable.update({
+            "schema_version": 1,
+            "repo_id": identity["repo_id"],
+            "worktree_id": identity["worktree_id"],
+            "head": identity["head"],
+            "session_id": _session_id(),
+        })
+        append_event(identity, portable)
+        return
     os.makedirs(os.path.dirname(journal_path(root)), exist_ok=True)
     with open(journal_path(root), "a") as fh:
         fh.write(json.dumps(entry) + "\n")
@@ -83,24 +120,40 @@ def _journal(root, entry):
 
 def cmd_lock(args):
     root = project_root()
-    files = {}
-    for f in args.files:
-        ap = os.path.realpath(os.path.abspath(f))
-        if not os.path.isfile(ap):
-            sys.stderr.write("tdd_lock: no such file: {}\n".format(f))
+    identity = _identity(root)
+    if identity:
+        try:
+            import_legacy_lock(identity, _session_id())
+            fresh = new_lock_record(identity, args.files, _session_id())
+            existing_record = read_lock(identity)
+            existing = dict((existing_record or {}).get("files", {}))
+            existing.update(fresh["files"])
+            fresh["files"] = existing
+            write_lock(identity, fresh)
+            files = {rel: fresh["files"][rel]
+                     for rel in fresh["files"] if rel not in (existing_record or {}).get("files", {})}
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: {}\n".format(exc))
             return 2
-        rel = os.path.relpath(ap, root)
-        files[rel] = _sha(ap)
-    path = lock_path(root)
-    existing = {}
-    if os.path.isfile(path):
-        with open(path) as fh:
-            existing = json.load(fh).get("files", {})
-    existing.update(files)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as fh:
-        json.dump({"locked_at": _now(), "files": existing}, fh, indent=2)
-        fh.write("\n")
+    else:
+        files = {}
+        for f in args.files:
+            ap = os.path.realpath(os.path.abspath(f))
+            if not os.path.isfile(ap):
+                sys.stderr.write("tdd_lock: no such file: {}\n".format(f))
+                return 2
+            rel = os.path.relpath(ap, root)
+            files[rel] = _sha(ap)
+        path = lock_path(root)
+        existing = {}
+        if os.path.isfile(path):
+            with open(path) as fh:
+                existing = json.load(fh).get("files", {})
+        existing.update(files)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            json.dump({"locked_at": _now(), "files": existing}, fh, indent=2)
+            fh.write("\n")
     _journal(root, {"ts": _now(), "event": "lock", "files": sorted(files)})
     print("tdd_lock: LOCKED {} file(s) ({} total in lock). Implement to green without "
           "touching them; `tdd_lock.py unlock --reason ...` if a test itself is wrong."
@@ -110,6 +163,13 @@ def cmd_lock(args):
 
 def cmd_unlock(args):
     root = project_root()
+    identity = _identity(root)
+    if identity:
+        try:
+            import_legacy_lock(identity, _session_id())
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: {}\n".format(exc))
+            return 1
     path = lock_path(root)
     if not os.path.isfile(path):
         sys.stderr.write("tdd_lock: nothing is locked\n")
@@ -132,8 +192,15 @@ def cmd_unlock(args):
             .format(FEEDS_RETIREMENT, GATE_WRONG_MIN, len(reason)))
         return 1
     mismatch = bool(klass == FEEDS_RETIREMENT and _PHASE_RX.search(reason))
-    with open(path) as fh:
-        locked = json.load(fh)
+    if identity:
+        try:
+            locked = read_lock(identity)
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
+            return 1
+    else:
+        with open(path) as fh:
+            locked = json.load(fh)
     entry = {"ts": _now(), "event": "unlock", "reason": reason, "reason_class": klass,
              "files": sorted(locked.get("files", {}))}
     if mismatch:
@@ -159,7 +226,10 @@ def cmd_unlock(args):
                         {"reason": reason, "reason_class": klass}, source="testlock")
     except Exception:
         pass
-    os.remove(path)
+    if identity:
+        clear_lock(identity)
+    else:
+        os.remove(path)
     print("tdd_lock: unlocked {} file(s). Reason journaled for /grade.".format(
         len(locked.get("files", {}))))
     return 0
@@ -167,12 +237,26 @@ def cmd_unlock(args):
 
 def cmd_status(_args):
     root = project_root()
+    identity = _identity(root)
+    if identity:
+        try:
+            import_legacy_lock(identity, _session_id())
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
+            return 1
     path = lock_path(root)
     if not os.path.isfile(path):
         print("tdd_lock: no active lock")
         return 0
-    with open(path) as fh:
-        locked = json.load(fh)
+    if identity:
+        try:
+            locked = read_lock(identity)
+        except ContractError as exc:
+            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
+            return 1
+    else:
+        with open(path) as fh:
+            locked = json.load(fh)
     print("tdd_lock: ACTIVE since {} — {} file(s):".format(
         locked.get("locked_at", "?"), len(locked.get("files", {}))))
     for rel in sorted(locked.get("files", {})):

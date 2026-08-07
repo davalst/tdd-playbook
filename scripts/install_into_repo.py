@@ -233,7 +233,7 @@ def doctor(target: str) -> int:
 # Runtime exhaust the vendored playbook writes under .claude/ — the vendoring workflow is
 # `git add .claude`, so without this a downstream repo commits a growing event log (G2).
 _CLAUDE_IGNORES = ["playbook-yield.jsonl", "tdd-lock-journal.jsonl", "tdd-lock.json",
-                   "playbook-guards-heartbeat"]
+                   "tdd-lock.json.migrated", "playbook-guards-heartbeat"]
 
 
 def _merge_claude_gitignore(claude_dir: str) -> None:

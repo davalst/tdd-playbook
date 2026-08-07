@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PreToolUse(Edit|MultiEdit|Write + Bash) — enforce the TEST-LOCK (HACK_CATALOG H2 + H5).
 
-While .claude/tdd-lock.json is active this guard defends four surfaces against BOTH the
+While the canonical Git-common-dir lock is active this guard defends four surfaces against BOTH the
 structured-edit channel AND the shell channel (audit finding F1: the Edit-only guard was
 blind to `sed -i` / `> file` / `git checkout -- test` / inline-python writes — the shell IS
 the bypass a capable model reaches for):
@@ -26,6 +26,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_event, emit, file_path_of  # noqa: E402
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                "..", "..", "bin")))
+from host_contract import (ContractError, import_legacy_lock, policy_decision,
+                           read_lock, resolve_repository)  # noqa: E402
 
 NAME = "testlock"
 
@@ -38,6 +42,7 @@ _VERIFIER_BASENAMES = {
 }
 # F2 — the lock's own state; never legitimately hand-edited (tdd_lock.py owns them).
 _LOCK_STATE_BASENAMES = {
+    "active-lock.json", "events.jsonl", "pending-red.json",
     "tdd-lock.json", "tdd-lock-journal.jsonl", "tdd-pending-red.json",
 }
 # F1-extension — disabling the enforcement is editing the test by another name.
@@ -75,10 +80,26 @@ _CD = re.compile(r"^cd\s+(?:-\S+\s+)*(['\"]?)([^'\";|&\s]+)\1\s*$")
 
 
 def project_root():
-    return os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    return os.path.realpath(os.environ.get("TDD_PLAYBOOK_PROJECT_ROOT")
+                            or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
 
 
 def active_lock(root):
+    try:
+        identity = resolve_repository(root)
+    except ContractError:
+        identity = None
+    if identity:
+        try:
+            import_legacy_lock(
+                identity,
+                os.environ.get("TDD_PLAYBOOK_SESSION_ID")
+                or os.environ.get("CLAUDE_SESSION_ID") or "claude-hook")
+            return read_lock(identity)
+        except ContractError as exc:
+            # A malformed authority must not turn the strongest guard off.  The main path
+            # emits a block explaining the state needs repair; it never fabricates a lock.
+            return {"files": {}, "_contract_error": str(exc)}
     path = os.path.join(root, ".claude", "tdd-lock.json")
     if not os.path.isfile(path):
         return None
@@ -127,6 +148,20 @@ def _msg(kind, name):
 
 
 def edit_findings(event, lock, root):
+    try:
+        identity = resolve_repository(root)
+    except ContractError:
+        identity = None
+    if identity and not lock.get("_contract_error"):
+        try:
+            result = policy_decision(identity, lock, {
+                "kind": "write", "targets": [file_path_of(event)]})
+        except ContractError as exc:
+            return ["TEST-LOCK state/policy mismatch — refusing a write while the canonical "
+                    "authority is repaired: {}".format(exc)]
+        if result["decision"] == "block":
+            return _msg(result["surface"], result["target"])
+        return []
     kind, rel = _classify_path(file_path_of(event), lock, root)
     return _msg(kind, rel) if kind else []
 
@@ -250,6 +285,9 @@ def main():
     lock = active_lock(root)
     if not lock:
         sys.exit(0)
+    if lock.get("_contract_error"):
+        emit(NAME, ["TEST-LOCK canonical state is invalid — failing closed instead of "
+                    "silently disabling protection: {}".format(lock["_contract_error"])])
     if event.get("tool_name") == "Bash":
         cmd = (event.get("tool_input", {}) or {}).get("command", "")
         emit(NAME, bash_findings(cmd, lock, root))

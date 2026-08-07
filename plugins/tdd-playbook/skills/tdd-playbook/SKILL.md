@@ -155,7 +155,8 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   (`/tdd-lock`) — the `test_lock_guard` hook then BLOCKS both structured EDITS and write-shaped
   SHELL commands (`sed -i`, `> file`, `git checkout -- test`, `rm`, inline-python writes) to four
   surfaces: the locked tests, the verifier surface (conftest, test configs), the lock's OWN state
-  (you can't self-unlock by deleting `tdd-lock.json`), and the guard/hook files themselves —
+  (one versioned authority under Git's common dir; linked worktrees cannot bypass it), and the
+  guard/hook files themselves —
   until `/tdd-unlock` with a JOURNALED reason AND a class (`phase` | `feature-end` |
   `test-wrong` | `gate-wrong` — only the last claims the gate was wrong, and it is the only one
   the yield instrument counts as a false positive). Reads and running the locked tests stay free. The

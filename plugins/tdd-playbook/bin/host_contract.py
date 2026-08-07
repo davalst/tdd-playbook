@@ -24,6 +24,7 @@ SCHEMA_VERSION = 1
 STATE_DIRNAME = "tdd-playbook"
 LOCK_FILENAME = "active-lock.json"
 EVENTS_FILENAME = "events.jsonl"
+PENDING_FILENAME = "pending-red.json"
 ASSURANCE_LEVELS = (
     "unmeasured",
     "local_claim",
@@ -180,6 +181,36 @@ def events_path(identity):
     return os.path.join(identity["state_dir"], EVENTS_FILENAME)
 
 
+def state_path(identity, filename):
+    """Resolve a fixed core-owned state file without permitting caller path syntax."""
+    _require_identity(identity)
+    if filename not in (LOCK_FILENAME, EVENTS_FILENAME, PENDING_FILENAME):
+        raise ContractError("unknown core state file: {!r}".format(filename))
+    return os.path.join(identity["state_dir"], filename)
+
+
+def read_state_json(identity, filename, default=None):
+    path = state_path(identity, filename)
+    try:
+        with open(path) as fh:
+            value = json.load(fh)
+    except FileNotFoundError:
+        return {} if default is None else default
+    except (OSError, ValueError) as exc:
+        raise ContractError("cannot read {}: {}".format(filename, exc))
+    if not isinstance(value, dict):
+        raise ContractError("{} must contain a JSON object".format(filename))
+    return value
+
+
+def write_state_json(identity, filename, value):
+    if filename in (LOCK_FILENAME, EVENTS_FILENAME):
+        raise ContractError("{} has a dedicated authority API".format(filename))
+    if not isinstance(value, dict):
+        raise ContractError("state value must be a JSON object")
+    _atomic_json(state_path(identity, filename), value)
+
+
 def _validate_lock(identity, record):
     if not isinstance(record, dict) or record.get("schema_version") != SCHEMA_VERSION:
         raise ContractError("unsupported or missing lock schema_version")
@@ -222,6 +253,15 @@ def _atomic_json(path, value):
 def write_lock(identity, record):
     _validate_lock(identity, record)
     _atomic_json(lock_path(identity), record)
+
+
+def clear_lock(identity):
+    """Remove the sole active authority; absence is idempotent for adapter cleanup."""
+    try:
+        os.remove(lock_path(identity))
+    except FileNotFoundError:
+        return False
+    return True
 
 
 def read_lock(identity):
@@ -298,6 +338,9 @@ def import_legacy_lock(identity, session_id):
     legacy = os.path.join(identity["root"], ".claude", "tdd-lock.json")
     if not os.path.isfile(legacy):
         return "none"
+    migrated = legacy + ".migrated"
+    if os.path.exists(migrated):
+        raise ContractError("legacy lock and migration marker both exist; refusing split-brain")
     try:
         with open(legacy) as fh:
             old = json.load(fh)
@@ -326,9 +369,6 @@ def import_legacy_lock(identity, session_id):
         "imported_from": ".claude/tdd-lock.json",
     }
     write_lock(identity, record)
-    migrated = legacy + ".migrated"
-    if os.path.exists(migrated):
-        raise ContractError("legacy migration marker already exists")
     os.replace(legacy, migrated)
     append_event(identity, {
         "schema_version": SCHEMA_VERSION,

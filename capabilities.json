@@ -55,14 +55,17 @@
       },
       "wired_by": [
         "plugins/tdd-playbook/hooks/hooks.json",
-        "plugins/tdd-playbook/commands/tdd-lock.md"
+        "plugins/tdd-playbook/commands/tdd-lock.md",
+        "plugins/tdd-playbook/bin/host_contract.py (one Git-common-dir authority shared by linked worktrees)"
       ],
       "exercised_by": [
-        "plugins/tdd-playbook/tests/test_tdd_lock.py"
+        "plugins/tdd-playbook/tests/test_tdd_lock.py",
+        "plugins/tdd-playbook/tests/test_host_adapters.py",
+        "plugins/tdd-playbook/tests/test_red_lock_portable.py"
       ],
       "emits": [
         {
-          "topic": "tdd_lock.journal",
+          "topic": "<git-common-dir>/tdd-playbook/events.jsonl (tdd_lock.journal)",
           "consumers": [
             "learning-loop (/grade reads unlock reasons)",
             "gate_yield.py (journaled unlocks land as override events \u2014 the adjudicated false-positive signal)"
@@ -303,14 +306,9 @@
           "what": "DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden): install_into_repo vendors bin/ and commands/ atomically, so downstream repos get tdd_lock.py --class \u2014 but calibration/ is deliberately never vendored and gate_yield.py rollup is invoked ONLY from run_calibration.py, which downstream repos never run. So every downstream repo now writes reason_class into a gitignored journal and an unrolled yield log: a real write-only flow (\u00a76c). Done = either a vendored rollup path for downstream repos, or a documented decision that gate-yield is a playbook-repo-only instrument with the vendored writer explicitly labelled inert, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-11-15"
-        },
-        {
-          "what": "TEST-LOCK DOES NOT FOLLOW INTO A GIT WORKTREE (v1.27, found live while building this fix): tdd_lock resolves .claude/tdd-lock.json from CLAUDE_PROJECT_DIR-or-cwd, so a lock taken in the main checkout is absent in a worktree and locked test files are freely editable there. Guard-SURFACE protection (hook scripts) is unconditional and unaffected; this is specifically the locked-FILES half. A worktree is therefore an unlogged bypass of \u00a71's strongest mechanism. Done = lock state resolved from the common git dir (git rev-parse --git-common-dir) with a planted test proving a main-checkout lock blocks an edit made from a worktree, or a consciously re-dated entry",
-          "owner": "david",
-          "expires": "2026-10-15"
         }
       ],
-      "notes": "PAID 2026-08-05 (v1.27): TESTLOCK OVERRIDE SEMANTICS. gate_yield counted EVERY journaled unlock as a block adjudicated a false positive, so four cycles of the normal red-first lock/implement/unlock rhythm printed RETIREMENT CANDIDATE: testlock with zero real false positives \u2014 the instrument recommending retirement of the strongest anti-gaming defense there is. Fixed by a closed reason-class vocabulary on `tdd_lock.py unlock --class` (phase | feature-end | test-wrong | gate-wrong) carried through log_yield_event into a 7th `fp` column, with candidates() computing from fp over CLASSIFIED blocks only. Pre-fix rows stay byte-identical and report as UNCLASSIFIED HISTORY \u2014 never retroactively classified, because inferring into a durable record is the fabrication the fix exists to end. Replayed against the motivating artifact (119e2de) with a negative control proving it still flags a genuine candidate (\u00a713 v1.25). Boundary pin retired to the paid-pattern with a dated comment \u2014 a paid loan, never a silent deletion."
+      "notes": "PAID 2026-08-05 (v1.27): TESTLOCK OVERRIDE SEMANTICS. gate_yield counted EVERY journaled unlock as a block adjudicated a false positive, so four cycles of the normal red-first lock/implement/unlock rhythm printed RETIREMENT CANDIDATE: testlock with zero real false positives \u2014 the instrument recommending retirement of the strongest anti-gaming defense there is. Fixed by a closed reason-class vocabulary on `tdd_lock.py unlock --class` (phase | feature-end | test-wrong | gate-wrong) carried through log_yield_event into a 7th `fp` column, with candidates() computing from fp over CLASSIFIED blocks only. Pre-fix rows stay byte-identical and report as UNCLASSIFIED HISTORY \u2014 never retroactively classified, because inferring into a durable record is the fabrication the fix exists to end. Replayed against the motivating artifact (119e2de) with a negative control proving it still flags a genuine candidate (\u00a713 v1.25). Boundary pin retired to the paid-pattern with a dated comment \u2014 a paid loan, never a silent deletion. PAID 2026-08-07: the linked worktree bypass is closed by one versioned lock authority under `git rev-parse --git-common-dir`; the CLI, Claude structured-edit guard, shell guard, and auto-red producer consume it. Real-process planted tests prove a main-checkout lock blocks both write routes from a linked worktree while clean source edits pass. The legacy `.claude/tdd-lock.json` is imported once and consumed rather than dual-read."
     },
     {
       "id": "nudge-anti-tax",
