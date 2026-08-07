@@ -32,8 +32,8 @@ persisted by default.
 
 Run records live under `<git-common-dir>/tdd-playbook/gate-runs/<uuid>/`, with 0700 directories,
 0600 files, atomic writes, concurrency-safe completed-run-only retention, and allowlisted index
-metadata. Retained diagnostics are allowlisted, bounded, and redacted independently of the evidence
-journal; raw-output hashes and byte counts support correlation without storing the transcript. All
+metadata. Retained diagnostics are structurally derived counts, never raw subprocess lines;
+raw-output hashes and byte counts support correlation without storing the transcript. All
 of it remains local/non-authorizing.
 
 Edge cases: non-Git checkout; detached/unborn HEAD; concurrent linked worktrees; log collision;

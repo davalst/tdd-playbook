@@ -39,7 +39,7 @@ def _strings(value) -> bool:
     return isinstance(value, list) and bool(value) and all(isinstance(x, str) and x for x in value)
 
 
-def validate_record(record: dict, source: str, exists) -> list[str]:
+def validate_record(record: dict, source: str, exists, evidence_exists=lambda _target: True) -> list[str]:
     problems = []
     prefix = source + ": "
     if record.get("schema_version") != 1:
@@ -92,10 +92,25 @@ def validate_record(record: dict, source: str, exists) -> list[str]:
             remediation = finding.get("remediation_commit")
             if not SHA.fullmatch(remediation or "") or not exists(remediation):
                 problems.append(label + ".remediation_commit must name an existing full commit SHA")
-            if not finding.get("closure_review"):
-                problems.append(label + ".closure_review is required")
+            closure_review = finding.get("closure_review")
+            if closure_review not in (record.get("reviewers") or []):
+                problems.append(label + ".closure_review must name a registered reviewer")
             if not _strings(finding.get("closure_evidence")):
                 problems.append(label + ".closure_evidence must be a non-empty string list")
+            else:
+                for target in finding["closure_evidence"]:
+                    if not evidence_exists(target):
+                        problems.append(label + ".closure_evidence target does not resolve: " + target)
+    return problems
+
+
+def topology_problems(records: list[dict], is_ancestor) -> list[str]:
+    problems = []
+    for record in records:
+        review_range = record.get("review_range") or {}
+        base, head = review_range.get("base", ""), review_range.get("head", "")
+        if base and head and not is_ancestor(base, head):
+            problems.append("review {} base is not an ancestor of head".format(record.get("id")))
     return problems
 
 
@@ -147,7 +162,7 @@ def validate_index(directory: str, index: dict, baseline_records: list[dict]) ->
     return problems
 
 
-def validate_directory(directory: str, exists) -> list[str]:
+def validate_directory(directory: str, exists, evidence_exists=lambda _target: True) -> list[str]:
     paths = sorted(path for path in glob.glob(os.path.join(directory, "*.json"))
                    if os.path.basename(path) != INDEX_NAME)
     if not paths:
@@ -166,7 +181,7 @@ def validate_directory(directory: str, exists) -> list[str]:
         if rid in record_ids:
             problems.append(path + ": duplicate review record id " + str(rid))
         record_ids.add(rid)
-        problems.extend(validate_record(record, os.path.basename(path), exists))
+        problems.extend(validate_record(record, os.path.basename(path), exists, evidence_exists))
         for finding in record.get("findings") or []:
             fid = finding.get("id")
             if fid in finding_ids:
@@ -188,6 +203,26 @@ def _records(directory: str) -> list[dict]:
     return records
 
 
+def _closure_evidence_exists(root: str, target: str) -> bool:
+    if not isinstance(target, str) or target.startswith("/") or ".." in target.split("/"):
+        return False
+    if "::" in target:
+        relative, symbol = target.split("::", 1)
+        path = os.path.join(root, relative)
+        if not os.path.isfile(path) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol):
+            return False
+        with open(path, encoding="utf-8") as fh:
+            return re.search(r"^def\s+{}\s*\(".format(re.escape(symbol)), fh.read(), re.MULTILINE) is not None
+    match = re.fullmatch(r"(.+):(\d+)", target)
+    if not match:
+        return False
+    path = os.path.join(root, match.group(1))
+    if not os.path.isfile(path):
+        return False
+    with open(path, encoding="utf-8") as fh:
+        return 1 <= int(match.group(2)) <= sum(1 for _line in fh)
+
+
 def _baseline_index(root: str) -> list[dict]:
     tag = _git(root, "describe", "--tags", "--abbrev=0")
     if tag.returncode != 0:
@@ -200,7 +235,8 @@ def _baseline_index(root: str) -> list[dict]:
 
 def validate_repository(root: str) -> list[str]:
     directory = os.path.join(root, "docs", "reviews")
-    problems = validate_directory(directory, lambda sha: commit_exists(root, sha))
+    problems = validate_directory(directory, lambda sha: commit_exists(root, sha),
+                                  lambda target: _closure_evidence_exists(root, target))
     try:
         with open(os.path.join(directory, INDEX_NAME), encoding="utf-8") as fh:
             index = json.load(fh)
@@ -208,6 +244,8 @@ def validate_repository(root: str) -> list[str]:
         records = _records(directory)
     except (OSError, ValueError) as exc:
         return problems + ["review index/records unreadable: " + str(exc)]
+    problems.extend(topology_problems(
+        records, lambda base, head: _git(root, "merge-base", "--is-ancestor", base, head).returncode == 0))
     candidate_result = _git(root, "rev-parse", "HEAD")
     if candidate_result.returncode != 0:
         return problems + ["candidate HEAD is unavailable"]

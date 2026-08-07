@@ -39,14 +39,15 @@ def redact(value: str) -> str:
 
 
 def _sanitized_diagnostic(raw: str) -> str:
-    """Persist only bounded diagnostic-shaped lines, never an implicit raw transcript."""
-    lines = redact(raw).splitlines()
-    selected = [line for line in lines if re.search(
-        r"^(?:PASS|FAIL|ERROR|Traceback|AssertionError|Result:|ALL \d+|\d+ passed,)",
-        line)]
-    excerpt = "\n".join(selected[:200])
-    encoded = excerpt.encode("utf-8", "replace")[:MAX_LOG_BYTES]
-    return encoded.decode("utf-8", "replace")
+    """Persist derived counts only; arbitrary subprocess text never reaches disk."""
+    lines = raw.splitlines()
+    summary = {
+        "lines": len(lines),
+        "pass_signals": sum(1 for line in lines if line.startswith("PASS")),
+        "fail_signals": sum(1 for line in lines if line.startswith("FAIL")),
+        "error_signals": sum(1 for line in lines if line.startswith(("ERROR", "Traceback"))),
+    }
+    return json.dumps(summary, sort_keys=True)
 
 
 def _atomic_private(path: str, text: str) -> None:
