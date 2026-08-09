@@ -8,9 +8,10 @@ wall that Phase 5 demolishes.*
 **Goal:** David holds every switch, the system can be reset or removed at will, and what
 remains is only the parts that have been *measured* to earn their cost.
 
-**Non-goal:** letting the AI cook the books. Preserved throughout — the model never holds a
-signing key. The change is from *nobody has power* to *the owner has power, and every use of
-it is recorded*.
+**Non-goal:** letting the AI cook the books. Preserved throughout. Rev 3 achieves it by
+subtraction rather than cryptography — with no verdict in the release path there is nothing to
+forge, and what authorizes a release is David tagging it. The change is from *nobody has power*
+to *the owner has power*.
 
 ---
 
@@ -138,7 +139,7 @@ Do this **before any other decision**, including a decision to walk away.
 2. **Archive the evidence** — cheap, not sacred:
    `tar czf ~/tdd-playbook-evidence-2026-08-09.tgz docs/calibration/ calibration/corpus/ docs/reviews/`
 3. **Make the three stuck releases addressable.** Local annotated tags for v1.29.0/v1.30.0/
-   v1.31.0; they become properly owner-authorized in Phase 1.
+   v1.31.0. Under rev 3 these are simply the releases — no certification step follows.
 4. **Record the VPS state** you'd need to rebuild it (`repos.yml`, units, tailnet config).
 
 **Exit:** nothing can be lost irrecoverably from here on.
