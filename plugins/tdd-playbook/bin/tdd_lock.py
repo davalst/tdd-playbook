@@ -164,8 +164,8 @@ def cmd_lock(args):
             fh.write("\n")
     _journal(root, {"ts": _now(), "event": "lock", "files": sorted(files)})
     print("tdd_lock: LOCKED {} file(s) ({} total in lock). Implement to green without "
-          "touching them; " + UNLOCK_HINT + " if a test itself is wrong."
-          .format(len(files), len(existing)))
+          "touching them; {} if a test itself is wrong."
+          .format(len(files), len(existing), UNLOCK_HINT))
     return 0
 
 

@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-09-owner-control-phase3-implementation-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "4885008a2d6858114f1af8d9b52cdc5aad71be16",
+    "head": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "OC3-P1-GLASS-SILENCES",
+      "severity": "P1",
+      "summary": "Break-glass SILENCED the five opt-in guards, and did so even under a global escalation to block, while its own docstring asserted it could not silence anything. The branch returned _DEFAULT_MODES directly, skipping the global-env layer and landing on the new off defaults.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_break_glass"
+      ]
+    },
+    {
+      "id": "OC3-P1-GLASS-LAUNDERS-BLOCKS",
+      "severity": "P1",
+      "summary": "emit() logged the DEMOTED mode, zeroing gate_yield's blocks column \u2014 which guard_response.md, the one instrument that distinguishes complying with a block from routing around it, counts. Two identical sessions differing only by break-glass produced 2 blocks and 2 UNACCOUNTED rows versus a file never written at all: the record read cleanest exactly where every block was bypassed.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py",
+        "plugins/tdd-playbook/bin/gate_yield.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_break_glass"
+      ]
+    },
+    {
+      "id": "OC3-P1-SWALLOW-STILL-OPEN",
+      "severity": "P1",
+      "summary": "TDD_PLAYBOOK_HOOK_MODE=off was STILL silently ignored at HEAD \u2014 the exact defect break-glass was introduced to fix. A third env var was added beside the broken one rather than fixing the swallow, so an operator who types the documented-looking value still gets a silent non-effect.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_break_glass"
+      ]
+    },
+    {
+      "id": "OC3-P1-REDLOCK-SILENT-LOCK",
+      "severity": "P1",
+      "summary": "red_lock is a PRODUCER: it writes active-lock.json and then announces via emit(). Moving it to default-off left the lock created and the agent never told, so the still-BLOCKING testlock hard-stopped edits to files nothing had announced as read-only. Proven in a scratch repo: zero stderr, a real lock on disk, then test_lock_guard exit 2. A regression introduced by the retirement itself.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/red_lock.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_red_lock_portable.py::test_auto_red_reaches_shared_authority",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_red_lock"
+      ]
+    },
+    {
+      "id": "OC3-P1-DOCTOR-BLIND",
+      "severity": "P1",
+      "summary": "install_into_repo --doctor keyed its standing-demotion check on startswith('TDD_PLAYBOOK_HOOK'), so TDD_PLAYBOOK_BREAK_GLASS \u2014 a strictly WIDER switch that demotes all four blocking gates \u2014 was invisible, while a single per-hook demotion was reported. The 2026-07-28 'hole 2' reopened by a wider knob.",
+      "evidence": [
+        "scripts/install_into_repo.py",
+        "plugins/tdd-playbook/hooks/scripts/_common.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_doctor_sees_break_glass_as_a_standing_demotion"
+      ]
+    },
+    {
+      "id": "OC3-P1-UNLOCK-HINTS-STALE",
+      "severity": "P1",
+      "summary": "--class became required while five of six in-product hints still printed the class-less command that now exits 2, including test_lock_guard's block message \u2014 the most-seen instruction in the product. The previous commit CLAIMED that file was updated; the edit had silently not landed.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py",
+        "plugins/tdd-playbook/bin/tdd_lock.py",
+        "plugins/tdd-playbook/hooks/scripts/red_lock.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_tdd_lock.py::test_reason_class"
+      ]
+    },
+    {
+      "id": "OC3-P1-MIGRATION-UNREACHABLE",
+      "severity": "P1",
+      "summary": "The gate_yield header migration sat AFTER the no-events early return, so on a quiet cycle \u2014 exactly how the header went stale \u2014 it never ran. Its row predicate was narrower than parse_md_rows', silently dropping a non-2026 row and the operator's DEMOTION JOURNAL note; it truncated in place with no temp+rename; and it shipped with no planted test, against this repo's own release rule.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/gate_yield.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_gate_yield.py::test_header_migration"
+      ]
+    },
+    {
+      "id": "OC3-P2-DOCS-FALSE",
+      "severity": "P2",
+      "summary": "README's hook tiers named three now-opt-in guards as 'advisory default warn' and omitted two entirely; break-glass appeared in ZERO documentation and was absent from the BLOCKING message shown at the moment of need; HACK_CATALOG named overmock/exitcode/exhaustive as the live defense for H9/H13/H14 when none fires on a default install; CLAUDE.md's downstream-refresh prompt listed the wrong guard set.",
+      "evidence": [
+        "README.md",
+        "docs/HACK_CATALOG.md",
+        "CLAUDE.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_v124_gate_surfaces"
+      ]
+    },
+    {
+      "id": "OC3-P3-BANNER-OVERCLAIM",
+      "severity": "P3",
+      "summary": "The break-glass banner printed 'this gate would normally BLOCK' unconditionally whenever the switch was set, so an advisory gate that merely warned said it too \u2014 the banner was a proxy for the switch being set rather than a statement about the gate.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "e0520c69b5d9020e1e43e6fc95dc13c5bf817166",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_break_glass"
+      ]
+    }
+  ]
+}
