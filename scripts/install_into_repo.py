@@ -229,6 +229,18 @@ def _cache_versions() -> list[str] | None:
     return versions or None
 
 
+def _is_guard_control_var(key):
+    """Delegate to the module that OWNS the guard env contract, so this check cannot drift
+    from it again. Falls back to the historical prefix if _common is unavailable (a partial
+    vendored tree) — fail toward flagging, never toward silence."""
+    try:
+        sys.path.insert(0, os.path.join(PLUGIN, "hooks", "scripts"))
+        from _common import is_guard_control_var
+        return is_guard_control_var(key)
+    except Exception:
+        return key.startswith("TDD_PLAYBOOK_HOOK") or key == "TDD_PLAYBOOK_BREAK_GLASS"
+
+
 def doctor(target: str) -> int:
     """Version-skew check across canonical / vendored / plugin cache. 1 = skew found."""
     canonical = _canonical_version()
@@ -278,7 +290,11 @@ def doctor(target: str) -> int:
                   "demotion (fail closed)")
             rc = 1
             continue
-        demoted = {k: v for k, v in envblock.items() if k.startswith("TDD_PLAYBOOK_HOOK")}
+        # The list of vars that weaken the guard layer is owned by _common, not guessed with a
+        # prefix here: TDD_PLAYBOOK_BREAK_GLASS does not start with TDD_PLAYBOOK_HOOK and is a
+        # STRICTLY WIDER switch than the per-hook demotions this check was written to catch,
+        # so the prefix silently exempted the biggest one (v1.32.0).
+        demoted = {k: v for k, v in envblock.items() if _is_guard_control_var(k)}
         if demoted:
             print(f"STANDING DEMOTION: {rel} env block sets {demoted} — guards are "
                   "demoted for EVERY session in this repo; restore or journal it with an "

@@ -14,8 +14,8 @@ unavailable or unmeasured, never rounded up. It ships:
   a claims discipline for audits → a learning loop. The anti-gaming defense is an OUTCOME
   (mutation score), not a ritual — scoped honestly: the score grades tests WITHIN a seam;
   §1's "test at the seam you don't own" covers what it structurally cannot (SKILL §4).
-- **Enforcement hooks** (warn-first) — guard against weakened tests, non-deterministic tests,
-  and shipping source with no test.
+- **Enforcement hooks** — four block by default (test weakening, the TEST-LOCK, snapshot
+  re-approval, release tags); five more are opt-in. See **Hook controls** below.
 - **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade`.
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
@@ -64,8 +64,9 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 `grade_from_otel`, `capability_registry`, `verify_citations`) into the repo's `.claude/`, rewriting
 `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude`. The installer is **reconciling**: it prunes
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
-three integrity guards (`test_lock_guard`, `snapshot_guard`, `overmock_guard`) plus the advisory
-ones (`exitcode_guard`, `exhaustive_claim_guard`, `flaky_guard`, `red_lock`, …) — so a refresh
+the four blocking guards (`test_weakening_guard`, `test_lock_guard`, `snapshot_guard`,
+`tag_guard`) plus the opt-in ones (`exitcode_guard`, `exhaustive_claim_guard`, `overmock_guard`,
+`flaky_guard`, `red_lock`) — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are
 preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
 marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
@@ -111,15 +112,33 @@ the four-leg Tripwire, and the registry-as-release-gate — lives in this repo's
 the target repo's session; it is the authoritative revendoring checklist.
 
 ## Hook controls
-Two tiers. **Integrity hooks default to `block`** — they defend the documented agent attack
-vectors (see `docs/HACK_CATALOG.md`; the research is unambiguous that warnings don't stop
-test-gaming): `TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_TESTLOCK`, `_SNAPSHOTGUARD`, and `_TAGGUARD`
-(v1.32.0 — creating or pushing a release tag is the owner's action; a warning would reserve
-nothing). **Advisory hooks
-default to `warn`**: `_OVERMOCK`, `_FLAKY`, `_REDLOCK`. Override per hook with `warn` | `block` |
-`off`; `TDD_PLAYBOOK_HOOK_MODE` sets the global default (an explicit per-hook env wins over the
-global, which wins over the per-hook default); `TDD_PLAYBOOK_NUDGE=off` disables the build-intent
-reminder.
+Three tiers, and the tiers are set by **measured yield**, not by how important a guard sounds
+(`docs/calibration/gate_yield.md`; §13's decay principle runs in both directions — a gate can
+become more expensive than the risk it retires).
+
+**BLOCKING by default** — `TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_TESTLOCK`, `_SNAPSHOTGUARD`,
+`_TAGGUARD`. These defend the documented agent attack vectors (`docs/HACK_CATALOG.md`; the
+research is unambiguous that warnings don't stop test-gaming) and the release tag. `testweaken`
+has 4 blocks and 0 adjudicated false positives; `testlock` has 16 blocks and **zero** unlocks
+classed `gate-wrong`.
+
+**OPT-IN since v1.32.0** — `_EXITCODE`, `_OVERMOCK`, `_EXHAUSTIVE`, `_FLAKY`, `_REDLOCK`.
+31 warnings and zero blocks across all recorded history, so they ship off. Nothing was deleted:
+turn any of them back on with `TDD_PLAYBOOK_HOOK_<NAME>=warn` and its yield rows resume.
+
+**Break-glass** — `TDD_PLAYBOOK_BREAK_GLASS="<reason>"` demotes **every** blocking gate to warn
+for the session. The reason is required (empty does not demote) and is recorded in the yield log
+alongside the block it demoted, so a bypass stays visible rather than becoming a clean record.
+It can only turn `block` into `warn` — never into silence.
+
+Precedence: per-hook env > global env > per-hook default; break-glass is a clamp applied on top.
+`TDD_PLAYBOOK_HOOK_MODE=off` is **refused out loud** — a global off would silence integrity
+gates too, which is the kill switch these guards exist to prevent; use break-glass, or
+`TDD_PLAYBOOK_HOOK_<NAME>=off` for one specific gate. Any unrecognised value is reported rather
+than swallowed. `TDD_PLAYBOOK_NUDGE=off` disables the build-intent reminder.
+
+A standing demotion in a committed `settings.json` env block — including break-glass — is
+flagged by `python3 scripts/install_into_repo.py --doctor <repo>`.
 
 ## Tests & calibration
 Everything mechanical is calibrated with planted inputs (a planted violation that slips past
@@ -172,6 +191,6 @@ plugins/tdd-playbook/
   skills/tdd-playbook/SKILL.md       # the doctrine (auto-fires)
   commands/                          # /tdd-plan /tripwire /edge /mutate /claims /grade
   agents/                            # the verification agents
-  hooks/                             # warn-first enforcement + scripts
+  hooks/                             # enforcement hooks (4 blocking, 5 opt-in)
   tests/                             # planted-input calibration
 ```

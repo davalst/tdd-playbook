@@ -221,11 +221,25 @@ def main():
             sys.exit(0)
         locked = apply_run_outcome(root, verdict)
         if locked:
+            # THE ANNOUNCEMENT IS UNCONDITIONAL, and that is not a style choice. This hook is
+            # a PRODUCER, not a warner: apply_run_outcome has already written active-lock.json
+            # by the time we get here, and the still-BLOCKING test_lock_guard will hard-stop
+            # the next edit to those files. Routing the announcement through emit() made it
+            # obey this hook's mode — so when redlock moved to default-off in v1.32.0 the
+            # lock was still created and the agent was never told, turning "you were told,
+            # then blocked" into "blocked out of nowhere." Measured in a scratch repo: zero
+            # stderr, a real lock on disk, then test_lock_guard exit 2. A gate may be demoted;
+            # the state change it performs may not become invisible with it.
+            sys.stderr.write(
+                "⚠️  TDD Playbook · {} · AUTO-LOCK\n"
+                "   - auto-locked {} red test file(s): {} — implement the SOURCE to green "
+                "without editing them\n"
+                "   - if a test itself is wrong: python3 <plugin>/bin/tdd_lock.py unlock "
+                "--reason \"why\" --class test-wrong (journaled, reviewed by /grade)\n"
+                .format(NAME, len(locked), ", ".join(locked)))
+            # still route through emit() for the yield record and the mode-dependent exit
             emit(NAME, [
-                "auto-locked {} red test file(s): {} — implement the SOURCE to green "
-                "without editing them".format(len(locked), ", ".join(locked)),
-                "if a test itself is wrong: python3 <plugin>/bin/tdd_lock.py unlock "
-                "--reason \"why\" (journaled, reviewed by /grade)",
+                "auto-locked {} red test file(s): {}".format(len(locked), ", ".join(locked)),
             ])
         sys.exit(0)
 

@@ -63,19 +63,62 @@ def read_event():
         return {}
 
 
+# Every env var that can weaken the guard layer. Exported so the ONE owner of the env
+# contract also owns the list, and install_into_repo.py --doctor can import it instead of
+# guessing with a `startswith("TDD_PLAYBOOK_HOOK")` prefix — which was blind to break-glass,
+# a strictly WIDER switch than the per-hook demotions the doctor was written to catch.
+def is_guard_control_var(key):
+    return key == "TDD_PLAYBOOK_BREAK_GLASS" or key.startswith("TDD_PLAYBOOK_HOOK")
+
+
+def _parse_mode(raw, source, allow_off=True):
+    """'off'|'warn'|'block' from an operator-set value, or None — LOUDLY.
+
+    The v1.32.0 defect this fixes: `TDD_PLAYBOOK_HOOK_MODE=off` was silently ignored,
+    because the read was a membership test against ("warn","block") and anything else just
+    fell through to the default. The operator believes they turned the layer off; it is
+    still on; nothing says so. A first attempt at this shipped a THIRD env var beside the
+    broken one instead of fixing the swallow — adding a knob is not fixing a knob. Now every
+    operator-set value is either honoured or reported; nothing is swallowed.
+    """
+    if raw is None:
+        return None
+    val = raw.strip().lower()
+    if not val:
+        return None
+    if val == "off" and not allow_off:
+        # A GLOBAL off would silence every gate at once, integrity ones included — the
+        # H-class kill switch by definition. It is refused rather than honoured, and refused
+        # LOUDLY rather than swallowed: the old code just fell through, so the operator
+        # believed the layer was off while it was fully armed. The sanctioned wide switch is
+        # break-glass, which demotes to warn, demands a reason, and leaves a record.
+        sys.stderr.write(
+            "⚠️  TDD Playbook · {}=off is REFUSED — a global off silences every gate at once, "
+            "integrity gates included.\n"
+            "   The guard layer is STILL ARMED. Use TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\" to "
+            "demote blocking gates to warn (reason required, recorded), or "
+            "TDD_PLAYBOOK_HOOK_<NAME>=off for one specific gate.\n".format(source))
+        return None
+    if val in ("off", "warn", "block"):
+        return val
+    sys.stderr.write(
+        "⚠️  TDD Playbook · {} is set to {!r}, which is not off|warn|block — IGNORED.\n"
+        "   The guard layer is running at its normal strength. If you meant to demote "
+        "everything for this session, use TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\".\n"
+        .format(source, raw))
+    return None
+
+
 def break_glass_reason():
     """The one obvious switch: TDD_PLAYBOOK_BREAK_GLASS="<reason>" demotes every BLOCKING
     gate to warn for this session.
 
     Why it exists (v1.32.0, owner-control): the per-hook knob already worked, but it demands
     you already know WHICH of eleven guards is in your way — exactly what you do not know at
-    the moment you are blocked. And `TDD_PLAYBOOK_HOOK_MODE=off` was SILENTLY IGNORED
-    (`glob in ("warn","block")` below), so the closest thing to a kill switch read as one and
-    was not. A knob the operator believes they turned off, which is still on, is worse than
-    no knob.
+    the moment you are blocked.
 
     The REASON is required, not decorative. An empty or whitespace value does not demote.
-    This is the difference between an emergency and a habit, and it is what /grade reads.
+    This is the difference between an emergency and a habit.
     """
     return (os.environ.get("TDD_PLAYBOOK_BREAK_GLASS") or "").strip()
 
@@ -83,26 +126,30 @@ def break_glass_reason():
 def resolve_mode(name):
     """Resolve a hook's mode: 'off' | 'warn' | 'block'.
 
-    Default is per-hook (_DEFAULT_MODES, integrity hooks 'block'), else 'warn'.
-    Precedence: per-hook env > break-glass > global env > per-hook default > 'warn'.
+    Base precedence: per-hook env > global env > per-hook default > 'warn'.
+    Break-glass is then applied as a CLAMP over that fully-resolved base.
 
-    Break-glass sits BELOW the explicit per-hook setting on purpose: a specific instruction
-    beats a blanket one, so `TDD_PLAYBOOK_HOOK_TESTWEAKEN=block` still blocks during an
-    incident. It only ever demotes a `block` to `warn` — it cannot silence a gate, because a
-    silent bypass is indistinguishable from no finding at all.
+    The clamp is the whole design, and the first version got it wrong in a way worth
+    recording: it returned `_DEFAULT_MODES.get(name)` directly, which SKIPPED the global-env
+    layer and landed on the v1.32.0 `off` defaults — so breaking glass SILENCED the five
+    opt-in guards outright, and did so even for an operator who had globally escalated
+    everything to `block`. The docstring said "it cannot silence a gate"; the code silenced
+    five. Written as a clamp over the resolved base, the invariant is structural rather than
+    asserted: break-glass can only ever turn `block` into `warn`, never into `off`, because
+    that is the only transition the expression can express.
+
+    An explicit per-hook setting still wins — a specific instruction beats a blanket one, so
+    `TDD_PLAYBOOK_HOOK_TESTWEAKEN=block` still blocks during an incident.
     """
-    per_hook = os.environ.get("TDD_PLAYBOOK_HOOK_" + name.upper())
+    per_hook = _parse_mode(os.environ.get("TDD_PLAYBOOK_HOOK_" + name.upper()),
+                           "TDD_PLAYBOOK_HOOK_" + name.upper())
     if per_hook:
-        val = per_hook.strip().lower()
-        if val in ("off", "warn", "block"):
-            return val
-    if break_glass_reason():
-        mode = _DEFAULT_MODES.get(name.lower(), "warn")
-        return "warn" if mode == "block" else mode
-    glob = os.environ.get(_GLOBAL_ENV, "").strip().lower()
-    if glob in ("warn", "block"):
-        return glob
-    return _DEFAULT_MODES.get(name.lower(), "warn")
+        return per_hook
+    glob = _parse_mode(os.environ.get(_GLOBAL_ENV), _GLOBAL_ENV, allow_off=False)
+    base = glob or _DEFAULT_MODES.get(name.lower(), "warn")
+    if break_glass_reason() and base == "block":
+        return "warn"
+    return base
 
 
 def project_root():
@@ -197,23 +244,41 @@ def emit(name, lines):
         log_yield_event(name, "suppressed", {"findings": len(lines)})
         sys.exit(0)
     glass = break_glass_reason()
-    # The reason rides the yield record, not just the terminal: /grade reads the journal,
-    # and a bypass whose justification exists only in scrollback is unreviewable.
+    # Log the FACT (a block fired) separately from the OUTCOME (it was demoted). Logging the
+    # demoted mode instead erases the block from gate_yield's `blocks` column — and
+    # guard_response.md, the one instrument built to tell "complied with the block" apart
+    # from "routed around the block", counts exactly that column. Measured: two identical
+    # sessions differing only by break-glass produced 2 blocks + 2 loud UNACCOUNTED rows
+    # versus a file that was never written at all. The record read cleanest precisely in the
+    # session where every block was bypassed, which is the inverse of what it is for.
+    would_have = _DEFAULT_MODES.get(name.lower(), "warn") if not glass else None
+    logged_event = mode
     payload = {"findings": len(lines)}
-    if glass:
+    if glass and mode == "warn" and _DEFAULT_MODES.get(name.lower(), "warn") == "block":
+        logged_event = "block"
+        payload["demoted_by"] = "break-glass"
         payload["break_glass"] = glass
-    log_yield_event(name, mode, payload)
+    log_yield_event(name, logged_event, payload)
     header = "⚠️  TDD Playbook · {}".format(name)
     body = "\n".join("   - " + ln for ln in lines)
     if mode == "block":
-        tail = ("   (BLOCKING; set TDD_PLAYBOOK_HOOK_{0}=warn to demote or =off to "
-                "silence)".format(name.upper()))
+        # Name BOTH exits at the moment of need. The per-hook knob demands you already know
+        # WHICH of eleven guards is in your way, which is exactly what you do not know while
+        # reading your first block — so the blanket switch has to be discoverable HERE, not
+        # only in a README the blocked reader is not currently looking at.
+        tail = ("   (BLOCKING; TDD_PLAYBOOK_HOOK_{0}=warn demotes just this one, or "
+                "TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\" demotes every blocking gate for the "
+                "session — the reason is required and recorded)".format(name.upper()))
     else:
         tail = ("   (warn-only; set TDD_PLAYBOOK_HOOK_{0}=off to silence, "
                 "=block to enforce)".format(name.upper()))
-    if glass:
+    if glass and logged_event == "block":
+        # Only claim "would normally BLOCK" when that is true — an advisory gate that merely
+        # warns must not print it, or the banner is a proxy for the switch being set rather
+        # than a statement about this gate.
         tail = ("   *** BREAK-GLASS ACTIVE — this gate would normally BLOCK. Reason: {} ***\n"
-                "   (journaled for /grade; unset TDD_PLAYBOOK_BREAK_GLASS to restore)"
+                "   (recorded as a BLOCK with demoted_by=break-glass, so the yield record "
+                "still shows it fired; unset TDD_PLAYBOOK_BREAK_GLASS to restore)"
                 .format(glass))
     sys.stderr.write(header + "\n" + body + "\n" + tail + "\n")
     sys.exit(2 if mode == "block" else 1)

@@ -158,6 +158,55 @@ def test_guard_response():
               open(rmd).read())
 
 
+def test_header_migration():
+    """v1.32.0 §13 guard-calibration: replayed against the MOTIVATING ARTIFACT.
+
+    The committed gate_yield.md carried the SUPERSEDED v1.26 header for four cycles because
+    the header was only ever written on file creation — v1.27's correction lived in code and
+    never reached the artifact anyone reads. A later reader took the stale definition at face
+    value and concluded testlock had 20 false positives when the measured number is 0.
+
+    Three separate defects are frozen here, each found by replaying the real thing:
+      1. the migration sat AFTER the no-events early return, so on a quiet cycle — exactly
+         how a header goes stale — the repair never ran;
+      2. its row predicate (`startswith("| 2")`) was narrower than parse_md_rows', silently
+         dropping a 1999-dated row AND the operator's DEMOTION JOURNAL note, which is the
+         note this very tool instructs them to write;
+      3. it truncated in place with no temp+rename, so a crash destroyed the record."""
+    print("\n[gate_yield header migration]")
+    import importlib.util as _il
+    _sp = _il.spec_from_file_location("gate_yield", GY)
+    mod = _il.module_from_spec(_sp); _sp.loader.exec_module(mod)
+    stale = ("# OLD TITLE\n\nsuperseded prose about overrides.\n\n"
+             "| date | gate | blocks | warns | overrides | suppressed |\n|---|---|---|---|---|---|\n"
+             "| 2026-07-30 | testlock | 2 | 0 | 7 | 0 |\n"
+             "| 1999-01-01 | legacygate | 1 | 0 | 0 | 0 |\n"
+             "DEMOTION JOURNAL: operator note that must survive\n")
+    with tempfile.TemporaryDirectory() as d:
+        md = os.path.join(d, "gate_yield.md")
+        open(md, "w").write(stale)
+        # QUIET CYCLE: no event log at all — the case the first version could not reach
+        changed = mod.migrate_header(md)
+        out = open(md).read()
+        check("migration runs on a QUIET cycle (no events)", changed is True, changed)
+        check("the corrected header replaces the superseded one",
+              out.startswith(mod.MD_HEADER), out[:80])
+        check("the stale prose is gone", "superseded prose" not in out, out[:200])
+        check("a 2026 row survives byte-for-byte",
+              "| 2026-07-30 | testlock | 2 | 0 | 7 | 0 |" in out)
+        check("a NON-2026 row survives (predicate matches parse_md_rows, not '| 2')",
+              "legacygate" in out, out)
+        check("the operator's own journal note survives",
+              "DEMOTION JOURNAL" in out, out)
+        check("migration is idempotent — a rollup is not a destructive rewrite",
+              mod.migrate_header(md) is False)
+        check("no temp file is left behind (atomic replace)",
+              not os.path.isfile(md + ".migrating"), os.listdir(d))
+        # and the rows are still parseable by the module's own parser afterwards
+        rows = mod.parse_md_rows(md)
+        check("parse_md_rows still reads every migrated row", len(rows) == 2, rows)
+
+
 def main():
     print("gate_yield calibration")
     if not os.path.isfile(GY):
@@ -295,6 +344,7 @@ def main():
     test_dataflow_rollup_and_trend()
     test_dataflow_producer_consumer_seam()
     test_guard_response()
+    test_header_migration()
 
     # PLANTED-BY-CONSTRUCTION (2026-08-06): this suite drove the real gate_yield.py 7 times
     # and must have left the repo's committed instrument records byte-identical. It did not,

@@ -95,8 +95,9 @@ mechanisms.
 1. REFRESH: Clone https://github.com/davalst/tdd-playbook (shallow is fine) to a temp
    directory and run: python3 <clone>/scripts/install_into_repo.py <this repo's root>
    The installer is reconciling: it prunes stale playbook hooks from .claude/settings.json
-   and adds current ones (test_lock_guard, snapshot_guard, overmock_guard, and the
-   advisory exitcode_guard + exhaustive_claim_guard). My own
+   and adds current ones (the four BLOCKING guards: test_weakening_guard, test_lock_guard,
+   snapshot_guard, tag_guard; plus the opt-in exitcode/overmock/exhaustive/flaky/red_lock,
+   which ship OFF since v1.32.0 on 31 warns / 0 blocks). My own
    non-playbook hooks must survive — verify that before committing.
 
 2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,

@@ -131,7 +131,9 @@ def _classify_path(path, lock, root):
 
 def _msg(kind, name):
     unlock = ("your ONE sanctioned exit is a journaled reason: python3 <plugin>/bin/"
-              "tdd_lock.py unlock --reason \"why\" (reviewed by /grade) — do NOT write around "
+              "tdd_lock.py unlock --reason \"why\" --class phase|feature-end|test-wrong|"
+              "gate-wrong (--class is REQUIRED since v1.32.0; only gate-wrong claims the "
+              "gate was wrong) — do NOT write around "
               "the guard")
     if kind == "locked":
         return ["TEST-LOCK: '{}' is a locked red test — read-only during implementation "

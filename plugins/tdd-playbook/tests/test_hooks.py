@@ -386,7 +386,7 @@ def test_break_glass():
         run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": "incident", "TDD_PLAYBOOK_YIELD_LOG": log})
         rows = [json.loads(x) for x in open(log)] if os.path.isfile(log) else []
         check("break-glass: the demoted finding is still RECORDED (never silent)",
-              any(r.get("event") in ("warn", "suppressed") for r in rows), rows[:2])
+              any(r.get("event") in ("block", "warn", "suppressed") for r in rows), rows[:2])
         check("break-glass: the record carries the reason for /grade",
               any("incident" in json.dumps(r) for r in rows), rows[:2])
 
@@ -395,6 +395,64 @@ def test_break_glass():
                                  "TDD_PLAYBOOK_HOOK_TESTWEAKEN": "block"})
     check("break-glass: an explicit per-hook block still wins (specific beats blanket)",
           rc == 2, rc)
+
+    # IT MUST NEVER SILENCE. The first implementation returned _DEFAULT_MODES directly,
+    # skipping the global-env layer and landing on the v1.32.0 `off` defaults — so breaking
+    # glass MUTED the five opt-in guards outright, and did so even for an operator who had
+    # globally escalated everything to block. The docstring said "it cannot silence a gate"
+    # while the code silenced five. Asserted on resolve_mode, not on the defaults dict: the
+    # dict was right and the resolver was wrong, which is exactly why a dict assertion could
+    # not see it.
+    import importlib.util as _il
+    _sp = _il.spec_from_file_location("_common", os.path.join(HOOKS, "_common.py"))
+    _c = _il.module_from_spec(_sp); _sp.loader.exec_module(_c)
+
+    def _mode(gate, **envs):
+        keep = {k: v for k, v in os.environ.items() if not k.startswith("TDD_PLAYBOOK_")}
+        old_env = dict(os.environ)
+        os.environ.clear(); os.environ.update(keep); os.environ.update(envs)
+        try:
+            return _c.resolve_mode(gate)
+        finally:
+            os.environ.clear(); os.environ.update(old_env)
+
+    for gate in ("exitcode", "overmock", "exhaustive", "flaky", "redlock"):
+        check("break-glass NEVER silences {} (off stays off, never a silent bypass)".format(gate),
+              _mode(gate, TDD_PLAYBOOK_BREAK_GLASS="incident") == "off",
+              _mode(gate, TDD_PLAYBOOK_BREAK_GLASS="incident"))
+        check("break-glass under a global escalation demotes {} to warn, not off".format(gate),
+              _mode(gate, TDD_PLAYBOOK_HOOK_MODE="block",
+                    TDD_PLAYBOOK_BREAK_GLASS="incident") == "warn",
+              _mode(gate, TDD_PLAYBOOK_HOOK_MODE="block", TDD_PLAYBOOK_BREAK_GLASS="incident"))
+    for gate in ("testweaken", "testlock", "snapshotguard", "tagguard"):
+        check("break-glass demotes {} to warn, never off".format(gate),
+              _mode(gate, TDD_PLAYBOOK_BREAK_GLASS="incident") == "warn",
+              _mode(gate, TDD_PLAYBOOK_BREAK_GLASS="incident"))
+
+    # THE HOLE BREAK-GLASS WAS BUILT TO CLOSE. `TDD_PLAYBOOK_HOOK_MODE=off` was silently
+    # ignored — a knob the operator believes they turned off, which is still on. The first
+    # attempt shipped a third env var BESIDE the broken one instead of fixing the swallow.
+    rc, _o, e = run(s, weaken, {"TDD_PLAYBOOK_HOOK_MODE": "off"})
+    check("HOOK_MODE=off is no longer SILENTLY ignored — it is REFUSED out loud",
+          "REFUSED" in e and "STILL ARMED" in e, e[:200])
+    check("...and the guard still blocks rather than pretending it was demoted", rc == 2, rc)
+    check("...and the refusal points at the sanctioned wide switch",
+          "BREAK_GLASS" in e, e[:200])
+    rc, _o, e = run(s, weaken, {"TDD_PLAYBOOK_HOOK_TESTWEAKEN": "disabled"})
+    check("a typo'd per-hook value is reported, not swallowed", "IGNORED" in e, e[:160])
+
+    # BREAK-GLASS MUST NOT LAUNDER THE BLOCK OUT OF THE COMPLIANCE RECORD. guard_response.md
+    # counts gate_yield's `blocks`; logging the demoted mode erased it, so the one instrument
+    # built to tell "complied" from "routed around" read cleanest in the sessions where every
+    # block was bypassed.
+    with _tf.TemporaryDirectory() as d:
+        log = os.path.join(d, "y2.jsonl")
+        run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": "incident", "TDD_PLAYBOOK_YIELD_LOG": log})
+        rows = [json.loads(x) for x in open(log)] if os.path.isfile(log) else []
+        check("break-glass records the event as a BLOCK (the fact), not a warn (the outcome)",
+              any(r.get("event") == "block" for r in rows), rows[:2])
+        check("...carrying demoted_by so the outcome is not lost either",
+              any(r.get("demoted_by") == "break-glass" for r in rows), rows[:2])
 
     # and it reaches the gate born in this same release
     rc, _o, _e = run("tag_guard.py",

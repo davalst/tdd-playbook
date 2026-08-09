@@ -200,6 +200,51 @@ def _write_response_rows(path, date, per_gate):
     return lines
 
 
+def _is_data_row(line):
+    """One definition of "a row in this file", shared with parse_md_rows. The first
+    migration used `startswith("| 2")`, which parse_md_rows does not — two disagreeing
+    answers in one module, and the narrower one silently dropped both a 1999-dated row and
+    the operator's own DEMOTION JOURNAL note (the note this tool TELLS them to write)."""
+    return line.startswith("|") and not line.startswith("| date") \
+        and not line.startswith("|---")
+
+
+def migrate_header(path):
+    """Replace a stale prose header in place, preserving every other line.
+
+    Runs BEFORE the no-events early return. The first version sat after it, so on a quiet
+    cycle — exactly how the header went stale in the first place — the repair never ran. It
+    is also idempotent and a no-op when the header already matches, so a rollup is not a
+    destructive rewrite of an evidence artifact on every invocation."""
+    if not os.path.isfile(path):
+        return False
+    with open(path) as fh:
+        text = fh.read()
+    if text.startswith(MD_HEADER):
+        return False
+    # The header is everything ABOVE the table header line; everything from the table down
+    # is data and is preserved verbatim. This is structural rather than a guess about which
+    # prose is stale: an earlier predicate tried to classify line-by-line and could not tell
+    # a superseded paragraph from an operator's own note, because nothing in the text says
+    # which is which. Notes belong below the table, where they survive by construction.
+    lines = text.splitlines(True)
+    start = None
+    for i, ln in enumerate(lines):
+        if ln.startswith("| date"):
+            start = i
+            break
+    if start is None:
+        return False        # no table yet — nothing safe to preserve, leave it alone
+    kept = [ln for ln in lines[start:] if not ln.startswith("| date")
+            and not ln.startswith("|---")]
+    tmp = path + ".migrating"
+    with open(tmp, "w") as fh:
+        fh.write(MD_HEADER)
+        fh.writelines(kept)
+    os.replace(tmp, path)   # atomic: a crash mid-write must not destroy the record
+    return True
+
+
 def cmd_rollup(args):
     raw, skipped = read_raw(args.log)
     if skipped:
@@ -230,20 +275,7 @@ def cmd_rollup(args):
     md_dir = os.path.dirname(args.md)
     if md_dir:
         os.makedirs(md_dir, exist_ok=True)
-    # HEADER MIGRATION (v1.32.0). The header used to be written ONLY on file creation, so
-    # when v1.27 corrected the definition of `overrides` in MD_HEADER the committed file kept
-    # the superseded text — the one that reads overrides as "blocks adjudicated
-    # false-positive". A later reader took that at face value and concluded testlock had 20
-    # false positives when the measured number is ZERO, which is precisely the misreading the
-    # v1.27 fix exists to end. The correction lived in code and never reached the artifact
-    # anyone reads. Rows are preserved byte-for-byte; only the prose above them is replaced.
-    rows = []
-    if os.path.isfile(args.md):
-        with open(args.md) as fh:
-            rows = [ln for ln in fh if ln.startswith("| 2")]
-        with open(args.md, "w") as fh:
-            fh.write(MD_HEADER)
-            fh.writelines(rows)
+    migrate_header(args.md)
     new = not os.path.isfile(args.md)
     with open(args.md, "a") as fh:
         if new:

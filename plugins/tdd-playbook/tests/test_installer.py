@@ -7,7 +7,9 @@ a CUSTOM user group must survive, current groups land exactly once, and re-runs 
 idempotent. Self-contained, no pytest. Run: python3 tests/test_installer.py
 """
 import ast
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import re
@@ -104,6 +106,7 @@ def main():
     test_vendored_skill_equality()
     test_release_version_identity()
     test_no_script_creates_a_release_tag()
+    test_doctor_sees_break_glass_as_a_standing_demotion()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
@@ -568,6 +571,39 @@ def _tracked_scannable(repo):
         out += [os.path.relpath(os.path.join(root, f), repo)
                 for f in files if f.endswith(_SCAN_EXT)]
     return sorted(out)
+
+
+def test_doctor_sees_break_glass_as_a_standing_demotion():
+    """v1.32.0: the doctor's STANDING DEMOTION check keyed on
+    `startswith("TDD_PLAYBOOK_HOOK")`, and TDD_PLAYBOOK_BREAK_GLASS does not carry that
+    prefix — so the WIDEST switch (it demotes all four blocking gates at once) was the one
+    the check could not see, while a single per-hook demotion was reported. That is the
+    2026-07-28 'hole 2' reopened by a wider knob: the proxy (a name prefix) drifted from the
+    fact (an env var that weakens the guard layer). The predicate now lives in _common,
+    which owns the env contract."""
+    print("\n[doctor: break-glass is a standing demotion]")
+    mod = load_installer()
+    check("doctor delegates to the env-contract owner, not a name prefix",
+          mod._is_guard_control_var("TDD_PLAYBOOK_BREAK_GLASS"), "break-glass not recognised")
+    check("...and still recognises the per-hook demotions it was written for",
+          mod._is_guard_control_var("TDD_PLAYBOOK_HOOK_TESTWEAKEN"))
+    check("...and does not sweep up unrelated env vars",
+          not mod._is_guard_control_var("PATH")
+          and not mod._is_guard_control_var("TDD_PLAYBOOK_YIELD_LOG"))
+
+    # behavioural: a standing break-glass in committed settings must be REPORTED
+    with tempfile.TemporaryDirectory() as target:
+        cdir = os.path.join(target, ".claude")
+        os.makedirs(cdir)
+        with open(os.path.join(cdir, "settings.json"), "w") as fh:
+            json.dump({"env": {"TDD_PLAYBOOK_BREAK_GLASS": "i just dislike being blocked"}}, fh)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = mod.main(["--doctor", target])
+        out = buf.getvalue()
+        check("PLANTED standing break-glass is reported as a STANDING DEMOTION",
+              "STANDING DEMOTION" in out and "BREAK_GLASS" in out, (rc, out[:300]))
+        check("...and the doctor fails closed on it", rc == 1, rc)
 
 
 def test_no_script_creates_a_release_tag():
