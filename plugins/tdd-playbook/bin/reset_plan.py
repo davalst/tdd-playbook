@@ -32,19 +32,35 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 
+class ResetRefused(Exception):
+    """Raised when the plan cannot establish a safety precondition. Fail CLOSED."""
+
+
 def _git(root, *args):
+    """(ok, stdout). The first version returned "" for BOTH success-with-no-output and
+    failure, so a missing/erroring git made worktree_paths() return [] and
+    is_protected_worktree() answer False — THE HARD REFUSAL evaporating silently. An empty
+    stdout from a failed command is not the fact "there are no other worktrees"."""
     try:
         p = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True,
                            timeout=30)
-        return p.stdout if p.returncode == 0 else ""
-    except Exception:
-        return ""
+        return (p.returncode == 0, p.stdout if p.returncode == 0 else p.stderr)
+    except Exception as exc:
+        return (False, str(exc))
 
 
 def worktree_paths(root):
-    """Every registered worktree of this repo, absolute and realpath'd."""
+    """Every registered worktree of this repo, absolute and realpath'd.
+
+    RAISES rather than returning [] when git cannot answer: proceeding unprotected is the
+    failure mode this function exists to prevent."""
+    ok, out_text = _git(root, "worktree", "list", "--porcelain")
+    if not ok:
+        raise ResetRefused(
+            "cannot enumerate git worktrees, so linked worktrees cannot be protected: "
+            + out_text.strip()[:200])
     out = []
-    for line in _git(root, "worktree", "list", "--porcelain").splitlines():
+    for line in out_text.splitlines():
         if line.startswith("worktree "):
             out.append(os.path.realpath(line.split(" ", 1)[1].strip()))
     return out
@@ -78,6 +94,34 @@ def _identity(root):
         return host_contract.resolve_repository(root)
     except Exception:
         return None
+
+
+def _vkey(name):
+    """Version sort key. Lexicographic ordering makes 1.9.0 > 1.32.0, which is how the first
+    draft of --plugin selected the copy to KEEP."""
+    import re
+    nums = [int(x) for x in re.findall(r"\d+", name)]
+    return (nums or [0], name)
+
+
+def _running_plugin_version():
+    """The version THIS process is executing from, if it lives in a plugin cache."""
+    parts = os.path.abspath(HERE).split(os.sep)
+    try:
+        i = parts.index("tdd-playbook")
+        cand = parts[i + 1]
+        return cand if cand and cand[0].isdigit() else None
+    except (ValueError, IndexError):
+        return None
+
+
+def _contains(root, path):
+    """REALPATH containment. A string-prefix test is defeated by a symlinked component: a
+    symlinked .claude passed `startswith(target)` while the syscall followed the link and
+    deleted a file outside the target entirely."""
+    r = os.path.realpath(root)
+    p = os.path.realpath(path)
+    return p == r or p.startswith(r + os.sep)
 
 
 def _row(scope, kind, path, why):
@@ -136,18 +180,27 @@ def plan(root, scopes=("repo",), repo=None, force=False):
     if "plugin" in scopes:
         cache = os.environ.get("TDD_PLAYBOOK_PLUGIN_CACHE") or \
             os.path.join(os.path.expanduser("~"), ".claude", "plugins", "cache")
+        running = _running_plugin_version()
         for mk in sorted(os.listdir(cache)) if os.path.isdir(cache) else []:
             base = os.path.join(cache, mk, "tdd-playbook")
             if not os.path.isdir(base):
                 continue
-            versions = sorted(os.listdir(base))
-            # Keep BOTH the canonical version and the newest installed one: deleting the copy
-            # the running session executes from darkens guards in every repo, silently.
-            keep = set(versions[-1:])
-            for v in versions:
+            versions = os.listdir(base)
+            # SORT BY VERSION TUPLE, not lexicographically. The first version used
+            # sorted()[-1:], which makes "1.9.0" the newest of {1.9.0, 1.28.0, 1.32.0} — so it
+            # printed "newest installed — kept" over 1.9.0 while marking the copy a live
+            # session executes from as stale and rmtree-ing it. That is the exact H8 harm this
+            # scope's docstring says it exists to prevent, caused by the code that says so.
+            keep = set()
+            if versions:
+                keep.add(max(versions, key=_vkey))
+            if running:
+                keep.add(running)   # never delete what this process is running from
+            for v in sorted(versions, key=_vkey):
                 if v in keep and not force:
+                    why = "newest installed" if v != running else "RUNNING NOW"
                     rows.append(_row("plugin", "keep", os.path.join(base, v),
-                                     "newest installed — kept without --force"))
+                                     why + " — kept without --force"))
                 else:
                     rows.append(_row("plugin", "dir", os.path.join(base, v),
                                      "stale plugin cache version"))
@@ -169,25 +222,48 @@ def plan(root, scopes=("repo",), repo=None, force=False):
                                 "LINKED WORKTREE — reset never touches these"))
         else:
             safe.append(r)
-    if is_plugin_source(root) and not force and "repo" in scopes:
-        refused.append(_row("repo", "refused", root,
+    if is_plugin_source(root) and not force:
+        # EVERY scope, not just `repo`. The first version stripped only repo rows, so
+        # --burn-evidence on the canonical source was not refused at all — the refusal
+        # covered the cheapest scope and skipped the irreversible one.
+        refused.append(_row("all", "refused", root,
                             "this is the canonical plugin SOURCE, not a vendored target — "
-                            "--force to override"))
-        safe = [r for r in safe if r["scope"] != "repo"]
+                            "no scope runs here without --force"))
+        safe = []
     return safe + refused
 
 
-def apply(rows, dry_run=True):
-    """The ONLY thing here that deletes. `plan()` never does."""
+def apply(rows, dry_run=True, roots=None):
+    """The ONLY thing here that deletes. `plan()` never does.
+
+    Every removal is containment-checked against an explicit allowlist of roots FIRST. The
+    first version trusted the rows, which meant a symlinked `.claude` deleted files outside
+    the target while printing an in-target path — the deleted set silently exceeded the
+    printed set, which is the one property this feature promises."""
     import shutil
-    removed = []
+    removed, refused, failed = [], [], []
     if dry_run:
         return removed
+    allow = [os.path.realpath(r) for r in (roots or [])]
     for r in rows:
-        if r["kind"] == "file" and os.path.exists(r["path"]):
-            os.remove(r["path"])
-            removed.append(r["path"])
-        elif r["kind"] == "dir" and os.path.isdir(r["path"]):
-            shutil.rmtree(r["path"])
-            removed.append(r["path"])
+        if r["kind"] not in ("file", "dir"):
+            continue
+        p = r["path"]
+        if allow and not any(_contains(a, p) for a in allow):
+            refused.append(p)
+            sys.stderr.write("reset: REFUSED (outside every allowed root): {}\n".format(p))
+            continue
+        try:
+            if r["kind"] == "file" and os.path.lexists(p):
+                os.remove(p)
+                removed.append(p)
+            elif r["kind"] == "dir" and os.path.isdir(p) and not os.path.islink(p):
+                shutil.rmtree(p)
+                removed.append(p)
+        except OSError as exc:
+            # never let one failure hide the record of what WAS removed
+            failed.append((p, str(exc)))
+            sys.stderr.write("reset: FAILED {}: {}\n".format(p, exc))
+    if failed:
+        sys.stderr.write("reset: {} path(s) could not be removed\n".format(len(failed)))
     return removed

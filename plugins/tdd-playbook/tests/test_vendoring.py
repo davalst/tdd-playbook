@@ -368,6 +368,96 @@ def test_doctor_detects_the_shallow_clone_and_carries_a_fix():
               callable(family["run"]))
 
 
+def test_the_safety_findings_stay_fixed():
+    """Frozen from a script-adversary review that returned UNSAFE (16). Each row is a defect
+    that was LIVE in the first implementation, reproduced in a scratch dir by the reviewer."""
+    print("\n[safety regressions]")
+    rp = _load(os.path.join(BIN, "reset_plan.py"), "reset_plan")
+    ven = load_vendoring()
+    inst = load_installer()
+
+    # F1: lexicographic ordering made 1.9.0 the "newest" of {1.9.0, 1.28.0, 1.32.0}, so the
+    # row printed "kept" over 1.9.0 while marking the RUNNING copy stale for rmtree.
+    vs = ["1.9.0", "1.28.0", "1.32.0", "1.6.1"]
+    check("version ordering is numeric, not lexicographic",
+          max(vs, key=rp._vkey) == "1.32.0", max(vs, key=rp._vkey))
+    check("PLANTED: the lexicographic answer really is wrong (the bug was reachable)",
+          max(vs) == "1.9.0", max(vs))
+
+    # F8: git unavailable made worktree_paths return [] -> nothing protected. FAIL CLOSED.
+    old = os.environ.get("PATH", "")
+    os.environ["PATH"] = "/nonexistent"
+    try:
+        rp.worktree_paths(REPO)
+        check("git-unavailable FAILS CLOSED (raises rather than protecting nothing)", False,
+              "returned normally")
+    except rp.ResetRefused:
+        check("git-unavailable FAILS CLOSED (raises rather than protecting nothing)", True)
+    except Exception as exc:
+        check("git-unavailable raises ResetRefused specifically", False, repr(exc))
+    finally:
+        os.environ["PATH"] = old
+
+    # F5: apply() must refuse anything outside the allowed roots, whatever the rows say.
+    with tempfile.TemporaryDirectory() as base:
+        inside = os.path.join(base, "in"); outside = os.path.join(base, "out")
+        os.makedirs(inside); os.makedirs(outside)
+        victim = os.path.join(outside, "precious.txt")
+        with open(victim, "w") as fh:
+            fh.write("do not delete me\n")
+        rows = [{"scope": "repo", "kind": "file", "path": victim, "why": "planted escape"}]
+        rp.apply(rows, dry_run=False, roots=[inside])
+        check("PLANTED path outside every allowed root is REFUSED, not deleted",
+              os.path.isfile(victim))
+
+    # F4: the canonical-source refusal must cover EVERY scope, not just repo.
+    with tempfile.TemporaryDirectory() as base:
+        fake = os.path.join(base, "src")
+        os.makedirs(os.path.join(fake, "plugins", "tdd-playbook", ".claude-plugin"))
+        with open(os.path.join(fake, "plugins", "tdd-playbook", ".claude-plugin",
+                               "plugin.json"), "w") as fh:
+            fh.write("{}")
+        os.makedirs(os.path.join(fake, "docs", "calibration"))
+        _git(fake, "init", "-q")
+        rows = rp.plan(fake, scopes=["burn-evidence"])
+        kinds = {r["kind"] for r in rows}
+        check("plugin SOURCE refuses burn-evidence too, not just --repo",
+              "refused" in kinds and "dir" not in kinds, rows)
+
+    # P1: the roster must survive in the TARGET, or both verbs are no-ops downstream where
+    # scripts/ does not exist. This is the finding both reviewers led with.
+    with tempfile.TemporaryDirectory() as base:
+        target = _repo(base)
+        inst.main([target])
+        man = os.path.join(target, ven.MANIFEST_REL)
+        check("install writes an install manifest into the target", os.path.isfile(man), man)
+        # resolve the roster with a DELIBERATELY WRONG source repo — the vendored situation
+        rels = ven.installed_paths("/nonexistent/source", target, "claude")
+        check("the roster resolves from the manifest with NO source checkout",
+              len(rels) > 10, len(rels))
+        rows = ven.uninstall(target, host="claude", apply=False, repo="/nonexistent/source")
+        check("uninstall from a vendored copy plans real work (not an exit-0 no-op)",
+              sum(1 for r in rows if r["kind"] == "file") > 10,
+              [r["kind"] for r in rows][:5])
+
+    # P2: .codex/hooks.json is a SECOND registry; uninstall pruned only .claude/settings.json
+    with tempfile.TemporaryDirectory() as base:
+        target = _repo(base)
+        inst.main(["--host", "all", target])
+        ven.uninstall(target, host="all", apply=True)
+        ch = os.path.join(target, ".codex", "hooks.json")
+        if os.path.isfile(ch):
+            with open(ch) as fh:
+                cfg = json.load(fh)
+            cmds = [h.get("command", "") for g in
+                    [g for v in (cfg.get("hooks") or {}).values() for g in v]
+                    for h in g.get("hooks", [])]
+            check("no Codex hook still points at a deleted playbook script",
+                  not any("tdd-playbook" in c for c in cmds), cmds)
+        else:
+            check("codex hooks.json handled (absent or pruned)", True)
+
+
 def main():
     print("vendoring / reset calibration")
     for fn in (test_uninstall_is_the_inverse_of_install,
@@ -376,7 +466,8 @@ def main():
                test_reset_never_touches_a_linked_worktree,
                test_reset_scopes_evidence_out_and_shared_apart,
                test_reset_refuses_the_canonical_plugin_source,
-               test_doctor_detects_the_shallow_clone_and_carries_a_fix):
+               test_doctor_detects_the_shallow_clone_and_carries_a_fix,
+               test_the_safety_findings_stay_fixed):
         try:
             fn()
         except Exception as exc:  # a suite that dies silently proves nothing

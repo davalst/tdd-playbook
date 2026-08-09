@@ -150,7 +150,7 @@ def doctor(args):
             "release_authority": "David creating the v* tag on a gate-green commit "
                                  "(no in-repo script or session may tag)",
 
-            "findings": clone_findings(root),
+            "findings": _run_checks(root, getattr(args, "only", None)),
         }
     except ContractError as exc:
         sys.stderr.write("tdd doctor: {}\n".format(exc))
@@ -174,11 +174,24 @@ def doctor(args):
                 len(report["findings"]),
                 sum(1 for f in report["findings"] if f["repairable"])))
     if getattr(args, "fix", False):
+        if args.json:
+            sys.stderr.write("tdd doctor: --fix is refused with --json — machine output "
+                             "must not mutate the repo as a side effect\n")
+            return 2
         for f in report["findings"]:
             if not f["repairable"]:
                 continue
             print("running: " + f["fix"])
-            subprocess.run(f["fix"].split(), cwd=root, timeout=300)
+            # report the RESULT: discarding the return code makes a failed fix
+            # indistinguishable from a successful one, and the exit code below would still
+            # reflect pre-fix findings.
+            r = subprocess.run(f["fix"].split(), cwd=root, timeout=300,
+                               capture_output=True, text=True)
+            print("  -> exit {}{}".format(r.returncode,
+                                          "" if r.returncode == 0
+                                          else ": " + (r.stderr or "").strip()[:160]))
+        report["findings"] = _run_checks(root, getattr(args, "only", None))
+        print("after --fix: {} finding(s) remain".format(len(report["findings"])))
     return 1 if any(f["severity"] == "fail" for f in report["findings"]) else 0
 
 
@@ -246,6 +259,31 @@ def _git_ok(root, *args):
 CHECKS = [{"family": "clone", "run": clone_findings}]
 
 
+def _run_checks(root, only=None):
+    """Drive the doctor from CHECKS and honour --only.
+
+    The first version called clone_findings directly and parsed --only without ever reading
+    it, so `--only registry` was an advertised choice that routed to nothing — an accepted
+    flag that does nothing is worse than an absent one, because it reports a scoping the
+    operator never got. Families not yet implemented say so rather than passing silently."""
+    want = set(only or [])
+    out = []
+    known = {c["family"] for c in CHECKS}
+    for fam in sorted(want - known):
+        out.append({"id": "family-unimplemented", "family": fam, "severity": "warn",
+                    "message": "the '{}' family is not implemented in `tdd doctor` yet — run "
+                               "its own tool".format(fam),
+                    "fix": {"install": "python3 scripts/install_into_repo.py --doctor .",
+                            "registry": "python3 <plugin>/bin/capability_registry.py doctor",
+                            "assurance": "python3 <plugin>/bin/tdd.py doctor"}.get(fam, ""),
+                    "repairable": False})
+    for c in CHECKS:
+        if want and c["family"] not in want:
+            continue
+        out += c["run"](root)
+    return out
+
+
 def cmd_reset(args):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import reset_plan
@@ -254,9 +292,14 @@ def cmd_reset(args):
     if args.all:
         scopes = ["repo", "shared", "machine", "plugin"]
     if args.burn_evidence:
-        if not (args.yes and args.reason):
+        # --reason makes the scope LEGAL (so you can preview it); --yes makes the run REAL.
+        # Coupling them meant the only accepted invocation was the irreversible one: an
+        # operator asking "show me what this would remove" got exit 2, and their next,
+        # natural command deleted the evidence.
+        if not args.reason:
             sys.stderr.write(
-                "tdd reset: REFUSED — --burn-evidence needs BOTH --yes and --reason.\n"
+                "tdd reset: REFUSED — --burn-evidence needs --reason (add --yes to apply; "
+                "--reason alone gives you a dry run).\n"
                 "  docs/calibration/ and calibration/corpus/ are append-only and immutable "
                 "under check_scoreboard_integrity; deleting them does not merely lose data, "
                 "it makes this repo permanently RED against every baseline.\n")
@@ -270,14 +313,47 @@ def cmd_reset(args):
     dry = not args.yes
     if dry:
         print("tdd reset — DRY RUN. Nothing has been changed. Re-run with --yes to apply.\n")
-    print("{:<8} {:<6} {:<58} {}".format("SCOPE", "KIND", "PATH", "DETAIL"))
+    # NEVER truncate the path: a 58-char slice printed two DIFFERENT rmtree targets as the
+    # same string, so the human-readable dry run stopped being the set that gets deleted.
     for r in rows:
-        print("{:<8} {:<6} {:<58} {}".format(r["scope"], r["kind"], r["path"][:58], r["why"]))
-    removed = reset_plan.apply(rows, dry_run=dry)
+        print("{:<8} {:<7} {}".format(r["scope"], r["kind"], r["path"]))
+        print("{:>17}{}".format("", r["why"]))
+    roots = [root, os.path.expanduser("~/.claude")]
+    ident = None
+    try:
+        import host_contract
+        ident = host_contract.resolve_repository(root)
+        roots.append(ident["common_git_dir"])
+    except Exception:
+        pass
+    if not dry:
+        _journal_reset(root, scopes, args.reason, rows)
+    removed = reset_plan.apply(rows, dry_run=dry, roots=roots)
     n = sum(1 for r in rows if r["kind"] in ("file", "dir"))
     print("\n{} path(s) planned · {} refused · {} removed".format(
         n, sum(1 for r in rows if r["kind"] in ("wtree", "refused")), len(removed)))
     return 0
+
+
+def _journal_reset(root, scopes, reason, rows):
+    """Record the burn BEFORE it happens, somewhere reset does not remove.
+
+    --reason was checked for truthiness and then discarded, so `--reason x` satisfied the
+    gate and left nothing to review. For --shared the record cannot live in events.jsonl,
+    because that is the file being deleted."""
+    import datetime
+    store = os.environ.get("TDD_PLAYBOOK_DELIBERATION_DIR") or \
+        os.path.join(os.path.expanduser("~"), ".claude", "deliberation")
+    try:
+        os.makedirs(store, exist_ok=True)
+        with open(os.path.join(store, ".reset-journal.jsonl"), "a") as fh:
+            fh.write(json.dumps({
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "root": root, "scopes": sorted(scopes), "reason": reason,
+                "paths": [r["path"] for r in rows if r["kind"] in ("file", "dir")],
+            }) + "\n")
+    except OSError:
+        pass
 
 
 def cmd_uninstall(args):

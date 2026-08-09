@@ -991,7 +991,7 @@
     },
     {
       "id": "state-reset",
-      "summary": "`tdd reset` removes Playbook machine state across four scopes (repo / shared / machine / plugin), DRY-RUN BY DEFAULT, printing every path before touching any. The printed set and the deleted set are asserted EQUAL by test, which kills the 'prints one thing, deletes another' class outright. Evidence directories are unreachable except under --burn-evidence, which needs --yes AND --reason.",
+      "summary": "`tdd reset` removes Playbook machine state across four scopes (repo / shared / machine / plugin), DRY-RUN BY DEFAULT, printing every path before touching any. The printed set and the deleted set are asserted EQUAL by test, which kills the 'prints one thing, deletes another' class outright. CALIBRATION evidence (docs/calibration, calibration/corpus) is unreachable except under --burn-evidence. Note that --repo DOES remove repo-local guard telemetry (playbook-yield.jsonl, the heartbeat, the lock journal) \u2014 deliberate, and named rather than filed under 'exhaust'.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1015,7 +1015,7 @@
       },
       "integration_debt": [
         {
-          "what": "--shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0). Removing common-dir state from one worktree is an unlock of every OTHER worktree without a journal entry \u2014 the exact thing /tdd-unlock exists to prevent. The plan refuses a FOREIGN active lock and names every sharing worktree in the listing, but the burn record cannot live in events.jsonl because that is the file being deleted. By expiry: the burn record written somewhere reset never removes, or --shared restricted to single-worktree repos.",
+          "what": "--shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0). Removing common-dir state from one worktree is an unlock of every OTHER worktree without a journal entry \u2014 the exact thing /tdd-unlock exists to prevent. PARTIALLY PAID 2026-08-09: the reason is now journaled to the capture store (.reset-journal.jsonl), which reset never removes. STILL UNPAID, and the debt previously OVERSTATED its mitigation: reset_plan has NO lock logic, so a foreign active lock is NOT refused and the listing emits a worktree COUNT, not names. A debt whose stated mitigation is fictional under-reports its own severity, which is why this correction is written down rather than quietly fixed. By expiry: the burn record written somewhere reset never removes, or --shared restricted to single-worktree repos.",
           "owner": "david",
           "expires": "2026-10-31"
         }

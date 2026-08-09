@@ -127,10 +127,15 @@ Scopes are separate because their blast radii are: `--repo` (this worktree's ven
 so it is never implied by `--repo`) · `--machine` (the capture store, all repos) · `--plugin`
 (the user-scope plugin cache, stale versions only — the newest installed copy is kept because
 deleting the one a live session runs from darkens guards everywhere, silently). `--all` covers
-those four. **Evidence is never in scope**: `docs/calibration/` and `calibration/corpus/` need
+those four. **Calibration evidence is never in scope**: `docs/calibration/` and `calibration/corpus/` need
 an explicit `--burn-evidence` plus `--yes` and `--reason`, because they are append-only and
 immutable under `check_scoreboard_integrity` — deleting them makes the repo permanently RED
 against every baseline, which is worse than losing data.
+
+`--repo` **does** remove the repo-local guard telemetry — `playbook-yield.jsonl` (the only
+input to `gate_yield`'s rollups), `playbook-guards-heartbeat` (the H8 liveness signal) and
+`tdd-lock-journal.jsonl`. That is deliberate (it is per-repo runtime state, not the calibration
+scoreboard) but it is not nothing, so it is named here rather than filed under "exhaust".
 
 Two safety properties are asserted by tests rather than promised: the set of paths a dry run
 PRINTS equals the set a real run DELETES, and a linked git worktree is never touched (this

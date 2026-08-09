@@ -336,6 +336,18 @@ def _merge_claude_gitignore(claude_dir: str) -> None:
                 fh.write(ln + "\n")
 
 
+def _write_install_manifest(target, host):
+    """Record what we wrote, IN the target, so uninstall does not need the source clone."""
+    try:
+        sys.path.insert(0, os.path.join(PLUGIN, "bin"))
+        import vendoring
+        vendoring.write_manifest(REPO if "REPO" in globals() else
+                                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 target, host)
+    except Exception as exc:
+        print("manifest: could not record the install roster: {}".format(exc))
+
+
 def _install_claude(target: str) -> None:
     claude_dir = os.path.join(target, ".claude")
     os.makedirs(claude_dir, exist_ok=True)
@@ -346,6 +358,7 @@ def _install_claude(target: str) -> None:
             total += _copy_tree(src, os.path.join(claude_dir, dest_rel))
     hooks_added = _merge_hooks(claude_dir)
     _merge_claude_gitignore(claude_dir)
+    _write_install_manifest(target, "claude")
     with open(os.path.join(target, _STAMP_REL), "w") as fh:
         fh.write(_canonical_version() + "\n")
     print(f"Vendored {total} file(s) into {claude_dir}")

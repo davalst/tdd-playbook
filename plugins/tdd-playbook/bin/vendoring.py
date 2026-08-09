@@ -58,10 +58,29 @@ def _walk_rel(src_root, dest_root_rel):
     return out
 
 
-def installed_paths(repo, target, host="claude"):
-    """Repo-relative paths this installer would have written into `target`.
+MANIFEST_REL = os.path.join(".claude", ".tdd-playbook-manifest.json")
 
-    Derived by walking the SOURCE trees, so it cannot drift from what install copies."""
+
+def write_manifest(repo, target, host="claude"):
+    """Record what THIS install wrote, in the target.
+
+    Without it, uninstall has to locate the SOURCE clone to learn the roster — and from a
+    vendored `.claude/bin/` (or the plugin cache) there is no `scripts/` at all, because
+    `scripts/` is not in COPY_TREES. Both verbs were therefore exit-0 no-ops in the only two
+    places they exist to be used. The manifest carries no timestamp on purpose, so the
+    install -> uninstall -> install round trip stays byte-identical."""
+    rels = _paths_from_source(repo, target, host)
+    if not rels:
+        return False
+    path = os.path.join(target, MANIFEST_REL)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        json.dump({"schema_version": 1, "host": host, "files": sorted(rels)}, fh, indent=2)
+        fh.write("\n")
+    return True
+
+
+def _paths_from_source(repo, target, host="claude"):
     mod = _installer(repo)
     if mod is None:
         return []
@@ -83,6 +102,26 @@ def installed_paths(repo, target, host="claude"):
     return sorted(set(out))
 
 
+def installed_paths(repo, target, host="claude"):
+    """Repo-relative paths a Playbook install put into `target`.
+
+    MANIFEST FIRST, source-walk second. The manifest is the only answer that works from a
+    vendored copy, and it is also the only one that can name files this version no longer
+    ships — a source walk cleans the CURRENT roster, so anything removed between the vendored
+    version and HEAD survives uninstall forever."""
+    man = os.path.join(target, MANIFEST_REL)
+    if os.path.isfile(man):
+        try:
+            with open(man) as fh:
+                data = json.load(fh)
+            files = data.get("files")
+            if isinstance(files, list) and files:
+                return sorted(set(files) | {MANIFEST_REL.replace(os.sep, "/")})
+        except (OSError, ValueError):
+            pass
+    return _paths_from_source(repo, target, host)
+
+
 def prune_plugin_groups(existing, is_ours):
     """Drop OUR hook groups from a settings `hooks` mapping, in place. Returns the count.
 
@@ -99,6 +138,25 @@ def prune_plugin_groups(existing, is_ours):
     return removed
 
 
+# The namespace predicates, restated here ONLY as a fallback for the vendored case where the
+# installer module is unreachable. They are byte-identical in intent to
+# install_into_repo._is_plugin_group / _is_codex_plugin_group, and the fallback is used only
+# when that module cannot be loaded — otherwise the installer's own predicate wins, so there
+# is still one authority whenever one exists.
+_PLUGIN_NS = "/.claude/hooks/scripts/"
+_CODEX_NS = ".codex/tdd-playbook/"
+
+
+def _fallback_is_plugin_group(group):
+    hooks = group.get("hooks", [])
+    return bool(hooks) and all(_PLUGIN_NS in (h.get("command") or "") for h in hooks)
+
+
+def _fallback_is_codex_group(group):
+    hooks = group.get("hooks", [])
+    return bool(hooks) and all(_CODEX_NS in (h.get("command") or "") for h in hooks)
+
+
 def _prune_settings(target, mod, apply):
     rel = os.path.join(".claude", "settings.json")
     path = os.path.join(target, rel)
@@ -112,7 +170,8 @@ def _prune_settings(target, mod, apply):
                  "why": "unparseable JSON — left untouched, prune it by hand"}]
     hooks = settings.get("hooks") or {}
     before = sum(len(v) for v in hooks.values())
-    removed = prune_plugin_groups(hooks, mod._is_plugin_group)
+    pred = getattr(mod, "_is_plugin_group", None) or _fallback_is_plugin_group
+    removed = prune_plugin_groups(hooks, pred)
     if not removed:
         return []
     rows = [{"kind": "edit", "path": rel,
@@ -132,20 +191,59 @@ def _prune_settings(target, mod, apply):
     return rows
 
 
+def _prune_codex(target, mod, apply):
+    """.codex/hooks.json is a SECOND hook registry. Uninstall pruned only .claude/settings.json,
+    so after `--host all` Codex still registered two PreToolUse groups pointing at a script
+    uninstall had just deleted — it would attempt a missing file on every Edit/Write and Bash.
+    The installer already owns the predicate; this just calls it."""
+    rel = os.path.join(".codex", "hooks.json")
+    path = os.path.join(target, rel)
+    pred = getattr(mod, "_is_codex_plugin_group", None) or _fallback_is_codex_group
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path) as fh:
+            cfg = json.load(fh)
+    except ValueError:
+        return [{"kind": "note", "path": rel, "why": "unparseable JSON — left untouched"}]
+    hooks = cfg.get("hooks") or {}
+    removed = prune_plugin_groups(hooks, pred)
+    if not removed:
+        return []
+    if apply:
+        if hooks:
+            cfg["hooks"] = hooks
+        else:
+            cfg.pop("hooks", None)
+        with open(path, "w") as fh:
+            json.dump(cfg, fh, indent=2)
+            fh.write("\n")
+    return [{"kind": "edit", "path": rel,
+             "why": "prune {} Codex hook group(s) — otherwise they point at deleted "
+                    "scripts".format(removed)}]
+
+
 def uninstall(target, host="claude", apply=False, repo=None):
     """Plan (and optionally perform) the removal. Returns the list of planned rows."""
     repo = repo or os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
     mod = _installer(repo)
-    if mod is None:
-        return [{"kind": "note", "path": "", "why": "installer not found; nothing to invert"}]
-
-    # Materialise the FULL list before removing anything: this module is itself vendored to
-    # .claude/bin/vendoring.py, so uninstall deletes its own source out from under the
-    # running process. The loaded module object survives; a lazily-walked list would not.
     rels = list(installed_paths(repo, target, host))
+    if mod is None and not rels:
+        # Exit LOUDLY. "nothing to invert" at exit 0 reads as "clean" to an operator whose
+        # repo is still full of vendored files.
+        return [{"kind": "refused", "path": target,
+                 "why": "cannot determine what was installed: no {} and no source checkout "
+                        "at {}. Re-run from a clone of the playbook, or reinstall once to "
+                        "write the manifest.".format(MANIFEST_REL, repo)}]
+
+    # (rels materialised above, before any removal: this module is itself vendored to
+    # .claude/bin/vendoring.py, so uninstall deletes its own source out from under the
+    # running process. The loaded module object survives; a lazily-walked list would not.)
     rows = [{"kind": "file", "path": r, "why": "vendored by install"}
             for r in rels if os.path.exists(os.path.join(target, r))]
     rows += _prune_settings(target, mod, apply)
+    if host in ("codex", "all"):
+        rows += _prune_codex(target, mod, apply)
     rows.append({"kind": "note", "path": os.path.join(".claude", ".gitignore"),
                  "why": "install-added ignore lines are NOT removed — they cannot be told "
                         "apart from lines you already had"})
