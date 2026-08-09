@@ -32,6 +32,10 @@
     {
       "path": "2026-08-09-owner-control-phase5-release.json",
       "sha256": "2322c48835121a967742acaed15a3a01cd42445e0dff5de818e009d33455eea7"
+    },
+    {
+      "path": "2026-08-09-calibration-opt-in.json",
+      "sha256": "cfd934054dbb123172d51731b5bc835aa71515b46ca18658b6f879d487a08661"
     }
   ]
 }

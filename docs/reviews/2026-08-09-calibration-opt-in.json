@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-09-calibration-opt-in-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "110cc5f6664bc6c2eb413711087b822abd13375d",
+    "head": "809ac449c98d7d4b7b9eeeccdfdd95f932bf993c"
+  },
+  "reviewers": [
+    "tripwire-auditor",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "OC6-P1-SCOPE-NARROWED-SILENTLY",
+      "severity": "P1",
+      "summary": "David's source plan decided 'Calibration \u2014 opt-in and reactive. No weekly clock.' The approved implementation plan dropped that item and never surfaced the narrowing, so he approved a plan smaller than the one he wrote and later expected calibration to be gone. The requested scope is the deliverable; quietly narrowing it is the defect, independent of whether the narrower work was done well.",
+      "evidence": [
+        "CLAUDE.md",
+        "calibration/run_calibration.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "809ac449c98d7d4b7b9eeeccdfdd95f932bf993c",
+      "closure_review": "tripwire-auditor",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC6-P1-BATCH-REDATE-DID-NOT-READ-ITS-ENTRIES",
+      "severity": "P1",
+      "summary": "Three of the ten debts re-dated in the Phase 3 sweep were ALREADY PAID: each named its plants explicitly and every one is in calibration/corpus/approved/, with proposed/ holding only a README. They were re-dated six weeks out under a uniform 'needs a live claude binary and budget' blocker that was false twice over \u2014 no budget needed, and the work already done. An adversary flagged the uniform-blocker shape during the Phase 3 review and it was not acted on. This is the 'instrument satisfied rather than used' pattern the ledger warns about, inside the sweep meant to prevent it.",
+      "evidence": [
+        "capabilities.json",
+        "calibration/corpus/approved"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "809ac449c98d7d4b7b9eeeccdfdd95f932bf993c",
+      "closure_review": "tripwire-auditor",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC6-P2-REVERSAL-MUST-BE-STATED",
+      "severity": "P2",
+      "summary": "Removing the calibration clock directly contradicts SKILL.md \u00a713 ('the calibration schedule IS the product', the decay principle). A doctrine reversal that is not written down reads later as drift. CLAUDE.md now states the reversal, the evidence it rests on, and \u2014 the part usually omitted \u2014 what it TRADES AWAY: nothing notices quiet verifier decay, the trigger is a human noticing, and that is the honor-system seam \u00a713 itself calls gameable.",
+      "evidence": [
+        "CLAUDE.md",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "809ac449c98d7d4b7b9eeeccdfdd95f932bf993c",
+      "closure_review": "tripwire-auditor",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_v124_gate_surfaces"
+      ]
+    }
+  ]
+}
