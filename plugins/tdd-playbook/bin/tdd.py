@@ -3,7 +3,8 @@
 
 `doctor` reports what a host adapter declares separately from what a recent local probe
 actually observed.  Its journal is forgeable local evidence: useful for liveness and decay,
-never release-authorizing.  CIVerd's fresh signed exact-SHA verdict remains the authority.
+never release-authorizing.  Since v1.32.0 the release authority is DAVID creating the tag
+on a gate-green commit; no verdict, and no script, can stand in for that.
 """
 import argparse
 import datetime
@@ -145,7 +146,8 @@ def doctor(args):
                 "head": lock["head"], "locked_at": lock["locked_at"],
                 "binding": lock_binding(identity, lock)},
             "hosts": hosts,
-            "release_authority": "CIVerd signed exact-SHA verdict only",
+            "release_authority": "David creating the v* tag on a gate-green commit "
+                                 "(no in-repo script or session may tag)",
         }
     except ContractError as exc:
         sys.stderr.write("tdd doctor: {}\n".format(exc))

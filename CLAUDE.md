@@ -208,20 +208,53 @@ Local-machine plugin installs update separately (no prompt needed):
   `python3 scripts/install_into_repo.py --doctor .` on THIS repo (H8 guards-liveness:
   a commit postdating the last guard heartbeat means the release was built guard-dark —
   the 2026-07-28 incident; also catches standing demotions and version skew).
-- Version bumps update BOTH `plugins/tdd-playbook/.claude-plugin/plugin.json` and
-  `.claude-plugin/marketplace.json`, plus CHANGELOG.md.
-- **CIVerd release gate (audit finding F4).** The release TAG is created ONLY by
-  `scripts/release_verify.py`, and only after the shipped `verify_verdict.py` returns 0 for the
-  release SHA — a fresh, signed, GREEN CIVerd run verdict from a live engine, verified against the
-  vendored issuer key with a stdlib-only Ed25519 verifier (no third-party deps — the plugin is
-  stdlib-only by invariant, and CIVerd's runner installs only pytest). CIVerd signs a verdict
-  AFTER a commit lands, so this gates the release SHA you actually ship (not its parent — the
-  parent skips the agent-written bump commit). There is NO bypass flag: `push → CIVerd signs →
-  scripts/release_verify.py --wait-s … → tag only on exit 0`. A checklist line is a wish; this
-  script is the control. Cross-validated against memrebel's golden corpus
-  (`tests/fixtures/civerd_crossvalidation_corpus.json`) — canonicalization + all reason strings
-  must match the reference implementation exactly. NOTE: `verify_verdict.py` shipped IN v1.12.0, so
-  v1.12.0 itself can't be tag-gated by it; the tag-gate is the standing control from v1.13.0 on.
+- Version bumps update ALL FOUR identity files —
+  `plugins/tdd-playbook/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
+  `plugins/tdd-playbook/adapters/claude/adapter.json` and `…/adapters/codex/adapter.json` —
+  plus CHANGELOG.md. (`test_installer.py::test_release_version_identity` pins all four EQUAL;
+  this line said "BOTH … and …" until v1.32.0, naming two of the four. The mechanism was
+  right and the doctrine was stale — which is the direction to expect, and why the pin, not
+  this sentence, is the control.)
+- **Releasing (v1.32.0 onward — the CIVerd wall is retired).** A release is: the blessed gate
+  green on the commit you are shipping → version bumped in all four identity files → **David**
+  creates the tag → push. There is no verdict, no engine, no polling, and no script that
+  creates a tag.
+  1. `sh scripts/civerd_gate.sh > /tmp/gate.out 2>&1; rc=$?` — **never pipe it**; a piped `$?`
+     is `tail`'s, and `exitcode_guard` will say so (§4a: a discarded exit code is a discarded
+     truth). `rc` must be `0`.
+  2. Bump the four identity files + `CHANGELOG.md`; regenerate
+     `docs/reference/current-state.md`; commit.
+  3. **David** runs `git tag -a vX.Y.Z -m "…"` (use `-s` once a signing key is configured —
+     `git config user.signingkey` is currently unset, so `-s` fails today; tracked as dated
+     debt on `release-tag-authority`), then
+     `git push origin main && git push origin vX.Y.Z`.
+
+  **What authorizes a release is David tagging it.** The model can propose, gate, and bump; it
+  cannot tag. This is DELETION, not a smaller wall — with no verdict anywhere in the release
+  path there is nothing to forge, argue past, or `--force`. Two mechanical halves, each
+  stating its own scope (§12 — a control carries its denominator):
+  - `test_installer.py::test_no_script_creates_a_release_tag` parses every TRACKED
+    `.py`/`.sh`/`.yml` (roster derived from `git ls-files`, so a new tool directory or a
+    `.github/workflows/*.yml` cannot fall outside it) and REDs the gate if any creates or
+    pushes a tag. Covers committed automation; blind to untracked trees such as
+    `.claude/worktrees/*`.
+  - `hooks/scripts/tag_guard.py` (PreToolUse/Bash, **BLOCKING**) stops a SESSION typing
+    `git tag`, `git push --tags`, `git update-ref refs/tags/…` or `gh release create` —
+    including in untracked trees, which is the half the scanner cannot see. It ships
+    downstream with `hooks/scripts/`; `tests/` does not.
+
+  **What neither half can do:** bind a human at a terminal, or bind an actor who edits the
+  hook. A repo-side check never can. The binding control there is a GitHub `v*` ruleset
+  restricting tag creation to `davalst` — dated debt on `release-tag-authority` until armed,
+  stated rather than assumed.
+- **Historical verdicts stay readable.** `plugins/tdd-playbook/bin/verify_verdict.py` (+
+  `_ed25519_verify.py`) is KEPT and DELIBERATELY UNWIRED: stdlib-only, no caller, the sole way
+  to check a pre-v1.32 signed CIVerd bundle —
+  `python3 plugins/tdd-playbook/bin/verify_verdict.py --sha <sha> --ledger <verdicts.jsonl>`.
+  It still has no `--force` and still fails closed, and it is still cross-validated against
+  memrebel's golden corpus (`tests/fixtures/civerd_crossvalidation_corpus.json`). It is an
+  archive reader, not a gate; **do not re-wire it into the release path** — a consumer gives
+  back the exact property the retirement bought.
 - Roadmap context: `docs/plans/implementation-plan-2026-07.md` (WS5 — Stagehand-Python
   spike, §5b agent evals, positioning, public scoreboard — is built but NOT started;
   v2.0 is gated on ≥1 month of live calibration history).

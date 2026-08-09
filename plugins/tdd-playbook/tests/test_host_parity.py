@@ -165,9 +165,14 @@ def test_installed_host_activation():
 def test_compact_parity_output():
     proc = subprocess.run([sys.executable, BIN, "check"], cwd=REPO,
                           capture_output=True, text=True, timeout=30)
+    # 33 assets / 66 dispositions since v1.32.0 — hooks/scripts/tag_guard.py joined the guard
+    # family (BLOCKING on Claude, `unavailable` on Codex under the codex-guard-family-parity
+    # debt). The numbers are hand-pinned ON PURPOSE: a self-derived count would move with the
+    # roster and could never reveal an accidental asset loss (§12 — a self-referential N of N
+    # cannot reveal its own narrowing).
     check("parity output: success is compact and denominator-bearing",
           proc.returncode == 0 and len(proc.stdout.splitlines()) <= 2
-          and "32 assets" in proc.stdout and "64 dispositions" in proc.stdout,
+          and "33 assets" in proc.stdout and "66 dispositions" in proc.stdout,
           (proc.returncode, proc.stdout, proc.stderr))
 
 

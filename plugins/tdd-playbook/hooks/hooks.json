@@ -35,6 +35,12 @@
           },
           {
             "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tag_guard.py\"",
+            "timeout": 15,
+            "statusMessage": "TDD: release-tag guard"
+          },
+          {
+            "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/exitcode_guard.py\""
           }
         ]

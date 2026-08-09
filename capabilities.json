@@ -895,23 +895,37 @@
     },
     {
       "id": "release-tag-authority",
-      "summary": "A release is authorized by David creating a signed v* tag on a gate-green commit. No in-repo script creates or pushes a tag, and none may be added. This REPLACED the CIVerd signed-verdict wall in v1.32.0: the wall is not made smaller, it is deleted, so there is no verdict for a session to forge, argue past or --force.",
+      "summary": "A release is authorized by David creating a v* tag on a gate-green commit. TWO mechanical halves, both scoped: no TRACKED script or workflow may create/push a tag (test_no_script_creates_a_release_tag, roster derived from git ls-files), and no SESSION may create/push one at the Bash seam (hooks/scripts/tag_guard.py, BLOCKING). Untracked trees (e.g. .claude/worktrees/*) are out of the scanner's scope by construction; the session guard covers the action there. This REPLACED the CIVerd verdict wall in v1.32.0: the wall is deleted, not shrunk, so there is no verdict to forge.",
       "user_facing": false,
       "surfaces": [
-        "local"
+        "local",
+        "codex"
       ],
       "activation": {
-        "default": "off",
-        "switch": "arm the GitHub `v*` tag ruleset (restrict tag creation to davalst; require signed tags) at github.com/davalst/tdd-playbook/settings/rules"
+        "default": "on",
+        "switch": "the release procedure in CLAUDE.md::Releasing; the scanner runs in every gate and tag_guard.py on every Bash call. The SERVER-side half (a GitHub v* ruleset) is unarmed - see integration_debt, not this flag."
       },
       "wired_by": [
         "CLAUDE.md::Releasing",
+        "plugins/tdd-playbook/hooks/hooks.json::PreToolUse/Bash -> tag_guard.py",
         "scripts/civerd_gate.sh (the green precondition a release is cut on)"
       ],
       "exercised_by": [
-        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tag_guard",
+        "plugins/tdd-playbook/tests/test_host_doctor.py::test_doctor_reports_the_live_release_authority"
       ],
-      "emits": [],
+      "emits": [
+        {
+          "topic": "git tag v*",
+          "consumers": [
+            "plugins/tdd-playbook/bin/gate_runner.py:133 _ledger_base() - `git describe --tags --abbrev=0` supplies {ledger_base} to the gate's own ledger stage",
+            "plugins/tdd-playbook/bin/review_ledger.py:269 - reads docs/reviews/index at the newest tag",
+            "calibration/test_harness.py:562 - check_scoreboard_integrity --baseline-rev <newest tag>",
+            "calibration/test_harness.py:2009 - the planted moving-baseline test"
+          ]
+        }
+      ],
       "liveness": {
         "max_quiet_days": 120
       },
@@ -923,6 +937,16 @@
         },
         {
           "what": "NO SIGNING KEY CONFIGURED. `git config user.signingkey` is unset on David's machine (verified 2026-08-09), so `git tag -s` fails today and the backfilled v1.29.0/v1.30.0/v1.31.0 tags are annotated, not signed. The ruleset debt above cannot require signed tags until this is done. By expiry: a key configured and one signed tag cut, or the 'require signed tags' clause dropped from the ruleset debt with a reason.",
+          "owner": "david",
+          "expires": "2026-09-30"
+        },
+        {
+          "what": "TAG-CADENCE COUPLING IS NOW MANUAL (v1.32.0). release_verify.py derived the tag name from plugin.json and cut it immediately after a green verify, so version<->tag<->gate-baseline moved together. Tagging is now a hand step, and the four consumers above read `git describe --tags --abbrev=0`. Failure mode is SILENT and green: skip a tag and gate_runner._ledger_base + check_scoreboard_integrity keep measuring against the PREVIOUS release forever. Nothing compares the tag to the four identity files. By expiry: a stuck-baseline detector (tag vs plugin.json, or tag age), or a conscious re-date saying the manual step is trusted.",
+          "owner": "david",
+          "expires": "2026-10-15"
+        },
+        {
+          "what": "CODEX SURFACE DIVERGENCE (stated, not discovered): tag_guard.py is BLOCKING on the Claude host but `unavailable` on Codex - host-parity-policy.json's codex guards default, debt_ref test-lock/codex-guard-family-parity. Only test_lock_guard has a Codex adapter today. So on Codex the SESSION half of release-tag authority is absent and only the tracked-script scanner applies. By expiry: a Codex adapter for tag_guard, or an explicit decision that Codex sessions do not cut releases in this repo.",
           "owner": "david",
           "expires": "2026-09-30"
         }

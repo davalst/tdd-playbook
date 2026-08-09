@@ -113,7 +113,9 @@ the target repo's session; it is the authoritative revendoring checklist.
 ## Hook controls
 Two tiers. **Integrity hooks default to `block`** — they defend the documented agent attack
 vectors (see `docs/HACK_CATALOG.md`; the research is unambiguous that warnings don't stop
-test-gaming): `TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_TESTLOCK`, and `_SNAPSHOTGUARD`. **Advisory hooks
+test-gaming): `TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_TESTLOCK`, `_SNAPSHOTGUARD`, and `_TAGGUARD`
+(v1.32.0 — creating or pushing a release tag is the owner's action; a warning would reserve
+nothing). **Advisory hooks
 default to `warn`**: `_OVERMOCK`, `_FLAKY`, `_REDLOCK`. Override per hook with `warn` | `block` |
 `off`; `TDD_PLAYBOOK_HOOK_MODE` sets the global default (an explicit per-hook env wins over the
 global, which wins over the per-hook default); `TDD_PLAYBOOK_NUDGE=off` disables the build-intent
@@ -131,10 +133,12 @@ unknown or assurance-bearing paths. Focused suite runs are diagnostics, never ch
 evidence. Machine-owned gate, parity, and capability facts are rendered with provenance in
 [`docs/reference/current-state.md`](docs/reference/current-state.md).
 
-**Release verification (CIVerd, audit finding F4).** An independent CI engine on a VPS signs a
-verdict for each pushed commit; `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) checks
-it, and `scripts/release_verify.py` creates the release tag only for a fresh signed GREEN verdict
-of the release SHA — no bypass flag. See CLAUDE.md for the gate wiring.
+**Releasing.** Blessed gate green → version bump → the maintainer runs `git tag -s` → push.
+No release script exists, by design: `test_installer.py::test_no_script_creates_a_release_tag`
+parses every tracked script under `scripts/`, `plugins/tdd-playbook/` and `calibration/` and fails
+the gate if one appears. `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) is retained
+**unwired** to read historical signed verdicts from the retired CIVerd engine; nothing in the
+release path consults it. See CLAUDE.md for the full procedure.
 The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must
 catch (`calibration/`, results in `docs/calibration/`):
 ```bash

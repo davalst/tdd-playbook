@@ -27,6 +27,9 @@ _DEFAULT_MODES = {
     "testweaken": "block",
     "testlock": "block",
     "snapshotguard": "block",
+    # v1.32.0: reserving the release tag for the owner is the whole compensating control
+    # for deleting the CIVerd wall. A warning reserves nothing.
+    "tagguard": "block",
 }
 
 

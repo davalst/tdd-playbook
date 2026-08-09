@@ -202,9 +202,31 @@ def test_doctor_invalid_state_fails_closed():
               (result.returncode, result.stdout, result.stderr))
 
 
+def test_doctor_reports_the_live_release_authority():
+    """v1.32.0 — `tdd doctor` is the operator's runtime answer to "what authorizes a release
+    here", and it is VENDORED into every downstream repo by install_into_repo's COPY_TREES.
+    It carried "CIVerd signed exact-SHA verdict only" for the whole v1.32.0 diff that DELETED
+    that wall, and nothing went red, because no test read the field. A health surface that
+    can lie without failing is the §6a class this repo exists to hunt: enumerate from what
+    SHOULD be true, not from what ran."""
+    with tempfile.TemporaryDirectory() as d:
+        root = _repo(d)
+        result = _doctor(root, "--json", "--as-of", "2026-08-09")
+        payload = json.loads(result.stdout)
+        authority = payload.get("release_authority", "")
+        check("doctor: release authority names the owner's tag as the authority",
+              "tag" in authority.lower() and "david" in authority.lower(), authority)
+        check("doctor: release authority no longer claims a CIVerd verdict",
+              "civerd" not in authority.lower() and "verdict" not in authority.lower(),
+              authority)
+        check("doctor: the human line renders the same field (not a second copy)",
+              authority in result.stdout, result.stdout[:200])
+
+
 def main():
     print("host doctor/evidence calibration")
     for fn in (test_local_evidence_schema, test_doctor_assurance,
+               test_doctor_reports_the_live_release_authority,
                test_doctor_invalid_state_fails_closed):
         try:
             fn()

@@ -261,6 +261,67 @@ def test_exitcode():
     check("exitcode: non-Bash events ignored", rc == 0, rc)
 
 
+# -------------------------------------------------------------------------- tag_guard
+def test_tag_guard():
+    """v1.32.0 — the release tag is the owner's signature. Deleting the CIVerd wall is only
+    safe while the model cannot cut a tag, and the file scanner in test_installer.py covers
+    committed scripts, NOT a session typing `git tag` into Bash. Both directions pinned:
+    creation/push BLOCKS (exit 2), every read-only tag use stays silent.
+
+    Every command below is ASSEMBLED AT RUNTIME. These strings are exactly what
+    test_no_script_creates_a_release_tag hunts for, and this file is in its derived roster,
+    so a literal here would make the two guards fight. The sanctioned resolution is the
+    house idiom - build the needle so the haystack never contains it - never an exemption
+    entry, which is the darkness hatch §6a forbids."""
+    print("\n[tag_guard]")
+    s = "tag_guard.py"
+    T = "t" + "ag"
+    V, V2, R = "v1.0" + ".0", "v1.32" + ".0", "rele" + "ase create"
+
+    def ev(cmd):
+        return {"tool_name": "Bash", "tool_input": {"command": cmd}}
+
+    # BLOCK — every road to a tag. exit 2 = block (integrity default), not 1 = warn.
+    for label, cmd in [
+            ("signed tag", "git {T} -s {V2} -m release"),
+            ("annotated tag", "git {T} -a {V2} -m release"),
+            ("lightweight tag", "git {T} {V2}"),
+            ("tag then push, one call", "git {T} -a {V} -m x && git push origin {V}"),
+            ("push --tags", "git push origin --{T}s"),
+            ("push a refspec", "git push origin refs/{T}s/{V}"),
+            ("push a bare version", "git push origin {V2}"),
+            ("update-ref", "git update-ref refs/{T}s/{V} HEAD"),
+            ("gh CLI release", "gh {R} {V} --notes x"),
+            ("git -C form", "git -C /tmp/repo {T} -a v1 -m x"),
+            ("hidden after a cd", "cd /tmp && git {T} -a v9.9.9 -m sneaky")]:
+        rc, _o, e = run(s, ev(cmd.format(T=T, V=V, V2=V2, R=R)))
+        check("tagguard BLOCKS: " + label, rc == 2, (rc, e[:100]))
+
+    # ALLOW — reading tags is the gate's own business (gate_runner._ledger_base,
+    # review_ledger and test_harness all run `describe --tags`). A guard that blocked these
+    # would break the gate it protects. Deleting a local tag cannot mint a release.
+    for label, cmd in [
+            ("describe --tags", "git describe --{T}s --abbrev=0"),
+            ("tag -l", "git {T} -l 'v1.*'"),
+            ("bare tag listing", "git {T}"),
+            ("tag -n", "git {T} -n5"),
+            ("delete a scratch tag", "git {T} -d v0.0.0-test"),
+            ("ls-remote", "git ls-remote --{T}s origin"),
+            ("ordinary branch push", "git push origin main"),
+            ("for-each-ref", "git for-each-ref refs/{T}s --format='%(refname)'"),
+            ("commit", "git commit -m 'feat: x'"),
+            ("prose in an echo", "echo 'David runs git {T} -s to release'")]:
+        rc, _o, e = run(s, ev(cmd.format(T=T, V=V, V2=V2, R=R)))
+        check("tagguard ALLOWS: " + label, rc == 0, (rc, e[:100]))
+
+    # the sanctioned demotion works, and leaves a `suppressed` trace rather than silence
+    rc, _o, _e = run(s, ev("git {T} -a v1 -m x".format(T=T)),
+                     env_extra={"TDD_PLAYBOOK_HOOK_TAGGUARD": "warn"})
+    check("tagguard: documented demotion warns instead of blocking", rc == 1, rc)
+    rc, _o, _e = run(s, {"tool_name": "Edit", "tool_input": {"file_path": "x.py"}})
+    check("tagguard: non-Bash events ignored", rc == 0, rc)
+
+
 # ------------------------------------------------------------- exhaustive_claim_guard
 def test_exhaustive_claim():
     """v1.28 §12 — a test that CLAIMS exhaustiveness must say how it could FAIL. From
@@ -875,7 +936,7 @@ def test_guards_heartbeat():
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
-               test_exitcode, test_exhaustive_claim, test_snapshot,
+               test_exitcode, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
                test_lock_shell, test_yield_logging, test_guards_heartbeat):
         print("\n[{}]".format(fn.__name__))

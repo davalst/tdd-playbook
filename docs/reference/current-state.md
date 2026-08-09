@@ -6,10 +6,10 @@
 
 - `gate-manifest.json` — `c4d53255f5f50bcce4dadc196d266593fe6548600a01fe2fe8c87c0d6da7b757`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
-- `docs/architecture/host-parity-policy.json` — `93de437fe4a5c9caadf5350d0bc0a600b4bd6548b6c809c63a89eceedffdc868`
-- `docs/architecture/host-parity.json` — `677f89b9f93c8316387b4fb9cf75a00e136b58594db7dbd6659ff452643641cf`
+- `docs/architecture/host-parity-policy.json` — `9b97797bcdbd9885f645e2d4791c28711f05ba1439d0060139fd771980fda755`
+- `docs/architecture/host-parity.json` — `986d406d24b8529c7426be2f10c54f7f3da5817f36033a7791a6cfbd069303d8`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `fbd113bddea9e191a127d3de4dd99563d1cda1f36c14bc9484c6e2cca5ce1c31`
+- `capabilities.json` — `1230bf929d694edf8a4fd21b3bed1564309ee2c4dd5040810f92e21339ba7f35`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -27,14 +27,14 @@
 
 ## Host parity
 
-- Canonical assets: 32. Exact host dispositions: 64.
-- Claude: 32 supported, 0 unavailable, 0 debt.
-- Codex: 1 supported, 31 unavailable, 0 debt.
-- Acknowledged inventory digest: `20556de9925685d7d9061158d3d9f4b722116a7d5e438ba3fc53ebc657a96861`
+- Canonical assets: 33. Exact host dispositions: 66.
+- Claude: 33 supported, 0 unavailable, 0 debt.
+- Codex: 1 supported, 32 unavailable, 0 debt.
+- Acknowledged inventory digest: `5a878b2b7b6b5918259731d831095161d65677fd5261653668afaa8c55a2a040`
 
 ## Capability registry
 
-- Registered capabilities: 22. Owned dated integration-debt entries: 48.
+- Registered capabilities: 22. Owned dated integration-debt entries: 50.
 - `integrity-guards/unnamed` — owner `david`, expires `2026-09-15`
 - `test-lock/claude-test-lock-refresh` — owner `david`, expires `2026-08-17`
 - `test-lock/codex-guard-family-parity` — owner `david`, expires `2026-09-30`
@@ -82,6 +82,8 @@
 - `plant-forms/unnamed` — owner `david`, expires `2026-10-15`
 - `plant-vitality/unnamed` — owner `david`, expires `2026-11-01`
 - `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
+- `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
+- `release-tag-authority/unnamed` — owner `david`, expires `2026-10-15`
 - `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
 
 ## Adversarial review records
