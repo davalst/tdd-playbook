@@ -6,9 +6,11 @@ settings.json forever (drift). Planted here: a STALE plugin-namespace group must
 a CUSTOM user group must survive, current groups land exactly once, and re-runs are
 idempotent. Self-contained, no pytest. Run: python3 tests/test_installer.py
 """
+import ast
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -101,6 +103,7 @@ def main():
     test_vendoring_containment()
     test_vendored_skill_equality()
     test_release_version_identity()
+    test_no_script_creates_a_release_tag()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
@@ -368,6 +371,166 @@ def test_vendoring_containment():
                     offenders.append(p)
         check("scratch install: no calibration-shaped path vendored", offenders == [],
               offenders)
+
+
+# --------------------------------------------------------- release authority (v1.32.0)
+# Roots scanned for tag-creation. tests/ is INCLUDED on purpose: a tagging path hidden in
+# a test helper is the same hole. No exemption hatch exists (§6a: exemptions are for
+# internals, never a darkness hatch) — the plants below are assembled at RUNTIME so this
+# file never contains a literal the scanner would have to be told to ignore.
+_SCAN_ROOTS = ("scripts", "plugins/tdd-playbook", "calibration")
+_SCAN_EXT = (".py", ".sh")
+
+# Tag INSPECTION is legitimate and common here (`git describe --tags --abbrev=0` picks the
+# gate's baseline-rev in gate_runner, review_ledger and test_harness). Only tag CREATION
+# and tag PUSH are forbidden.
+#
+# This scans the AST, not the text, and the difference is load-bearing rather than
+# stylistic. The first draft of this check was a line regex; it correctly found
+# release_verify.py's two sites AND flagged four lines of THIS file's own prose — a
+# docstring describing the rule, and a check() message naming it. That is §1's documented
+# proxy failure verbatim ("a grep matches your own docstring — parse it"), and the tempting
+# repair (exempt this file) is the darkness hatch §6a forbids. So: only a CALL creates a
+# tag. Prose that mentions one is prose.
+_READ_ONLY_TAG_FLAGS = ("-l", "--list", "-d", "--delete", "-n", "-v", "--verify", "--contains")
+# a shell string handed to a call — `subprocess.run("git tag -a v1", shell=True)`. Docstrings
+# are ast.Expr statements, never call arguments, so they cannot reach this.
+_SHELL_TAG = re.compile(r"\bgit\s+tag\b(?!\s*(?:-l\b|--list\b|-d\b|--delete\b|-n|-v\b))")
+_SHELL_PUSH_TAG = re.compile(r"\bgit\s+push\b[^\n]*(?:--tags\b|refs/tags)")
+_TAG_NAMES = ("tag", "tagname", "tag_name", "tagref")
+
+
+def _tag_creation_hits(source):
+    """(lineno, why) for every CALL in `source` that creates or pushes a git tag.
+
+    Pure function on text so the planted twins below need no file on disk. Non-Python
+    (.sh) callers pass through _tag_creation_hits_text instead."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return _tag_creation_hits_text(source)
+    hits = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        words, has_tag_var = [], False
+        for arg in node.args:
+            items = arg.elts if isinstance(arg, (ast.List, ast.Tuple)) else [arg]
+            for el in items:
+                if isinstance(el, ast.Constant) and isinstance(el.value, str):
+                    words.append(el.value.strip())
+                elif isinstance(el, ast.Name) and el.id in _TAG_NAMES:
+                    has_tag_var = True
+        # The call must actually be a git invocation. Without this, `words.index("tag")`
+        # — a line of THIS scanner — reads as a tag creation. Second false positive of the
+        # same family as the docstring one, and the same lesson: the check must ALLOW what
+        # it claims to allow (§13, two-directional calibration).
+        callee = node.func.id if isinstance(node.func, ast.Name) else (
+            node.func.attr if isinstance(node.func, ast.Attribute) else "")
+        if "git" not in callee.lower() and "git" not in words:
+            continue
+        # a shell command line passed as a literal argument
+        for w in words:
+            if _SHELL_TAG.search(w) or _SHELL_PUSH_TAG.search(w):
+                hits.append((node.lineno, "shell tag command: " + w[:60]))
+                break
+        else:
+            if "tag" in words:
+                rest = words[words.index("tag") + 1:]
+                if not rest or not rest[0].startswith(_READ_ONLY_TAG_FLAGS):
+                    hits.append((node.lineno, "creates a tag: " + " ".join(words[:6])))
+                    continue
+            if "push" in words and (
+                    has_tag_var or any(w.startswith("--tags") or "refs/tags" in w
+                                       for w in words)):
+                hits.append((node.lineno, "pushes a tag: " + " ".join(words[:6])))
+    return hits
+
+
+def _tag_creation_hits_text(source):
+    """Line scan for shell scripts, which have no AST and no docstrings."""
+    hits = []
+    for n, raw in enumerate(source.splitlines(), 1):
+        if raw.strip().startswith("#"):
+            continue
+        if _SHELL_TAG.search(raw) or _SHELL_PUSH_TAG.search(raw):
+            hits.append((n, raw.strip()))
+    return hits
+
+
+def test_no_script_creates_a_release_tag():
+    """v1.32.0 owner-control: the CIVerd verdict is GONE from the release path, so what
+    authorizes a release is David creating the tag. That is only true while NO in-repo
+    script can create one — otherwise 'the owner tags it' is a convention a future commit
+    can quietly delete. This is the mechanical half; the server-side half (a GitHub `v*`
+    ruleset restricting tag creation to davalst) is registered as dated debt on the
+    `release-tag-authority` capability, because a repo-side check can never bind an actor
+    who can edit the repo.
+
+    Red-first fact, not ritual: before scripts/release_verify.py was deleted this scan
+    returned that file's `_git("tag", "-a", ...)` at :100 and `_git("push", "origin", tag)`
+    at :104 — the only two tag-creation sites in the tree."""
+    print("\n[release authority: no script creates a tag]")
+
+    # (1) calibrate-the-checker FIRST — a scanner that cannot fire proves nothing (§13).
+    #     Assembled at runtime so these literals never appear in this file's own source.
+    _t = "t" + "ag"
+    plants = {
+        "shell create": "git " + _t + " -a v9.9.9 -m 'release'",
+        "argv create": '_git("' + _t + '", "-a", name, sha)',
+        "push --tags": 'subprocess.run(["git", "push", "origin", "--' + _t + 's"])',
+        "argv push": '_git("push", "origin", ' + _t + ')',
+    }
+    for label, text in plants.items():
+        check("PLANTED {} is detected".format(label), bool(_tag_creation_hits(text)), text)
+
+    # (2) and it must ALLOW what it claims to allow — the other direction of the
+    #     two-directional calibration table (§13). Both halves have bitten: the first
+    #     draft of this scanner blocked correctly AND flagged this file's own prose.
+    allowed = {
+        "describe --tags": 'tag = _git_text("describe", "--' + _t + 's", "--abbrev=0")',
+        "tag -l": '_git("' + _t + '", "-l", "v1.*")',
+        "branch push": '_git(root, "push", "origin", "main")',
+        "arg parsing": 'ap.add_argument("--no-' + _t + '", help="verify only")',
+        # the regression that produced the AST rewrite: prose is not an action
+        "docstring mentioning the rule":
+            'def f():\n    """we never run git ' + _t + ' -a here."""\n    return 1',
+        "comment mentioning the rule": "# never call git " + _t + " -a from a script",
+        # the second false positive: a non-git call whose argument happens to be "tag"
+        "non-git call with a tag argument": 'i = words.index("' + _t + '")',
+        "dict lookup": 'v = row.get("' + _t + '", None)',
+    }
+    for label, text in allowed.items():
+        check("ALLOWED {} is not flagged".format(label),
+              not _tag_creation_hits(text), text)
+
+    # (3) the live scan — the assertion that actually guards the release path
+    offenders, scanned = [], 0
+    for root_rel in _SCAN_ROOTS:
+        for root, dirs, files in os.walk(os.path.join(REPO, root_rel)):
+            dirs[:] = [d for d in dirs if d not in ("__pycache__", ".git")]
+            for fname in files:
+                if not fname.endswith(_SCAN_EXT):
+                    continue
+                path = os.path.join(root, fname)
+                try:
+                    with open(path, encoding="utf-8") as fh:
+                        src = fh.read()
+                except (OSError, UnicodeDecodeError):
+                    continue
+                scanned += 1
+                finder = _tag_creation_hits if fname.endswith(".py") \
+                    else _tag_creation_hits_text
+                for lineno, why in finder(src):
+                    offenders.append("{}:{}: {}".format(
+                        os.path.relpath(path, REPO), lineno, why[:90]))
+
+    # denominator, never a bare green (§12): a result states what it covered
+    check("no in-repo script creates or pushes a release tag "
+          "(scanned {} file(s) under {})".format(scanned, ", ".join(_SCAN_ROOTS)),
+          offenders == [], "; ".join(offenders))
+    check("the scan was not vacuous (§4a): it read a non-trivial roster", scanned > 50,
+          scanned)
 
 
 if __name__ == "__main__":

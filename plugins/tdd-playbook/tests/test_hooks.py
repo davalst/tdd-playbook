@@ -235,6 +235,16 @@ def test_exitcode():
           (rc, e[:120]))
     rc, _o, e = run(s, ev("pytest -q | tail -1"))
     check("exitcode: piped pytest is flagged", rc == 1, (rc, e[:120]))
+    # v1.32.0: release_verify.py left _VERIFIER with the release wall. verify_verdict.py
+    # STAYS (archival reader, still a verdict-bearing exit code) — and until now it was
+    # named in the pattern but never exercised, so nothing would have noticed if the
+    # deletion had taken it too. A roster entry with no test is a comment (§4a).
+    rc, _o, e = run(s, ev(
+        "python3 plugins/tdd-playbook/bin/verify_verdict.py --sha abc123 | tail -1"))
+    check("exitcode: piped archival verdict read is flagged", rc == 1, (rc, e[:120]))
+    rc, _o, e = run(s, ev("python3 scripts/release_verify.py --wait-s 60 | tail -1"))
+    check("exitcode: the retired release_verify.py is no longer a verifier", rc == 0,
+          (rc, e[:120]))
 
     # ALLOW — every honest handling must stay silent (the half that decides adoption)
     rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh > /tmp/g.out 2>&1; rc=$?"))

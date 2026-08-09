@@ -34,7 +34,7 @@ NAME = "exitcode"
 # Commands whose exit code is a VERDICT — the ones where masking changes a decision.
 _VERIFIER = re.compile(
     r"(?:civerd_gate\.sh|run_calibration\.py|check_scoreboard_integrity\.py|ledger\.py"
-    r"|capability_registry\.py|dataflow_sweeps\.py|verify_verdict\.py|release_verify\.py"
+    r"|capability_registry\.py|dataflow_sweeps\.py|verify_verdict\.py"
     r"|verify_citations\.py|install_into_repo\.py|test_harness\.py"
     r"|\bpytest\b|\bunittest\b|tests/test_[A-Za-z0-9_]+\.py"
     r"|\bnpm\s+(?:run\s+)?test\b|\bgo\s+test\b|\bcargo\s+test\b|\bvitest\b|\bjest\b)")

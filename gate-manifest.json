@@ -1,13 +1,44 @@
 {
   "schema_version": 1,
   "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
-  "acknowledged_roster_sha256": "aa77e0a6e7beaafe6b96daf23ae9d7029681c15745223cbd77b4a2b2a6e70062",
+  "acknowledged_roster_sha256": "d32c6c9b64a0e3cf8b8d6f92e1ae8f0893376be23a4008b6f36bda9e9e3c6004",
   "acknowledged_plan_sha256": "e44abf2e54655f461df615f79d8fd1baed615db1cdf2be5416f0a7b8b333f3e4",
   "fixed_stages": [
-    {"id": "calibration", "argv": ["python3", "calibration/test_harness.py"]},
-    {"id": "dataflow", "argv": ["python3", "plugins/tdd-playbook/bin/dataflow_sweeps.py", "all", "--config", "dataflow-sweeps.json"]},
-    {"id": "ledger", "argv": ["python3", "calibration/ledger.py", "check", "--baseline-rev", "{ledger_base}"]},
-    {"id": "plant-forms", "argv": ["python3", "calibration/plant_forms.py", "check"]}
+    {
+      "id": "calibration",
+      "argv": [
+        "python3",
+        "calibration/test_harness.py"
+      ]
+    },
+    {
+      "id": "dataflow",
+      "argv": [
+        "python3",
+        "plugins/tdd-playbook/bin/dataflow_sweeps.py",
+        "all",
+        "--config",
+        "dataflow-sweeps.json"
+      ]
+    },
+    {
+      "id": "ledger",
+      "argv": [
+        "python3",
+        "calibration/ledger.py",
+        "check",
+        "--baseline-rev",
+        "{ledger_base}"
+      ]
+    },
+    {
+      "id": "plant-forms",
+      "argv": [
+        "python3",
+        "calibration/plant_forms.py",
+        "check"
+      ]
+    }
   ],
   "force_full": [
     "gate-manifest.json",
@@ -32,14 +63,99 @@
     "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py"
   ],
   "safe_rules": [
-    {"patterns": ["AGENTS.md", "CLAUDE.md"], "suites": ["test_agents"]},
-    {"patterns": ["plugins/tdd-playbook/bin/host_contract.py"], "suites": ["test_portable_core", "test_host_adapters", "test_host_doctor", "test_codex_adapter", "test_red_lock_portable", "test_tdd_lock", "test_installer"]},
-    {"patterns": ["plugins/tdd-playbook/bin/tdd.py"], "suites": ["test_host_doctor", "test_codex_adapter"]},
-    {"patterns": ["plugins/tdd-playbook/bin/tdd_lock.py"], "suites": ["test_tdd_lock", "test_host_adapters", "test_portable_core"]},
-    {"patterns": ["plugins/tdd-playbook/adapters/**"], "suites": ["test_codex_adapter", "test_host_adapters", "test_installer", "test_host_parity"]},
-    {"patterns": ["plugins/tdd-playbook/hooks/**"], "suites": ["test_hooks", "test_host_adapters", "test_tdd_lock", "test_red_lock_portable", "test_installer", "test_host_parity"]},
-    {"patterns": ["scripts/install_into_repo.py"], "suites": ["test_installer", "test_host_parity"]},
-    {"patterns": ["docs/architecture/host-parity*.json"], "suites": ["test_host_parity", "test_installer"]},
-    {"patterns": ["README.md", "docs/architecture/**", "docs/reference/**"], "suites": ["test_reference_docs"]}
+    {
+      "patterns": [
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "suites": [
+        "test_agents"
+      ]
+    },
+    {
+      "patterns": [
+        "plugins/tdd-playbook/bin/host_contract.py"
+      ],
+      "suites": [
+        "test_portable_core",
+        "test_host_adapters",
+        "test_host_doctor",
+        "test_codex_adapter",
+        "test_red_lock_portable",
+        "test_tdd_lock",
+        "test_installer"
+      ]
+    },
+    {
+      "patterns": [
+        "plugins/tdd-playbook/bin/tdd.py"
+      ],
+      "suites": [
+        "test_host_doctor",
+        "test_codex_adapter"
+      ]
+    },
+    {
+      "patterns": [
+        "plugins/tdd-playbook/bin/tdd_lock.py"
+      ],
+      "suites": [
+        "test_tdd_lock",
+        "test_host_adapters",
+        "test_portable_core"
+      ]
+    },
+    {
+      "patterns": [
+        "plugins/tdd-playbook/adapters/**"
+      ],
+      "suites": [
+        "test_codex_adapter",
+        "test_host_adapters",
+        "test_installer",
+        "test_host_parity"
+      ]
+    },
+    {
+      "patterns": [
+        "plugins/tdd-playbook/hooks/**"
+      ],
+      "suites": [
+        "test_hooks",
+        "test_host_adapters",
+        "test_tdd_lock",
+        "test_red_lock_portable",
+        "test_installer",
+        "test_host_parity"
+      ]
+    },
+    {
+      "patterns": [
+        "scripts/install_into_repo.py"
+      ],
+      "suites": [
+        "test_installer",
+        "test_host_parity"
+      ]
+    },
+    {
+      "patterns": [
+        "docs/architecture/host-parity*.json"
+      ],
+      "suites": [
+        "test_host_parity",
+        "test_installer"
+      ]
+    },
+    {
+      "patterns": [
+        "README.md",
+        "docs/architecture/**",
+        "docs/reference/**"
+      ],
+      "suites": [
+        "test_reference_docs"
+      ]
+    }
   ]
 }

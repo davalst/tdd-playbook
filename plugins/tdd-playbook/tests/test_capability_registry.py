@@ -484,18 +484,33 @@ def test_own_registry():
           and any("PAID 2026-08-05 (forwarding leg)" in (c.get("notes") or "")
                   for c in reg.get("capabilities", [])
                   if c.get("id") == "civerd-release-gate"))
-    check("seam-contract report-back debt (2026-09-15) now ALSO carries the moved "
-          "roster-action leg: silent on its expiry day, fires 09-16 naming "
-          "civerd-release-gate — the answers slot must not sit empty forever",
-          any("roster action" in v
-              for v in _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")),
-          _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")[:2])
-    check("seam-contract report-back debt (2026-09-15): silent on its expiry day, fires "
-          "09-16 naming civerd-release-gate — the answers slot must not sit empty forever",
-          not _fires("2026-09-15", "SEAM-CONTRACT REPORT-BACK")
+    # (The SEAM-CONTRACT REPORT-BACK pin lived here 2026-08-05..2026-08-09. It is retired
+    # OBSOLETE, not paid: its subject was an implementation plan the CIVerd engine was
+    # writing, and v1.32.0 retired the engine — the answers slot can never be filled
+    # because there is no longer anyone to report back. Same discipline as the two paid
+    # triggers above: the entry goes, the record survives in notes, and the retirement
+    # itself is pinned so it cannot happen silently.)
+    check("seam-contract report-back: retired OBSOLETE with the engine — trigger GONE, "
+          "record survives in civerd-release-gate notes",
+          not _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")
+          and any("RETIRED 2026-08-09 (v1.32.0" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "civerd-release-gate"))
+    # v1.32.0 owner-control: the archival reader's own expiry is the thing that keeps a
+    # kept-but-unwired tool from becoming folklore. Same boundary discipline as above.
+    check("archival-reader debt (2027-02-01): silent on its expiry day, fires 02-02 naming "
+          "civerd-release-gate — a verifier nobody runs must expire, not accrete",
+          not _fires("2027-02-01", "ARCHIVAL-ONLY, NO CONSUMER")
           and any("civerd-release-gate" in v
-                  for v in _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")),
-          _fires("2026-09-16", "SEAM-CONTRACT REPORT-BACK")[:2])
+                  for v in _fires("2027-02-02", "ARCHIVAL-ONLY, NO CONSUMER")),
+          _fires("2027-02-02", "ARCHIVAL-ONLY, NO CONSUMER")[:2])
+    check("release-tag-authority debt (2026-09-30): silent on its expiry day, fires 10-01 "
+          "— the server-side half is convention until the v* ruleset is armed, and saying "
+          "so out loud is the point",
+          not _fires("2026-09-30", "SERVER-SIDE TAG PROTECTION NOT ARMED")
+          and any("release-tag-authority" in v
+                  for v in _fires("2026-10-01", "SERVER-SIDE TAG PROTECTION NOT ARMED")),
+          _fires("2026-10-01", "SERVER-SIDE TAG PROTECTION NOT ARMED")[:2])
 
 
 def test_probe_survivor_gaps():

@@ -1,5 +1,8 @@
 {
   "files": {
-    ".claude/worktrees/scope-class-v1.30/calibration/test_harness.py": "2026-08-06T18:50:39+00:00"
+    ".claude/worktrees/scope-class-v1.30/calibration/test_harness.py": "2026-08-06T18:50:39+00:00",
+    "plugins/tdd-playbook/tests/test_installer.py": "2026-08-09T12:24:29+00:00",
+    "plugins/tdd-playbook/tests/test_hooks.py": "2026-08-09T12:25:11+00:00",
+    "plugins/tdd-playbook/tests/test_capability_registry.py": "2026-08-09T12:27:58+00:00"
   }
 }

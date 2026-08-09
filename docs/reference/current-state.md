@@ -4,12 +4,12 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `cc0a49b156132f347eead42f80936c317c2197299d5f57ab2bfa54d9840fc878`
+- `gate-manifest.json` — `c4d53255f5f50bcce4dadc196d266593fe6548600a01fe2fe8c87c0d6da7b757`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `93de437fe4a5c9caadf5350d0bc0a600b4bd6548b6c809c63a89eceedffdc868`
 - `docs/architecture/host-parity.json` — `677f89b9f93c8316387b4fb9cf75a00e136b58594db7dbd6659ff452643641cf`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `fe1863d8a7b4776dd81afadf4b0376c92a265db96a14353089510764d317c4f1`
+- `capabilities.json` — `fbd113bddea9e191a127d3de4dd99563d1cda1f36c14bc9484c6e2cca5ce1c31`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -19,10 +19,10 @@
 
 - `sh scripts/civerd_gate.sh` — **AUTHORIZING** complete local gate and CIVerd suite command.
 - `sh scripts/civerd_gate.sh affected --base <revision>` — **NON-AUTHORIZING** diagnostic subset; ambiguous scope falls back to full.
-- Discovered suites: 26. Fixed stages: 4. Total stages: 30.
-- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_plan_block`, `test_portable_core`, `test_red_lock_portable`, `test_reference_docs`, `test_release_verify`, `test_review_ledger`, `test_tdd_lock`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
+- Discovered suites: 25. Fixed stages: 4. Total stages: 29.
+- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_plan_block`, `test_portable_core`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
-- Acknowledged roster digest: `aa77e0a6e7beaafe6b96daf23ae9d7029681c15745223cbd77b4a2b2a6e70062`
+- Acknowledged roster digest: `d32c6c9b64a0e3cf8b8d6f92e1ae8f0893376be23a4008b6f36bda9e9e3c6004`
 - Acknowledged execution-manifest digest: `e44abf2e54655f461df615f79d8fd1baed615db1cdf2be5416f0a7b8b333f3e4`
 
 ## Host parity
@@ -34,7 +34,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 21. Owned dated integration-debt entries: 47.
+- Registered capabilities: 22. Owned dated integration-debt entries: 48.
 - `integrity-guards/unnamed` — owner `david`, expires `2026-09-15`
 - `test-lock/claude-test-lock-refresh` — owner `david`, expires `2026-08-17`
 - `test-lock/codex-guard-family-parity` — owner `david`, expires `2026-09-30`
@@ -59,8 +59,7 @@
 - `gate-yield/unnamed` — owner `david`, expires `2026-10-15`
 - `gate-yield/unnamed` — owner `david`, expires `2026-11-15`
 - `gate-yield/unnamed` — owner `david`, expires `2026-11-15`
-- `civerd-release-gate/unnamed` — owner `david`, expires `2026-09-15`
-- `civerd-release-gate/unnamed` — owner `david`, expires `2026-09-15`
+- `civerd-release-gate/unnamed` — owner `david`, expires `2027-02-01`
 - `plan-authoring/unnamed` — owner `david`, expires `2026-09-15`
 - `deliberation-capture/unnamed` — owner `david`, expires `2026-08-31`
 - `deliberation-capture/unnamed` — owner `david`, expires `2026-10-31`
@@ -82,6 +81,8 @@
 - `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-31`
 - `plant-forms/unnamed` — owner `david`, expires `2026-10-15`
 - `plant-vitality/unnamed` — owner `david`, expires `2026-11-01`
+- `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
+- `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
 
 ## Adversarial review records
 

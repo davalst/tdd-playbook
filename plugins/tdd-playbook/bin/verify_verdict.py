@@ -1,7 +1,31 @@
 #!/usr/bin/env python3
-"""verify_verdict — the hub side of the CIVerd release gate (Playbook audit finding F4).
+"""verify_verdict — ARCHIVAL READER for historical CIVerd signed verdicts.
 
-CIVerd is an independent CI engine on a VPS: it notices a commit, clones it at that SHA in a
+*** UNWIRED AS OF v1.32.0. NOTHING IN THE RELEASE PATH CONSULTS THIS TOOL. ***
+
+The CIVerd release gate was retired in v1.32.0 (owner-control plan, rev 3). `release_verify.py`
+— the only caller — is deleted, and no verdict is consulted, produced, or required to ship. What
+authorizes a release now is David creating the tag; that no script can do so is enforced by
+tests/test_installer.py::test_no_script_creates_a_release_tag.
+
+This file is KEPT, deliberately, for exactly one job: reading pre-v1.32 signed bundles so the
+historical record stays checkable. Stdlib-only, self-contained, no caller:
+
+    python3 verify_verdict.py --sha <sha> --ledger <path/to/verdicts.jsonl>
+
+It is NOT a gate. It still has no `--force` and still fails closed on every RED reason, because a
+half-trusted archive reader is worse than none — but a green answer here authorizes nothing. Do
+not re-wire it into the release path: the invariant the retirement bought is that there is no
+verdict to forge, and adding a consumer gives that back. Its own dated debt in capabilities.json
+(`civerd-release-gate`) says what happens if no one ever reads an archive: it goes, with its
+sibling, its suites and its fixtures, together.
+
+The description below is the historical design, retained because it explains the bundle format
+this reader still parses.
+
+--- historical ---
+
+CIVerd was an independent CI engine on a VPS: it noticed a commit, cloned it at that SHA in a
 sandbox the coding agent cannot reach, runs this plugin's gate, and publishes a SIGNED verdict
 to `davalst/civerd-verdicts` (`verdicts.jsonl`, one memproof-2 bundle per line). This tool is
 the VERIFY side — it runs anywhere (a public plugin, any repo) and answers ONE question:
