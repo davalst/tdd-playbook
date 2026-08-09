@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-09-owner-control-phase1-implementation-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "9b977793387cda379921587be260143153e9ba72",
+    "head": "f396abb925e7d572d7504fc72ec841c9e968425c"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "OC1-P1-SCANNER-BLIND",
+      "severity": "P1",
+      "summary": "The scanner replacing the release wall missed 8 of 13 ordinary tag-creation forms, including subprocess.run(cmd, shell=True) -- the example in its own comment. Root cause: 'git' not in words was exact list membership, and a shell command line is ONE word, so shell forms short-circuited before _SHELL_TAG applied. The plant meant to calibrate that branch was not valid Python, fell through to the .sh text scanner, and left the AST shell branch with zero live calibration while reporting green.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ]
+    },
+    {
+      "id": "OC1-P1-SESSION-SEAM",
+      "severity": "P1",
+      "summary": "A file scanner cannot observe a session typing `git tag && git push` into one Bash call, which is how v1.29.0/v1.30.0/v1.31.0 were actually created. CLAUDE.md asserted the unqualified 'it cannot tag'. The repo already owns the action-time seam and the diff had edited exitcode_guard without adding the sibling guard.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "plugins/tdd-playbook/hooks/scripts/exitcode_guard.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tag_guard"
+      ]
+    },
+    {
+      "id": "OC1-P1-DOCTOR-LIES",
+      "severity": "P1",
+      "summary": "bin/tdd.py reported 'CIVerd signed exact-SHA verdict only' throughout the diff that deleted that wall, and nothing went red because no test read the field. COPY_TREES vendors bin/ wholesale, so downstream repos would inherit the false claim on next refresh.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/tdd.py",
+        "scripts/install_into_repo.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_host_doctor.py::test_doctor_reports_the_live_release_authority"
+      ]
+    },
+    {
+      "id": "OC1-P1-EMITS-EMPTY",
+      "severity": "P1",
+      "summary": "release-tag-authority declared emits: [] while its product, the git tag, is read by four live sites including the authorizing gate's own baseline. Tag cadence was script-coupled and is now a hand step; the failure mode (stale baseline) is silent and green.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/gate_runner.py",
+        "plugins/tdd-playbook/bin/review_ledger.py",
+        "calibration/test_harness.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC1-P2-OVERBROAD-CLAIM",
+      "severity": "P2",
+      "summary": "The capability summary claimed 'no in-repo script creates or pushes a tag, and none may be added' with no scope. Five live linked worktrees carry untracked copies of the deleted release_verify.py and share this repo's ref store, so the unqualified claim was false.",
+      "evidence": [
+        "capabilities.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tag_guard"
+      ]
+    },
+    {
+      "id": "OC1-P2-NTH-ROSTER",
+      "severity": "P2",
+      "summary": "_SCAN_ROOTS was a hardcoded fifth 'where the code lives' roster, already disagreeing with dataflow-sweeps.json and blind to the .github/workflows/*.yml Phase 2c introduces, which sat outside both the roots and the .py/.sh filter.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "dataflow-sweeps.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ]
+    },
+    {
+      "id": "OC1-P3-ACTIVATION-SIGN",
+      "severity": "P3",
+      "summary": "release-tag-authority was registered activation.default off, which marks a capability dark in the doctor inventory, while its in-repo halves run on every gate and every Bash call.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/capability_registry.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC1-P2-CODEX-DIVERGENCE",
+      "severity": "P2",
+      "summary": "tag_guard is BLOCKING on Claude but inherits Codex's 'unavailable' guards default, so the session half of release-tag authority is absent on Codex. Surface divergence must be stated at plan time, not discovered later.",
+      "evidence": [
+        "docs/architecture/host-parity-policy.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_host_parity.py::test_host_parity_inventory",
+        "plugins/tdd-playbook/tests/test_host_parity.py::test_compact_parity_output"
+      ]
+    },
+    {
+      "id": "OC1-P2-DOC-LAG",
+      "severity": "P2",
+      "summary": "At commit 0c7a52d the CLAUDE.md/README rewrites were still uncommitted, so HEAD instructed every session to invoke the deleted release_verify.py. Also CLAUDE.md documented `git tag -s` while user.signingkey is unset, so the documented on-switch fails.",
+      "evidence": [
+        "CLAUDE.md",
+        "README.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f396abb925e7d572d7504fc72ec841c9e968425c",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry",
+        "plugins/tdd-playbook/tests/test_installer.py::test_release_version_identity"
+      ]
+    }
+  ]
+}

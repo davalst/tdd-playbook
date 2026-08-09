@@ -12,6 +12,10 @@
     {
       "path": "2026-08-07-v1.31.0-release-implementation.json",
       "sha256": "77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa"
+    },
+    {
+      "path": "2026-08-09-owner-control-phase1-implementation.json",
+      "sha256": "39a5d273cfe18341231d740afce2201fddc051df8caf479e37b63e1dce2cdb59"
     }
   ]
 }

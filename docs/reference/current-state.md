@@ -13,7 +13,8 @@
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
-- `docs/reviews/index.json` — `a4e6e737665e627443c446b7a9d347449fbf4f2566e839d462a3552b082641e5`
+- `docs/reviews/2026-08-09-owner-control-phase1-implementation.json` — `39a5d273cfe18341231d740afce2201fddc051df8caf479e37b63e1dce2cdb59`
+- `docs/reviews/index.json` — `d4de3b548981c378477d9bf9b9235ab16fbdea0a1fc4984d56aef6f84cedae22`
 
 ## Gate surface
 
@@ -88,8 +89,8 @@
 
 ## Adversarial review records
 
-- Review records: 3. Findings: 19.
+- Review records: 4. Findings: 28.
 - `incorporated`: 7
 - `open`: 0
 - `rejected`: 0
-- `verified_closed`: 12
+- `verified_closed`: 21
