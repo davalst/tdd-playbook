@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-09-owner-control-phase4-implementation-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "158ffbd96977b05ce7de4fa36f952dabdd857f69",
+    "head": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d"
+  },
+  "reviewers": [
+    "script-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "OC4-P1-PLUGIN-KEEPS-WRONG-VERSION",
+      "severity": "P1",
+      "summary": "--plugin kept the lexicographically largest version, so of {1.9.0, 1.28.0, 1.32.0} it printed 'newest installed \u2014 kept' over 1.9.0 while marking 1.32.0 \u2014 the copy a live session executes from \u2014 as stale for rmtree. The row printed the safety guarantee it had failed to compute, causing the exact H8 harm its own docstring cites.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/reset_plan.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "script-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P1-NO-CONTAINMENT",
+      "severity": "P1",
+      "summary": "No containment assertion before os.remove/rmtree. A symlinked .claude defeated the string-prefix check and deleted a file outside the target while printing an in-target path; the rmdir-upward loop climbed past .claude and removed the target root itself, unannounced. The deleted set exceeded the printed set \u2014 the one property this feature promises.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/reset_plan.py",
+        "plugins/tdd-playbook/bin/vendoring.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "script-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P1-WORKTREE-FAILS-OPEN",
+      "severity": "P1",
+      "summary": "is_protected_worktree failed OPEN: _git returned '' for both success-with-no-output and failure, so a missing or erroring git made worktree_paths return [] and nothing was protected \u2014 THE HARD REFUSAL evaporating silently on a repo with five linked worktrees carrying unpushed work.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/reset_plan.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "script-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P1-DEAD-DOWNSTREAM",
+      "severity": "P1",
+      "summary": "uninstall and reset --repo were exit-0 no-ops in a vendored .claude/bin/ and in the plugin cache \u2014 the only two places the verbs exist to be used. The roster resolved from <repo>/scripts/, which is not in COPY_TREES and is never vendored: the file moved to bin/ to be reachable downstream, its dependency did not. Measured: 63 files vendored, 'nothing to invert', exit 0, 65 files still present.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/vendoring.py",
+        "scripts/install_into_repo.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P1-BURN-NO-DRY-RUN",
+      "severity": "P1",
+      "summary": "--burn-evidence had no dry-run path: --yes gated both legality and application, so asking to preview it returned exit 2 and the next natural invocation was the irreversible one. The canonical-source refusal also covered only the repo scope, so --burn-evidence on the plugin source was not refused at all \u2014 the cheapest scope guarded, the irreversible one skipped.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/tdd.py",
+        "plugins/tdd-playbook/bin/reset_plan.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "script-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P2-CODEX-DANGLING-HOOKS",
+      "severity": "P2",
+      "summary": "uninstall --host all left .codex/hooks.json registering two PreToolUse groups pointing at scripts it had just deleted; Codex would attempt a missing file on every Edit/Write and Bash. The installer already owned the predicate.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/vendoring.py",
+        "scripts/install_into_repo.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P2-DEAD-FLAGS",
+      "severity": "P2",
+      "summary": "--only was parsed and never read, so --only registry/install/assurance were advertised choices routing to nothing, and CHECKS was a write-only registry whose only reader was a test. --fix ran under --json and discarded the subprocess result, making a failed fix indistinguishable from a successful one. The dry-run listing truncated paths to 58 chars and printed two different rmtree targets as the same string. --reason was checked for truthiness and discarded.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/tdd.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    },
+    {
+      "id": "OC4-P2-FALSE-EVIDENCE-CLAIMS",
+      "severity": "P2",
+      "summary": "README claimed 'Evidence is never in scope' while --repo removes playbook-yield.jsonl (gate_yield's only input), the H8 heartbeat and the lock journal \u2014 telemetry with named live consumers and two open debts depending on it. And the --shared debt claimed a mitigation ('refuses a foreign lock, names every sharing worktree') that does not exist in the code; a debt whose stated mitigation is fictional under-reports its own severity.",
+      "evidence": [
+        "README.md",
+        "capabilities.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9b70be0aad98d60248fbc3474ee518c1b0dfc15d",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_the_safety_findings_stay_fixed"
+      ]
+    }
+  ]
+}

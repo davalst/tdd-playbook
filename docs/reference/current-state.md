@@ -16,7 +16,8 @@
 - `docs/reviews/2026-08-09-owner-control-phase1-implementation.json` — `39a5d273cfe18341231d740afce2201fddc051df8caf479e37b63e1dce2cdb59`
 - `docs/reviews/2026-08-09-owner-control-phase2-implementation.json` — `69b66b6a969793d3bf751d4edc9ff3029c3c13dfb053bc9b44d36107dcc0cc3f`
 - `docs/reviews/2026-08-09-owner-control-phase3-implementation.json` — `0f5f404e73fd6e7d14f772230d1c4ea9fde2d82ebe3797cfb65c9baaeab4b0fc`
-- `docs/reviews/index.json` — `2e484b82045e6c6611761250853574f8618f3df8128b8ac3a327025d5a3445da`
+- `docs/reviews/2026-08-09-owner-control-phase4-implementation.json` — `f632925f007e6ece0b3ee6b0fa9b990aff7df570792a12796d1d99c40381185c`
+- `docs/reviews/index.json` — `593d8c0d48711d1f88e2a177cad704f8132754c2bfdbf293a085da0d348d2d10`
 
 ## Gate surface
 
@@ -97,8 +98,8 @@
 
 ## Adversarial review records
 
-- Review records: 6. Findings: 48.
+- Review records: 7. Findings: 56.
 - `incorporated`: 7
 - `open`: 0
 - `rejected`: 0
-- `verified_closed`: 41
+- `verified_closed`: 49

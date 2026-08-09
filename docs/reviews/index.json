@@ -24,6 +24,10 @@
     {
       "path": "2026-08-09-owner-control-phase3-implementation.json",
       "sha256": "0f5f404e73fd6e7d14f772230d1c4ea9fde2d82ebe3797cfb65c9baaeab4b0fc"
+    },
+    {
+      "path": "2026-08-09-owner-control-phase4-implementation.json",
+      "sha256": "f632925f007e6ece0b3ee6b0fa9b990aff7df570792a12796d1d99c40381185c"
     }
   ]
 }
