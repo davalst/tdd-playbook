@@ -29,13 +29,34 @@ _YIELD_TMP = tempfile.mkdtemp(prefix="hook-yield-")
 _YIELD_DEFAULT = os.path.join(_YIELD_TMP, "yield.jsonl")
 
 
-def run(script, event, env_extra=None):
+# v1.32.0: these five default to OFF (31 warnings, 0 blocks across all recorded history).
+# Retirement is never silent deletion, so their calibration must SURVIVE the demotion — the
+# suites below still prove each guard catches what it claims. They opt in explicitly here,
+# which keeps two questions apart that are easy to merge by accident:
+#   "does this guard still work?"        -> the suites below, run opted-in
+#   "is this guard on by default?"       -> test_retired_advisory_defaults, run on the real defaults
+# Merging them would mean turning a guard off silently deletes its coverage, which is how a
+# retired gate quietly becomes an unmaintained one.
+_OPT_IN = {
+    "overmock_guard.py": {"TDD_PLAYBOOK_HOOK_OVERMOCK": "warn"},
+    "exitcode_guard.py": {"TDD_PLAYBOOK_HOOK_EXITCODE": "warn"},
+    "exhaustive_claim_guard.py": {"TDD_PLAYBOOK_HOOK_EXHAUSTIVE": "warn"},
+    "flaky_guard.py": {"TDD_PLAYBOOK_HOOK_FLAKY": "warn"},
+    "red_lock.py": {"TDD_PLAYBOOK_HOOK_REDLOCK": "warn"},
+}
+
+
+def run(script, event, env_extra=None, raw=False):
+    """raw=True skips the retired-guard opt-in, so a caller can observe the SHIPPED default."""
     env = dict(os.environ)
     # neutralize any developer override so tests see documented defaults
     for k in list(env):
         if k.startswith("TDD_PLAYBOOK_"):
             del env[k]
     env["TDD_PLAYBOOK_YIELD_LOG"] = _YIELD_DEFAULT
+    if not raw:
+        for k, v in _OPT_IN.get(script, {}).items():
+            env.setdefault(k, v)
     # H8 isolation: hook invocations from this suite must not write the repo's REAL
     # guards-heartbeat — a test run faking liveness would mask an actual dark guard layer
     env["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
@@ -320,6 +341,100 @@ def test_tag_guard():
     check("tagguard: documented demotion warns instead of blocking", rc == 1, rc)
     rc, _o, _e = run(s, {"tool_name": "Edit", "tool_input": {"file_path": "x.py"}})
     check("tagguard: non-Bash events ignored", rc == 0, rc)
+
+
+# ------------------------------------------------------------------------ break-glass
+def test_break_glass():
+    """v1.32.0 owner-control: ONE obvious switch that demotes every blocking gate for a
+    session, loud and journaled.
+
+    The gap it closes: TDD_PLAYBOOK_HOOK_MODE accepted only warn|block, so `=off` was
+    SILENTLY IGNORED and integrity hooks stayed blocking — a knob that reads as a kill
+    switch and is not one is worse than no knob, because the operator believes they turned
+    something off. Per-hook TDD_PLAYBOOK_HOOK_<NAME> already worked; what was missing was a
+    single switch you can reach for when you do not yet know which of eleven guards is in
+    your way.
+
+    Deliberately NOT silent: emit() logs a `suppressed` event for every finding that fires
+    while demoted, so gate_yield's rollup shows a muzzled gate rather than a quiet one, and
+    the reason string is REQUIRED — an empty break-glass is refused, because the record is
+    the entire difference between an emergency and a habit."""
+    s = "test_weakening_guard.py"
+    tf = "tests/test_pay.py"
+    weaken = edit(tf, "assert total == 5\nassert ok", "assert ok")
+
+    rc, _o, e = run(s, weaken)
+    check("break-glass: blocking is the default with no switch", rc == 2, (rc, e[:80]))
+
+    rc, _o, e = run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": "prod incident, need to ship"})
+    check("break-glass: a REASONED switch demotes a blocking gate to warn", rc == 1,
+          (rc, e[:120]))
+    check("break-glass: the banner is loud and repeats the reason",
+          "BREAK-GLASS" in e and "prod incident" in e, e[:200])
+
+    # the reason is the mechanism, not decoration
+    rc, _o, e = run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": ""})
+    check("break-glass: empty value does NOT demote (an unexplained bypass is refused)",
+          rc == 2, (rc, e[:80]))
+    rc, _o, e = run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": "   "})
+    check("break-glass: whitespace-only value does NOT demote", rc == 2, (rc, e[:80]))
+
+    # it demotes, it never silences: a muzzled gate must stay distinguishable from a quiet one
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as d:
+        log = os.path.join(d, "y.jsonl")
+        run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": "incident", "TDD_PLAYBOOK_YIELD_LOG": log})
+        rows = [json.loads(x) for x in open(log)] if os.path.isfile(log) else []
+        check("break-glass: the demoted finding is still RECORDED (never silent)",
+              any(r.get("event") in ("warn", "suppressed") for r in rows), rows[:2])
+        check("break-glass: the record carries the reason for /grade",
+              any("incident" in json.dumps(r) for r in rows), rows[:2])
+
+    # an explicit per-hook setting is more specific than the blanket switch and must win
+    rc, _o, _e = run(s, weaken, {"TDD_PLAYBOOK_BREAK_GLASS": "incident",
+                                 "TDD_PLAYBOOK_HOOK_TESTWEAKEN": "block"})
+    check("break-glass: an explicit per-hook block still wins (specific beats blanket)",
+          rc == 2, rc)
+
+    # and it reaches the gate born in this same release
+    rc, _o, _e = run("tag_guard.py",
+                     {"tool_name": "Bash", "tool_input": {"command": "git " + "t" + "ag" + " -a v1 -m x"}},
+                     {"TDD_PLAYBOOK_BREAK_GLASS": "backfilling historical release tags"})
+    check("break-glass: covers every blocking gate, incl. tagguard", rc == 1, rc)
+
+
+def test_retired_advisory_defaults():
+    """v1.32.0: the five guards with 31 warnings and ZERO blocks across all recorded history
+    (docs/calibration/gate_yield.md: exitcode 0/24, overmock 0/3, exhaustive 0/2, flaky 0/1,
+    redlock 0/1) default to OFF and are opt-in.
+
+    This is §13's decay principle in the SECOND direction — a gate can decay by becoming
+    more expensive than the risk it retires, not only by becoming weaker than the threat.
+    Retirement is never silent deletion: the scripts stay, the per-hook knob turns each back
+    on, and gate_yield keeps its rows."""
+    import importlib.util as _il
+    spec = _il.spec_from_file_location("_common", os.path.join(HOOKS, "_common.py"))
+    common = _il.module_from_spec(spec)
+    spec.loader.exec_module(common)
+
+    for name in ("exitcode", "overmock", "exhaustive", "flaky", "redlock"):
+        check("retired-to-opt-in: {} defaults OFF".format(name),
+              common._DEFAULT_MODES.get(name) == "off", common._DEFAULT_MODES.get(name))
+    for name in ("testweaken", "testlock", "snapshotguard", "tagguard"):
+        check("KEPT BLOCKING: {} (evidence, not sentiment)".format(name),
+              common._DEFAULT_MODES.get(name) == "block", common._DEFAULT_MODES.get(name))
+
+    # opt-in must actually work, or "off by default, available" is a story
+    rc, _o, e = run("overmock_guard.py",
+                    edit("tests/test_api.py", "resp = client.get('/x')",
+                         "with mock.patch('api.client.get') as m:\n    resp = m()"),
+                    raw=True)
+    check("retired-to-opt-in: overmock is silent by default", rc == 0, (rc, e[:80]))
+    rc, _o, e = run("overmock_guard.py",
+                    edit("tests/test_api.py", "resp = client.get('/x')",
+                         "with mock.patch('api.client.get') as m:\n    resp = m()"),
+                    {"TDD_PLAYBOOK_HOOK_OVERMOCK": "warn"})
+    check("retired-to-opt-in: overmock still WORKS when opted in", rc == 1, (rc, e[:80]))
 
 
 # ------------------------------------------------------------- exhaustive_claim_guard
@@ -614,6 +729,9 @@ def test_red_lock():
             if k.startswith("TDD_PLAYBOOK_"):
                 del env[k]
         env["CLAUDE_PROJECT_DIR"] = d
+        # redlock defaults OFF since v1.32.0; this suite calibrates its BEHAVIOR, so it
+        # opts in explicitly (same split as _OPT_IN above — "does it work" vs "is it on").
+        env.update(_OPT_IN.get(s, {}))
         p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
                            input=json.dumps(event), capture_output=True, text=True,
                            cwd=d, env=env, timeout=20)
@@ -938,7 +1056,8 @@ def main():
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
                test_exitcode, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
-               test_lock_shell, test_yield_logging, test_guards_heartbeat):
+               test_lock_shell, test_yield_logging, test_guards_heartbeat,
+               test_break_glass, test_retired_advisory_defaults):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

@@ -52,6 +52,12 @@ def _run(script, root, event):
             del env[key]
     env["CLAUDE_PROJECT_DIR"] = root
     env["TDD_PLAYBOOK_YIELD_LOG"] = os.devnull
+    # redlock defaults OFF since v1.32.0 (0 blocks / 1 warn across all recorded history).
+    # This suite calibrates its BEHAVIOR, so it opts in — retiring a guard must not silently
+    # delete its coverage. Whether it is ON by default is pinned separately, in
+    # test_hooks.py::test_retired_advisory_defaults.
+    if os.path.basename(script) == "red_lock.py":
+        env["TDD_PLAYBOOK_HOOK_REDLOCK"] = "warn"
     return subprocess.run([sys.executable, script], cwd=root, env=env,
                           input=json.dumps(event), capture_output=True, text=True, timeout=30)
 

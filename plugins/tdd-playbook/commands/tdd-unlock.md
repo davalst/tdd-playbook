@@ -3,6 +3,8 @@ description: Release the TEST-LOCK with a journaled reason (reviewed by /grade).
 argument-hint: <why the lock must lift — e.g. "test asserted the wrong rounding; corrected per plan review" (pick a --class: phase | feature-end | test-wrong | gate-wrong)>
 ---
 
+**`--class` is REQUIRED (v1.32.0).** An unlock without one records `unclassified`, which is UNMEASURED — and 22 of this repo's 26 journaled unlocks were exactly that, leaving the retirement instrument nothing to compute from. A reader then fell back to counting `overrides` and concluded TEST-LOCK had 20 false positives when the measured number is **0**. Only `gate-wrong` says the friction bought nothing; `phase`, `feature-end` and `test-wrong` all mean the gate was RIGHT.
+
 Release the **TEST-LOCK** (Playbook §1) — reason: $ARGUMENTS
 
 1. **Pick the CLASS**, then state the reason honestly and specifically. The class is the

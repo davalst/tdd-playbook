@@ -9,7 +9,8 @@ The scoreboard (`docs/calibration/history.md`) must show a live cadence before v
 `calibration/check_staleness.py` — it reads `history.md`, finds the most recent dated run, and exits
 nonzero when it is missing or older than the threshold (`--as-of` injects the date for tests). The
 release gate runs it `--warn-only` (loud, doesn't wedge a code release on a calibration chore), and
-CIVerd runs it as a `staleness` check so the independent engine flags decay on its daily timer.
+It also runs inside the blessed gate, so the CI job in `.github/workflows/gate.yml` re-runs it
+off-box on every push (the CIVerd engine that used to do this was retired in v1.32.0).
 Pinned by planted-date tests in `calibration/test_harness.py`. This replaces "David remembers"; the
 run itself still needs a real `claude` binary (below).
 

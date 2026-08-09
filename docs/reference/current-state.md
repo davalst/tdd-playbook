@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `9b97797bcdbd9885f645e2d4791c28711f05ba1439d0060139fd771980fda755`
 - `docs/architecture/host-parity.json` — `986d406d24b8529c7426be2f10c54f7f3da5817f36033a7791a6cfbd069303d8`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `b22e851421b8f30dced4cf8aa02f24dc8f52068c4ff7d8ca6d072f30db0a57df`
+- `capabilities.json` — `2fe48e75f197c718bb76add0381c1650134f96e590d310769f9a8f7abaef1482`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -36,23 +36,25 @@
 
 ## Capability registry
 
-- Registered capabilities: 22. Owned dated integration-debt entries: 51.
+- Registered capabilities: 22. Owned dated integration-debt entries: 54.
 - `integrity-guards/unnamed` — owner `david`, expires `2026-12-31`
-- `test-lock/claude-test-lock-refresh` — owner `david`, expires `2026-08-17`
+- `integrity-guards/unnamed` — owner `david`, expires `2026-11-15`
+- `integrity-guards/unnamed` — owner `david`, expires `2026-10-15`
+- `test-lock/claude-test-lock-refresh` — owner `david`, expires `2026-09-30`
 - `test-lock/codex-guard-family-parity` — owner `david`, expires `2026-09-30`
 - `test-lock/shell-classifier-adapter-boundary` — owner `david`, expires `2026-09-30`
 - `test-lock/codex-command-agent-discovery` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-11-01`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-08-17`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
@@ -81,13 +83,14 @@
 - `gate-surface-ledger/unnamed` — owner `david`, expires `2026-09-15`
 - `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-31`
 - `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-15`
+- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-31`
 - `plant-forms/unnamed` — owner `david`, expires `2026-10-15`
 - `plant-vitality/unnamed` — owner `david`, expires `2026-11-01`
 - `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
 - `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
 - `release-tag-authority/unnamed` — owner `david`, expires `2026-10-15`
 - `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
-- `independent-gate-rerun/unnamed` — owner `david`, expires `2026-09-15`
+- `independent-gate-rerun/unnamed` — owner `david`, expires `2026-11-15`
 
 ## Adversarial review records
 

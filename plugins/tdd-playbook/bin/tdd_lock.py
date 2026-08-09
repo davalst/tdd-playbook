@@ -182,7 +182,26 @@ def cmd_unlock(args):
             "tdd_lock: REFUSED — unlocking needs a real reason (>=10 chars, e.g. why the "
             "test itself is wrong). The reason is journaled and reviewed by /grade.\n")
         return 1
-    klass = args.reason_class or "unclassified"
+    # v1.32.0: --class is REQUIRED. It was optional and defaulted to `unclassified`, which
+    # is UNMEASURED — and 22 of 26 journaled unlocks in this repo carry no class at all, so
+    # the retirement instrument had nothing to compute from and a reader fell back to
+    # counting `overrides`, concluding TEST-LOCK had 20 false positives when the measured
+    # number is 0. The cheapest fix to that whole class is to stop producing unmeasured rows:
+    # an unlock now states which of four things happened, and only `gate-wrong` says the gate
+    # was wrong. Existing unclassified rows stay exactly as they are and are never
+    # reinterpreted (§13: cycles predating class recording are UNMEASURED, never zero).
+    if not args.reason_class:
+        sys.stderr.write(
+            "tdd_lock: REFUSED — --class is required (v1.32.0). Which of these happened?\n"
+            "  --class phase        the lock served its phase; moving to the next one\n"
+            "  --class feature-end  the feature is done; the lock did its job\n"
+            "  --class test-wrong   the TEST was wrong and had to change (the gate was RIGHT)\n"
+            "  --class gate-wrong   the gate blocked something legitimate — the ONLY class\n"
+            "                       that counts as a false positive and feeds retirement\n"
+            "An unclassified unlock measures nothing, and four cycles of them once made the\n"
+            "instrument recommend retiring the strongest anti-gaming defense there is.\n")
+        return 2
+    klass = args.reason_class
     # The only class that feeds retirement is also the most expensive to claim (see header).
     # Refuse BEFORE any write, so a thin gate-wrong leaves the lock intact and nothing journaled.
     if klass == FEEDS_RETIREMENT and len(reason) < GATE_WRONG_MIN:
@@ -212,10 +231,7 @@ def cmd_unlock(args):
         sys.stderr.write(
             "tdd_lock: MISMATCH — the reason reads like a phase boundary but claims --class "
             "{}. Recording your class as stated, flagged for /grade.\n".format(FEEDS_RETIREMENT))
-    if not args.reason_class:
-        sys.stderr.write(
-            "tdd_lock: no --class given — recorded UNCLASSIFIED, so this unlock measures "
-            "nothing either way. Pass --class {} next time.\n".format("|".join(REASON_CLASSES)))
+
     if identity:
         try:
             clear_lock(identity, expected_generation=locked["generation"],

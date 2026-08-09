@@ -97,12 +97,13 @@ def main():
         check("source edit stays free during lock", p.returncode == 0, (p.returncode, p.stderr))
 
         # unlock without a reason is REFUSED
-        p = lock_cli(d, "unlock", "--reason", "meh")
+        p = lock_cli(d, "unlock", "--reason", "meh", "--class", "phase")
         check("unlock without a real reason refused", p.returncode == 1 and "REFUSED" in p.stderr,
               (p.returncode, p.stderr))
 
         # unlock with a reason: journaled, lock lifted, guard free again
-        p = lock_cli(d, "unlock", "--reason", "green — implementation complete")
+        p = lock_cli(d, "unlock", "--reason", "green — implementation complete",
+                     "--class", "feature-end")
         check("reasoned unlock succeeds", p.returncode == 0, (p.returncode, p.stderr))
         journal = os.path.join(d, ".claude", "tdd-lock-journal.jsonl")
         entries = [json.loads(ln) for ln in open(journal)]
@@ -213,11 +214,28 @@ def test_reason_class():
 
     with tempfile.TemporaryDirectory() as d:
         _fresh(d)
-        # back-compat: an old caller with no --class still works, but says it measured nothing
+        # v1.32.0 INVERTED (was: no --class succeeds and records UNCLASSIFIED). An
+        # unclassified unlock measures nothing, and this repo's journal is 22 of 26 rows with
+        # no class at all — which left the retirement instrument with nothing to compute from,
+        # so a reader fell back to counting `overrides` and concluded TEST-LOCK had 20 false
+        # positives when the measured number is 0. The cheapest fix to that whole class is to
+        # stop producing unmeasured rows. Strictly stronger than the assertion it replaces:
+        # the old one accepted an unmeasured record, this one refuses it.
         p = lock_cli(d, "unlock", "--reason", "old caller with no class flag")
-        check("back-compat: no --class -> succeeds, recorded UNCLASSIFIED, said out loud",
-              p.returncode == 0 and journal(d)[-1]["reason_class"] == "unclassified"
-              and "UNCLASSIFIED" in p.stderr, (p.returncode, p.stderr, journal(d)[-1]))
+        check("v1.32.0: --class is REQUIRED — an unmeasured unlock is refused, not recorded",
+              p.returncode == 2 and journal(d)[-1]["event"] == "lock",
+              (p.returncode, p.stderr[:80], journal(d)[-1]))
+        check("the refusal TEACHES the four classes rather than just failing",
+              all(k in p.stderr for k in ("phase", "feature-end", "test-wrong", "gate-wrong")),
+              p.stderr[:200])
+        check("the refusal names gate-wrong as the only false-positive class",
+              "false positive" in p.stderr and "gate-wrong" in p.stderr, p.stderr[:200])
+        # and the sanctioned path still works
+        p = lock_cli(d, "unlock", "--reason", "old caller, now classified",
+                     "--class", "feature-end")
+        check("classified unlock still succeeds and records the class",
+              p.returncode == 0 and journal(d)[-1]["reason_class"] == "feature-end",
+              (p.returncode, journal(d)[-1]))
 
 
 def test_reason_class_reaches_the_rollup():

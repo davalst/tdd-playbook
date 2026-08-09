@@ -230,6 +230,20 @@ def cmd_rollup(args):
     md_dir = os.path.dirname(args.md)
     if md_dir:
         os.makedirs(md_dir, exist_ok=True)
+    # HEADER MIGRATION (v1.32.0). The header used to be written ONLY on file creation, so
+    # when v1.27 corrected the definition of `overrides` in MD_HEADER the committed file kept
+    # the superseded text — the one that reads overrides as "blocks adjudicated
+    # false-positive". A later reader took that at face value and concluded testlock had 20
+    # false positives when the measured number is ZERO, which is precisely the misreading the
+    # v1.27 fix exists to end. The correction lived in code and never reached the artifact
+    # anyone reads. Rows are preserved byte-for-byte; only the prose above them is replaced.
+    rows = []
+    if os.path.isfile(args.md):
+        with open(args.md) as fh:
+            rows = [ln for ln in fh if ln.startswith("| 2")]
+        with open(args.md, "w") as fh:
+            fh.write(MD_HEADER)
+            fh.writelines(rows)
     new = not os.path.isfile(args.md)
     with open(args.md, "a") as fh:
         if new:

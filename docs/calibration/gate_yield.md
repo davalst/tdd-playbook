@@ -1,9 +1,11 @@
 # Gate yield record (R4 — derived from telemetry, never self-report)
 
-One committed row per gate per calibration cycle. blocks/warns = frictions fired; overrides = journaled unlocks adjudicating a block as false-positive; suppressed = findings that fired while the gate was demoted to off (a muzzled gate, never a quiet one). Candidates need >=2 cycles — see gate_yield.py.
+One committed row per gate per calibration cycle. blocks/warns = frictions fired; overrides = ALL journaled unlocks; fp = the subset whose journaled reason-class is `gate-wrong` — the only kind that adjudicates a block as a false positive; suppressed = findings that fired while the gate was demoted to off (a muzzled gate, never a quiet one). Candidates need >=2 cycles and are computed from fp, never from overrides — see gate_yield.py.
 
-| date | gate | blocks | warns | overrides | suppressed |
-|---|---|---|---|---|---|
+DATED CORRECTION (v1.27, pre-fix sha 119e2de): rows on or before 2026-08-05 have NO fp cell. Before that fix `overrides` was read as 'blocks adjudicated false-positive', so four cycles of the normal red-first lock/implement/unlock rhythm printed RETIREMENT CANDIDATE: testlock with zero real false positives. Those rows mix phase/feature-end/test-wrong/gate-wrong in unknown proportion and are UNMEASURED — they are left byte-identical and are never reinterpreted, because inferring a class into a durable record is the fabrication this fix exists to end.
+
+| date | gate | blocks | warns | overrides | suppressed | fp |
+|---|---|---|---|---|---|---|
 | 2026-07-30 | testlock | 2 | 0 | 7 | 0 |
 | 2026-07-30 | testweaken | 1 | 0 | 0 | 0 |
 | 2026-08-03 | flaky | 0 | 1 | 0 | 0 |

@@ -24,12 +24,33 @@ import sys
 # that warnings do not stop test-gaming; mechanical constraints do. Demote with the env vars.
 _GLOBAL_ENV = "TDD_PLAYBOOK_HOOK_MODE"
 _DEFAULT_MODES = {
+    # KEPT BLOCKING — each on evidence, not sentiment.
+    #   testweaken:    4 blocks, 0 adjudicated false positives. The one unambiguous winner.
+    #   testlock:      16 blocks, 20 journaled unlocks, of which ZERO are `gate-wrong`. The
+    #                  overrides column is not a false-positive count (v1.27); reading it as
+    #                  one is the documented error that once recommended retiring the
+    #                  strongest anti-gaming defense there is, across four cycles in which no
+    #                  gate was ever wrong. Measured false positives: 0.
+    #   snapshotguard: covers the other cheap route to faking a pass.
+    #   tagguard:      reserving the release tag for the owner is the whole compensating
+    #                  control for deleting the CIVerd wall. A warning reserves nothing.
     "testweaken": "block",
     "testlock": "block",
     "snapshotguard": "block",
-    # v1.32.0: reserving the release tag for the owner is the whole compensating control
-    # for deleting the CIVerd wall. A warning reserves nothing.
     "tagguard": "block",
+    # RETIRED TO OPT-IN (v1.32.0) — 31 warnings and ZERO blocks across all recorded history
+    # (docs/calibration/gate_yield.md: exitcode 0/24, overmock 0/3, exhaustive 0/2, flaky
+    # 0/1, redlock 0/1). §13's decay principle runs in BOTH directions: a gate can decay by
+    # becoming more expensive than the risk it retires, not only by becoming weaker than the
+    # threat. Retirement is never silent deletion — the scripts stay, the per-hook knob turns
+    # each back on (`TDD_PLAYBOOK_HOOK_<NAME>=warn`), and gate_yield keeps accruing rows for
+    # anyone who opts in. Absent yield data is UNMEASURED, never zero; these five are the
+    # only guards for which the data is present and reads zero.
+    "exitcode": "off",
+    "overmock": "off",
+    "exhaustive": "off",
+    "flaky": "off",
+    "redlock": "off",
 }
 
 
@@ -42,17 +63,42 @@ def read_event():
         return {}
 
 
+def break_glass_reason():
+    """The one obvious switch: TDD_PLAYBOOK_BREAK_GLASS="<reason>" demotes every BLOCKING
+    gate to warn for this session.
+
+    Why it exists (v1.32.0, owner-control): the per-hook knob already worked, but it demands
+    you already know WHICH of eleven guards is in your way — exactly what you do not know at
+    the moment you are blocked. And `TDD_PLAYBOOK_HOOK_MODE=off` was SILENTLY IGNORED
+    (`glob in ("warn","block")` below), so the closest thing to a kill switch read as one and
+    was not. A knob the operator believes they turned off, which is still on, is worse than
+    no knob.
+
+    The REASON is required, not decorative. An empty or whitespace value does not demote.
+    This is the difference between an emergency and a habit, and it is what /grade reads.
+    """
+    return (os.environ.get("TDD_PLAYBOOK_BREAK_GLASS") or "").strip()
+
+
 def resolve_mode(name):
     """Resolve a hook's mode: 'off' | 'warn' | 'block'.
 
     Default is per-hook (_DEFAULT_MODES, integrity hooks 'block'), else 'warn'.
-    Precedence: per-hook env > global env > per-hook default > 'warn'.
+    Precedence: per-hook env > break-glass > global env > per-hook default > 'warn'.
+
+    Break-glass sits BELOW the explicit per-hook setting on purpose: a specific instruction
+    beats a blanket one, so `TDD_PLAYBOOK_HOOK_TESTWEAKEN=block` still blocks during an
+    incident. It only ever demotes a `block` to `warn` — it cannot silence a gate, because a
+    silent bypass is indistinguishable from no finding at all.
     """
     per_hook = os.environ.get("TDD_PLAYBOOK_HOOK_" + name.upper())
     if per_hook:
         val = per_hook.strip().lower()
         if val in ("off", "warn", "block"):
             return val
+    if break_glass_reason():
+        mode = _DEFAULT_MODES.get(name.lower(), "warn")
+        return "warn" if mode == "block" else mode
     glob = os.environ.get(_GLOBAL_ENV, "").strip().lower()
     if glob in ("warn", "block"):
         return glob
@@ -150,7 +196,13 @@ def emit(name, lines):
         # muzzled gate from a quiet one (and gate_yield surfaces it loudly).
         log_yield_event(name, "suppressed", {"findings": len(lines)})
         sys.exit(0)
-    log_yield_event(name, mode, {"findings": len(lines)})
+    glass = break_glass_reason()
+    # The reason rides the yield record, not just the terminal: /grade reads the journal,
+    # and a bypass whose justification exists only in scrollback is unreviewable.
+    payload = {"findings": len(lines)}
+    if glass:
+        payload["break_glass"] = glass
+    log_yield_event(name, mode, payload)
     header = "⚠️  TDD Playbook · {}".format(name)
     body = "\n".join("   - " + ln for ln in lines)
     if mode == "block":
@@ -159,6 +211,10 @@ def emit(name, lines):
     else:
         tail = ("   (warn-only; set TDD_PLAYBOOK_HOOK_{0}=off to silence, "
                 "=block to enforce)".format(name.upper()))
+    if glass:
+        tail = ("   *** BREAK-GLASS ACTIVE — this gate would normally BLOCK. Reason: {} ***\n"
+                "   (journaled for /grade; unset TDD_PLAYBOOK_BREAK_GLASS to restore)"
+                .format(glass))
     sys.stderr.write(header + "\n" + body + "\n" + tail + "\n")
     sys.exit(2 if mode == "block" else 1)
 

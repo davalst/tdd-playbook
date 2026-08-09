@@ -3,7 +3,7 @@
   "capabilities": [
     {
       "id": "integrity-guards",
-      "summary": "PreToolUse hooks that BLOCK test weakening, snapshot auto-updates, and locked-test edits (H2/H3/H5).",
+      "summary": "PreToolUse/PostToolUse guards. BLOCKING by default: testweaken (4 blocks, 0 adjudicated false positives), testlock (16 blocks, 20 journaled unlocks, ZERO classed gate-wrong - measured false positives 0), snapshotguard, and tagguard (v1.32.0). OPT-IN since v1.32.0: exitcode, overmock, exhaustive, flaky, redlock - 31 warnings and ZERO blocks across all recorded history, retired to opt-in rather than deleted. One break-glass switch, TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\", demotes every blocking gate for a session; the reason is required and journaled.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -18,6 +18,9 @@
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_hooks.py",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_break_glass",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_retired_advisory_defaults",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tag_guard",
         "plugins/tdd-playbook/tests/test_installer.py"
       ],
       "emits": [
@@ -38,6 +41,16 @@
           "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): every open leg named the CIVerd ENGINE as the actor - guard_env as a ratifiable signed signal, the extended watchlist in the engine's root-owned floor, the probe-clean ratchet before a hard-block release list, and the #11 blocking-composition island. The engine is retired and civerd-integrity.yml deleted, so none of these can be paid or can fail; keeping a live debt whose actor does not exist is the write-only lie the registry exists to prevent. Historical text preserved below the separator. | OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green \u2014 closes H2-via-shell, `planted_probe` \u2014 first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract \u00a71.5 \u2014 settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the \u00a71.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 \u2014 same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists \u2014 floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications \u2014 harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed \u2014 blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion \u2014 a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
           "owner": "david",
           "expires": "2026-12-31"
+        },
+        {
+          "what": "RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0). exitcode/overmock/exhaustive/flaky/redlock were moved to opt-in on 31 warnings and 0 blocks. That is real evidence but it is SIX cycles from mostly ONE operator, and a warn-tier guard cannot produce blocks by construction - so 'never blocked' is partly a statement about the tier, not only about the guard. Their rows keep accruing for anyone who opts in. By expiry: read gate_yield again and either confirm the retirement, restore a guard that turns out to have been carrying load, or delete the five outright - the one thing not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one.",
+          "owner": "david",
+          "expires": "2026-11-15"
+        },
+        {
+          "what": "BREAK-GLASS USAGE IS UNREAD (v1.32.0). TDD_PLAYBOOK_BREAK_GLASS journals its reason into the yield log and /grade is meant to read it, but nothing yet ROLLS IT UP the way gate_yield rolls up blocks and unaccounted responses. A bypass whose record nobody aggregates is a bypass nobody reviews - the same shape as guard_response's 0-of-7. By expiry: a break_glass column in the gate_yield rollup, or the switch is removed as unmonitored.",
+          "owner": "david",
+          "expires": "2026-10-15"
         }
       ]
     },
@@ -78,9 +91,9 @@
       "integration_debt": [
         {
           "id": "claude-test-lock-refresh",
-          "what": "CLAUDE TEST-LOCK REAL-HOST REFRESH: the migrated Claude transport is covered by subprocess parity fixtures, but was not freshly exercised through an authenticated Claude Code host in the 2026-08-07 portability build. Done = structured-edit and Bash planted blocks plus paired clean controls recorded by the production observation seam for the release SHA; until then doctor reports Claude UNMEASURED.",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | CLAUDE TEST-LOCK REAL-HOST REFRESH: the migrated Claude transport is covered by subprocess parity fixtures, but was not freshly exercised through an authenticated Claude Code host in the 2026-08-07 portability build. Done = structured-edit and Bash planted blocks plus paired clean controls recorded by the production observation seam for the release SHA; until then doctor reports Claude UNMEASURED.",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
           "id": "codex-guard-family-parity",
@@ -203,14 +216,14 @@
       },
       "integration_debt": [
         {
-          "what": "CODEX VERIFIER CALIBRATION: the runner seam and dry-run invariants are built, but no full live Codex verifier-agent calibration has landed. The 2026-08-07 real-host TEST-LOCK result (2/2 planted blocks, 0/2 false positives) proves only that adapter boundary. Done = paired live verifier/control rows in docs/calibration/history-codex.md with host/model/version and separate denominators; until then Codex verifier assurance is UNMEASURED.",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | CODEX VERIFIER CALIBRATION: the runner seam and dry-run invariants are built, but no full live Codex verifier-agent calibration has landed. The 2026-08-07 real-host TEST-LOCK result (2/2 planted blocks, 0/2 false positives) proves only that adapter boundary. Done = paired live verifier/control rows in docs/calibration/history-codex.md with host/model/version and separate denominators; until then Codex verifier assurance is UNMEASURED.",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
-          "what": "PAID IN PART 2026-07-30: the first live run under the v1.17 instrument LANDED recall AND FP numbers (history.md run blocks, repo 1cf99f2/b5b30aa, 8 agents, repeat-3). The numbers then did their job: architecture-adversary, script-adversary, integration-adversary, claims-verifier at/near PASS; red-first-verifier, mutation-runner, tripwire-auditor showed BLOCKING failures dominated by wrong-verdict-line on CLEAN CONTROLS (forced-line contract buried or absent \u2014 mutation-runner's gate verdict was never a mandated line at all). Agent contracts fixed same day (explicit house-contract closing blocks; oracles unchanged \u2014 the mutation-runner forced line was worded to match the shipped control regexes). REMAINING BY EXPIRY: the 3-agent re-run (red-first-verifier, mutation-runner, tripwire-auditor) lands in history.md BEFORE the v1.23.0 tag \u2014 \u00a713: gate-surface changes are live-calibrated before trusted; v2.0 still gated on >=1 month sustained cadence.",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | PAID IN PART 2026-07-30: the first live run under the v1.17 instrument LANDED recall AND FP numbers (history.md run blocks, repo 1cf99f2/b5b30aa, 8 agents, repeat-3). The numbers then did their job: architecture-adversary, script-adversary, integration-adversary, claims-verifier at/near PASS; red-first-verifier, mutation-runner, tripwire-auditor showed BLOCKING failures dominated by wrong-verdict-line on CLEAN CONTROLS (forced-line contract buried or absent \u2014 mutation-runner's gate verdict was never a mandated line at all). Agent contracts fixed same day (explicit house-contract closing blocks; oracles unchanged \u2014 the mutation-runner forced line was worded to match the shipped control regexes). REMAINING BY EXPIRY: the 3-agent re-run (red-first-verifier, mutation-runner, tripwire-auditor) lands in history.md BEFORE the v1.23.0 tag \u2014 \u00a713: gate-surface changes are live-calibrated before trusted; v2.0 still gated on >=1 month sustained cadence.",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
           "what": "QUARTERLY BUNDLE (lift/ratchet set B \u2014 the delay-proofing David demanded): each ~quarter, land a dated row in docs/calibration/quarterly.md (the check_staleness --max-age-days 100 clock, release-gate --warn-only) covering: (a) HACK_CATALOG refresh ritual; (b) the LIFT diagnostic read \u2014 HARD-BLOCKED until the dev/holdout split lands (approve-time pair/class assignment + burn-on-failure via an append-only side-ledger \u2014 burns COLLIDE with corpus immutability, so it needs its own red-first design pass, due before the first post-08-10 authoring batch) and the frozen contract-stub exists (stub = journal-protected measurement apparatus; the vendored lift-sentinel content scan joins that build); (c) the cross-tier calibration row once budgeted. A lapsed quarter = stale clock on every release AND this entry REDs the suite at expiry \u2014 an individually dropped set-A deliverable converts to a dated line here in the same commit, never to 'opportunistic'",
@@ -218,9 +231,9 @@
           "expires": "2026-11-01"
         },
         {
-          "what": "R3 premise plants (roadmap \u00a7E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and \u00a70's spec-integrity rules have no planted test. Falsification probe first \u2014 author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here \u2014 never silence",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | R3 premise plants (roadmap \u00a7E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and \u00a70's spec-integrity rules have no planted test. Falsification probe first \u2014 author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here \u2014 never silence",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
           "what": "APPLY_EDITS CREATE capability (v1.24 \u00a76c D15 \u2014 promoted from the corpus README's 'possible future enhancement' to owned deliverable-or-debt because it is now LOAD-BEARING: writer-with-no-reader plants naturally want NEW fixture files, and apply_edits can only modify existing ones \u2014 4 of 6 first-batch candidates were mechanically rejected for exactly this). Done = run_calibration.apply_edits accepts a {file, create} edit shape with red-first tests + validate_scenario coverage, or a consciously re-dated entry here \u2014 never silence",
@@ -228,34 +241,34 @@
           "expires": "2026-09-15"
         },
         {
-          "what": "V1.24 CORPUS BATCH (tripwire-fold \u2014 the proposed queue must not go dark): review and --approve/reject the four \u00a76c proposals in corpus/proposed/ (plan-omits-summary-consumer + ghost-gate-undeclared-export-flag + their controls), and author the missing migration-without-parity plant once the create capability lands (or anchored in existing fixture files if feasible sooner). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | V1.24 CORPUS BATCH (tripwire-fold \u2014 the proposed queue must not go dark): review and --approve/reject the four \u00a76c proposals in corpus/proposed/ (plan-omits-summary-consumer + ghost-gate-undeclared-export-flag + their controls), and author the missing migration-without-parity plant once the create capability lands (or anchored in existing fixture files if feasible sooner). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
-          "what": "V1.24 GATE-SURFACE CALIBRATION (tripwire-fold, \u00a713: gate-surface text changes are live-calibrated before trusted): the D7\u2013D9 v1.24 additions (integration-audit fifth class, integration-adversary dangling-flows pattern, tdd-plan flow table) are NOT trusted until their rows land in docs/calibration/history.md \u2014 sequence in the ~2026-08-10 run AFTER the owed 3-agent re-run. Done = v1.24-surface rows in history.md, or a consciously re-dated entry",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | V1.24 GATE-SURFACE CALIBRATION (tripwire-fold, \u00a713: gate-surface text changes are live-calibrated before trusted): the D7\u2013D9 v1.24 additions (integration-audit fifth class, integration-adversary dangling-flows pattern, tdd-plan flow table) are NOT trusted until their rows land in docs/calibration/history.md \u2014 sequence in the ~2026-08-10 run AFTER the owed 3-agent re-run. Done = v1.24-surface rows in history.md, or a consciously re-dated entry",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
-          "what": "V1.25 GATE-SURFACE CALIBRATION (\u00a713): the guard-calibration doctrine + brief adoptions (SKILL \u00a713/\u00a71/\u00a712 additions; red-first-verifier / tripwire-auditor / planted-error-probe brief lines) are NOT trusted until their rows land in docs/calibration/history.md \u2014 rides the same re-run as the v1.24 surfaces. Done = v1.25-surface rows in history.md, or a consciously re-dated entry",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | V1.25 GATE-SURFACE CALIBRATION (\u00a713): the guard-calibration doctrine + brief adoptions (SKILL \u00a713/\u00a71/\u00a712 additions; red-first-verifier / tripwire-auditor / planted-error-probe brief lines) are NOT trusted until their rows land in docs/calibration/history.md \u2014 rides the same re-run as the v1.24 surfaces. Done = v1.25-surface rows in history.md, or a consciously re-dated entry",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
-          "what": "V1.25 CORPUS QUEUE: review and --approve/reject the four H10 guard-excuses-its-own-motivating-bug proposals in corpus/proposed/ (bug107 + drift-tripwire pairs, target agents red-first-verifier / tripwire-auditor). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | V1.25 CORPUS QUEUE: review and --approve/reject the four H10 guard-excuses-its-own-motivating-bug proposals in corpus/proposed/ (bug107 + drift-tripwire pairs, target agents red-first-verifier / tripwire-auditor). Done = the four files leave proposed/ with a decision each, or a consciously re-dated entry",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
-          "what": "V1.26 GATE-SURFACE CALIBRATION (\u00a713): the seam-contract doctrine + brief adoptions (SKILL \u00a71 seam rule / \u00a74 limitation / \u00a70 field granularity / \u00a76c family-parity Tier-1 rewrite, integration-adversary field-granularity sharpening, mutation-runner + /mutate limitation clauses) are NOT trusted until their rows land in docs/calibration/history.md from a live run \u2014 the ~2026-08-10 run already owes the v1.24 + v1.25 surfaces; include the H11 pair (once approved) in the same run",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | V1.26 GATE-SURFACE CALIBRATION (\u00a713): the seam-contract doctrine + brief adoptions (SKILL \u00a71 seam rule / \u00a74 limitation / \u00a70 field granularity / \u00a76c family-parity Tier-1 rewrite, integration-adversary field-granularity sharpening, mutation-runner + /mutate limitation clauses) are NOT trusted until their rows land in docs/calibration/history.md from a live run \u2014 the ~2026-08-10 run already owes the v1.24 + v1.25 surfaces; include the H11 pair (once approved) in the same run",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
-          "what": "V1.26 CORPUS QUEUE: review and --approve/reject the H11 seam pair in corpus/proposed/ (seam-self-consistency-return-only + control-seam-message-rendered, target agent integration-adversary; fixture-verified: plant = suite green + cli silent, control = message rendered). Done = both files leave proposed/ with a decision each, or a consciously re-dated entry",
+          "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | V1.26 CORPUS QUEUE: review and --approve/reject the H11 seam pair in corpus/proposed/ (seam-self-consistency-return-only + control-seam-message-rendered, target agent integration-adversary; fixture-verified: plant = suite green + cli silent, control = message rendered). Done = both files leave proposed/ with a decision each, or a consciously re-dated entry",
           "owner": "david",
-          "expires": "2026-08-17"
+          "expires": "2026-09-30"
         },
         {
           "what": "SUPERSEDE PROSE-ORACLE PLANTS (run-4 adjudication, 2026-08-05): csv-escape-fixed-at-call-site, shadowed-import-vacuous-suite and special-case-bypasses-both-copies still score on prose VOCABULARY, which run 4 proved is the weak link (correct agent verdicts scored down on adjectives; one regex could not match the word 'survives'). They are in the v1.22.0 baseline and therefore IMMUTABLE \u2014 check_scoreboard_integrity refused an edit attempt by the assistant and that refusal STANDS. The sanctioned path is NEW superseding plants carrying VERDICT+ARTIFACT anchors (two already carry standing WEAK-PLANT flags). WIDENED 2026-08-06 to SIX plants: CIVerd's --tags fix moved the integrity baseline from v1.22.0 to v1.26.0 and caught three MORE modified approved plants \u2014 ghost-gate-undeclared-export-flag, control-drift-tripwire-union-exercised and drift-tripwire-intersection-excuse \u2014 whose run-4 fixes had been legal only because the old window could not see them. Reverted, journaled, and quarantined against promotion (PROMOTION_QUARANTINE, run_calibration.py); the union control is the urgent one, since its mis-specified PREMISE (a separate planted test does not calibrate the named deliverable) makes its FAILs instrument error. Done = superseding plants approved in corpus/approved/, or a consciously re-dated entry",
@@ -625,6 +638,11 @@
           "what": "WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0). Deleting plan_block.py removed the only reader of docs/plans/gated/*.md, so the directory /tdd-plan writes into is a \u00a76c write-only surface. Partially paid the same day: review_ledger.validate_record now RESOLVES a record's `plan` path on disk, so a review citing a missing plan REDs. Still unpaid: nothing reads a gated plan's CONTENT, and `scaffold`'s mechanical slug-collision refusal is now prose in tdd-plan.md only \u2014 stated here rather than deferred silently. By expiry: a content reader (or a collision check), or a conscious decision that a plan file needs no validator now that no engine parses it.",
           "owner": "david",
           "expires": "2026-10-15"
+        },
+        {
+          "what": "DOCTRINE SHRINK NOT DONE (v1.32.0). The owner-control plan targets SKILL.md under 300 lines and CLAUDE.md under 400 words, with everything cut moving to reference docs read on demand. Actual today: SKILL.md 1048 lines / 22 sections, CLAUDE.md ~2650 words \u2014 and CLAUDE.md GREW this release, because the new release procedure had to be written down. Only the text Phases 1-2 falsified was removed here. The rest is deliberately deferred, not forgotten, for a reason worth stating: removing a SKILL `## ` section trips check_scoreboard_integrity rule (d) and needs a gate-changes.md entry, and editing SKILL.md at all needs a pre-registered ledger row \u2014 a ~750-line deletion is its own cycle with its own review, not a rider on this one. By expiry: the shrink pass done under its own ledger registration, or a conscious decision that the doctrine is the right length and the plan's target was wrong.",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ]
     },
@@ -956,9 +974,9 @@
       },
       "integration_debt": [
         {
-          "what": "UNPROVEN ON THE REAL RUNNER (born 2026-08-09). The workflow is YAML-validated and the gate it runs is green locally, but it has never executed on GitHub: the runner image, the Python version, and above all whether fetch-depth:0 + fetch-tags actually makes the ledger stage MEASURED rather than UNMEASURED are unverified. A shallow clone is the documented default-CI failure this repo already knows about. By expiry: one green run observed on GitHub and the run URL recorded here, or the workflow is deleted rather than left as decorative CI. Committed != running (\u00a76).",
+          "what": "PAID 2026-08-09 \u2014 first green run observed on the real runner: GitHub Actions run 31315865230, `gate` job on main, conclusion=success in 1m21s, on the sha of the Phase 2 review commit. That answers every leg the debt asked about: the ubuntu-24.04 image and python-3.12 work, and fetch-depth:0 + fetch-tags did make the ledger stage MEASURED rather than UNMEASURED \u2014 the shallow-clone failure this repo already knew about did not occur. Committed != running, and this is the running evidence. | ORIGINAL: UNPROVEN ON THE REAL RUNNER (born 2026-08-09). The workflow is YAML-validated and the gate it runs is green locally, but it has never executed on GitHub: the runner image, the Python version, and above all whether fetch-depth:0 + fetch-tags actually makes the ledger stage MEASURED rather than UNMEASURED are unverified. A shallow clone is the documented default-CI failure this repo already knows about. SUCCESSOR ASK: the run above proves it CAN go green; it does not prove anyone READS it. By expiry: at least one release cut following CLAUDE.md::Releasing step 4 (push -> wait for the check -> tag), or the step is dropped as ceremony nobody performs \u2014 the guard_response 0-of-7 shape applied to this capability.",
           "owner": "david",
-          "expires": "2026-09-15"
+          "expires": "2026-11-15"
         }
       ],
       "notes": "Born 2026-08-09 with the CIVerd retirement (v1.32.0). Registered so that deleting the repo's only independent re-execution is a visible, gate-failing act rather than a quiet one.",
