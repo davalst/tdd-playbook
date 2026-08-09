@@ -359,3 +359,21 @@ additional evidence for that existing debt, not a claim that late registration i
 |---|---|---|---|---|---|---|---|---|
 | L-20260807-01 | 2026-08-07 | 3659abf | plugins/tdd-playbook/commands/grade.md | point `/grade` at the Git-common-dir event journal, retaining the legacy non-Git fallback | — | none | 0 | storage-path documentation only; no calibration scenario measures which local journal path the operator reads |
 | L-20260807-02 | 2026-08-07 | 3659abf | plugins/tdd-playbook/commands/tdd-unlock.md | document the canonical event journal and legacy non-Git fallback | — | none | 0 | storage-path documentation only; the runtime behavior is covered by planted adapter suites, not an agent-output scenario |
+
+### Registered 2026-08-09 — baseline 0c114ca (owner-control Phase 2: CIVerd retirement)
+
+The CIVerd engine is retired in v1.32.0 (owner-control plan, rev 3). `plan_block.py` exists
+solely to emit a `civerd-plan` block for that engine's plan-predicate evaluator to parse, and
+`capabilities.json` already recorded it as never armed — "if repos.yml is never armed, plans
+land INERT". With the consumer gone the producer is a writer with no reader, so it goes with
+it, and `/tdd-plan` loses the scaffold/validate step that fed it. Approved plans continue to
+land as ordinary markdown in `docs/plans/gated/`; the historical files are kept.
+
+Registered BEFORE the edit, not after: `ledger.py check` reads committed state, so an entry in
+the same commit as its surface change is invisible to the coverage predicate (the dated blind
+spot already owned as debt on `gate-surface-ledger`, and the reason the 2026-08-07 block above
+had to be recovered).
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260809-01 | 2026-08-09 | 0c114ca | plugins/tdd-playbook/commands/tdd-plan.md | remove the `plan_block.py scaffold/validate` step; approved plans land as ordinary markdown in docs/plans/gated/ | — | none | 0 | tooling-path documentation only — no calibration scenario measures how a gated plan FILE is scaffolded; the §0 plan CONTENT rules the agents are scored on are untouched |
