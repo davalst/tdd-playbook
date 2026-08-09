@@ -1,6 +1,9 @@
 # Owner Control & Simplification Plan — 2026-08-09
 
-*Rev 2 — folds in the value-chain investigation and David's decisions on `testlock` and CIVerd.*
+*Rev 3 — release certification deleted outright rather than replaced with local signing.
+David's challenge: if CIVerd produced no offsetting catch, keeping a signing ceremony at all is
+the same cost with a smaller hat on. Correct — and Phase 1a had been building an override for a
+wall that Phase 5 demolishes.*
 
 **Goal:** David holds every switch, the system can be reset or removed at will, and what
 remains is only the parts that have been *measured* to earn their cost.
@@ -127,10 +130,11 @@ instrument built to produce better evidence was never funded, and the direction 
 
 Do this **before any other decision**, including a decision to walk away.
 
-1. **Back up the CIVerd signing key off-box.** Rationale downgraded in rev 2: do it because it
-   takes two minutes and is irreversible if skipped — *not* because the evidence it protects has
-   demonstrable value. Those verdicts certify that a gate run happened at a SHA, for gates this
-   plan deletes.
+1. **Back up the CIVerd signing key off-box.** Rev 3: this is now **purely archival** — with the
+   release gate deleted, nothing operational depends on it. Do it anyway, because it takes two
+   minutes, this is the last moment it is possible, and an unverifiable archive is worse than no
+   archive. Those verdicts certify that a gate run happened at a SHA, for gates this plan
+   deletes.
 2. **Archive the evidence** — cheap, not sacred:
    `tar czf ~/tdd-playbook-evidence-2026-08-09.tgz docs/calibration/ calibration/corpus/ docs/reviews/`
 3. **Make the three stuck releases addressable.** Local annotated tags for v1.29.0/v1.30.0/
@@ -141,22 +145,34 @@ Do this **before any other decision**, including a decision to walk away.
 
 ---
 
-## Phase 1 — Get the switch (half a day)
+## Phase 1 — Get the switch (a couple of hours; rev 3 made this smaller)
 
 Ends the jam permanently. Buildable **today** — the gate is green and nothing blocks it.
 
-### 1a. Owner authorization in `release_verify.py`
+### 1a. Remove the wall — do not build a key past it
 
-- You generate an Ed25519 keypair. **Private key never touches the repo, the VPS, or any
-  machine the model can read.** Public key vendored beside the CIVerd issuer key.
-- `release_verify.py --authorize --reason "<why>"`, requiring a valid owner signature over the
-  release SHA. Refuses without one.
-- The release record gains **provenance**: `engine-verified` or `owner-authorized` (reason
-  recorded, enumerable forever).
+**Rev 3 correction.** Earlier revisions had David generate an Ed25519 keypair and build a
+`release_verify.py --authorize` path. That was wrong: it builds an override for a requirement
+Phase 5 deletes. A key for a door being taken off its hinges.
 
-This is v1.30's own doctrine — *a verification result is a CLAIM and carries its SCOPE* —
-applied to CIVerd, the one place it was never applied. **The model can forge neither
-signature.**
+Instead:
+
+- **Drop the CIVerd verdict requirement from the release path.** Releasing becomes: blessed gate
+  green → bump version → `git tag` → push. What every other project does.
+- **`release_verify.py` is retired** along with the tag ceremony, the async verdict polling and
+  the `ledger_unavailable` refusal that has been the only real wall.
+- **`verify_verdict.py` is kept but unwired** — stdlib-only, self-contained, and the sole means
+  of checking historical signed verdicts. It costs nothing at rest and it is the only way past
+  bundles stay readable.
+- **If third-party authenticity ever matters** (the plugin is public and vendors into other
+  repos), `git tag -s` is built into git, needs one flag, and requires no service, no issuer
+  key, no verdict ledger.
+
+**Nothing here weakens the model's inability to forge a verdict** — it removes the verdict from
+the release path entirely, so there is nothing to forge. What stops a bad release is the same
+thing that stops one in any repo: David reviewing what gets tagged.
+
+**Ships the three stuck releases immediately**, with no new machinery at all.
 
 ### 1b. Break-glass for the guards
 
@@ -164,8 +180,8 @@ signature.**
   prints a loud banner, journals the reason.
 - Supersedes the per-gate `TDD_PLAYBOOK_HOOK_<NAME>=warn` knobs with one obvious switch.
 
-**Exit:** no configuration of failures can jam you again. Ship the three stuck releases as
-owner-authorized.
+**Exit:** no configuration of failures can jam you again. The three stuck releases ship as
+ordinary tags.
 
 ---
 
@@ -265,18 +281,23 @@ Apparatus-to-product drops from 8.5:1 toward ~2:1. Per-feature token cost loses 
 
 ---
 
-## Phase 5 — CIVerd — DECIDED: Option B, retire to local signing
+## Phase 5 — CIVerd — DECIDED: retire entirely (rev 3: no local signing either)
 
-You sign releases with your own key (Phase 1a). Drop the VPS, the tailnet, the heartbeat, the
-async verdict polling, the tag ceremony and the whole availability coupling. Keep
-`verify_verdict.py` and the provenance record so past signed verdicts remain checkable.
+Drop the VPS, the tailnet, the heartbeat, the async verdict polling, the tag ceremony, the
+release gate and the signing ceremony. Keep `verify_verdict.py` unwired so historical bundles
+stay checkable.
 
-Rationale: a signing service exists to make a claim credible to a **third party**. The issuer,
-operator and sole relying party are all you. Three releases already shipped without it with no
-observable consequence, and it produced three days of headaches with no offsetting catch.
+**Rev 2 said "retire to local signing." Rev 3 deletes that too**, on David's challenge: if the
+apparatus produced no offsetting catch, a signing ceremony with a smaller hat is the same cost.
 
-*Reversible:* if a third party ever needs to trust a release, the verifier and the key format
-are still there to rebuild against.
+Signing exists to make a claim credible to a **third party**. Here the issuer, the operator and
+the only relying party are the same person, so a signature verifies something already known.
+Three releases shipped without it with no observable consequence. `git tag -s` covers
+distribution authenticity for free if it ever matters — a different claim (*this artifact came
+from me*) from the one CIVerd made (*a gate run happened at this SHA*), and the only one with a
+plausible audience.
+
+*Reversible:* the verifier, the key format and the cross-validation corpus stay in the repo.
 
 ---
 
@@ -285,11 +306,11 @@ are still there to rebuild against.
 | Phase | Effort | Gives you |
 |---|---|---|
 | 0 — Insurance | 15 min | Nothing irreversible can be lost |
-| 1 — The switch | half day | Jam ends permanently; 3 releases ship |
+| 1 — The switch | ~2 hrs | Jam ends permanently; 3 releases ship |
 | 2 — Reset | half day | Nuke/rebuild on demand; new-user sim automated |
 | 3 — Delete by evidence | 1–2 days | Noise stops; token burn drops ~90% of apparatus |
 | 4 — New-user path | half day | Adoption is real |
-| 5 — CIVerd retire | half day | VPS burden ends |
+| 5 — CIVerd retire | ~2 hrs | VPS, tailnet and signing burden all end |
 
 **Phases 0–2 are ~1 day and give you full control.** Phase 3 is where the relief lands. Stop
 after Phase 2 and you still hold every switch.
@@ -314,5 +335,7 @@ Most of the earlier list is now decided. What's left:
   adapters, the gate runner and the review ledger, plus a 20-version forward-port — to solve
   one refusal in one script.
 - **No wiping evidence before Phase 0's archive.**
-- **No removal of the model's inability to forge a verdict.** That property survives every
-  phase intact — it is the one thing this plan is careful never to trade away.
+- **No path by which the model can self-certify a release.** Rev 3 achieves this by deletion
+  rather than by cryptography: with no verdict in the release path there is nothing to forge,
+  and what authorizes a release is David tagging it. This is the one property the plan is
+  careful never to trade away, and it is now enforced by there being nothing to attack.
