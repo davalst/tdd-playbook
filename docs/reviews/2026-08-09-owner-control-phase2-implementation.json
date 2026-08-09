@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-09-owner-control-phase2-implementation-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-07-assurance-pipeline-streamlining.md",
+  "review_range": {
+    "base": "bcf9280cabbcc27d5b869e753a0262f4833806ca",
+    "head": "c799fe84773d6cb760764cc01ec84b15a5a766cb"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "OC2-P1-CONSUMER-FICTIONAL",
+      "severity": "P1",
+      "summary": "capabilities.json named 'David, reading the check mark before running git tag (CLAUDE.md::Releasing)' as the CI job's consumer, but CLAUDE.md::Releasing created the tag BEFORE `git push origin main`. The workflow triggers on push, so at the instant of tagging no run for that commit could exist. The entire justification for keeping CI was delivered into a moment the operator can never stand in.",
+      "evidence": [
+        "CLAUDE.md",
+        ".github/workflows/gate.yml",
+        "capabilities.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ]
+    },
+    {
+      "id": "OC2-P1-WORKFLOW-UNPINNED",
+      "severity": "P1",
+      "summary": "Nothing asserted that .github/workflows/gate.yml invokes the blessed entrypoint. Changing `run: sh scripts/civerd_gate.sh` to `run: echo ok` was a one-line diff leaving the suite green and the check mark green forever. The deleted test_plant_target_handoff pinned exactly this for the previous external runner, and the replacement comment claiming its coverage was 'superseded' was false for that half. YAML validity was also unpinned, and an invalid workflow produces NO check, which reads like 'not finished yet'.",
+      "evidence": [
+        ".github/workflows/gate.yml",
+        "plugins/tdd-playbook/tests/test_dataflow_sweeps.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ]
+    },
+    {
+      "id": "OC2-P1-CI-TAG-BLIND",
+      "severity": "P1",
+      "summary": "The tag scanner was a shell-verb line scan, blind to the dominant CI idiom: `uses: softprops/action-gh-release` with `tag_name:` creates and pushes a release tag with zero git verbs. The two new roster assertions certified SCOPE while the detector stayed blind to the class. Also unchecked: `permissions: contents: write`, the authority a job needs to push a ref at all, asserted only in registry prose.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tag_guard"
+      ]
+    },
+    {
+      "id": "OC2-P1-STALE-AUTHORITY-CLAIM",
+      "severity": "P1",
+      "summary": "capabilities.json still asserted 'CIVerd remains authoritative' on a user-facing capability's emitted report. The edit had been reported as done in the previous commit but never landed: the script matched capability id `host-doctor` while the id is `host-adapter-doctor`, so it changed nothing and printed success. The claims discipline applies to the agent's own tool output. docs/architecture/portable-host-contracts.md carried the same claim.",
+      "evidence": [
+        "capabilities.json",
+        "docs/architecture/portable-host-contracts.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC2-P1-WRITE-ONLY-PLANS",
+      "severity": "P1",
+      "summary": "Deleting plan_block.py removed the only reader of docs/plans/gated/*.md, leaving the directory /tdd-plan writes into a write-only surface. Its governing doc (plan-gating-and-deliberation-capture.md) became false in every load-bearing sentence, including a 'do not fix this' instruction defending against an engine-parsing hazard that no longer exists, and an assertion that a deleted capability's debt would RED the suite.",
+      "evidence": [
+        "docs/plan-gating-and-deliberation-capture.md",
+        "plugins/tdd-playbook/commands/tdd-plan.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_repository_review_records_are_valid",
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC2-P2-POLICY-DUPLICATION",
+      "severity": "P2",
+      "summary": "Two copies of the tag policy existed and had already drifted: --verify and --contains were read-only in tag_guard.py and FLAGGED by test_installer's private copy, and only the guard knew about release actions. Phase 2 added a third governed population (CI) riding the divergent copy, and added assertions to the copy rather than unifying.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ]
+    },
+    {
+      "id": "OC2-P2-UNPAYABLE-TWIN-DEBT",
+      "severity": "P2",
+      "summary": "scoreboard-integrity carried a live debt asking for an engine-side calibration_integrity check on srv1621832, unpayable once the engine is retired and due to RED on 2026-09-16 naming an actor that does not exist. The identical reasoning was applied to integrity-guards in the same release; applying it to one twin and not the other is the inconsistency a sweep exists to catch.",
+      "evidence": [
+        "capabilities.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC2-P2-LIVENESS-PROBE-PROXY",
+      "severity": "P2",
+      "summary": "capability_registry doctor prints '[no liveness probe (staleness undetectable)]' but tested only that a `liveness` OBJECT existed, never that it carried a probe. The one capability whose own debt says 'it has never executed on GitHub' was therefore certified as probe-covered \u2014 a check literally true while describing something other than what is needed.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/capability_registry.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_doctor"
+      ]
+    },
+    {
+      "id": "OC2-P2-STALE-SCOPE-PROSE",
+      "severity": "P2",
+      "summary": "README and capabilities.json both still described the tag scanner as parsing 'every tracked script under scripts/, plugins/tdd-playbook/ and calibration/' \u2014 the three-root blindness Phase 1 removed, and precisely the blindness that would have missed the workflow this phase adds. README also claimed check_staleness runs 'as a CIVerd staleness check on the engine's daily timer'. CLAUDE.md still told the doctor to watch for plan-authoring's repos.yml arming.",
+      "evidence": [
+        "README.md",
+        "capabilities.json",
+        "CLAUDE.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC2-P3-RETIREMENT-PIN-TAUTOLOGY",
+      "severity": "P3",
+      "summary": "The plan-authoring retirement pin asserted only that the capability is ABSENT \u2014 true at edit time and failable only if someone re-adds that exact id. Every sibling retirement pin in the same file carries a second clause requiring a dated record to SURVIVE in a live capability's notes, which is the half a later cleanup can break and the only place the WHY reaches the doctor once a capability is deleted whole.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "OC2-P3-CI-HYGIENE",
+      "severity": "P3",
+      "summary": "The workflow mis-cited its own supporting incident to capabilities.json when it lives in CHANGELOG.md, and had no concurrency group \u2014 so under this repo's standing checkpoint-at-every-phase-boundary rule each WIP push queued a full duplicate gate run. Runs people learn to ignore are the failure this capability guards against.",
+      "evidence": [
+        ".github/workflows/gate.yml"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c799fe84773d6cb760764cc01ec84b15a5a766cb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ]
+    }
+  ]
+}
