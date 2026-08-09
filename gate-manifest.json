@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
-  "acknowledged_roster_sha256": "42562b24b10c4b189e339420372cc08d2e5d79424e1ed3d4a6ad6ae51ef2ffde",
-  "acknowledged_plan_sha256": "d39ebfdad74ff2c59484f4e40cb9ecacb0d08837654b022857194b49aae98aaf",
+  "acknowledged_roster_sha256": "cfec9a3908546b5d9faba994212f0f083c7549c07bae5841566426abbb22b68a",
+  "acknowledged_plan_sha256": "f987ec6a9b751e3c7f05d544a51a19344e70d9a97da67b8d323986f98f4d7e7a",
   "fixed_stages": [
     {
       "id": "calibration",
@@ -57,7 +57,9 @@
     "plugins/tdd-playbook/bin/gate_runner.py",
     "plugins/tdd-playbook/bin/host_parity.py",
     "plugins/tdd-playbook/bin/render_reference.py",
+    "plugins/tdd-playbook/bin/reset_plan.py",
     "plugins/tdd-playbook/bin/review_ledger.py",
+    "plugins/tdd-playbook/bin/vendoring.py",
     "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py",
     "scripts/civerd_gate.sh",
     "scripts/install_into_repo.py"
@@ -92,7 +94,8 @@
       ],
       "suites": [
         "test_host_doctor",
-        "test_codex_adapter"
+        "test_codex_adapter",
+        "test_vendoring"
       ]
     },
     {
@@ -135,7 +138,8 @@
       ],
       "suites": [
         "test_installer",
-        "test_host_parity"
+        "test_host_parity",
+        "test_vendoring"
       ]
     },
     {

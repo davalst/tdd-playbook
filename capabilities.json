@@ -394,13 +394,15 @@
       ],
       "activation": {
         "default": "off",
-        "switch": "python3 scripts/install_into_repo.py --doctor <repo> (run after any plugin release; vendor stamps are written automatically)"
+        "switch": "python3 <plugin>/bin/tdd.py doctor [--only clone|install] [--fix] \u2014 the user-facing aggregator; `install_into_repo.py --doctor` remains the install-family implementation"
       },
       "wired_by": [
-        "scripts/install_into_repo.py::doctor"
+        "scripts/install_into_repo.py::doctor",
+        "plugins/tdd-playbook/bin/tdd.py::doctor (aggregator)"
       ],
       "exercised_by": [
-        "plugins/tdd-playbook/tests/test_installer.py"
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_doctor_detects_the_shallow_clone_and_carries_a_fix"
       ]
     },
     {
@@ -986,6 +988,72 @@
         "running_version_probe": "the `gate` check-run conclusion for the pushed sha \u2014 `gh run list --branch main --limit 1`; CLAUDE.md::Releasing step 4 makes reading it a required release step",
         "divergence": "Actions disabled, the workflow deleted, or invalid YAML -> NO check appears at all, which reads like 'not finished yet'. Step 4 treats a MISSING check as a stop, not a pass; test_installer pins the workflow's YAML validity and its gate invocation so a silent break REDs locally."
       }
+    },
+    {
+      "id": "state-reset",
+      "summary": "`tdd reset` removes Playbook machine state across four scopes (repo / shared / machine / plugin), DRY-RUN BY DEFAULT, printing every path before touching any. The printed set and the deleted set are asserted EQUAL by test, which kills the 'prints one thing, deletes another' class outright. Evidence directories are unreachable except under --burn-evidence, which needs --yes AND --reason.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "python3 <plugin>/bin/tdd.py reset --repo|--shared|--machine|--plugin|--all (add --yes to apply; --burn-evidence needs --yes and --reason)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/tdd.py::cmd_reset",
+        "plugins/tdd-playbook/bin/reset_plan.py::plan"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_reset_is_dry_run_by_default_and_truthful",
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_reset_never_touches_a_linked_worktree",
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_reset_scopes_evidence_out_and_shared_apart"
+      ],
+      "emits": [],
+      "liveness": {
+        "max_quiet_days": 180
+      },
+      "integration_debt": [
+        {
+          "what": "--shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0). Removing common-dir state from one worktree is an unlock of every OTHER worktree without a journal entry \u2014 the exact thing /tdd-unlock exists to prevent. The plan refuses a FOREIGN active lock and names every sharing worktree in the listing, but the burn record cannot live in events.jsonl because that is the file being deleted. By expiry: the burn record written somewhere reset never removes, or --shared restricted to single-worktree repos.",
+          "owner": "david",
+          "expires": "2026-10-31"
+        }
+      ],
+      "notes": "Born 2026-08-09 (owner-control Phase 4). The worktree refusal is the load-bearing safety property: this repo carries five linked worktrees under .claude/worktrees/, one locked and several on unpushed branches."
+    },
+    {
+      "id": "vendor-uninstall",
+      "summary": "`tdd uninstall` is the true inverse of install_into_repo.py: it removes exactly what install wrote (roster DERIVED by walking the source trees, so it cannot drift), prunes our hook groups via the installer's OWN _is_plugin_group, and deletes BY NAME in shared namespaces (.claude/commands, agents, bin) where a user's own files live beside ours.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "python3 <plugin>/bin/tdd.py uninstall [--host claude|codex|all] --apply"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/tdd.py::cmd_uninstall",
+        "plugins/tdd-playbook/bin/vendoring.py::uninstall",
+        "scripts/install_into_repo.py::_is_plugin_group"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_uninstall_is_the_inverse_of_install",
+        "plugins/tdd-playbook/tests/test_vendoring.py::test_install_reset_install_is_byte_identical"
+      ],
+      "emits": [],
+      "liveness": {
+        "max_quiet_days": 180
+      },
+      "integration_debt": [
+        {
+          "what": "INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0). install pops extraKnownMarketplaces and enabledPlugins from settings.json and records them NOWHERE, so no uninstall can restore them; and .claude/.gitignore lines cannot be told apart from lines the user already had. Both are REPORTED as note rows rather than silently ignored. The proper fix is a deterministic install manifest (.claude/.tdd-playbook-manifest.json with file hashes and displaced values, and NO installed_at, so the byte-identical round-trip test still holds). By expiry: the manifest, or a conscious decision that the two losses are acceptable.",
+          "owner": "david",
+          "expires": "2026-10-31"
+        }
+      ],
+      "notes": "Born 2026-08-09. Lives in bin/ not scripts/ because scripts/ is never vendored: a downstream repo has .claude/bin/ and no scripts/, so uninstall logic in scripts/ would be unreachable exactly where it is needed."
     }
   ]
 }

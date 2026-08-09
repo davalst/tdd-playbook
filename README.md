@@ -111,6 +111,37 @@ the four-leg Tripwire, and the registry-as-release-gate — lives in this repo's
 [`CLAUDE.md`](./CLAUDE.md) under **"STANDING PROMPT — refreshing downstream repos."** Paste it into
 the target repo's session; it is the authoritative revendoring checklist.
 
+## Leaving — reset & uninstall
+The ability to leave is what makes adopting safe, so both verbs ship with the Playbook and
+both are **dry-run by default**.
+
+```bash
+python3 <plugin>/bin/tdd.py reset --repo          # prints every path; changes nothing
+python3 <plugin>/bin/tdd.py reset --repo --yes    # ...now actually do it
+python3 <plugin>/bin/tdd.py uninstall --apply     # the true inverse of the installer
+python3 <plugin>/bin/tdd.py doctor --only clone --fix   # e.g. repair a shallow clone
+```
+
+Scopes are separate because their blast radii are: `--repo` (this worktree's vendored install
++ local exhaust) · `--shared` (git common-dir state — **shared by every worktree of the repo**,
+so it is never implied by `--repo`) · `--machine` (the capture store, all repos) · `--plugin`
+(the user-scope plugin cache, stale versions only — the newest installed copy is kept because
+deleting the one a live session runs from darkens guards everywhere, silently). `--all` covers
+those four. **Evidence is never in scope**: `docs/calibration/` and `calibration/corpus/` need
+an explicit `--burn-evidence` plus `--yes` and `--reason`, because they are append-only and
+immutable under `check_scoreboard_integrity` — deleting them makes the repo permanently RED
+against every baseline, which is worse than losing data.
+
+Two safety properties are asserted by tests rather than promised: the set of paths a dry run
+PRINTS equals the set a real run DELETES, and a linked git worktree is never touched (this
+repo carries five, one locked and several on unpushed branches).
+
+`uninstall` deletes **by name** in `.claude/commands/`, `.claude/agents/` and `.claude/bin/` —
+your own files live in those namespaces — and prunes only Playbook hook groups from
+`settings.json`. Two known irreversibilities are reported rather than hidden: install drops
+`extraKnownMarketplaces`/`enabledPlugins` and records them nowhere, and `.gitignore` lines it
+added cannot be told apart from lines you already had.
+
 ## Hook controls
 Three tiers, and the tiers are set by **measured yield**, not by how important a guard sounds
 (`docs/calibration/gate_yield.md`; §13's decay principle runs in both directions — a gate can
