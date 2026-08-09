@@ -3,6 +3,65 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.32.0 — 2026-08-09
+
+**Owner control: the CIVerd wall is deleted, guards are set by measured yield, and the system
+can be removed at will.** The organising principle is auditability instead of impossibility —
+applied to release authority, to guard defaults, and to machine state.
+
+**The release wall is gone.** `scripts/release_verify.py` is deleted and no verdict is
+consulted, produced, or required to ship. This is deletion, not a smaller wall: with nothing
+in the release path to forge, there is nothing to argue past or `--force`. What authorizes a
+release is David creating the tag, and that is enforced two ways —
+`test_installer.py::test_no_script_creates_a_release_tag` parses every TRACKED `.py`/`.sh`/
+`.yml` (roster derived from `git ls-files`, so a new tool dir or a workflow cannot fall
+outside it), and the new BLOCKING `hooks/scripts/tag_guard.py` stops a session tagging at the
+Bash seam. Both state their scope; neither can bind a human at a terminal, which is what the
+dated `release-tag-authority` debt is for.
+
+**CIVerd is retired entirely** — engine, handoff manifest (`civerd-integrity.yml`), and the
+plan-predicate path (`bin/plan_block.py` + the `plan-authoring` capability), producer and
+consumer deleted together. `bin/verify_verdict.py` is KEPT and deliberately UNWIRED so
+pre-v1.32 signed bundles stay readable, with a dated debt that deletes the whole archival set
+if no reader is ever named.
+
+**New: `.github/workflows/gate.yml`.** The plan argued signing bought nothing — true. But
+signing and independent RE-EXECUTION are different properties and only the first was
+worthless. This job re-runs `sh scripts/civerd_gate.sh` from a clean clone on a machine the
+agent cannot reach, and does nothing else: no verdict, no signature, `contents: read`. First
+green run on the real runner: Actions 31315865230.
+
+**Guard defaults are set by measured yield, not by how important a guard sounds.**
+`exitcode`, `overmock`, `exhaustive`, `flaky` and `redlock` ship OFF (31 warnings, zero blocks
+across all recorded history); `testweaken`, `testlock`, `snapshotguard` and `tagguard` block.
+Retirement is never silent deletion — the scripts stay, the per-hook knob restores them, and
+their calibration suites still run opted-in.
+
+**`testlock` stays BLOCKING, against the plan.** The plan read its 20 overrides as 20 false
+positives. `gate_yield.py` counts a false positive only when `reason_class == "gate-wrong"`,
+and the journal has zero of those. Measured false positives: 0. So the instrument was fixed
+instead: the committed `gate_yield.md` header was the SUPERSEDED v1.26 text (the header was
+only ever written on file creation, so v1.27's correction never reached the artifact anyone
+reads), and `--class` is now REQUIRED on unlock so cycles stop being UNMEASURED.
+
+**New: `TDD_PLAYBOOK_BREAK_GLASS="<reason>"`** — one switch demoting every blocking gate to
+warn for a session. Reason required; recorded as a BLOCK with `demoted_by`, so a bypass stays
+visible to the instrument built to see bypasses. `TDD_PLAYBOOK_HOOK_MODE=off` is now REFUSED
+out loud rather than silently ignored.
+
+**New: `tdd reset` / `tdd uninstall` / `tdd doctor --fix`** — the ability to leave, which is
+what makes adopting safe. Dry-run by default; the set a dry run PRINTS is asserted equal to
+the set a real run DELETES; linked worktrees are never touched; shared namespaces are deleted
+by name; calibration evidence needs an explicit `--burn-evidence` with `--reason`. Install now
+writes `.claude/.tdd-playbook-manifest.json` so uninstall works from a vendored copy.
+`doctor` gains the shallow-clone case — the default new-user and default CI failure.
+
+Every phase was reviewed by fresh-context adversaries before merge; the records are in
+`docs/reviews/2026-08-09-owner-control-phase{1,2,3,4}-implementation.json`. They found 37
+verified defects, including a scanner blind to the shell forms it documented itself as
+catching, a break-glass switch that silenced gates its docstring said it could not, and a
+reset that printed a safety guarantee it had failed to compute.
+
 ## 1.31.0 — 2026-08-07
 
 **Portable host adapters and a smaller, evidence-bearing assurance pipeline.** TDD Playbook now

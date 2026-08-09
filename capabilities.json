@@ -3,7 +3,7 @@
   "capabilities": [
     {
       "id": "integrity-guards",
-      "summary": "PreToolUse/PostToolUse guards. BLOCKING by default: testweaken (4 blocks, 0 adjudicated false positives), testlock (16 blocks, 20 journaled unlocks, ZERO classed gate-wrong - measured false positives 0), snapshotguard, and tagguard (v1.32.0). OPT-IN since v1.32.0: exitcode, overmock, exhaustive, flaky, redlock - 31 warnings and ZERO blocks across all recorded history, retired to opt-in rather than deleted. One break-glass switch, TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\", demotes every blocking gate for a session; the reason is required and journaled.",
+      "summary": "The four BLOCKING guards: testweaken (4 blocks, 0 adjudicated false positives), testlock (16 blocks, 20 unlocks, ZERO classed gate-wrong \u2014 measured false positives 0), snapshotguard, and tagguard (v1.32.0). One break-glass switch, TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\", demotes all four for a session; the reason is required and recorded as a BLOCK with demoted_by. The five OPT-IN guards are a SEPARATE capability (advisory-guards-optin) precisely so the doctor's dark inventory can report them \u2014 see its entry.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -1054,6 +1054,39 @@
         }
       ],
       "notes": "Born 2026-08-09. Lives in bin/ not scripts/ because scripts/ is never vendored: a downstream repo has .claude/bin/ and no scripts/, so uninstall logic in scripts/ would be unreachable exactly where it is needed."
+    },
+    {
+      "id": "advisory-guards-optin",
+      "summary": "The five guards retired to OPT-IN in v1.32.0: exitcode, overmock, exhaustive, flaky, redlock. They ship OFF on 31 warnings and ZERO blocks across all recorded history (docs/calibration/gate_yield.md). Registered SEPARATELY from integrity-guards, and default:off, so `capability_registry.py doctor` lists them in the dark inventory. A tripwire audit caught the earlier shape: one capability declaring activation on while five of its nine shipped hooks were inert meant the operator health surface could not say so \u2014 dark-to-the-OPERATOR, which is the \u00a76a class this registry exists to make impossible.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "TDD_PLAYBOOK_HOOK_EXITCODE|_OVERMOCK|_EXHAUSTIVE|_FLAKY|_REDLOCK=warn (per guard; documented in README's Hook controls). Retirement is not deletion: the scripts ship, the hooks stay registered, and gate_yield keeps accruing rows for anyone who opts in."
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "plugins/tdd-playbook/hooks/scripts/_common.py::_DEFAULT_MODES"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_retired_advisory_defaults",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_overmock",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_exitcode"
+      ],
+      "emits": [],
+      "liveness": {
+        "max_quiet_days": 120
+      },
+      "integration_debt": [
+        {
+          "what": "RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0). These five were retired on 31 warnings / 0 blocks over six cycles from mostly ONE operator \u2014 and a warn-tier guard cannot produce blocks BY CONSTRUCTION, so 'never blocked' is partly a statement about the tier, not the guard. By expiry: read docs/calibration/gate_yield.md again and either confirm the retirement, restore one that turns out to have carried load, or delete the five outright. The one outcome not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one.",
+          "owner": "david",
+          "expires": "2026-11-15"
+        }
+      ],
+      "notes": "Split out of integrity-guards on 2026-08-09 after a tripwire audit REDded the ACTIVATED leg: the combined capability declared default:on while five of nine hooks shipped off, so the dark inventory could not see them."
     }
   ]
 }
