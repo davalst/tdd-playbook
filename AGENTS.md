@@ -12,9 +12,9 @@ release gate runs it `--warn-only` (loud, doesn't wedge a code release on a cali
 It also runs inside the blessed gate, so the CI job in `.github/workflows/gate.yml` re-runs it
 off-box on every push (the CIVerd engine that used to do this was retired in v1.32.0).
 Pinned by planted-date tests in `calibration/test_harness.py`. This replaces "David remembers"; the
-run itself still needs a real `Codex` binary (below).
+run itself still needs a real `claude` binary (below).
 
-**Weekly (needs a real `Codex` binary — David runs or schedules this):**
+**Weekly (needs a real `claude` binary — David runs or schedules this):**
 ```bash
 python3 calibration/check_staleness.py            # deterministic: is the scoreboard stale? (F5)
 python3 calibration/run_calibration.py            # cheap model, hard caps; appends history
@@ -83,7 +83,7 @@ due task, not noise.
 **On any doer-model upgrade:** run calibration BEFORE trusting the new model's work in
 Playbook repos (verifier-strength policy, SKILL.md §13).
 
-## STANDING PROMPT — refreshing downstream repos (vendored `.Codex/` copies)
+## STANDING PROMPT — refreshing downstream repos (vendored `.codex/` copies)
 
 When David asks to update a repo that carries the vendored Playbook (or after any release
 here), use/give this prompt in THAT repo's session:
@@ -94,21 +94,21 @@ mechanisms.
 
 1. REFRESH: Clone https://github.com/davalst/tdd-playbook (shallow is fine) to a temp
    directory and run: python3 <clone>/scripts/install_into_repo.py <this repo's root>
-   The installer is reconciling: it prunes stale playbook hooks from .Codex/settings.json
+   The installer is reconciling: it prunes stale playbook hooks from .codex/settings.json
    and adds current ones (the four BLOCKING guards: test_weakening_guard, test_lock_guard,
    snapshot_guard, tag_guard; plus the opt-in exitcode/overmock/exhaustive/flaky/red_lock,
    which ship OFF since v1.32.0 on 31 warns / 0 blocks). My own
    non-playbook hooks must survive — verify that before committing.
 
-2. VERIFY: Confirm .Codex/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
+2. VERIFY: Confirm .codex/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
    capability_registry.py, and dataflow_sweeps.py (with its _debt.py sibling); confirm
-   .Codex/settings.json has the PreToolUse guards; confirm the vendored SKILL.md mentions
+   .codex/settings.json has the PreToolUse guards; confirm the vendored SKILL.md mentions
    TEST-LOCK, the decay principle, the ACTIVATED Tripwire leg (§6a wiring liveness),
    §6c Dataflow Liveness, and the §1 seam rule + §6c family parity sweep (v1.26).
 
 3. SEED THE REGISTRY (if this repo has no capabilities.json yet — don't wait for the next
    feature; the existing features are the ones already dark): run
-   `python3 .Codex/bin/capability_registry.py init`, then replace the example entry with
+   `python3 .codex/bin/capability_registry.py init`, then replace the example entry with
    real entries enumerated from this repo's entry points — the daemon/app factory,
    schedulers/cron registrations, tool registrations, event topics, config gates,
    per-surface adapters. Cover the MAJOR subsystems honestly rather than everything
@@ -125,14 +125,14 @@ mechanisms.
    binary and budget), NOT something to run in this repo — your job is to make the
    staleness impossible to miss, not to run it.
 
-   Then delete the temp clone, commit .Codex/ (+ capabilities.json) as
+   Then delete the temp clone, commit .codex/ (+ capabilities.json) as
    "chore: refresh vendored TDD Playbook to v<version>", and push.
 
 5. ADOPT — these change how you work in this repo from now on:
    - Integrity guards BLOCK by default (test weakening, snapshot auto-updates, exit calls
      in tests). If one blocks you, that's the system working — fix the source, don't look
      for a way around it. Demotion is TDD_PLAYBOOK_HOOK_<NAME>=warn, but ask me first.
-     And RECORD the block (§12, v1.28): `python3 .Codex/bin/guard_note.py record --gate
+     And RECORD the block (§12, v1.28): `python3 .codex/bin/guard_note.py record --gate
      <name> --objected "..." --performed-elsewhere yes|no --dropped "..."`. Splitting a
      blocked command into pieces looks identical to complying with it; the record is what
      tells the two apart, and unaccounted blocks are reported every calibration cycle.
@@ -145,7 +145,7 @@ mechanisms.
      write-only loop becomes owned, dated integration debt, never a silent deferral.
    - §6c Dataflow Liveness: plans carry a flow table (`flow · producer · consumer ·
      liveness test`) for feature/migration work; wire the Tier-1 sweeps
-     (`.Codex/bin/dataflow_sweeps.py` — render-pairing/exemption-prose blocking,
+     (`.codex/bin/dataflow_sweeps.py` — render-pairing/exemption-prose blocking,
      ghost-gates advisory) where the flow kind exists in this repo, with a repo-local
      sweep config; migrations prove CONSUMER PARITY for the seam they replace (enumerate
      what the old seam fed; each consumer fed / retired-with-deletion / dated debt).
@@ -207,7 +207,7 @@ Local-machine plugin installs update separately (no prompt needed):
   --max-age-days 100 --warn-only` (the quarterly-bundle clock: catalog refresh · lift read ·
   cross-tier — lapsed quarters are loud on every release),
   and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
-  present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.Codex/.gitignore` written), plus
+  present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.codex/.gitignore` written), plus
   `python3 scripts/install_into_repo.py --doctor .` on THIS repo (H8 guards-liveness:
   a commit postdating the last guard heartbeat means the release was built guard-dark —
   the 2026-07-28 incident; also catches standing demotions and version skew).
@@ -249,7 +249,7 @@ Local-machine plugin installs update separately (no prompt needed):
     `.py`/`.sh`/`.yml` (roster derived from `git ls-files`, so a new tool directory or a
     `.github/workflows/*.yml` cannot fall outside it) and REDs the gate if any creates or
     pushes a tag. Covers committed automation; blind to untracked trees such as
-    `.Codex/worktrees/*`.
+    `.codex/worktrees/*`.
   - `hooks/scripts/tag_guard.py` (PreToolUse/Bash, **BLOCKING**) stops a SESSION typing
     `git tag`, `git push --tags`, `git update-ref refs/tags/…` or `gh release create` —
     including in untracked trees, which is the half the scanner cannot see. It ships

@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `9b97797bcdbd9885f645e2d4791c28711f05ba1439d0060139fd771980fda755`
 - `docs/architecture/host-parity.json` — `986d406d24b8529c7426be2f10c54f7f3da5817f36033a7791a6cfbd069303d8`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `0e920e10fdac4369fbf0ad7502941b9ed17ad967f81f8bd658002504ce4e5bc4`
+- `capabilities.json` — `936cb184642ee3c53307a0361da680b3d71245dab65b2abd0559243394b183e2`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -50,7 +50,7 @@
 - `test-lock/codex-command-agent-discovery` — owner `david`, expires `2026-09-30`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-11-01`
+- `calibration-loop/unnamed` — owner `david`, expires `2026-12-31`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
@@ -61,7 +61,7 @@
 - `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
 - `scoreboard-integrity/unnamed` — owner `david`, expires `2026-12-31`
 - `scoreboard-integrity/unnamed` — owner `david`, expires `2026-11-15`
-- `gate-yield/unnamed` — owner `david`, expires `2026-10-15`
+- `gate-yield/unnamed` — owner `david`, expires `2026-12-31`
 - `gate-yield/unnamed` — owner `david`, expires `2026-11-15`
 - `gate-yield/unnamed` — owner `david`, expires `2026-11-15`
 - `civerd-release-gate/unnamed` — owner `david`, expires `2027-02-01`

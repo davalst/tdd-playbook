@@ -268,12 +268,21 @@ def test_own_registry():
     # plant-forms debt — which cites it as a downstream cost and expires two weeks earlier —
     # tripped an assertion about a different debt entirely. A boundary pin whose needle can be
     # satisfied by unrelated prose is not pinning the boundary it names.
-    check("QUARTERLY BUNDLE debt: violation string present at 2026-11-02",
-          any("QUARTERLY BUNDLE" in v for v in v_after),
+    # (The QUARTERLY BUNDLE boundary pin lived here until 2026-08-09. RETIRED OBSOLETE: the
+    # debt's enforcement was `check_staleness --history quarterly.md --max-age-days 100
+    # --warn-only` as a release-gate line, and v1.32.0 deleted the quarterly clock along with
+    # the weekly one when calibration became opt-in. A boundary pin on a mechanism that no
+    # longer exists asserts nothing. The CONTENT is not dismissed — the HACK_CATALOG refresh
+    # is still worth doing — it is simply reactive now, which is why the entry survives with
+    # its history rather than being deleted.)
+    check("QUARTERLY BUNDLE: retired obsolete — trigger no longer fires at the old boundary, "
+          "and the entry survives carrying its RETIRED record",
+          not any("QUARTERLY BUNDLE" in v for v in v_after)
+          and any("QUARTERLY BUNDLE" in (deb.get("what") or "")
+                  and "RETIRED OBSOLETE 2026-08-09" in (deb.get("what") or "")
+                  for c in reg.get("capabilities", [])
+                  for deb in (c.get("integration_debt") or [])),
           [v for v in v_after][:3])
-    check("QUARTERLY BUNDLE debt: NOT expired on its own expiry day (strictly-after rule)",
-          not any("QUARTERLY BUNDLE" in v for v in v_on),
-          [v for v in v_on if "QUARTERLY BUNDLE" in v][:3])
 
     # STRING-PINNED boundary proofs for the v1.23 briefs debts (David's ships-on-or-
     # triggered rule, 2026-07-30: anything shipped OFF must carry an ARMED trigger).
@@ -416,12 +425,19 @@ def test_own_registry():
     # v1.27 successors — the debts this release OPENS, each string-pinned like every other
     # loan. Paying one debt while opening smaller named ones is the honest shape; opening
     # them undated would be exactly the deferral-without-a-trigger this repo bans.
-    check("require --class debt (2026-10-15): silent on its expiry day, fires 10-16 naming "
-          "gate-yield — an optional class leaves the instrument blind by omission",
-          not _fires("2026-10-15", "REQUIRE --class ON UNLOCK")
-          and any("gate-yield" in v
-                  for v in _fires("2026-10-16", "REQUIRE --class ON UNLOCK")),
-          _fires("2026-10-16", "REQUIRE --class ON UNLOCK")[:2])
+    # (The REQUIRE --class boundary pin lived here until 2026-08-09. PAID in v1.32.0 — its
+    # stated Done was "--class required on unlock", and tdd_lock.py now REFUSES an unclassed
+    # unlock with a message teaching the four classes. Verified in a scratch repo, not
+    # assumed: lock -> 0, unlock without --class -> 2, unlock with --class -> 0. Retired the
+    # house way: trigger gone, dated record surviving in the entry itself, and the payment
+    # pinned so it cannot be quietly undone.)
+    check("require --class: PAID — the boundary no longer fires and the entry carries its "
+          "dated PAID record",
+          not _fires("2026-10-16", "REQUIRE --class ON UNLOCK")
+          and any("REQUIRE --class ON UNLOCK" in (deb.get("what") or "")
+                  and "PAID 2026-08-09" in (deb.get("what") or "")
+                  for c in reg.get("capabilities", [])
+                  for deb in (c.get("integration_debt") or [])))
     check("per-gate adjudication debt (2026-11-15): silent on its expiry day, fires 11-16 — "
           "v1.27 fixed precision on 1 of 6 gates and must not read as fixing the instrument",
           not _fires("2026-11-15", "PER-GATE ADJUDICATION SEAM")
