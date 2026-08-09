@@ -339,11 +339,20 @@ def test_own_registry():
                   if c.get("id") == "dataflow-sweeps"))
     # tripwire-auditor (v1.24 fold): two deferrals were parked in PROSE ONLY — the exact
     # H7 class the plan's §B rule bans. Now dated + string-pinned like every other loan:
-    check("v1.24 corpus-batch debt (RE-DATED 2026-09-30): silent on its expiry day, fires 10-01 "
-          "naming calibration-loop — proposed plants nobody approves are a dark queue",
-          not _fires("2026-09-30", "V1.24 CORPUS BATCH")
-          and any("calibration-loop" in v for v in _fires("2026-10-01", "V1.24 CORPUS BATCH")),
-          _fires("2026-10-01", "V1.24 CORPUS BATCH")[:2])
+    # (The V1.24 CORPUS BATCH pin lived here until 2026-08-09. PAID on EVIDENCE, not a date: the debt
+    # named its plants explicitly and every one is in calibration/corpus/approved/ —
+    # the §6c four. proposed/ holds only a README. They were reviewed and approved before this
+    # release and stayed open because nobody closed them; the v1.32.0 sweep then
+    # re-dated them under a "needs a live claude binary and budget" blocker that was
+    # false twice over. Retired the house way: entry gone, record in notes, and the
+    # retirement itself pinned so a batch re-date that never reads its entries cannot
+    # happen quietly again.)
+    check("V1.24 CORPUS BATCH: PAID — trigger GONE and the dated record survives in notes",
+          not _fires("2026-10-01", "V1.24 CORPUS BATCH")
+          and any("PAID 2026-08-09" in (c.get("notes") or "")
+                  and "corpus/approved/" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "calibration-loop"))
     check("v1.24 gate-surface calibration debt (RE-DATED 2026-09-30): silent on its expiry day, "
           "fires 10-01 — D7–D9 text is untrusted until its history.md rows land",
           not _fires("2026-09-30", "V1.24 GATE-SURFACE CALIBRATION")
@@ -356,11 +365,20 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-10-01", "V1.25 GATE-SURFACE CALIBRATION")),
           _fires("2026-10-01", "V1.25 GATE-SURFACE CALIBRATION")[:2])
-    check("v1.25 corpus-queue debt (RE-DATED 2026-09-30): silent on its expiry day, fires 10-01 "
-          "— the H10 proposals must not go dark in proposed/",
-          not _fires("2026-09-30", "V1.25 CORPUS QUEUE")
-          and any("calibration-loop" in v for v in _fires("2026-10-01", "V1.25 CORPUS QUEUE")),
-          _fires("2026-10-01", "V1.25 CORPUS QUEUE")[:2])
+    # (The V1.25 CORPUS QUEUE pin lived here until 2026-08-09. PAID on EVIDENCE, not a date: the debt
+    # named its plants explicitly and every one is in calibration/corpus/approved/ —
+    # the H10 four. proposed/ holds only a README. They were reviewed and approved before this
+    # release and stayed open because nobody closed them; the v1.32.0 sweep then
+    # re-dated them under a "needs a live claude binary and budget" blocker that was
+    # false twice over. Retired the house way: entry gone, record in notes, and the
+    # retirement itself pinned so a batch re-date that never reads its entries cannot
+    # happen quietly again.)
+    check("V1.25 CORPUS QUEUE: PAID — trigger GONE and the dated record survives in notes",
+          not _fires("2026-10-01", "V1.25 CORPUS QUEUE")
+          and any("PAID 2026-08-09" in (c.get("notes") or "")
+                  and "corpus/approved/" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "calibration-loop"))
     check("supersede-prose-oracle-plants debt (2026-09-15): silent on its expiry day, "
           "fires 09-16 naming calibration-loop — three BASELINE plants are immutable, so "
           "their prose oracles can only be replaced by NEW superseding plants",
@@ -479,11 +497,20 @@ def test_own_registry():
           and any("calibration-loop" in v
                   for v in _fires("2026-10-01", "V1.26 GATE-SURFACE CALIBRATION")),
           _fires("2026-10-01", "V1.26 GATE-SURFACE CALIBRATION")[:2])
-    check("v1.26 corpus-queue debt (RE-DATED 2026-09-30): silent on its expiry day, fires 10-01 "
-          "— the H11 seam pair must not go dark in proposed/",
-          not _fires("2026-09-30", "V1.26 CORPUS QUEUE")
-          and any("calibration-loop" in v for v in _fires("2026-10-01", "V1.26 CORPUS QUEUE")),
-          _fires("2026-10-01", "V1.26 CORPUS QUEUE")[:2])
+    # (The V1.26 CORPUS QUEUE pin lived here until 2026-08-09. PAID on EVIDENCE, not a date: the debt
+    # named its plants explicitly and every one is in calibration/corpus/approved/ —
+    # the H11 pair. proposed/ holds only a README. They were reviewed and approved before this
+    # release and stayed open because nobody closed them; the v1.32.0 sweep then
+    # re-dated them under a "needs a live claude binary and budget" blocker that was
+    # false twice over. Retired the house way: entry gone, record in notes, and the
+    # retirement itself pinned so a batch re-date that never reads its entries cannot
+    # happen quietly again.)
+    check("V1.26 CORPUS QUEUE: PAID — trigger GONE and the dated record survives in notes",
+          not _fires("2026-10-01", "V1.26 CORPUS QUEUE")
+          and any("PAID 2026-08-09" in (c.get("notes") or "")
+                  and "corpus/approved/" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "calibration-loop"))
     check("field-pairing sweep debt (2026-09-15): silent on its expiry day, fires 09-16 "
           "naming dataflow-sweeps — the deferred mechanical form of field granularity "
           "must not become a silent prose-only rule",

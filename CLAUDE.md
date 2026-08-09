@@ -1,71 +1,47 @@
 # CLAUDE.md — standing memory for the TDD Playbook repo
 
-## STANDING REQUIREMENT — calibration is not optional (§13 decay principle)
+## CALIBRATION — OPT-IN AND REACTIVE (changed in v1.32.0; read the reversal note)
 
-Every gate in this plugin is a decaying asset; the calibration schedule IS the product.
-The scoreboard (`docs/calibration/history.md`) must show a live cadence before v2.0 ships.
+**There is no weekly clock any more, and no staleness gate on releases.** Calibration stays in
+the repo, fully working, as tooling you reach for — not a cadence that must be satisfied.
 
-**Staleness is now MECHANICAL, not a memory (audit finding F5).** The 14-day cadence is enforced by
-`calibration/check_staleness.py` — it reads `history.md`, finds the most recent dated run, and exits
-nonzero when it is missing or older than the threshold (`--as-of` injects the date for tests). The
-release gate runs it `--warn-only` (loud, doesn't wedge a code release on a calibration chore), and
-It also runs inside the blessed gate, so the CI job in `.github/workflows/gate.yml` re-runs it
-off-box on every push (the CIVerd engine that used to do this was retired in v1.32.0).
-Pinned by planted-date tests in `calibration/test_harness.py`. This replaces "David remembers"; the
-run itself still needs a real `claude` binary (below).
+**Run it WHEN a verifier misbehaves**, which is when it actually tells you something:
+- an adversary or verifier agent misses something it should have caught, or flags something it
+  should not have;
+- a doer-model upgrade lands (the verifier-strength policy — never let the thing generating
+  code outrun the thing checking it);
+- a gate/guard is changed in a way you want proven against a planted defect.
 
-**Weekly (needs a real `claude` binary — David runs or schedules this):**
 ```bash
-python3 calibration/check_staleness.py            # deterministic: is the scoreboard stale? (F5)
-python3 calibration/run_calibration.py            # cheap model, hard caps; appends history
-                                                  # (3 reps/scenario by default since v1.17 —
-                                                  # PASS only at k/k; AMBER is nonzero and
-                                                  # promotes to BLOCKING on a repeat)
-python3 plugins/tdd-playbook/bin/capability_registry.py doctor   # bundle check (v1.23, David's
-                                                  # ships-on-or-triggered rule): capture must
-                                                  # read ON on this machine, and the dark
-                                                  # inventory is the list to act on (the old
-                                                  # plan-authoring/repos.yml line went with the
-                                                  # CIVerd retirement in v1.32.0)
-                                                  # (v1.24) run_calibration's tail now prints the
-                                                  # §6c dataflow rollup + DATAFLOW TREND line —
-                                                  # READ IT: a flagged excluded-share trend means
-                                                  # the exemption list is doing the tests' work
-                                                  # (the check is gate_yield.py dataflow-trend;
-                                                  # this line is a pointer, not the check)
+python3 calibration/run_calibration.py            # cheap model, hard caps; appends history.md
+                                                  # 3 reps/scenario; PASS only at k/k, AMBER is
+                                                  # nonzero and promotes to BLOCKING on a repeat
+python3 calibration/run_calibration.py --dry-run  # free, CI-safe; NOT a calibration run
+python3 calibration/check_staleness.py            # still works; no longer gates anything
+python3 plugins/tdd-playbook/bin/capability_registry.py doctor   # dark-feature inventory
 ```
-- A plant surviving to a clean verdict is a **BLOCKING failure** — fix the agent, never the
-  plant. File it, fix it, re-run before anything else ships.
-- `--dry-run` is the free CI-safe validation; it does NOT count as calibration.
-- Run as a NON-root user — the very first attempt logged INVALID because it ran under root, where
-  the headless doer couldn't run (see `TDD_PLAYBOOK_CALIBRATION_ARGS` in `run_calibration.py`'s
-  header for the sandbox-args env knob).
-- Status as of 2026-07-28: last live run 2026-07-27 on haiku — 9/9 on the shipped suite after ONE
-  agent fix (a `vacuous-mutation-scope` BLOCKING FAIL; the `mutation-runner` vacuity guard now
-  resolves-the-scope-first), and — stated because the old summary rounded toward green (§13:
-  that pattern is the loudest signal there is) — the same-day CORPUS rows show
-  `csv-escape-fixed-at-call-site` failing twice and `shadowed-import-vacuous-suite` three times
-  before their terminal passes. Under N=1 nothing distinguished "fixed" from "lucky roll"; v1.17's
-  repeat sampling + AMBER verdict exists precisely because of those rows, and the NEXT run
-  (~2026-08-10) is the first under the new instrument — it must land recall AND FP numbers.
-  If `docs/calibration/history.md` is missing or its last entry is stale >14 days, raise it with
-  David proactively — but READ `history.md` first; do not repeat the stale-status error of
-  claiming it was never seeded.
-- **Corpus: seeded 2026-07-27** — first co-evolution cycle complete: 4 adversary-authored plants
-  (by `claude-fable-5`, David-approved) in `calibration/corpus/approved/`, so live runs now cover
-  the shipped + corpus suite. (Never write the scenario COUNT down here — hand-maintained
-  counts drift silently; the harness derives the composition into every history.md run header,
-  and `run_calibration.py` prints `selected N of M` live. That is the source of truth.)
-  Since v1.17 every plant class carries a PAIRED CLEAN CONTROL (`control_for`) so false
-  positives are measured, not just recall; the pair quota is mechanical — unpaired proposals
-  are rejected at authoring, at `--approve`, and by the dry-run pairing invariant. Keep the
-  cycle going each calibration period
-  (`author_plants.py` below); the corpus only grows. Known pipeline limitation: plants can only
-  MODIFY existing fixture files (`apply_edits` cannot create files — 4 of 6 first-batch candidates
-  were mechanically rejected for that; the `create` capability is now OWNED DATED DEBT on
-  `calibration-loop` (expires 2026-09-15, trigger string-pinned in test_capability_registry) —
-  v1.24 promoted it from "possible future enhancement" because §6c's writer-with-no-reader
-  plants need new fixture files, making the gap load-bearing).
+- A plant surviving to a clean verdict is still a **BLOCKING failure** — fix the agent, never the
+  plant. That rule did not become optional; only the schedule did.
+- Run as a NON-root user (the first attempt logged INVALID under root, where the headless doer
+  cannot run; see `TDD_PLAYBOOK_CALIBRATION_ARGS` in `run_calibration.py`'s header).
+- `docs/calibration/history.md` and the corpus stay in-repo and append-only. They cost nothing at
+  rest and they are the record any future run is compared against.
+
+**THE REVERSAL, STATED PLAINLY, because §13 argues the opposite.** This file used to open
+"calibration is not optional; the calibration schedule IS the product," and SKILL.md §13 still
+makes that argument: every gate is a decaying asset, and a fixed check does not stay effective as
+model capability grows. That reasoning is not withdrawn. What changed is the honest read of six
+cycles of evidence: the schedule produced obligations faster than it produced findings — ten
+calibration debts accumulated against three ever-scored improvements — and a cadence nobody can
+meet stops being a control and becomes a source of RED that gets re-dated. Opt-in keeps the
+instrument and drops the pretence.
+
+**What this trades away, so it is a decision and not a drift:** nothing now notices if the
+verifiers decay quietly. Under the clock, a stale scoreboard was loud. Now the trigger is a human
+noticing a verifier behaved badly — which is exactly the honor-system seam §13 calls gameable. The
+compensating position is that a MISS is still a blocking failure when found, the corpus only
+grows, and the doer-upgrade trigger remains. If verifier quality visibly slips, the schedule is
+the first thing to bring back.
 
 **Each cycle, grow the corpus (co-evolution — a frozen plant library is a static gate):**
 ```bash
@@ -192,8 +168,7 @@ Local-machine plugin installs update separately (no prompt needed):
   command silently diverged and calibration/'s 110 checks never ran in the gate; a script
   can be probed and planted-tested, a prose command cannot). Scenario sanity:
   `calibration/run_calibration.py --dry-run`.
-- Release gate before any version bump: all suites green, `calibration/check_staleness.py
-  --warn-only` run (F5 — surfaces a stale scoreboard loudly), `hooks.json`/`plugin.json`/
+- Release gate before any version bump: all suites green, `hooks.json`/`plugin.json`/
   `marketplace.json` parse, `capability_registry.py validate` passes on this repo's own
   `capabilities.json` (we eat the §6a dogfood — enforced MECHANICALLY by
   `test_capability_registry.py::test_own_registry` on every suite run with the real date,
@@ -203,9 +178,6 @@ Local-machine plugin installs update separately (no prompt needed):
   rule (d) — gate surfaces [SKILL `##` sections, agents/*.md, commands/*.md] never removed
   without a `calibration/gate-changes.md` entry; ALSO enforced mechanically:
   `test_harness.py` runs it against the latest tag on every suite run),
-  `python3 calibration/check_staleness.py --history docs/calibration/quarterly.md
-  --max-age-days 100 --warn-only` (the quarterly-bundle clock: catalog refresh · lift read ·
-  cross-tier — lapsed quarters are loud on every release),
   and a scratch-repo `install_into_repo.py` run proving cloud parity (new bins + hooks
   present, `${CLAUDE_PLUGIN_ROOT}` rewritten, `.claude/.gitignore` written), plus
   `python3 scripts/install_into_repo.py --doctor .` on THIS repo (H8 guards-liveness:
