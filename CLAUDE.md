@@ -22,9 +22,10 @@ python3 calibration/run_calibration.py            # cheap model, hard caps; appe
                                                   # promotes to BLOCKING on a repeat)
 python3 plugins/tdd-playbook/bin/capability_registry.py doctor   # bundle check (v1.23, David's
                                                   # ships-on-or-triggered rule): capture must
-                                                  # read ON on this machine, and dark-inventory
-                                                  # shows if plan-authoring still awaits the
-                                                  # repos.yml arming — OFF here is a due task
+                                                  # read ON on this machine, and the dark
+                                                  # inventory is the list to act on (the old
+                                                  # plan-authoring/repos.yml line went with the
+                                                  # CIVerd retirement in v1.32.0)
                                                   # (v1.24) run_calibration's tail now prints the
                                                   # §6c dataflow rollup + DATAFLOW TREND line —
                                                   # READ IT: a flagged excluded-share trend means
@@ -224,10 +225,19 @@ Local-machine plugin installs update separately (no prompt needed):
      truth). `rc` must be `0`.
   2. Bump the four identity files + `CHANGELOG.md`; regenerate
      `docs/reference/current-state.md`; commit.
-  3. **David** runs `git tag -a vX.Y.Z -m "…"` (use `-s` once a signing key is configured —
+  3. **`git push origin main` FIRST — before any tag.** The order is the point, not a
+     formality: `.github/workflows/gate.yml` triggers on push, so it can only re-run the gate
+     on a commit that has been pushed. Tagging first would mean the check David is told to
+     read has never run on the commit he is tagging, and the independent re-execution that
+     justifies keeping any CI at all would be delivered into a moment nobody can stand in.
+  4. **Wait for the `gate` check to go green on that exact sha** (`gh run list --branch main
+     --limit 1`, or the commit's check mark on GitHub). This is the ONLY independent evidence
+     that the gate passed somewhere the agent cannot reach; step 1 is the agent's own machine
+     reporting on itself. A red or missing check stops the release — a missing check is not a
+     pass, it usually means the workflow failed to parse.
+  5. **David** runs `git tag -a vX.Y.Z -m "…"` (use `-s` once a signing key is configured —
      `git config user.signingkey` is currently unset, so `-s` fails today; tracked as dated
-     debt on `release-tag-authority`), then
-     `git push origin main && git push origin vX.Y.Z`.
+     debt on `release-tag-authority`), then `git push origin vX.Y.Z`.
 
   **What authorizes a release is David tagging it.** The model can propose, gate, and bump; it
   cannot tag. This is DELETION, not a smaller wall — with no verdict anywhere in the release

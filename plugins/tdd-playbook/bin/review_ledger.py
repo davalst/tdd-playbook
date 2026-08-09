@@ -40,7 +40,8 @@ def _strings(value) -> bool:
     return isinstance(value, list) and bool(value) and all(isinstance(x, str) and x for x in value)
 
 
-def validate_record(record: dict, source: str, exists, evidence_exists=lambda _target: True) -> list[str]:
+def validate_record(record: dict, source: str, exists, evidence_exists=lambda _target: True,
+                    plan_exists=lambda _p: True) -> list[str]:
     problems = []
     prefix = source + ": "
     if record.get("schema_version") != 1:
@@ -48,6 +49,13 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
     for field in ("id", "plan"):
         if not isinstance(record.get(field), str) or not record[field]:
             problems.append(prefix + field + " must be a non-empty string")
+    # v1.32.0: the plan path must RESOLVE, not merely be a non-empty string. `plan_block.py
+    # validate` was the only reader of docs/plans/gated/*.md and it was deleted with the CIVerd
+    # engine, leaving the directory write-only. A review record citing a plan that does not
+    # exist is the same class of claim this whole ledger exists to refuse.
+    plan = record.get("plan")
+    if isinstance(plan, str) and plan and not plan_exists(plan):
+        problems.append(prefix + "plan does not resolve: " + plan)
     if record.get("kind") not in {"plan", "implementation"}:
         problems.append(prefix + "kind must be plan or implementation")
     if not _strings(record.get("reviewers")):
@@ -163,7 +171,8 @@ def validate_index(directory: str, index: dict, baseline_records: list[dict]) ->
     return problems
 
 
-def validate_directory(directory: str, exists, evidence_exists=lambda _target: True) -> list[str]:
+def validate_directory(directory: str, exists, evidence_exists=lambda _target: True,
+                       plan_exists=lambda _p: True) -> list[str]:
     paths = sorted(path for path in glob.glob(os.path.join(directory, "*.json"))
                    if os.path.basename(path) != INDEX_NAME)
     if not paths:
@@ -182,7 +191,8 @@ def validate_directory(directory: str, exists, evidence_exists=lambda _target: T
         if rid in record_ids:
             problems.append(path + ": duplicate review record id " + str(rid))
         record_ids.add(rid)
-        problems.extend(validate_record(record, os.path.basename(path), exists, evidence_exists))
+        problems.extend(validate_record(record, os.path.basename(path), exists,
+                                        evidence_exists, plan_exists))
         for finding in record.get("findings") or []:
             fid = finding.get("id")
             if fid in finding_ids:
@@ -278,7 +288,8 @@ def _baseline_index(root: str) -> list[dict]:
 def validate_repository(root: str) -> list[str]:
     directory = os.path.join(root, "docs", "reviews")
     problems = validate_directory(directory, lambda sha: commit_exists(root, sha),
-                                  lambda target: closure_evidence_exists(root, target))
+                                  lambda target: closure_evidence_exists(root, target),
+                                  lambda p: os.path.isfile(os.path.join(root, p)))
     try:
         with open(os.path.join(directory, INDEX_NAME), encoding="utf-8") as fh:
             index = json.load(fh)

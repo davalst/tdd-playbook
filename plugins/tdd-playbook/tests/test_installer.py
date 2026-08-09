@@ -503,15 +503,56 @@ def _tag_creation_hits(source):
     return hits
 
 
+def _load_tag_guard():
+    """The SHIPPED classifier. test_installer used to keep its own copy of the tag policy and
+    the two had already drifted -- `--verify`/`--contains` were read-only in the guard and
+    FLAGGED here, and only the guard knew about release ACTIONS. One classifier, two call
+    sites; this suite's job is to calibrate the thing that ships, not a lookalike."""
+    path = os.path.join(REPO, "plugins", "tdd-playbook", "hooks", "scripts", "tag_guard.py")
+    spec = importlib.util.spec_from_file_location("tag_guard", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _tag_creation_hits_text(source):
-    """Line scan for shell scripts and YAML, which have no Python AST and no docstrings."""
+    """Line scan for shell scripts and YAML, which have no Python AST and no docstrings.
+
+    Delegates to the shipped guard's regexes so shell policy has ONE definition, and adds the
+    workflow-authority rules for CI, where a tag is created by an ACTION with no git verb."""
+    guard = _load_tag_guard()
     hits = []
     for n, raw in enumerate(source.splitlines(), 1):
         if raw.strip().startswith("#"):
             continue
-        if _SHELL_TAG.search(raw) or _SHELL_PUSH_TAG.search(raw):
+        if guard._TAG_READ_OR_DELETE.search(raw):
+            continue
+        if (guard._TAG_CREATE.search(raw) or guard._TAG_REF_WRITE.search(raw)
+                or guard._TAG_PUSH.search(raw) or guard._GH_RELEASE.search(raw)):
             hits.append((n, raw.strip()))
+    for why in guard.workflow_findings(source):
+        hits.append((0, why))
     return hits
+
+
+def _yaml_ok(text):
+    """YAML validity, without adding a dependency (the plugin is stdlib-only by invariant).
+
+    SKILL.md §10 records the incident this guards: an unquoted colon in a step `name:`
+    silently invalidates a whole workflow, and an invalid workflow produces NO check run --
+    which reads to a human exactly like "CI hasn't finished yet." The debt text claimed the
+    file was "YAML-validated"; that was a one-time manual act with no pin."""
+    try:
+        import yaml
+    except ImportError:
+        # stdlib fallback: structural sanity that catches the documented failure shape
+        return ("jobs:" in text and "runs-on:" in text
+                and not re.search(r"^\s+name:\s+[^\"'\s][^\n]*:\s", text, re.M))
+    try:
+        doc = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return False
+    return isinstance(doc, dict) and "jobs" in doc
 
 
 def _tracked_scannable(repo):
@@ -614,6 +655,65 @@ def test_no_script_creates_a_release_tag():
           offenders == [], "; ".join(offenders))
     check("the scan was not vacuous (§4a): the derived roster is non-trivial",
           len(roster) > 50, len(roster))
+    # SCOPE, asserted rather than assumed (§12). The roster is derived, so "CI is covered"
+    # must be checked against something the derivation cannot silently drop. A GitHub
+    # workflow runs with a GITHUB_TOKEN and can create and push a tag; the first draft of
+    # this scanner hardcoded three source roots and would have been blind to every one.
+    workflows = [r for r in roster if r.startswith(".github/workflows/")]
+    check("CI workflows are IN the derived roster (a tagging workflow cannot hide there)",
+          bool(workflows), roster[:5])
+    check("workflow files are scannable by extension, not just present in git",
+          all(w.endswith((".yml", ".yaml")) for w in workflows), workflows)
+
+    # (4) the CI job's CONTENT. Everything above proves the workflow creates no tag; none of
+    # it proves the workflow still RUNS THE GATE. `run: sh scripts/civerd_gate.sh` -> `run:
+    # echo ok` is a one-line diff that leaves this whole suite green while the check mark
+    # goes green forever and means nothing -- and CLAUDE.md tells David to read that mark
+    # before tagging. This repo has the incident already: 2026-07-28, "the prose loop and the
+    # engine's gate command silently diverged and calibration/'s 110 checks never ran in the
+    # gate." The deleted test_plant_target_handoff pinned exactly this for the OLD external
+    # runner; the pin moves here rather than disappearing with it.
+    guard = _load_tag_guard()
+    for rel in workflows:
+        with open(os.path.join(REPO, rel), encoding="utf-8") as fh:
+            wf = fh.read()
+        check("CI: {} parses as YAML".format(rel), _yaml_ok(wf), rel)
+        check("CI: {} invokes the blessed entrypoint".format(rel),
+              re.search(r"sh\s+scripts/civerd_gate\.sh", wf) is not None, rel)
+        # `affected` is explicitly NON-AUTHORIZING; an argument would quietly narrow CI to
+        # the diagnostic subset while still looking like a full gate run.
+        check("CI: {} runs the gate with NO argument (affected mode is non-authorizing)"
+              .format(rel),
+              re.search(r"sh\s+scripts/civerd_gate\.sh\s*(?:\n|$)", wf) is not None, rel)
+        check("CI: {} does not pipe the gate (a piped $? is tail's, §4a)".format(rel),
+              not re.search(r"civerd_gate\.sh[^\n]*\|(?!\|)", wf), rel)
+        check("CI: {} holds no ref-write authority".format(rel),
+              not guard.workflow_findings(wf), guard.workflow_findings(wf))
+
+    # calibrate-the-checker: each CI pin must be able to FAIL (§13). Mutate the real file in
+    # memory and require every rule to fire.
+    if workflows:
+        with open(os.path.join(REPO, workflows[0]), encoding="utf-8") as fh:
+            real = fh.read()
+        _g = "civerd_gate.sh"
+        mutants = {
+            "gate call replaced": real.replace("sh scripts/" + _g, "echo ok"),
+            "narrowed to affected": real.replace("sh scripts/" + _g,
+                                                 "sh scripts/" + _g + " affected"),
+            "gate piped": real.replace("sh scripts/" + _g, "sh scripts/" + _g + " | tail -2"),
+            "write permission": real.replace("contents: read", "contents: write"),
+            "release action added": real + "\n      - uses: softprops/action-gh-release@x\n",
+        }
+        checks = {
+            "gate call replaced": lambda t: re.search(r"sh\s+scripts/civerd_gate\.sh", t) is None,
+            "narrowed to affected":
+                lambda t: re.search(r"sh\s+scripts/civerd_gate\.sh\s*(?:\n|$)", t) is None,
+            "gate piped": lambda t: bool(re.search(r"civerd_gate\.sh[^\n]*\|(?!\|)", t)),
+            "write permission": lambda t: bool(guard.workflow_findings(t)),
+            "release action added": lambda t: bool(guard.workflow_findings(t)),
+        }
+        for label, text in mutants.items():
+            check("PLANTED CI mutation is detected: " + label, checks[label](text), label)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
-  "acknowledged_roster_sha256": "d32c6c9b64a0e3cf8b8d6f92e1ae8f0893376be23a4008b6f36bda9e9e3c6004",
-  "acknowledged_plan_sha256": "e44abf2e54655f461df615f79d8fd1baed615db1cdf2be5416f0a7b8b333f3e4",
+  "acknowledged_roster_sha256": "42562b24b10c4b189e339420372cc08d2e5d79424e1ed3d4a6ad6ae51ef2ffde",
+  "acknowledged_plan_sha256": "d39ebfdad74ff2c59484f4e40cb9ecacb0d08837654b022857194b49aae98aaf",
   "fixed_stages": [
     {
       "id": "calibration",
@@ -41,26 +41,26 @@
     }
   ],
   "force_full": [
-    "gate-manifest.json",
-    "scripts/civerd_gate.sh",
-    "civerd-integrity.yml",
-    "calibration/test_harness.py",
+    ".github/workflows/gate.yml",
     "calibration/ledger.py",
     "calibration/plant_forms.py",
+    "calibration/test_harness.py",
+    "capabilities.json",
     "dataflow-sweeps.json",
-    "plugins/tdd-playbook/bin/gate_plan.py",
-    "plugins/tdd-playbook/bin/gate_runner.py",
-    "plugins/tdd-playbook/bin/dataflow_sweeps.py",
-    "plugins/tdd-playbook/bin/host_parity.py",
-    "plugins/tdd-playbook/bin/render_reference.py",
-    "docs/reference/current-state.md",
-    "plugins/tdd-playbook/bin/review_ledger.py",
-    "docs/reviews/**",
     "docs/architecture/host-parity-policy.json",
     "docs/architecture/host-parity.json",
-    "capabilities.json",
-    "scripts/install_into_repo.py",
-    "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py"
+    "docs/reference/current-state.md",
+    "docs/reviews/**",
+    "gate-manifest.json",
+    "plugins/tdd-playbook/bin/dataflow_sweeps.py",
+    "plugins/tdd-playbook/bin/gate_plan.py",
+    "plugins/tdd-playbook/bin/gate_runner.py",
+    "plugins/tdd-playbook/bin/host_parity.py",
+    "plugins/tdd-playbook/bin/render_reference.py",
+    "plugins/tdd-playbook/bin/review_ledger.py",
+    "plugins/tdd-playbook/tests/test_aaa_suites_via_main.py",
+    "scripts/civerd_gate.sh",
+    "scripts/install_into_repo.py"
   ],
   "safe_rules": [
     {

@@ -66,6 +66,34 @@ _TAG_PUSH = re.compile(_GIT + r"push\b[^\n]*(?:--tags\b|refs/tags|\sv\d+\.\d+)")
 # the GitHub CLI reaches the same fact by another road
 _GH_RELEASE = re.compile(r"\bgh\b[^\n]*\brelease\s+create\b|\bgh\b[^\n]*\bapi\b[^\n]*refs/tags")
 
+# CI reaches it by a third road that contains no git verb at all. A workflow step like
+#   - uses: softprops/action-gh-release@<sha>
+#     with: {tag_name: v9.9.9}
+# creates and pushes a release tag with zero `git tag` text, so every shell-verb rule above
+# is blind to it. These are exported for the workflow scanner in test_installer.py, which
+# imports THIS module rather than keeping a second copy of the policy (the two lists had
+# already drifted: --verify/--contains were read-only here and flagged there).
+_WORKFLOW_TAG_ACTIONS = re.compile(
+    r"uses:\s*\S*(?:action-gh-release|create-release|create-tag|tag-action|release-action"
+    r"|github-tag|semantic-release|release-please|changesets/action)", re.I)
+_WORKFLOW_TAG_INPUTS = re.compile(r"^\s*(?:tag_name|tag|new_tag|custom_tag)\s*:", re.M)
+# `contents: write` is the permission a job needs to push a ref at all. Nothing in this repo's
+# CI legitimately needs it, so requiring read is the fact-level check that a text scan of
+# `run:` lines can never be (§1: assert the outcome, not the proxy).
+_WORKFLOW_WRITE_PERM = re.compile(r"^\s*contents:\s*write\b", re.M)
+
+
+def workflow_findings(text):
+    """Tag-creation authority in a CI workflow, keyed on the AUTHORITY not the verb."""
+    out = []
+    if _WORKFLOW_TAG_ACTIONS.search(text):
+        out.append("a release/tag ACTION creates a tag with no git verb in sight")
+    if _WORKFLOW_TAG_INPUTS.search(text):
+        out.append("a tag_name-shaped workflow input is a tag being created")
+    if _WORKFLOW_WRITE_PERM.search(text):
+        out.append("contents: write lets the job push a ref; this repo's CI needs read")
+    return out
+
 
 def _statements(cmd):
     """Split on statement separators so `a && git tag v1` is inspected as two statements."""

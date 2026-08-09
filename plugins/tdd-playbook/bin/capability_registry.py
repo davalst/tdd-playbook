@@ -203,7 +203,14 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
         lines.append("  %-28s runs_on: %s | probe: %s"
                      % (c.get("id"), ds.get("runs_on") or "?", probe))
 
-    no_liveness = [c.get("id") for c in caps if not c.get("liveness")]
+    # The header says "no liveness PROBE"; this used to test only that a `liveness` OBJECT
+    # existed, so a capability declaring {"max_quiet_days": 30} and nothing else was reported
+    # as probe-covered. A check literally true while describing something other than what you
+    # need (§1). Found 2026-08-09 when `independent-gate-rerun` — whose own debt says "it has
+    # never executed on GitHub" — was certified as having a probe.
+    no_liveness = [c.get("id") for c in caps
+                   if not (c.get("liveness") or {}).get("probe")
+                   and not (c.get("deploy_surface") or {}).get("running_version_probe")]
     lines.append("\n[no liveness probe (staleness undetectable): %d]" % len(no_liveness))
     for cid in no_liveness:
         lines.append("  %s" % cid)

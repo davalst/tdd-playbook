@@ -288,11 +288,28 @@ def test_own_registry():
           not _fires("2026-08-31", "ENROLLMENT SWEEP")
           and any("deliberation-capture" in v for v in _fires("2026-09-01", "ENROLLMENT SWEEP")),
           _fires("2026-09-01", "ENROLLMENT SWEEP")[:2])
-    check("engine-arming debt (2026-09-15): silent on its expiry day, fires 09-16 "
-          "naming plan-authoring",
-          not _fires("2026-09-15", "ENGINE-SIDE ARMING")
-          and any("plan-authoring" in v for v in _fires("2026-09-16", "ENGINE-SIDE ARMING")),
-          _fires("2026-09-16", "ENGINE-SIDE ARMING")[:2])
+    # (The ENGINE-SIDE ARMING pin lived here until 2026-08-09. Retired OBSOLETE with the
+    # capability itself in v1.32.0: plan-authoring existed only to emit a `civerd-plan` block
+    # for the CIVerd engine's plan-predicate evaluator, and the registry had already recorded
+    # it as never armed — "plans land INERT". Producer and consumer are deleted together, so
+    # the debt can neither be paid nor fail. Removed the house way: the capability is gone,
+    # the reason is in the commit, and the removal itself is pinned below so it cannot recur
+    # silently. capability_registry.py:34-36 permits removal when the commit says which.)
+    # TWO clauses, like every sibling retirement pin above — trigger GONE *and* a dated record
+    # SURVIVING in a live capability's notes. The absence half alone is near-tautological: it
+    # became true at edit time and can only fail if someone re-adds that exact id. The
+    # surviving-record half is the one a later cleanup can break, which is the whole point, and
+    # it is also the only place the WHY reaches `capability_registry.py doctor` once the
+    # capability itself is deleted whole.
+    check("plan-authoring: retired with the engine — trigger GONE, capability GONE, and the "
+          "dated record survives in civerd-release-gate's notes",
+          not _fires("2026-09-16", "ENGINE-SIDE ARMING")
+          and not any(c.get("id") == "plan-authoring"
+                      for c in reg.get("capabilities", []))
+          and any("plan-authoring" in (c.get("notes") or "")
+                  and "RETIRED 2026-08-09 (v1.32.0" in (c.get("notes") or "")
+                  for c in reg.get("capabilities", [])
+                  if c.get("id") == "civerd-release-gate"))
     check("consumer debt (2026-10-31): silent on its expiry day, fires 11-01 — a recorder "
           "nobody reads does not run forever",
           not _fires("2026-10-31", "CONSUMER: the store")

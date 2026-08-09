@@ -133,10 +133,15 @@ unknown or assurance-bearing paths. Focused suite runs are diagnostics, never ch
 evidence. Machine-owned gate, parity, and capability facts are rendered with provenance in
 [`docs/reference/current-state.md`](docs/reference/current-state.md).
 
-**Releasing.** Blessed gate green → version bump → the maintainer runs `git tag -s` → push.
+**Releasing.** Blessed gate green → version bump → **push `main`** → wait for the `gate` check
+to go green on that sha → the maintainer tags → push the tag. The push-before-tag order is
+load-bearing: CI triggers on push, so tagging first would mean the check has never run on the
+commit being tagged.
+
 No release script exists, by design: `test_installer.py::test_no_script_creates_a_release_tag`
-parses every tracked script under `scripts/`, `plugins/tdd-playbook/` and `calibration/` and fails
-the gate if one appears. `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) is retained
+parses every TRACKED `.py`/`.sh`/`.yml` — the roster is derived from `git ls-files`, so a new
+tool directory or a workflow cannot fall outside it — and fails the gate if one creates or pushes
+a tag. `hooks/scripts/tag_guard.py` (BLOCKING) stops a session doing the same at the Bash seam. `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) is retained
 **unwired** to read historical signed verdicts from the retired CIVerd engine; nothing in the
 release path consults it. See CLAUDE.md for the full procedure.
 The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must
@@ -155,8 +160,9 @@ Wilson intervals, every calibratable agent must have a plant (the coverage invar
 removing any gate surface — a SKILL section, an agent brief, a command — costs a journaled
 `gate-changes.md` entry while adding one stays free: gate removal costs what addition costs.
 `check_staleness.py` makes the 14-day cadence mechanical instead of a memory: it fails loudly when
-`docs/calibration/history.md`'s latest run is missing or stale. It runs in the release gate and as a
-CIVerd `staleness` check, so decay is flagged off-box on the engine's daily timer.
+`docs/calibration/history.md`'s latest run is missing or stale. It runs inside the blessed gate, so it is
+re-run off-box on every push by `.github/workflows/gate.yml` (the CIVerd engine that used to do
+this was retired in v1.32.0).
 
 ## Layout
 ```

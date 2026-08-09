@@ -67,29 +67,24 @@ Report `Loop closed: yes (integration-adversary — <top island>; architecture-a
 band-aid or "clean">)` or `Loop closed: NO — <why>`. Then stop — this plan is the single upstream
 spec; let me review before writing code.
 
-**Once APPROVED — land the plan IN THE REPO it governs (CIVerd plans-in-repo brief):** for
-feature/multi-deliverable work in a CIVerd-watched repo, write the approved plan via
+**Once APPROVED — land the plan IN THE REPO it governs.** For feature/multi-deliverable work,
+write the approved plan to `docs/plans/gated/YYYY-MM-DD-<workstream>.md` as ordinary markdown
+and commit it with the work, so the spec the Tripwire is anchored to lives beside the code it
+governs rather than in a chat scrollback.
 
-```
-python3 "${CLAUDE_PLUGIN_ROOT}/bin/plan_block.py" scaffold --slug YYYY-MM-DD-<workstream> \
-    --repo <the ENGINE'S repos.yml name — never a dirname guess> \
-    --predicate TYPE:ARG [--predicate ...]
-```
+(Until v1.32.0 this step scaffolded a machine-readable `civerd-plan` block via
+`bin/plan_block.py`, whose only consumer was the CIVerd engine's plan-predicate evaluator.
+That engine is retired, and the registry had already recorded the path as never armed — plans
+landed INERT. Producer and consumer are gone together; the plan CONTENT rules below are
+untouched, because they were never the engine's business.)
 
-then paste the plan prose into the skeleton, `plan_block.py validate` it, and commit it with
-the work. Rules that keep the block honest:
-- **Slugs are permanent** (abandonment keys on the slug hash forever) — namespace by
-  date + workstream; a collision means pick a NEW slug, never reuse.
-- **Predicates state the weaker truth, write against it:** `test_passes path::name` = the
-  function EXISTS at the judged sha, unskipped, gate green — NOT "the engine watched it run"
-  (the repo's runs-guard in test_aaa closes the exists-vs-runs gap on our side);
-  `symbol_referenced` is weak both ways — for config-wired deliverables use `file_exists` on
-  the config + `test_passes` on a wiring test; `suite_min` counts AST test FUNCTIONS —
-  near-useless in check()-style repos, prefer `test_passes`.
-- **Research/docs/decision deliverables go in the "Unenforceable deliverables (prose)"
-  section** — never faked with a weak `file_exists`.
-- **Status is `active`, always.** `satisfied` is cosmetic to the engine; `abandoned` is
-  David's word alone through the root-owned store on the box — the tool has no argument
-  path that can emit either.
+Rules that keep the plan honest:
+- **Slugs are permanent and dated** — namespace by date + workstream so a later plan never
+  silently supersedes an earlier one; a collision means pick a NEW slug, never reuse.
+- **State the weaker truth and write against it.** "the test EXISTS at this sha, unskipped,
+  gate green" is NOT "the behaviour was observed running" — §6's EXERCISED leg is the former
+  and the RUNNING leg is the latter, and a plan that conflates them has already rounded up.
+- **Research/docs/decision deliverables go in an explicit "Unenforceable deliverables (prose)"
+  section** — never disguised as a mechanical one, which is the H7 prose-deferral shape.
 - **Never gate small work** — a one-liner or a mechanical chore does not need a plan block;
   the gate is for the work the §0 plan discipline already applies to.

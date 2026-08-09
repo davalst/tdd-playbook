@@ -563,22 +563,14 @@ def test_companion_unclassified_fails_closed():
               rc == 1 and "user_facing" in out, (rc, out))
 
 
-def test_plant_target_handoff():
-    """tripwire-auditor D12(c): the civerd-integrity.yml handoff entry is pinned
-    mechanically — the engine-side plant rotation must be able to find the new checker.
-    (Engine-side pickup itself is EXTERNAL-STATE, covered by the integrity-guards
-    watchlist debt in capabilities.json.)"""
-    repo_root = os.path.dirname(os.path.dirname(ROOT))
-    with open(os.path.join(repo_root, "civerd-integrity.yml")) as fh:
-        manifest = fh.read()
-    check("handoff: dataflow_sweeps.py is a plant target",
-          "plugins/tdd-playbook/bin/dataflow_sweeps.py" in manifest, manifest)
-    check("handoff: the blessed gate is still the suite_cmd",
-          'suite_cmd: "sh scripts/civerd_gate.sh"' in manifest, manifest)
-    # planted-stripped twin: the pin can fail (§13)
-    stripped = "plant_targets:\n  - path: plugins/tdd-playbook/bin/verify_verdict.py\n"
-    check("handoff planted: manifest without the entry is detected",
-          "dataflow_sweeps.py" not in stripped)
+# (test_plant_target_handoff lived here 2026-07..2026-08-09. It pinned the repo-side
+# civerd-integrity.yml handoff so the engine's plant rotation could find each new checker.
+# The engine is retired in v1.32.0 and the manifest deleted with it — a handoff contract to
+# a consumer that no longer exists is a writer with no reader (§6c). Its second assertion,
+# that `sh scripts/civerd_gate.sh` is still the blessed suite_cmd, is NOT lost: it is
+# superseded by test_aaa_suites_via_main.py::test_civerd_gate_script_is_the_real_gate, which
+# RUNS the script and asserts a planted failing suite is caught — a behavioural pin rather
+# than a text one, so the coverage strictly improves.)
 
 
 # ------------------------------------------------------------------ v1.25 guard-calibration fold
@@ -791,7 +783,6 @@ def main():
              test_duplicate_exemption_targets,
              test_prose_vocabulary_closed, test_config_shape_and_containment,
              test_all_subcommand, test_companion_unclassified_fails_closed,
-             test_plant_target_handoff,
              test_render_vacuity_all_dynamic, test_exemption_kind_survives_advisory,
              test_stale_vs_unmatched_exemptions, test_dynamic_site_exemption,
              test_layer10_motivating_shape,

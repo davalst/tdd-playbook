@@ -1,25 +1,36 @@
-# Plans-in-repo & deliberation capture — operating notes (v1.23.0, CIVerd briefs)
+# Plans-in-repo & deliberation capture — operating notes
 
-## docs/plans/gated/ — the convention
+## docs/plans/gated/ — the convention (rewritten 2026-08-09, v1.32.0)
 
 Approved feature plans land IN the repo they govern, as `docs/plans/gated/<slug>.md`,
-authored by `plan_block.py scaffold` (see `/tdd-plan`'s closing section for the full
-rules: permanent slugs, weaker-truth predicate semantics, prose section for unenforceable
-deliverables, `active` always, never gate small work).
+written as ordinary markdown. `/tdd-plan`'s closing section carries the rules that still
+apply: dated permanent slugs, an explicit "Unenforceable deliverables (prose)" section, and
+never gate small work.
 
-**The no-README hazard (do not "fix" this):** `docs/plans/gated/` must contain ONLY plan
-files. Once the engine's `plan_globs` is armed for `docs/plans/gated/*.md`, ANY stray
-`.md` there — a README, a notes file — is parsed as a plan and, having no `civerd-plan`
-block, produces a MALFORMED verdict that bricks the release gate. The convention lives
-here, outside the directory, precisely for that reason. The directory itself is
-materialized by the first plan (`makedirs`), never committed empty.
+**What changed, stated plainly because the previous version of this file was false in every
+load-bearing sentence.** Until v1.32.0 these files were scaffolded by `bin/plan_block.py`
+into a machine-readable `civerd-plan` block, and the only consumer of that block was the
+CIVerd engine's plan-predicate evaluator. v1.32.0 retired the engine, so producer and
+consumer were deleted together. Three claims went with them:
 
-**Enforcement is currently DARK — deliberately visible.** Predicates are evaluated only
-after David pastes the two root-owned `repos.yml` lines on srv1621832 (the playbook
-session hands him the exact lines; cross-repo authorship rule). Until then plans are
-authored but inert. This is a registered integration debt (`plan-authoring`, expires
-2026-09-15) that REDs the suite at expiry — armed or consciously re-dated, never silently
-dark.
+- *"authored by `plan_block.py scaffold`"* — the tool no longer exists.
+- *"The no-README hazard (do not 'fix' this)"* — this forbade a README in the directory
+  because the engine's `plan_globs` would parse a stray `.md` as a malformed plan and brick
+  the release gate. There is no engine, no `plan_globs`, and no release gate to brick. The
+  instruction outlived its reason and, being written as a warning against fixing it, was
+  built to survive review. A README there is now merely unnecessary, not dangerous.
+- *"a registered integration debt (`plan-authoring`, expires 2026-09-15) that REDs the suite
+  at expiry"* — that capability was deleted in v1.32.0, so the RED it promised can never
+  fire. A doc asserting a mechanical backstop that does not exist is the exact inversion of
+  the deferrals-need-mechanical-triggers rule.
+
+**Honest current state: nothing mechanically validates a gated plan file.** `plan_block.py
+validate` was the only reader, and `docs/plans/gated/*.md` is now a write-only surface —
+files a convention says to write and no code reads. That is a real §6c gap, recorded as
+dated debt on `gate-surface-ledger` rather than left implied. Two things do still consume the
+directory indirectly: `docs/reviews/*.json` records name a plan path in their `plan` field
+(`review_ledger.validate_record` requires the string, and as of v1.32.0 resolves it on disk),
+and `/tdd-plan` anchors the Tripwire to whatever the plan says.
 
 ## The deliberation store — posture, with honest labels
 

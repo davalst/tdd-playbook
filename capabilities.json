@@ -35,9 +35,9 @@
       },
       "integration_debt": [
         {
-          "what": "OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green \u2014 closes H2-via-shell, `planted_probe` \u2014 first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract \u00a71.5 \u2014 settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the \u00a71.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 \u2014 same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists \u2014 floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications \u2014 harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed \u2014 blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion \u2014 a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
+          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): every open leg named the CIVerd ENGINE as the actor - guard_env as a ratifiable signed signal, the extended watchlist in the engine's root-owned floor, the probe-clean ratchet before a hard-block release list, and the #11 blocking-composition island. The engine is retired and civerd-integrity.yml deleted, so none of these can be paid or can fail; keeping a live debt whose actor does not exist is the write-only lie the registry exists to prevent. Historical text preserved below the separator. | OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green \u2014 closes H2-via-shell, `planted_probe` \u2014 first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract \u00a71.5 \u2014 settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the \u00a71.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 \u2014 same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists \u2014 floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications \u2014 harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed \u2014 blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion \u2014 a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
           "owner": "david",
-          "expires": "2026-09-15"
+          "expires": "2026-12-31"
         }
       ]
     },
@@ -295,9 +295,9 @@
       ],
       "integration_debt": [
         {
-          "what": "engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract \u00a72b + \u00a71.3 hard-floor listing) not yet implemented on srv1621832",
+          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): this asked for an engine-side calibration_integrity check on srv1621832. The engine is retired, so the ask cannot be paid and its RED on 2026-09-16 would name an actor that does not exist. Same reasoning applied to integrity-guards in this release; applying it to one debt and not its twin is the inconsistency the sweep exists to catch. The repo-side check it mirrors is LIVE and unaffected: check_scoreboard_integrity.py runs every gate via test_harness.py. Historical text: | engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract \u00a72b + \u00a71.3 hard-floor listing) not yet implemented on srv1621832",
           "owner": "david",
-          "expires": "2026-09-15"
+          "expires": "2026-12-31"
         },
         {
           "what": "SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 \u2014 DEFERRED, stated not dropped): three checks decide AUTHORIZATION by testing whether a name appears as a substring of prose \u2014 rule (c) `sid in journal_added`, rule (d) `h not in gate_added`, and ledger `_fresh_ids` `e['id'] in added`. A passing mention (a paragraph ABOUT a change, a quoted example, a docstring) grants authorization nobody wrote. This is Cheliped's grep-counts-docstrings error sitting in the integrity checker, which is worse than a count because it is a permission. v1.30 deliberately did NOT rewrite these: changing what authorizes an integrity decision needs its own red-first cycle and its own adversary pass, and doing it inside a doctrine release is how the doctrine release becomes the incident. ALSO OWED HERE: Cheliped's proposed lint \u2014 a check that counts or detects occurrences of a code construct in Python source must PARSE, not text-match \u2014 scoped as a Tier-2 advisory dataflow sweep. Done = a parsed one-line entry grammar the journals already document but nothing enforces, with planted tests proving a mere MENTION does not authorize, plus the lint, or a consciously re-dated entry",
@@ -415,41 +415,7 @@
           "expires": "2027-02-01"
         }
       ],
-      "notes": "RETIRED 2026-08-09 (v1.32.0, owner-control plan rev 3). release_verify.py and its suite deleted; deploy_surface removed with the VPS. Retained historical record: | PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded \u2014 CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay \u2014 the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day \u2014 a paid loan, not a silent deletion."
-    },
-    {
-      "id": "plan-authoring",
-      "summary": "plan_block.py scaffolds/validates docs/plans/gated/<slug>.md carrying an engine-conformant civerd-plan block (corpus-pinned, strict-superset drift only); /tdd-plan lands approved plans IN-REPO so the engine can hold releases to their predicates.",
-      "user_facing": false,
-      "surfaces": [
-        "local",
-        "cloud"
-      ],
-      "activation": {
-        "default": "off",
-        "switch": "arm plan_globs + integrity_globs for docs/plans/gated/*.md in /etc/civerd/repos.yml on srv1621832 (root-owned; the playbook session hands David the exact two lines to paste)"
-      },
-      "wired_by": [
-        "plugins/tdd-playbook/bin/plan_block.py",
-        "plugins/tdd-playbook/commands/tdd-plan.md"
-      ],
-      "exercised_by": [
-        "plugins/tdd-playbook/tests/test_plan_block.py",
-        "docs/plans/gated/2026-07-30-deliberation-capture.md"
-      ],
-      "deploy_surface": {
-        "runs_on": "srv1621832 (Hostinger VPS \u2014 the CIVerd engine evaluates plan predicates at the judged sha)",
-        "gets_there_by": "the plan .md rides ordinary git push; ENFORCEMENT arms only when root-owned /etc/civerd/repos.yml names plan_globs (David pastes the two lines; cross-repo authorship rule)",
-        "running_version_probe": "tests/fixtures/plan_block_corpus.json is stamped blessed_by_engine_version \u2014 conformance staleness is detectable against the engine sha; author-side `validate` shells to civerd plan-check when on PATH",
-        "divergence": "if repos.yml is never armed, plans land INERT: release_verify keeps consuming verdicts with no plan predicate \u2014 the pipeline reads as live while enforcing nothing; owner: david (VPS admin)"
-      },
-      "integration_debt": [
-        {
-          "what": "ENGINE-SIDE ARMING: docs/plans/gated/*.md is not yet named in /etc/civerd/repos.yml, so plan predicates are authored but never enforced \u2014 a dark pipeline the doctor must show as dark until the box enforces it. By expiry: armed (David pastes the two lines on srv1621832) or consciously re-dated. (David's ships-on-or-triggered rule, 2026-07-30: OFF is only ever a scheduled state.)",
-          "owner": "david",
-          "expires": "2026-09-15"
-        }
-      ]
+      "notes": "RETIRED 2026-08-09 (v1.32.0) \u2014 ALSO records the sibling deletions made with the engine, because a capability removed whole leaves its WHY nowhere the doctor prints: plan-authoring (bin/plan_block.py + suite + corpus fixture) existed only to emit a civerd-plan block for the engine's plan-predicate evaluator and was recorded as never armed \u2014 plans landed INERT; civerd-integrity.yml (the repo-side plant-target handoff) had no other reader. Producer and consumer deleted together. | RETIRED 2026-08-09 (v1.32.0, owner-control plan rev 3). release_verify.py and its suite deleted; deploy_surface removed with the VPS. Retained historical record: | PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded \u2014 CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay \u2014 the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day \u2014 a paid loan, not a silent deletion."
     },
     {
       "id": "deliberation-capture",
@@ -654,6 +620,11 @@
           "what": "SELF-REFERENTIAL DENOMINATORS (H15, v1.30): ~9 verdict surfaces print a count derived from the same filter it describes, so it moves WITH the narrowing and cannot reveal it \u2014 the 16 suite tallies (`N passed`), capability_registry (`N capabilities` from the file being validated), verify_citations, with_snapshot's `clean`, plant_vitality's post-filter total, and gate_yield dataflow-trend (a sweep with too few rows is silently excluded). v1.30 fixed the load-bearing ones (gate, sweeps, harness, ledger, plant_forms); these remain. Done = an INDEPENDENT expectation per surface (the test_agents.py:138 roster pattern), or a recorded decision that a self-referential count is acceptable there and why",
           "owner": "david",
           "expires": "2026-10-31"
+        },
+        {
+          "what": "WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0). Deleting plan_block.py removed the only reader of docs/plans/gated/*.md, so the directory /tdd-plan writes into is a \u00a76c write-only surface. Partially paid the same day: review_ledger.validate_record now RESOLVES a record's `plan` path on disk, so a review citing a missing plan REDs. Still unpaid: nothing reads a gated plan's CONTENT, and `scaffold`'s mechanical slug-collision refusal is now prose in tdd-plan.md only \u2014 stated here rather than deferred silently. By expiry: a content reader (or a collision check), or a conscious decision that a plan file needs no validator now that no engine parses it.",
+          "owner": "david",
+          "expires": "2026-10-15"
         }
       ]
     },
@@ -884,7 +855,7 @@
           "topic": "host capability assurance report",
           "consumers": [
             "operator before trusting or calibrating a host adapter",
-            "release review as advisory context only; CIVerd remains authoritative"
+            "release review as advisory context only; since v1.32.0 the release authority is David's tag (release-tag-authority) and the independent re-execution is .github/workflows/gate.yml (independent-gate-rerun)"
           ]
         }
       ],
@@ -895,7 +866,7 @@
     },
     {
       "id": "release-tag-authority",
-      "summary": "A release is authorized by David creating a v* tag on a gate-green commit. TWO mechanical halves, both scoped: no TRACKED script or workflow may create/push a tag (test_no_script_creates_a_release_tag, roster derived from git ls-files), and no SESSION may create/push one at the Bash seam (hooks/scripts/tag_guard.py, BLOCKING). Untracked trees (e.g. .claude/worktrees/*) are out of the scanner's scope by construction; the session guard covers the action there. This REPLACED the CIVerd verdict wall in v1.32.0: the wall is deleted, not shrunk, so there is no verdict to forge.",
+      "summary": "A release is authorized by David creating a v* tag on a gate-green commit. TWO mechanical halves, both scoped: no TRACKED script or workflow may create/push a tag (test_no_script_creates_a_release_tag; roster DERIVED from git ls-files, incl. .github/workflows/*.yml, whose tag authority is checked at the permission/action level because CI creates tags with no git verb), and no SESSION may create/push one at the Bash seam (hooks/scripts/tag_guard.py, BLOCKING). Untracked trees (e.g. .claude/worktrees/*) are out of the scanner's scope by construction; the session guard covers the action there. This REPLACED the CIVerd verdict wall in v1.32.0: the wall is deleted, not shrunk, so there is no verdict to forge.",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -908,7 +879,8 @@
       "wired_by": [
         "CLAUDE.md::Releasing",
         "plugins/tdd-playbook/hooks/hooks.json::PreToolUse/Bash -> tag_guard.py",
-        "scripts/civerd_gate.sh (the green precondition a release is cut on)"
+        "scripts/civerd_gate.sh (the green precondition a release is cut on)",
+        ".github/workflows/gate.yml (independent-gate-rerun) \u2014 the CI check that makes 'gate-green' independently verified before David tags"
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag",
@@ -952,6 +924,50 @@
         }
       ],
       "notes": "Born 2026-08-09 with the retirement of the CIVerd release gate (v1.32.0). The pairing is deliberate: the wall's deletion is only safe while no automated tag path can be reintroduced quietly, so the scanner ships in the SAME commit as the deletion."
+    },
+    {
+      "id": "independent-gate-rerun",
+      "summary": "A GitHub Actions job re-runs `sh scripts/civerd_gate.sh` from a clean clone on a machine the coding agent cannot reach. This is the ONLY property CIVerd actually delivered that the v1.32.0 retirement would otherwise have dropped: signing bought nothing (three releases shipped unsigned with no observable consequence), but independent RE-EXECUTION is what keeps 'gate green' verified rather than asserted. It produces no verdict, no signature and no artifact the release path consumes, so it reintroduces nothing forgeable; permissions are contents:read, so the job itself cannot create a tag.",
+      "user_facing": false,
+      "surfaces": [
+        "cloud"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": ".github/workflows/gate.yml \u2014 on: push to any branch, pull_request, and workflow_dispatch; disable by deleting the workflow, which is a visible diff"
+      },
+      "wired_by": [
+        ".github/workflows/gate.yml",
+        "scripts/civerd_gate.sh"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag"
+      ],
+      "emits": [
+        {
+          "topic": "GitHub check-run conclusion for the gate job",
+          "consumers": [
+            "David, reading the check mark before running `git tag` (CLAUDE.md::Releasing). Deliberately NOT machine-consumed: a machine consumer would be a verdict, and the point of the retirement is that no verdict authorizes a release."
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 30
+      },
+      "integration_debt": [
+        {
+          "what": "UNPROVEN ON THE REAL RUNNER (born 2026-08-09). The workflow is YAML-validated and the gate it runs is green locally, but it has never executed on GitHub: the runner image, the Python version, and above all whether fetch-depth:0 + fetch-tags actually makes the ledger stage MEASURED rather than UNMEASURED are unverified. A shallow clone is the documented default-CI failure this repo already knows about. By expiry: one green run observed on GitHub and the run URL recorded here, or the workflow is deleted rather than left as decorative CI. Committed != running (\u00a76).",
+          "owner": "david",
+          "expires": "2026-09-15"
+        }
+      ],
+      "notes": "Born 2026-08-09 with the CIVerd retirement (v1.32.0). Registered so that deleting the repo's only independent re-execution is a visible, gate-failing act rather than a quiet one.",
+      "deploy_surface": {
+        "runs_on": "GitHub-hosted ubuntu-24.04 runner (github.com/davalst/tdd-playbook actions)",
+        "gets_there_by": "the workflow file rides `git push`; there is no separate deploy",
+        "running_version_probe": "the `gate` check-run conclusion for the pushed sha \u2014 `gh run list --branch main --limit 1`; CLAUDE.md::Releasing step 4 makes reading it a required release step",
+        "divergence": "Actions disabled, the workflow deleted, or invalid YAML -> NO check appears at all, which reads like 'not finished yet'. Step 4 treats a MISSING check as a stop, not a pass; test_installer pins the workflow's YAML validity and its gate invocation so a silent break REDs locally."
+      }
     }
   ]
 }
