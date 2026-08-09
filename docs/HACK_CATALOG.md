@@ -273,7 +273,19 @@ describes — `N of N` moves with the narrowing and cannot reveal it.
   section is registered; the SUITES roster carries a floor. Deliberately NOT a hook —
   `exitcode_guard` stays silent on selector flags, because a PreToolUse hook cannot tell
   RUNNING from REPORTING and a guard that cries wolf on normal scoped work gets demoted.
-- Corollary, from the same report and worth its own line: **having the rule loaded does not
+- Corollary A, sharpened by the reporter's own audit of 27 commits (2026-08-06), which
+  refuted the first version of this line: **a mechanism cannot detect its own absence.** ruff
+  not running was invisible to ruff; bandit not running was invisible to bandit; the gate
+  summary was the thing asserting they had run. Everything inside a mechanism's field of view
+  it found — and every failure OF the mechanism layer came from outside it: a human seeing a
+  symptom (a suite opened the Mac App Store in a browser for days, every gate green), a peer's
+  message, or an anomaly that didn't fit. Invest in both: mechanisms for what they can see,
+  and something structurally outside for "is it running at all?"
+- Corollary B: **a liveness plant and a detection plant are different tests.** Ours refuses an
+  undeclared unarmed sweep (liveness) AND plants a real violation into the SHIPPED config's own
+  scan roots (detection) — armed is not aimed, and a scanner pointed at an empty directory
+  keeps a plausible non-zero count while every synthetic-fixture test of its logic passes.
+- Corollary C, from the same report and worth its own line: **having the rule loaded does not
   prevent the error.** Cheliped had `parse it; a grep matches your own docstring` in context
   and wrote `grep -c` anyway, inside the fix for this class — three loaded rules, three misses,
   one sprint. Treat "the doctrine already covers it" as necessary but not sufficient evidence
