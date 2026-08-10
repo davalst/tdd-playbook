@@ -1073,6 +1073,47 @@
         }
       ],
       "notes": "Split out of integrity-guards on 2026-08-09 after a tripwire audit REDded the ACTIVATED leg: the combined capability declared default:on while five of nine hooks shipped off, so the dark inventory could not see them."
+    },
+    {
+      "id": "generated-agents-md",
+      "summary": "AGENTS.md \u2014 the Codex agent-instructions file this repo reads (gate-manifest.json, intent_nudge.py) \u2014 is GENERATED from CLAUDE.md + a curated host-differences header and pinned byte-exact. It is built by CONCATENATION, not substitution: the doctrine is host-neutral and is copied verbatim, so it cannot drift, while the handful of genuinely Codex-specific facts are maintained deliberately in one visible place.",
+      "user_facing": false,
+      "surfaces": [
+        "local",
+        "codex"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "python3 plugins/tdd-playbook/bin/render_agents.py render (check runs in the gate)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/bin/render_agents.py",
+        "plugins/tdd-playbook/tests/test_reference_docs.py"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_reference_docs.py::test_agents_md_is_generated_and_current"
+      ],
+      "emits": [
+        {
+          "topic": "AGENTS.md",
+          "consumers": [
+            "Codex sessions in this repo (the host convention)",
+            "gate-manifest.json safe_rules",
+            "plugins/tdd-playbook/hooks/scripts/intent_nudge.py \u2014 names it as a place to discover repo-local testing conventions"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 180
+      },
+      "integration_debt": [
+        {
+          "what": "HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0). The doctrine body cannot drift \u2014 it is CLAUDE.md verbatim \u2014 but the curated host-differences header can: nothing checks that its claims about Codex are still true. It currently asserts that only test_lock_guard has a Codex adapter, which is true today and is exactly the sort of fact that changes without anyone re-reading a header. By expiry: derive the guard list from docs/architecture/host-parity-policy.json instead of restating it, or a test that the two agree.",
+          "owner": "david",
+          "expires": "2026-11-30"
+        }
+      ],
+      "notes": "Born 2026-08-10 after the hand-maintained mirror was found carrying the PRE-v1.32.0 calibration section \u2014 a Codex reader following it would have done the opposite of current doctrine, and no gate said so. David caught it; no mechanism did."
     }
   ]
 }

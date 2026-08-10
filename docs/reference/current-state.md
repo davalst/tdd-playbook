@@ -4,12 +4,12 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `8903bc05b0a9aebdefaffa85d4303b31a272eabc76815bc36b10abdd774dfad5`
+- `gate-manifest.json` — `1ae0e1a0f591efce119e345f66c5ca8c31468fc6511f0888bdf3352f058e469b`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `9b97797bcdbd9885f645e2d4791c28711f05ba1439d0060139fd771980fda755`
 - `docs/architecture/host-parity.json` — `986d406d24b8529c7426be2f10c54f7f3da5817f36033a7791a6cfbd069303d8`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `936cb184642ee3c53307a0361da680b3d71245dab65b2abd0559243394b183e2`
+- `capabilities.json` — `f6602e1f574ca98e52f4925f553b19b8c0c6f932e094767ff554f721c5e8c493`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -30,7 +30,7 @@
 - Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_portable_core`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
 - Acknowledged roster digest: `cfec9a3908546b5d9faba994212f0f083c7549c07bae5841566426abbb22b68a`
-- Acknowledged execution-manifest digest: `f987ec6a9b751e3c7f05d544a51a19344e70d9a97da67b8d323986f98f4d7e7a`
+- Acknowledged execution-manifest digest: `4bfd3e672c92d0f32eead8d39bcadb2a68f71065d5a4903f47454eff439d634e`
 
 ## Host parity
 
@@ -41,7 +41,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 25. Owned dated integration-debt entries: 54.
+- Registered capabilities: 26. Owned dated integration-debt entries: 55.
 - `integrity-guards/unnamed` — owner `david`, expires `2026-12-31`
 - `integrity-guards/unnamed` — owner `david`, expires `2026-11-15`
 - `integrity-guards/unnamed` — owner `david`, expires `2026-10-15`
@@ -96,6 +96,7 @@
 - `state-reset/unnamed` — owner `david`, expires `2026-10-31`
 - `vendor-uninstall/unnamed` — owner `david`, expires `2026-10-31`
 - `advisory-guards-optin/unnamed` — owner `david`, expires `2026-11-15`
+- `generated-agents-md/unnamed` — owner `david`, expires `2026-11-30`
 
 ## Adversarial review records
 

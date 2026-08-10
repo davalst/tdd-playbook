@@ -2,7 +2,7 @@
   "schema_version": 1,
   "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
   "acknowledged_roster_sha256": "cfec9a3908546b5d9faba994212f0f083c7549c07bae5841566426abbb22b68a",
-  "acknowledged_plan_sha256": "f987ec6a9b751e3c7f05d544a51a19344e70d9a97da67b8d323986f98f4d7e7a",
+  "acknowledged_plan_sha256": "4bfd3e672c92d0f32eead8d39bcadb2a68f71065d5a4903f47454eff439d634e",
   "fixed_stages": [
     {
       "id": "calibration",
@@ -42,6 +42,8 @@
   ],
   "force_full": [
     ".github/workflows/gate.yml",
+    "AGENTS.md",
+    "CLAUDE.md",
     "calibration/ledger.py",
     "calibration/plant_forms.py",
     "calibration/test_harness.py",
@@ -56,6 +58,7 @@
     "plugins/tdd-playbook/bin/gate_plan.py",
     "plugins/tdd-playbook/bin/gate_runner.py",
     "plugins/tdd-playbook/bin/host_parity.py",
+    "plugins/tdd-playbook/bin/render_agents.py",
     "plugins/tdd-playbook/bin/render_reference.py",
     "plugins/tdd-playbook/bin/reset_plan.py",
     "plugins/tdd-playbook/bin/review_ledger.py",
