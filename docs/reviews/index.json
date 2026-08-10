@@ -36,6 +36,10 @@
     {
       "path": "2026-08-09-calibration-opt-in.json",
       "sha256": "cfd934054dbb123172d51731b5bc835aa71515b46ca18658b6f879d487a08661"
+    },
+    {
+      "path": "2026-08-09-debt-sweep.json",
+      "sha256": "262c1c539593868bbfa3ec02bdb3244748d14cbde647dba1937fb7ad7720371b"
     }
   ]
 }
