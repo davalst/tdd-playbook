@@ -1,495 +1,393 @@
-# Implementation plan: The Readable Surface + adversary routing (§6d) — 2026-08
+# Implementation plan: The Readable Surface — 2026-08
 
-**Status:** DRAFT — for David's review. Nothing built. Target version: **v1.33.0** (stage 1
-only; see §G staging).
-**Upstream spec:** the "when code no longer matters" thread, 2026-08-12 — the working
-session that established the problem, the design corrections, and the 42-row inventory.
-**Companion artifact:** `docs/reference/adversary-scenario-inventory.md` (S01–S42 +
-governance G1–G5), written alongside this plan and referenced throughout.
-**Discipline:** written in the Playbook's own §0 shape, and dogfoods §6a (registry), §6b
-(onboarding contract), §6c (flow table), §12 (denominators), §13 (plant-before-trust).
+**Status:** DRAFT v2 — for David's review. Nothing built. Target version: **v1.33.0**.
+**Upstream spec:** the "when code no longer matters" thread, 2026-08-12.
+**Companion:** `docs/reference/adversary-scenario-inventory.md` (S01–S42, manual checklist).
+**Loop closure:** `integration-adversary` → **ISLAND** (16 findings);
+`architecture-adversary` → **BAND-AID** (11 findings). Dispositions in §F.
 
----
-
-## A. Repo-local conventions discovered and applied
-
-Discovered from `CLAUDE.md`, `SKILL.md` (§§0, 4a, 6a–6c, 12, 13), `capabilities.json`
-(26 entries), and the existing bin/hook/test layout. Layered on top of the universal floor:
-
-- **One blessed gate entrypoint.** All suites run only via `sh scripts/civerd_gate.sh`
-  (never piped — §4a, a discarded exit code is a discarded truth). Every test below joins
-  that gate; no side loop.
-- **Planted-input rule.** Every mechanical change ships a planted violation that must go
-  RED, with a **paired clean control** (v1.17 pair quota). Unpaired plants are rejected.
-- **Stdlib-only** for everything under `plugins/tdd-playbook/bin/`. No new dependency.
-- **Gate surfaces** (SKILL `##` sections, `agents/*.md`, `commands/*.md`): additions free;
-  removals/renames require a `calibration/gate-changes.md` entry (v1.22 rule d). This plan
-  is additions-only.
-- **Registry dogfood.** New capabilities register in the same commit that builds them;
-  `capability_registry.py validate` runs with the real date on every suite run
-  (`test_capability_registry.py::test_own_registry`), so an expired debt REDs the tests.
-- **One debt shape.** `{what, target, owner, expires}` via the shared `_debt` module — the
-  registry's R-DEBT contract. No fifth debt shape.
-- **Four identity files + CHANGELOG** on any version bump; `test_installer.py::test_release_version_identity` pins all four equal.
-- **§4a house invariants for any new checker:** vacuity guards on scope *and* execution;
-  exit codes captured; "0 violations" must never be reachable by scanning nothing; pinned
-  machine-readable summary line.
-- **Release authority:** David tags. No script creates a tag
-  (`test_no_script_creates_a_release_tag` + `tag_guard.py`). Nothing here changes that.
-- **Vendoring:** anything downstream repos need ships via `scripts/install_into_repo.py`
-  and must appear in both `adapters/claude/adapter.json` and `adapters/codex/adapter.json`.
-
-**Conflicts with the new work: none found.** One tension, stated rather than resolved
-silently: CLAUDE.md's v1.32.0 reversal retired schedule-driven obligations because "the
-schedule produced obligations faster than it produced findings." The routing table is
-change-driven, not schedule-driven, which is on the right side of that reversal — but §D6
-below introduces one time-based element (the demotion timer), and it is deliberately shaped
-to produce a **question**, never a run. See B/reading-2.
+> **v2 is a scope collapse, not a patch.** v1 proposed eight deliverables including a
+> routing table, an exposure ledger and a demotion journal. The adversaries proved the
+> routing half is undeliverable as specified — its adversary targets do not exist, its
+> flagship fact has no extractor, its adjudication field has no producer, and its only
+> switch turns it off. v2 builds **three** things and explicitly declines to build the rest
+> (§E). The scenario inventory survives as a manual checklist, not a mechanism.
 
 ---
 
-## B. Spec integrity
+## A. The finding that reordered everything
 
-### Assumptions (stated, not silent)
+v1 derived its "facts" from `capabilities.json`. That file is **hand-authored self-report**:
+`capability_registry.py:96-160` checks presence and type only — R-WRITE-ONLY accepts any
+non-empty string as a consumer, which is why the live registry carries consumers like
+`"learning-loop (unlock journal via /grade)"`, and nothing anywhere resolves `wired_by` or
+`exercised_by` to a file (sole exception: one hand-pinned instance,
+`test_capability_registry.py:259-263`).
 
-1. **The reader cannot fall back to source.** This is the load-bearing assumption and it
-   inverts the normal requirement: the surface must be *pointable*, not *complete*. A
-   generated view that omits something is recoverable (David dispatches an agent at the
-   coordinates); a generated view that is *wrong* is not, because he cannot check it. This
-   is why D7 (plants) is a gate on arming, not a nice-to-have.
-2. **Facts are cheap, prose is expensive, and they must not be mixed.** Derived facts are
-   deterministic and diffable. LLM prose is neither — regenerating a description of
-   unchanged code yields a large meaningless diff. The split in D2/D6 follows from this.
-3. **The 42 inventory rows are a starting catalogue, not validated controls.** Each is held
-   to G1 (no plant, no arming). They exist so coverage does not start at zero; they are not
-   claimed to be the right 42.
-4. **Cheliped is the pilot consumer.** The Playbook ships the mechanism; Cheliped (63
-   registered capabilities) is where the surface is first read in anger. Nothing here
-   depends on Cheliped-side work landing.
+So a readable surface built on it would faithfully re-render whatever an agent typed — and
+be **precisely wrong in the case David cannot detect**, which is this plan's own
+load-bearing assumption. v1 also quoted `gate_yield.py:30-31` — *"derived from EXHAUST,
+never self-report"* — and then built the comprehension instrument on the repo's one
+self-report artifact.
 
-### Readings — the request supports more than one; this plan follows reading 1
-
-- **Reading 1 (followed): a comprehension instrument that feeds a routing decision.** The
-  Playbook's outputs today are all *verdicts* — pass/fail, N/N, green/red. This adds the
-  first artifact whose output is *description*, plus a deterministic table that decides when
-  description is worth escalating to a paid adversary. It answers "what is it?", which
-  nothing in the Playbook currently answers.
-- **Reading 2 (rejected): a new gate.** Making the readable surface block merges on prose
-  quality would convert it into something to satisfy rather than something to read, and the
-  Playbook's own history says that is how instruments die. **The prose never gates.** Only
-  two mechanical things gate: the snapshot being stale (D2), and an expired demotion (D6).
-- **Reading 3 (rejected): 63 subsystem pages.** A page per registered capability is
-  organised the way the *code* is organised, which is precisely the organisation David
-  cannot navigate. The pages are organised by *worry*, cutting across subsystems.
-
-### A materially simpler approach — and the recommendation
-
-**Simpler alternative:** ship D1 (the inventory) and a derive-on-demand `/readable` command
-that commits nothing. No snapshot, no diff, no routing table, no yield instrument. Perhaps
-a fifth of the work.
-
-**This plan's recommendation as CTO: take the simpler alternative first, deliberately, as
-stage 1.** The entire value of the snapshot/diff/routing machinery is conditional on David
-reading the surface repeatedly. That is an untested behavioural assumption about a single
-user, and it is cheap to test and expensive to assume. Stage 1 is therefore a **decision
-gate, not a partial build** — if the surface goes unread for three weeks, stages 2–3 are
-cancelled and the money is unspent. See §G.
-
-This is also the honest reading of David's own constraint in the source thread ("I don't
-mean take a massive leap that all of a sudden makes it harder").
-
-### Open questions for review — plan proceeds on the stated defaults if unanswered
-
-1. **Does the routing table ever auto-dispatch paid adversaries?**
-   **Default: NO in v1.** It prints a recommendation with reasons; a human or the
-   orchestrator dispatches. Auto-dispatching paid agents from a hook is an unbounded spend
-   path with no cap — which is row **S23** on our own inventory. Dogfooding beats
-   convenience here.
-2. **Where does the readable surface live for a downstream repo?**
-   **Default:** `docs/reference/readable-surface.md` + `.json`, same pair as
-   `docs/reference/current-state.md`. Installer-created, gitignored never.
-3. **Demotion timer default.** **Default: 120 days**, surfacing as a question. (G3.)
-4. **Does stage 1 ship the SKILL §6d doctrine, or does doctrine wait for stage 2?**
-   **Default: doctrine ships with stage 2**, because a `##` section is a gate surface that
-   downstream repos vendor, and doctrine describing a mechanism that may be cancelled at
-   the stage-1 decision gate is exactly the "prose without a mechanism" failure §6c was
-   created to stop.
+**Consequence: registry resolution teeth are D1, and nothing renders before they land.**
 
 ---
 
-## C. Deliverables
+## B. Repo-local conventions discovered and applied
 
-### D1 — The scenario inventory (`docs/reference/adversary-scenario-inventory.md`)
+- **One blessed gate entrypoint:** `sh scripts/civerd_gate.sh`, never piped (§4a).
+- **Gate admission is `gate-manifest.json`**, not "a `gate_runner` stage" (v1 said the
+  latter; wrong). `gate_plan.py:89-102` refuses the plan unless `acknowledged_plan_sha256`
+  and `acknowledged_roster_sha256` are re-acknowledged; every peer bin
+  (`dataflow_sweeps.py`, `render_reference.py`, `review_ledger.py`, `host_parity.py`) has a
+  `force_full`/`safe_rules` entry. Each deliverable below carries its manifest line.
+- **Generated-and-checked wiring is a suite test:** `test_reference_docs.py:35-77`, with a
+  planted staleness pair at `:56-74`. That is the pattern D2 follows.
+- **Planted-input rule** with a **paired clean control** (v1.17 pair quota).
+- **Stdlib-only** under `plugins/tdd-playbook/bin/`.
+- **One debt shape** `{what, target, owner, expires}` via `_debt.py`.
+- **Registry dogfood:** `test_capability_registry.py::test_own_registry` runs with the real
+  date; an expired debt REDs the suite.
+- **Gate surfaces** (SKILL `##`, `agents/*.md`, `commands/*.md`): additions free, removals
+  need `calibration/gate-changes.md` (v1.22 rule d). This plan is additions-only.
+- **`CLAUDE.md` is the source of `AGENTS.md`** (`render_agents.py:26-27` — verbatim plus
+  curated host notes). Codex learns nothing unless CLAUDE.md is edited. v1 asserted the
+  opposite.
+- **Codex parity is `unavailable` by policy**, not by oversight:
+  `host-parity-policy.json:31-41` marks codex `commands`/`agents` unavailable, and
+  `install_into_repo.py:51-57` deliberately excludes them from `CODEX_COPY_TREES`. Any new
+  command ships claude-only with dated debt.
+- **`docs/` is not vendored.** `install_into_repo.py:43-50` `COPY_TREES` has no `docs`.
+- **Release authority:** David tags. Nothing here changes that.
 
-**What.** A standing, hand-maintained catalogue of 42 things that go wrong, each phrased as
-a plain-language question, with a stable ID that the routing table, review-ledger records
-and plant docstrings all cite. Includes governance G1–G5 (plant-before-arm, exposure
-recording, demote-never-delete, conspicuous loosening, growth-from-escapes).
+**Conflict with new work: none.** One tension stated: CLAUDE.md's v1.32.0 reversal retired
+schedule-driven obligations. This plan introduces no schedule.
+
+---
+
+## C. Spec integrity
+
+**Assumptions**
+
+1. **The reader cannot fall back to source.** The surface must be *pointable*, not
+   *complete*. An omission is recoverable (dispatch an agent at the coordinates); a **wrong**
+   row is not. This is why D1 precedes D2 and why D3 gates prose.
+2. **Facts and prose must not be mixed.** Derived facts are deterministic and diffable; LLM
+   prose is neither — regenerating a description of unchanged code yields a large
+   meaningless diff that trains the reader to stop looking.
+3. **Cheliped is the intended pilot reader — and cannot receive `docs/`.** Stated as debt,
+   not assumed away.
+
+**Readings**
+
+- **Followed:** a *comprehension* instrument. Every existing Playbook output is a verdict
+  (pass/fail, N/N, green/red). This adds the first artifact whose output is *description*.
+- **Rejected — a new gate.** Prose never gates. Two mechanical things gate: registry
+  resolution failures (D1) and a stale snapshot (D2).
+- **Rejected — 63 subsystem pages.** Organised the way the code is organised, which is the
+  organisation David cannot navigate. One page, organised by worry.
+
+**Materially simpler approach, and why it is now rejected.** v1 proposed shipping the
+inventory plus a derive-on-demand `/readable` that commits nothing. The architecture
+adversary showed this is LLM description with no derived facts, no idempotency, no staleness
+gate and no plants — the version an agent can already produce with zero new mechanism, and
+the one *most* exposed to the fluent-but-wrong risk. Worse, its stage gate ("did David open
+it twice") could pass merely because prose is pleasant to read. That is comfort mistaken for
+coverage — the exact failure this whole thread began by naming. **Rejected.**
+
+**Open questions for review — plan proceeds on the stated defaults**
+
+1. **D1 will RED this repo's own registry on day one.** 26 entries carry free-text
+   consumers. **Default: yes, that is the point** — it is a planted-error result arriving
+   for free — with a one-cycle grace window: existing entries get a dated
+   `resolution_exempt` debt (expires 2026-10-31), new/edited entries must resolve
+   immediately. Alternative: fix all 26 first, which blocks D2 for a cycle.
+2. **Which single page does D2 build?** **Default: "what nothing checks"** — effects and
+   capabilities with no test behind them. Shortest, most damning, purest product judgment
+   once you have it.
+3. **`/readable` ships claude-only.** **Default: yes**, with dated codex debt under the
+   existing `test-lock/codex-command-agent-discovery` ref.
+
+---
+
+## D. Deliverables
+
+### D1 — Registry resolution teeth (`capability_registry.py`)
+
+**What.** `validate()` stops accepting free text where it means a reference. Two new rules:
+**R-WIRED** — every `wired_by` / `exercised_by` entry resolves to an existing path (with
+`::test_name` suffix tolerated); **R-CONSUMER** — every `emits[].consumers` entry resolves
+to a registered capability id, an existing path, or a `resolution_exempt` debt. Existing
+R-WRITE-ONLY keeps its shape; it gains teeth.
 
 **Edge cases**
-- *Malformed / drift:* an ID referenced by `adversary-routes.json` that does not exist in
-  the file — dangling reference, must RED. (This is the file's only mechanical contract.)
-- *Boundaries:* ID renumbering or reuse. Forbidden; a test pins that IDs are unique and
-  never decrease in count.
-- *Second-order:* the inventory silently implying complete coverage. Mitigated by the
-  stated distribution (26 facts / 16 agent) and G1 — membership ≠ control.
+- *Boundaries:* `path::test_name` and `path::Class::test` forms both resolve to the file.
+- *Empty/null:* a capability with no `emits` — untouched, not an error.
+- *Malformed:* a consumer string with prose around a real path (`"gate_yield.py (per-cycle
+  rollups…)"`) — extract-and-resolve, and **say so in the message** when the match came from
+  a substring, so the tolerance is visible rather than silent.
+- *Auth-negative:* a `resolution_exempt` debt past its expiry REDs, via `_debt.py`.
+- *Idempotency:* validate is pure; two runs identical.
+- *Scale:* Cheliped's 63 entries — resolution is file-stat, not parse; must stay fast enough
+  for every suite run.
+- *Second-order — the migration hazard:* 26 live entries will fail at once. The grace debt
+  is what keeps this from being a flag day; its expiry is what keeps the grace from becoming
+  permanent.
 
-**UX tests.** David opens the file and can answer "what would a CISO ask about this
-change?" without reading code. Driven through the real interface: the file itself, and
-`/readable` (D6) citing IDs in its output.
+**UX tests.** A capability naming a consumer that does not exist → `R-CONSUMER <id>: …` with
+the unresolvable string quoted. Real interface: `python3 …/bin/capability_registry.py
+validate` and the suite (`test_own_registry`).
 
 **Integration surface**
-- *Consumes:* nothing at rest. It is data.
-- *Emits → named consumer:* `adversary-routes.json` (D3) reads the IDs;
-  `review_ledger.py` records cite them; plant docstrings (D7) cite them. **Until D3 exists
-  the file has no mechanical consumer** — that is stage-1 reality and is registered as
-  dated integration debt on capability `scenario-inventory` (owner: David, expires
-  2026-11-30), not a silent write-only loop.
-- *Surface parity:* not surface-bound; ships to both adapters via the installer as a doc.
-- *Reverse sweep:* `/tdd-plan`, `/edge` and `/integration-audit` should cite scenario IDs
-  in their output once armed — deliverable D8, or dated debt if D8 is cut.
-- *Activation:* ON. It is a document; there is nothing to switch.
+- *Consumes:* `capability_registry.py`, `_debt.py`.
+- *Emits → named consumer:* validation failures → `gate_runner` (already wired) and
+  `capability_registry.py doctor`. No new flow.
+- *Surface parity:* the bin ships to claude **and** codex (`CODEX_COPY_TREES` includes
+  `bin`) — the one deliverable with genuine parity. Stated because the other two do not.
+- *Reverse sweep:* **Cheliped's 63-entry registry gets the same teeth on its next refresh.**
+  That is the highest-value consequence of this deliverable and is a Cheliped-side task, not
+  one this repo can perform — dated debt on `capability-registry`.
+- *Activation:* ON. It is a gate rule, not a feature.
 
-**Property tests.** IDs unique; every `Route` value is either `—` or a name present in
-`agents/` or in `adversary-routes.json`; role values from a closed set.
+**Property tests.** Resolution is order-independent; a resolvable set stays resolvable under
+list reordering; exempted entries never mask a *different* rule's violation.
 
-**Repo-local extras.** Gate-surface rule: this is `docs/`, not a `##` SKILL section, so it
-is not under the v1.22 removal ledger. Stated so the exemption is a decision, not an
-oversight.
+**Repo-local extras.** Planted pair: a registry fixture with an unresolvable `wired_by` must
+RED; the paired clean control must pass. `gate-manifest.json` — `capability_registry.py` is
+already in `force_full`; the new `tests/` additions change `acknowledged_roster_sha256`,
+which must be re-acknowledged in the same commit.
 
 ---
 
-### D2 — `readable_surface.py` — derive the facts, render two artifacts
+### D2 — `readable_surface.py` — one page, checked facts only
 
-**What.** A stdlib-only bin tool that derives per-worry facts from sources that **already
-exist** — `capabilities.json` (nodes), `dataflow-sweeps.json` + `dataflow_sweeps.py`
-(edges), the test roster, `git ls-files`, hook config — and writes a machine snapshot
-(`readable-surface.json`) plus a human page (`readable-surface.md`). Regenerating in the
-gate must produce **no diff**; a stale snapshot REDs.
+**What.** A stdlib-only bin tool that renders **one** worry page — *what nothing checks* —
+from facts that D1 has made resolvable, plus the test roster. Writes
+`docs/reference/readable-surface.md` and `readable-surface.json`. Regenerating in the suite
+must produce **no diff**.
 
-**Explicitly NOT a new extractor.** It composes existing producers. Any new extraction it
-needs (e.g. effect classification) is added to the *existing* owner, not re-implemented.
+**Explicitly not a general extractor.** It reads the registry and the test roster. It does
+**not** classify effects, scan for egress, or invent a taxonomy — v1's "outbound effect"
+fact had no producer anywhere in the repo, and inventing one is not in this plan.
 
 **Edge cases**
-- *Empty/null:* a repo with no `capabilities.json` — must fail loudly with "run
-  `capability_registry.py init` first", never render an empty page that reads as "nothing
-  here." (§4a: 0 violations must not be reachable by scanning nothing.)
-- *Vacuity:* zero subsystems scanned → exit 3 (vacuous refusal), matching
-  `dataflow_sweeps.py`'s existing contract.
-- *Malformed:* a registry entry missing `activation` or `emits` — rendered as **"not
-  stated"**, never omitted. An absent fact and a false fact must look different.
-- *Scale:* 63 capabilities (Cheliped) must render to something a human finishes. Page is
-  worry-organised, not subsystem-organised, precisely for this.
-- *Idempotency:* two runs on an unchanged tree produce byte-identical output — ordering
-  stable, no timestamps inside the artifact.
-- *Second-order:* the page becoming authoritative in its own right. Every row cites its
-  source `file:line` so an agent can be pointed at it; the page is an index, not a claim.
+- *Empty/null:* no `capabilities.json` → fail loudly telling the user to run `init`; never
+  render an empty page that reads as "nothing here."
+- *Vacuity:* zero capabilities scanned → exit 3, matching `dataflow_sweeps.py`'s contract.
+  "0 unchecked" must be unreachable by scanning nothing (§4a).
+- *Malformed:* an entry missing a field → rendered **"not stated"**, never omitted. An
+  absent fact and a false fact must look different.
+- *Scale:* 63 entries must render to something a human finishes.
+- *Idempotency:* byte-identical output on an unchanged tree — stable ordering, no timestamps
+  inside the artifact.
+- *Failure/rollback:* a stale committed page REDs the suite (the `test_reference_docs.py`
+  planted-staleness pattern), so the artifact cannot silently drift.
+- *Second-order:* the page becoming authoritative. Every row cites `file:line` so an agent
+  can be dispatched at it; the page is an index, not a claim.
 
-**UX tests.** David runs `/readable` → sees the worry pages; picks a row → the citation is
-precise enough that "explain this one" is a well-scoped agent dispatch. Real interfaces:
-CLI (`python3 …/bin/readable_surface.py render`) and the `/readable` command on both
-adapters.
+**UX tests.** David runs the renderer → sees a list of capabilities with no `exercised_by`
+that resolves, each citing its registry line → picks one → "explain this one" is a
+well-scoped dispatch. Real interfaces: CLI, and the suite's staleness check.
 
 **Integration surface**
-- *Consumes:* `capability_registry.py`, `dataflow_sweeps.py` + `dataflow-sweeps.json`,
-  `_debt.py` (debt shape), `gate_runner.py` (joins the blessed gate),
-  `render_reference.py`'s generated-and-checked pattern.
-- *Emits → named consumer:* `readable-surface.json` → `route_adversaries.py` (D3) and
-  `/readable` (D6). In stage 1 the JSON's only consumer is `/readable`; the routing consumer
-  arrives in stage 2 — dated debt on capability `readable-surface`, owner David, expires
-  2026-11-30.
-- *Surface parity:* CLI + both adapters. `AGENTS.md` is generated
-  (`render_agents.py`, capability `generated-agents-md`), so Codex inherits it — verified,
-  not assumed.
-- *Reverse sweep:* `/integration-audit` currently re-enumerates subsystems from entry
-  points every run; once the snapshot exists it should consume it instead. **Deliverable
-  D8**, or dated debt.
-- *Activation:* ON by default (a read-only renderer). The *staleness gate* is the part with
-  teeth and it ships ON, matching `render_reference.py`.
+- *Consumes:* D1's resolved registry, the test roster, `_debt.py`, `render_reference.py`'s
+  generated-and-checked pattern (pattern reuse, not code duplication — different content,
+  different audience, same mechanism).
+- *Emits → named consumer:* `readable-surface.md` → David. `readable-surface.json` →
+  **nobody yet** (v1's routing consumer is not being built). Registered as dated integration
+  debt on `readable-surface`, owner David, expires **2026-11-30**. Alternative accepted at
+  review: drop the `.json` until something reads it — **recommended**, and the default if
+  question 2 is answered without comment.
+- *Surface parity:* CLI only in this deliverable; the command is D3. Stated divergence.
+- *Reverse sweep:* `commands/integration-audit.md:20-56` step 1 currently re-enumerates
+  subsystems from entry points on every run; it should consume this page instead. Dated debt
+  on `readable-surface` (expires 2027-01-31), not a silent deferral.
+- *Activation:* ON. The staleness check is the part with teeth and ships ON.
 
-**Property tests.** Render is idempotent (`render(render(x)) == render(x)` on the
-snapshot); every rendered row carries a resolvable citation; the summary counts equal the
-row counts (no silent truncation).
+**Property tests.** `render(render(x)) == render(x)`; every rendered row's citation
+resolves; summary counts equal row counts (no silent truncation).
 
-**Repo-local extras.** Pinned summary line for `gate_yield` parsing:
-`readable_surface render: subsystems N · effects N · unproven N · not-stated N`.
-Planted-input test: a registry entry with a fabricated `emits` consumer must show up in the
-"nothing reads this" section; paired clean control alongside.
+**Repo-local extras.** Pinned summary line: `readable_surface render: capabilities N ·
+unchecked N · not-stated N`. `gate-manifest.json`: new `force_full` entry for the bin, and
+`safe_rules` already routes `docs/reference/**` to `test_reference_docs`. **`review_ledger.py:20`
+hardcodes `ALLOWED_REVIEW_TAIL` to `docs/reviews/` + exactly `docs/reference/current-state.md`** —
+a release commit regenerating the readable surface would trip `:142-143`; extend it, with a
+planted test.
 
 ---
 
-### D3 — `adversary-routes.json` + `route_adversaries.py` — the deterministic table
+### D3 — Narration honesty (`verify_citations.py` + `/readable`)
 
-**What.** Given two snapshots (previous committed, current), compute the fact delta, map it
-through the routing table to scenario IDs and adversary names, and **print a recommendation
-with reasons**. Never dispatches.
+**What.** (a) A `--require-citation-per-claim` mode in `verify_citations.py` under which
+zero citations is a **refusal**, not a clean exit. (b) A planted narration scenario in
+`calibration/scenarios.json` whose oracle `must_not_match` a known-false claim. (c) A
+`/readable` command that renders the page and, on request, narrates it in plain language —
+gated by (a).
 
-Row shape (mirrors `dataflow-sweeps.json`'s config-driven, `unarmed`-declaring pattern):
-
-```json
-{ "id": "R01", "when": "capability gained an outbound effect",
-  "scenarios": ["S17","S19","S23"], "run": ["reach","consent"],
-  "because": "new external contact is the fastest route to a surprise",
-  "unless": "target listed in known_egress", "armed": false, "plant": "P-R01" }
-```
+**Why this is a deliverable and not a note.** v1 mitigated its self-declared worst risk
+(fluent, confident, wrong narration that David cannot check) by pointing at
+`verify_citations.py`. That tool **returns 0 when it finds no citations at all**
+(`:108-110`), and that behaviour is *pinned* by `test_verify_citations.py:76`. The
+mitigation did not exist. A plan that mitigates its worst risk with a check of a different
+property has no mitigation.
 
 **Edge cases**
-- *Empty:* no previous snapshot (first run) — must refuse with a stated reason, never treat
-  "everything is new" as 400 findings.
-- *Boundaries:* a delta touching 40 rows at once (a big refactor) — cap the recommendation
-  and **say what was capped**; a silent top-N is a lie by omission (§12).
-- *Auth-negative:* a route referencing an agent name that does not exist → RED.
-- *Idempotency:* running twice on the same delta yields identical recommendations.
-- *Concurrency:* two gate runs on the same commit must not double-append the exposure row.
-- *Failure/rollback:* a malformed routes file fails closed — no recommendation is not the
-  same as no risk.
-- *Second-order:* trigger inflation. Every row must state its `because` and be reviewable
-  on yield (D5).
-- *The denominator:* the config declares what fires **nothing** (docs-only change,
-  prompt-text change, new test, dependency bump) so the shape of the blind spot is
-  approved, not implied.
+- *Empty:* nothing unchecked → "nothing unchecked" as explicit output, not silence.
+- *Auth-negative:* narration with zero citations → refused under the new mode; the existing
+  default mode keeps its current exit-0 behaviour so no existing caller changes.
+- *Malformed:* a citation that resolves but whose quote does not match → already handled by
+  the optional quote check; **made mandatory** for this consumer.
+- *Second-order — the residue, stated:* a citation that resolves *and* whose quote matches,
+  attached to a false conclusion, still passes. The plant in (b) is the only control on
+  that, and it is a sample, not a proof. This is the honest limit of the whole approach and
+  belongs in the review conversation, not in a footnote.
 
-**UX tests.** A commit adds a `requests.post` to a module with no prior egress → the gate
-prints `R01 → reach, consent (because: …)` with the citation. A docs-only commit prints
-`no routes fired (docs-only; see declared no-fire classes)` — the quiet case must be
-*visibly* quiet, not absent.
+**UX tests.** `/readable` with nothing unchecked → one line. With findings → plain sentences,
+each citing a resolvable line. Narration with a fabricated claim → refused, and the plant
+proves the refusal fires.
 
 **Integration surface**
-- *Consumes:* D1 (scenario IDs), D2 (snapshots), `agents/*.md` roster, `_debt.py`.
-- *Emits → named consumer:* recommendations → David + the orchestrator (human-in-loop);
-  exposure rows → `gate_yield.py route-rollup` (D5). Both named, no write-only loop.
-- *Surface parity:* CLI + gate output; both adapters via `/readable --routes`.
-- *Reverse sweep:* the existing `/edge`, `/mutate`, `/probe`, `/tdd-plan`,
-  `/integration-audit` commands already end by dispatching adversaries on a **prose** rule.
-  Those dispatch points should cite route IDs so their dispatches are recorded on the same
-  ledger — **D8**, or dated debt.
-- *Activation:* ships **ARMED-BUT-ADVISORY with zero rows armed**, using the exact
-  `unarmed` declaration block `dataflow-sweeps.json` already uses. Named switch:
-  `TDD_PLAYBOOK_ROUTES=off`. Per §6b, arming a row requires its plant (G1), and the
-  onboarding contract is: metric = routes fired vs. findings acted on (D5); review = each
-  calibration cycle; kill = a row with real exposure and zero acted-on findings is demoted.
+- *Consumes:* `verify_citations.py`, `calibration/scenarios.json` (the existing 26-row
+  plant→agent→oracle corpus), D2's page.
+- *Emits → named consumer:* refusals → the caller. Narration → David. **`/grade` is not a
+  consumer** — v1 claimed it was; `commands/grade.md` reads `grade_from_otel.py`, the
+  TEST-LOCK journal and git history, and has no narration input. Corrected, not deferred.
+- *Surface parity:* **claude only.** `host-parity-policy.json:31-41` marks codex commands
+  unavailable and `install_into_repo.py:51-57` excludes them by design. `/readable` ships as
+  another unavailable row under the existing `test-lock/codex-command-agent-discovery` debt.
+  Adding `commands/readable.md` changes `host_parity.canonical_inventory`
+  (`host_parity.py:51-58`), so `acknowledged_inventory_sha256` must be re-acknowledged in
+  the same commit or `materialize` raises (`:93-97`).
+- *Reverse sweep:* `README.md:19,31-39,228` lists the command set three times; `/readable`
+  joins all three. (This is **S38** on our own inventory — "can a user find this without
+  being told it exists" — and v1 mentioned README zero times.)
+- *Activation:* ON. Prose never gates.
 
-**Property tests.** Delta computation is order-independent; recommendation set is a pure
-function of (delta, table); `armed=false` rows never appear in recommendations.
+**Property tests.** The new mode is strictly stricter — anything it accepts, the default
+accepts. Refusal is deterministic given the same input.
 
-**Repo-local extras.** Planted route: a fixture snapshot pair with a known new effect must
-produce exactly the expected route set; paired clean control (a docs-only delta) must
-produce none. Vacuity guard: refusing to report "0 routes" when the delta itself was empty
-vs. when it was non-empty is a distinguishable exit.
-
----
-
-### D4 — Exposure recording (extends `gate_yield.py`, does not replace it)
-
-**What.** Every route evaluation records **exposure**, not just outcome: change class, area
-touched, delta size, risk tier, armed/unarmed, and whether a resulting finding was acted
-on. One committed row per route per cycle, in `gate_yield.py`'s existing rollup shape.
-
-**This is the brakes rule made mechanical**, and it is an extension because `gate_yield.py`
-already carries the exact doctrine: *"a gate absent from the record is UNMEASURED, never
-zero"* and *"unadjudicated friction is not evidence of zero yield."* Building a second
-ledger would duplicate the honesty rules and let them drift apart.
-
-**Edge cases**
-- *Empty:* a fresh clone with an ephemeral raw log must not make a healthy route look like
-  a zero-yield candidate — `gate_yield`'s existing committed-rollup rule covers this and is
-  inherited, not re-derived.
-- *Boundaries:* the first cycle — candidates need ≥2 committed cycles.
-- *Malformed:* an exposure row missing `change_class` is UNMEASURED, never defaulted.
-- *Second-order:* exposure attributes chosen so that they can be gamed into always looking
-  high-exposure. Mitigated: attributes derive from the fact delta (D2), not from self-report.
-
-**UX tests.** `gate_yield.py route-candidates` after two cycles prints candidates with
-their exposure profile — David can see "ran 20 times, 18 were docs-only" at a glance.
-
-**Integration surface**
-- *Consumes:* `gate_yield.py`, D3 output, `_common.emit()`'s existing event log.
-- *Emits → named consumer:* `docs/calibration/route_yield.md` → `route-candidates` → D5 →
-  David. Named end-to-end.
-- *Surface parity:* CLI only (it is an instrument, not a user surface). Stated divergence.
-- *Reverse sweep:* none — this *is* the existing instrument, extended.
-- *Activation:* ON with D3. Recording must start at run #1; exposure cannot be computed
-  retroactively. **This is why D4 is stage 2 with D3, and not deferred with D5.**
-
-**Property tests.** Rollup is associative over cycles; draining the raw log is idempotent;
-counts never decrease.
+**Repo-local extras.** Plants live in `plugins/tdd-playbook/tests/fixtures/` (the
+`test_dataflow_sweeps` shape) for the deterministic checks, and in `calibration/scenarios.json`
+for the agent-graded narration oracle. **Not** in `calibration/corpus/approved/`, which is
+pinned byte-identical forever (`plant-forms.md:11-13`, scoreboard-integrity rule (b)) and
+would collide with §13 replay-and-adjust. `plant_vitality.py` derives staleness from the
+calibration scoreboard, which deterministic fixtures never populate — **no vitality claim is
+made** for the fixture plants. (v1 claimed inheritance; wrong.)
 
 ---
 
-### D5 — The demotion journal (R4.3 shape, built for routes)
+## E. What this plan explicitly does NOT build, and why
 
-**What.** `docs/calibration/demotions.md` — a demoted route carries `{what, target, owner,
-expires}`; an expired demotion REDs the gate. Demotion moves a route to the manual
-inventory with a 120-day timer that surfaces **as a question**, never as a run.
+Stated so the absences are decisions rather than oversights.
 
-`gate_yield.py`'s header states this instrument is to be "built when the first candidate
-actually appears." Routes provide that occasion — but only after D4 has produced ≥2
-committed cycles, so **D5 is stage 3 and deliberately not built earlier**. Building a
-retirement mechanism before anything is retirable is the speculative-generality failure
-(**S16** on our own inventory).
-
-**Edge cases**
-- *Auth-negative:* deletion attempted on fire-count alone → refused with the structural-vs-
-  statistical distinction printed (G3).
-- *Boundaries:* expiry exactly today.
-- *Failure:* a demotion whose target route no longer exists → dangling, RED.
-- *Second-order:* demotion used as a quiet disarm. Mitigated by G4 — loosening is journaled
-  with who/when/why (`guard_note.py` pattern).
-
-**Integration surface.** *Consumes:* `_debt.py`, `gate_yield route-candidates`, D1.
-*Emits → named consumer:* the release gate (expired demotion fails it) and `/grade`.
-*Activation:* ON when built. *Reverse sweep:* guards themselves become demotable on the
-same journal once it exists — dated debt on `advisory-guards-optin`, not a silent gap.
+| Not built | Why |
+|---|---|
+| **Routing table** (`adversary-routes.json`, `route_adversaries.py`) | `gate_plan.py:163-220` + `gate-manifest.json` is already a config-driven change→action router with fail-closed handling, escalation and digest acknowledgement; SKILL §9 (`SKILL.md:744-750`) already states route R01 semantically in prose. A third router needs a reason neither adversary could find. If routing is built later, it extends `safe_rules` with an `adversaries:` field. |
+| **Effect / egress extraction** | No such fact exists anywhere in the repo; the registry has no effect field and `ghost_gates` is unarmed. v1's flagship route keyed on `requests.post` — a source-pattern proxy of exactly the kind `dataflow_sweeps.py:19-22` warns against. Real work, its own plan. |
+| **Exposure ledger** | Its load-bearing field ("was the finding acted on") has no producer, and `gate_yield.candidates()` keys on adjudicated overrides that routes would not have. `capabilities.json` → `gate-yield` already carries dated debt (expires **2026-11-15**) recording that five of six existing gates "can NEVER become retirement candidates" for this reason. Fix that debt first; it is a prerequisite, not a parallel task. |
+| **Demotion journal** | `gate_yield.py:40-42` says build it "when the first candidate actually appears." No candidate can appear until the debt above is paid. Building it now is **S16** on our own inventory. |
+| **Six new adversaries** (`reach`, `consent`, `unchecked`, `silence`, `waste`, `adoption`) | They do not exist; `agents/*.md` is a protected gate surface and a host-parity asset. The inventory's Route column has been re-mapped onto the ten real agents, with 20 rows honestly marked manual-only. |
+| **Vendoring the inventory** | `COPY_TREES` has no `docs`. Registered as dated debt rather than solved by moving the file somewhere it does not belong. |
+| **SKILL §6d doctrine** | A vendored gate surface describing a mechanism this plan mostly declines to build. Doctrine follows a mechanism, never precedes it (§6c's founding lesson). |
 
 ---
 
-### D6 — `/readable` — the narration contract
+## F. Adversary findings — dispositions (27 total)
 
-**What.** A command that (a) renders the current worry pages on demand, and (b) when the
-fact snapshot changed, narrates **the change** in plain language and appends it to an
-append-only log. Standing descriptions are regenerated fresh and never stored.
+**Accepted and folded in as deliverables or corrections (19).**
+Registry self-report → **D1** (arch F1). `verify_citations` cannot refuse → **D3** (arch F2,
+integ #9). Six nonexistent adversaries → **inventory Route column re-mapped** (arch F4,
+integ #1). HACK_CATALOG duplication → **S25=H11, S26=H4 stated + dated debt** (arch F5).
+"Acted on" has no producer → **exposure ledger not built** (arch F7, integ #3).
+`armed` boolean + env knob → **not built** (arch F8). Taxonomy in three places → **one page,
+no taxonomy** (arch F9). Wrong wiring seam → **`gate-manifest.json` lines in D1/D2/D3**
+(arch F10, integ #7). Codex parity false → **corrected in B and D3** (arch F11, integ #6).
+`docs` not vendored → **stated + dated debt** (integ #2). No ON-switch / invalid activation
+values → **all three deliverables are `on`; nothing dark** (integ #5). Downstream write-only
+`gate_yield` → **not extended** (integ #8). `/grade` not a narration consumer → **corrected**
+(integ #10). Plants in the wrong corpus + unsupported vitality claim → **fixtures +
+scenarios.json, no vitality claim** (integ #11). Four silent "D8 or debt" deferrals →
+**registered in §G** (integ #12). CLAUDE.md is AGENTS.md's source → **stated in B; CLAUDE.md
+edit is a release-time task** (integ #13). `review_ledger` ALLOWED_REVIEW_TAIL →
+**D2 extras** (integ #14). Stage-1 cancellation landmine → **no staging; nothing registered
+that cancellation would strand** (integ #15). `/readable` absent from README → **D3 reverse
+sweep** (integ #16).
 
-**The rule that makes this work:** *facts are diffed; prose is written about the diff and
-kept; descriptions are on demand and discarded.* Diffing regenerated prose produces large
-meaningless diffs and trains the reader to stop looking.
+**Accepted as prerequisites, deliberately blocking (3).** Routing (arch F3, integ #4) and
+retirement (integ #3) are gated on the `gate-yield` per-gate adjudication debt (2026-11-15)
+and on an effect extractor that does not exist. Both are named in §E rather than staged,
+because staging implies a commitment this plan cannot honour.
 
-**Edge cases**
-- *Empty:* no change since last snapshot → "nothing changed" as an explicit output, not
-  silence.
-- *Malformed:* narration that cites a fact absent from the snapshot → must fail the
-  citation gate (`verify_citations.py`, already built and consumed by `/claims`).
-- *Second-order — the load-bearing risk:* a fluent, confident, **wrong** narration. David
-  cannot check it; that is the one way this makes him *less* accountable. Mitigated by D7,
-  which is a hard precondition on arming, not a follow-up.
+**Accepted as a method correction (1).** The stage-1 pilot tested the wrong artifact (arch
+§G). v1's gate — "did David open the surface twice" — could pass because prose is pleasant.
+**Staging removed entirely**; the plan is now small enough to build and judge on the result.
 
-**UX tests.** `/readable` with no change → one line. `/readable` after a change → plain
-sentences with citations. `/readable S17` → the CISO question answered for the current tree.
+**Rejected with reasons (4).**
+- *arch F5's stronger form* — "let rows with an armed mechanism inherit it rather than await
+  a route." No routes are being built, so there is nothing to inherit into; the S↔H mapping
+  is registered as debt instead.
+- *arch F6* — protecting `adversary-routes.json` in `check_scoreboard_integrity.py`. The
+  file is not being created.
+- *integ #1's alternative* — authoring six new agent briefs as deliverable D0. Six untested
+  adversaries is exactly the fleet-dilution failure identified in the source thread; agents
+  should be born from escapes, not from an org chart.
+- *integ #15's second half* — naming a producer for the "did David open it" counter. The
+  metric is gone with the staging.
 
-**Integration surface**
-- *Consumes:* D2 snapshot, `verify_citations.py`, D1 IDs.
-- *Emits → named consumer:* narration log → `/grade` (§13 cycle grading) and David.
-- *Surface parity:* both adapters (`commands/readable.md` ships to claude + codex).
-- *Reverse sweep:* `/integration-audit`'s report shape should cite the same worry pages —
-  D8 or dated debt.
-- *Activation:* ON. Prose **never gates** (reading 2, rejected).
-
-**Repo-local extras.** Narration output goes through `verify_citations.py` — an
-uncitable sentence is refused, reusing the existing gate rather than inventing a check.
-
----
-
-### D7 — Plants for every armed route (§13, v1.25 shape)
-
-**What.** Each armed route ships a planted fact-change it must fire on, frozen in
-`calibration/corpus/`, with a docstring citing the motivating scenario ID and — where the
-route was born from a real defect — the pre-fix sha. **No plant, no arming (G1).**
-
-Starter plants, matching the six routes in the inventory: add a network call (R01/reach);
-defang a test (unchecked); remove an approval gate (consent); ship a feature default-off
-with no metric (waste); orphan a consumer (silence); mislabel a control (adoption — reuses
-`ux-probe-calibrator`, not a new mechanism).
-
-**Edge cases.** *Second-order:* a plant that a route fires on for the *wrong reason*
-(keyed on a proxy name rather than the fact). Mitigated by the v1.25 replay rule — the
-route is replayed against the motivating artifact before it is trusted, and the paired
-clean control must NOT fire.
-
-**Integration surface.** *Consumes:* `calibration/`, `plant_forms.py`, `plant_vitality.py`
-(does the plant still discriminate). *Emits → named consumer:* calibration history + the
-arming decision. *Activation:* plants are the arming gate; nothing ships armed without one.
-
-**Repo-local extras.** `plant_vitality.py` already answers "has this plant gone stale" —
-routes inherit it rather than growing a parallel staleness notion.
+**Unverified claims carried forward, not treated as facts** (integ, own statement): whether
+`test_reference_docs.py` accepts a new file under `docs/reference/`, and whether
+`review_ledger.validate_record` rejects unknown finding keys. Both are D2/D3 build-time
+checks, listed here so they are not silently assumed.
 
 ---
 
-### D8 — Doctrine + adoption (SKILL §6d, command citations, vendoring)
-
-**What.** A new `## 6d` SKILL section — *the readable surface: description is not a
-verdict* — plus scenario-ID citations wired into `/tdd-plan`, `/edge`,
-`/integration-audit`, and installer/adapter updates so downstream repos receive the
-command, the bins, and the config.
-
-**Stage 2, not stage 1** (open question 4): a `##` section is a vendored gate surface, and
-doctrine describing a mechanism that may be cancelled at the stage-1 decision gate is the
-prose-without-mechanism failure §6c exists to prevent.
-
-**Integration surface.** *Consumes:* `install_into_repo.py`, both `adapter.json` files,
-`render_agents.py`. *Emits → named consumer:* downstream repos (Cheliped first).
-*Surface parity:* claude + codex, verified by `test_host_parity.py`.
-*Reverse sweep:* this **is** the reverse sweep for D1–D7. *Activation:* ON.
-
----
-
-## D. Flow table (§6c dataflow liveness)
+## G. Flow table (§6c)
 
 | Flow | Producer | Consumer | Liveness test |
 |---|---|---|---|
-| scenario IDs | `adversary-scenario-inventory.md` | `adversary-routes.json`, plant docstrings, review-ledger records | dangling-ID test REDs on an unknown ID (both directions) |
-| `readable-surface.json` | `readable_surface.py render` | `/readable`, `route_adversaries.py` | gate REDs if regeneration diffs (stale snapshot) |
-| worry pages (`.md`) | `readable_surface.py render` | David (human) | citation resolves via `verify_citations.py` |
-| route recommendations | `route_adversaries.py` | David + orchestrator | fixture delta produces exactly the expected set |
-| exposure rows | `route_adversaries.py` | `gate_yield route-rollup` | rollup row count equals evaluation count per cycle |
-| retirement candidates | `gate_yield route-candidates` | D5 demotion journal → David | candidate requires ≥2 committed cycles (inherited rule) |
-| demotion entries | `demotions.md` | release gate | expired demotion REDs the gate |
-| narration | `/readable` | `/grade`, David | every sentence citation-checked |
+| resolution failures | `capability_registry.py validate` | `gate_runner`, `doctor` | planted unresolvable `wired_by` REDs; clean control passes |
+| `readable-surface.md` | `readable_surface.py render` | David | stale page REDs (planted staleness pair) |
+| `readable-surface.json` | `readable_surface.py render` | **nobody** — dated debt, or dropped per open question 2 | n/a until a consumer exists |
+| citation refusals | `verify_citations.py --require-citation-per-claim` | `/readable` | planted zero-citation narration is refused |
+| narration | `/readable` | David | planted false claim caught by the `scenarios.json` oracle |
 
-**Consumer parity (migration rule).** This plan replaces no seam, so no old-seam consumer
-enumeration is owed. Stated explicitly so its absence is a fact, not an omission.
+**Consumer parity:** this plan replaces no seam, so no old-seam enumeration is owed. Stated
+so the absence is a fact rather than an omission.
 
 ---
 
-## E. Tripwire deliverable list
+## H. Tripwire deliverable list
 
 | # | Deliverable | BUILT | WIRED (production composition root) | ACTIVATED | EXERCISED |
 |---|---|---|---|---|---|
-| D1 | Scenario inventory | file exists, 42 rows, IDs unique | cited by D3 config + plants | n/a (document) | dangling-ID test |
-| D2 | `readable_surface.py` | bin tool, stdlib-only | `gate_runner.py` stage | ON; staleness gate ON | planted fabricated-consumer + clean control |
-| D3 | Routing table | `route_adversaries.py` + config | gate output + `/readable --routes` | advisory, 0 rows armed, `TDD_PLAYBOOK_ROUTES` switch | fixture delta → expected route set; docs-only → none |
-| D4 | Exposure recording | `gate_yield route-rollup` | same gate stage as D3 | ON with D3 | rollup/candidate tests over ≥2 synthetic cycles |
-| D5 | Demotion journal | `demotions.md` + validator | release gate | ON when built (stage 3) | expired-demotion REDs; dangling-target REDs |
-| D6 | `/readable` | `commands/readable.md` + renderer | both adapters, `test_host_parity.py` | ON | citation gate on narration; no-change path |
-| D7 | Plants | `calibration/corpus/` entries | arming precondition in D3 validator | n/a | each plant fires its route; clean control does not |
-| D8 | Doctrine + vendoring | SKILL §6d, command edits, installer | `install_into_repo.py`, both adapters | ON | scratch-repo install parity; `test_reference_docs.py` |
+| D1 | Registry teeth | R-WIRED + R-CONSUMER in `capability_registry.py` | `gate-manifest.json` force_full (already present) + roster re-ack | ON | planted unresolvable + clean control; `test_own_registry` with real date |
+| D2 | One derived page | `readable_surface.py` + committed artifact | `gate-manifest.json` force_full entry; `safe_rules` docs/reference → `test_reference_docs` | ON; staleness gate ON | planted staleness pair; vacuity exit 3 |
+| D3 | Narration honesty | `--require-citation-per-claim`; `commands/readable.md`; narration plant | README ×3; `host_parity` inventory re-ack; claude-only + codex debt | ON; prose never gates | zero-citation refusal; false-claim oracle |
 
 ---
 
-## F. Registered capabilities and dated debts
-
-New `capabilities.json` entries, registered in the commit that builds each:
+## I. Capabilities and dated debts
 
 | id | activation | debt (owner: David) |
 |---|---|---|
-| `scenario-inventory` | on | no mechanical consumer until D3 — expires **2026-11-30** |
-| `readable-surface` | on | routing consumer arrives stage 2 — expires **2026-11-30** |
-| `adversary-routing` | advisory, 0 armed | every row unarmed pending its plant (G1) — expires **2027-01-31** |
-| `route-exposure` | on with D3 | demotion consumer (D5) is stage 3 — expires **2027-01-31** |
-
-Existing capability touched: `advisory-guards-optin` gains dated debt — guards become
-demotable on D5's journal once it exists (expires **2027-01-31**).
+| `capability-registry` (existing) | on | one-cycle `resolution_exempt` grace for the 26 live entries — expires **2026-10-31**; Cheliped-side adoption of the same teeth — expires **2027-01-31** |
+| `readable-surface` (new) | on | `.json` has no consumer (or is dropped) — expires **2026-11-30**; `/integration-audit` should consume the page — expires **2027-01-31** |
+| `scenario-inventory` (new) | on | not vendored (`COPY_TREES` has no `docs`) — expires **2026-11-30**; S↔H mapping incomplete — expires **2026-11-30**; no security adversary for S17–S24 — expires **2027-01-31** |
+| `citation-gate` (existing) | on | the residue: a resolvable, quote-matching citation attached to a false conclusion still passes — expires **2027-01-31** |
+| `gate-yield` (existing) | on | **unchanged and load-bearing** — the per-gate adjudication debt (2026-11-15) is the prerequisite for any future routing or retirement work |
 
 ---
 
-## G. Staging — stage 1 is a decision gate, not a partial build
+## J. Loop closure
 
-**Stage 1 (v1.33.0):** D1 + a derive-on-demand `/readable` (D6 without the snapshot). No
-commit-time artifact, no routing, no doctrine. **Then stop.**
+`Loop closed: yes (integration-adversary — ISLAND: the routing half's adversary targets,
+flagship fact, adjudication producer and on-switch are all absent, and the readable half
+reaches no host but this repo's Claude surface; architecture-adversary — BAND-AID: the
+surface derives its facts from a hand-typed self-report that nothing resolves, which is the
+one artifact the intended reader cannot check.)`
 
-**The gate:** three weeks of ordinary work. Did David open the surface unprompted more than
-twice, and did it change a decision at least once? If no → stages 2–3 are **cancelled**,
-D1 remains as a manual checklist, and the money is unspent. Recorded either way in
-`docs/calibration/`.
-
-**Stage 2 (v1.34.0):** D2 (committed snapshot + staleness gate), D3 (advisory, 0 armed),
-D4 (exposure from run #1), D7 (plants for the first two routes only), D8 (doctrine).
-
-**Stage 3 (when `route-candidates` returns its first candidate):** D5. Not before — the
-repo's own rule.
-
----
-
-## H. Loop closure
-
-Adversaries dispatched on this draft per §0. Findings folded in below.
-
-<!-- LOOP-CLOSURE-PENDING: replaced after dispatch -->
+19 findings folded in as deliverables or corrections, 3 accepted as blocking prerequisites,
+1 accepted as a method correction that removed the staging, 4 rejected with reasons, 2
+unverified claims carried forward as build-time checks. Scope reduced from 8 deliverables to
+3.
