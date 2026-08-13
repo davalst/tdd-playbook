@@ -36,6 +36,23 @@ output — never mid-sentence, where they break the reading. Shorter is plainer:
 explaining. Repo idiom in the narration is a FAILURE of this command even when every fact
 is correct — readability is the deliverable, not polish on it.
 
+**SIZE EVERY WORRY — the reader must never leave more alarmed than the facts warrant**
+(added after the first render's "13 possibly dead things" sent the owner into follow-up
+questions that were all answered by context the narration already had and did not say):
+- Every count carries its disposition IN THE SAME BREATH: how many actually need the
+  reader's attention, how many are fine, and why. "13 findings — 7 are paperwork I can
+  fix by typing, 6 deserve a scheduled fix, 0 are emergencies" is readable; "13 possibly
+  dead" alone is an alarm bell with no sizing.
+- "Off" is never presented bare. Say which KIND of off: a tool that runs when called
+  (fine — a drill isn't broken sitting in the toolbox); waiting on the reader, with its
+  date; a habit nobody performed, named; or genuinely unowned — the only kind that
+  belongs in an alarm register.
+- If a page touches the reader's own standing rules (anti-dark, nothing-ships-silent),
+  say WHETHER the facts violate the rule — don't leave the reader to adjudicate it.
+- End the whole render with **the one thing worth doing** — or say plainly there is
+  nothing to do. A narration that leaves the reader asking "so should I be worried?"
+  has failed even if every sentence was plain: answering that question IS the job.
+
 **3. MECHANICAL GATE on your own narration (the workflow, because Markdown cannot refuse):**
 run the citation check over what you are about to present, BEFORE presenting it:
 

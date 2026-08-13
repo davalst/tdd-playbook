@@ -262,6 +262,11 @@ def test_readable_command_and_discoverability():
           "BUSINESS-OWNER TEST" in text
           and "nothing" in text and "will tell you if this breaks" in text
           and "readability is the deliverable" in text.lower())
+    # rule 2, same day, different failure: the first render alarmed without sizing
+    check("/readable: carries SIZE EVERY WORRY (disposition in the same breath, kinds of "
+          "off, the one thing worth doing)",
+          "SIZE EVERY WORRY" in text and "IN THE SAME BREATH" in text
+          and "which KIND of off" in text and "one thing worth doing" in text)
     # README discoverability, SCOPED to the roster/routing lines — a substring anywhere
     # is the proxy trap (`/tdd-unlock` matches outside the roster today)
     readme = open(os.path.join(REPO, "README.md")).read()
