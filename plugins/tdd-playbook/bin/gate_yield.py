@@ -152,6 +152,78 @@ RESPONSE_MD_HEADER = (
     "|---|---|---|---|---|---|\n")
 
 
+# v1.34.0 D5 — the ROSTER/COUNTING split. cmd_rollup used to register the per_gate key
+# BEFORE inspecting the event, so any non-gate producer on the one write path minted a
+# phantom zero-yield gate row in the retirement instrument (proven by execution in the
+# readable-surface plan re-review: three `usage` events -> `| readable-surface | 0 | 0 |
+# 0 | 0 | 0 |`, and `candidates` counted a non-gate in its measured denominator). Only
+# these events may mint a gate row; usage events route to their own table; anything else
+# stays ignored-without-a-row (the deliberate old-vendored-copy tolerance).
+GATE_EVENTS = ("block", "warn", "override", "suppressed", "response")
+USAGE_EVENTS = ("usage", "usage-note")
+
+USAGE_SCHEMA = 1
+USAGE_MD_HEADER = (
+    "# Readable-surface usage record (v1.34.0 D5 — the R&D instrument)\n\n"
+    "One committed row per scenario per cycle, drained from the same event log as the\n"
+    "gate record. `uses` is MACHINE-written (the facts CLI logging its own invocation) —\n"
+    "the denominator; `dispatched` / `changed_a_decision` count the agent's own\n"
+    "usage-note events (source: agent), the same self-report split guard_response.md\n"
+    "uses: a note can move its two columns and can never move `uses`. A note whose\n"
+    "scenario saw no machine use this cycle is an ORPHAN — reported, never counted.\n"
+    "Absent data is UNMEASURED, never zero. Usage measures whether the surface was\n"
+    "ASKED, not whether it helped — the keep/kill criterion is rows nobody asks about.\n\n"
+    "schema: {schema}\n\n"
+    "| date | scenario | uses | dispatched | changed_a_decision |\n"
+    "|---|---|---|---|---|\n")
+
+
+def default_usage_md():
+    explicit = os.environ.get("TDD_PLAYBOOK_USAGE_MD")
+    if explicit:
+        return explicit
+    # sibling of the yield record ON PURPOSE (same rule as default_dataflow_md): every
+    # harness/test that isolates TDD_PLAYBOOK_YIELD_MD isolates this record too — the
+    # committed-record leak is a logged incident class (G5, 2026-08-06), not a hypothesis
+    yield_md = os.environ.get("TDD_PLAYBOOK_YIELD_MD")
+    if yield_md:
+        return os.path.join(os.path.dirname(yield_md), "usage.md")
+    return os.path.join(project_root(), "docs", "calibration", "usage.md")
+
+
+def _write_usage_rows(path, date, per_scenario):
+    """Append one row per scenario that saw MACHINE use this cycle; return print lines.
+    Same drain pass as the yield rollup — a second pass over a drained log would record
+    zeros. Orphan notes (a scenario with notes but no uses) are reported, never counted:
+    self-report must not be able to create a denominator row."""
+    lines, rows = [], []
+    for scenario in sorted(per_scenario):
+        c = per_scenario[scenario]
+        if not c["uses"]:
+            if c["dispatched"] or c["changed"] or c["noted"]:
+                lines.append(
+                    "ORPHAN NOTE: {} — {} note(s) with no machine-recorded use this "
+                    "cycle. Not counted: the denominator is machine-written only."
+                    .format(scenario, c["noted"]))
+            continue
+        rows.append((scenario, c["uses"], c["dispatched"], c["changed"]))
+    if not rows:
+        return lines
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    new = not os.path.isfile(path)
+    with open(path, "a") as fh:
+        if new:
+            fh.write(USAGE_MD_HEADER.format(schema=USAGE_SCHEMA))
+        for scenario, uses, dispatched, changed in rows:
+            fh.write("| {} | {} | {} | {} | {} |\n".format(
+                date, scenario, uses, dispatched, changed))
+    lines.append("usage: {} scenario(s) recorded for {} in {}".format(
+        len(rows), date, path))
+    return lines
+
+
 def default_response_md():
     explicit = os.environ.get("TDD_PLAYBOOK_RESPONSE_MD")
     if explicit:
@@ -252,45 +324,67 @@ def cmd_rollup(args):
     if not raw:
         print("yield: unmeasured this cycle (no event log at {})".format(args.log))
         return 0
-    per_gate = {}
+    per_gate, per_scenario = {}, {}
     for row in raw:
+        ev = row.get("event")
+        # ROSTER decision first (v1.34.0 D5): only the closed gate vocabulary may mint a
+        # per_gate key — see GATE_EVENTS. Usage events go to their own table; anything
+        # else is ignored without a row (the deliberate old-vendored-copy tolerance).
+        if ev in USAGE_EVENTS:
+            scenario = str(row.get("scenario") or "full")
+            c = per_scenario.setdefault(scenario, {"uses": 0, "dispatched": 0,
+                                                   "changed": 0, "noted": 0})
+            if ev == "usage":
+                c["uses"] += 1
+            else:  # usage-note: source=agent self-report — moves its two columns only
+                c["noted"] += 1
+                if str(row.get("dispatched") or "").lower() == "yes":
+                    c["dispatched"] += 1
+                if str(row.get("changed_a_decision") or "").lower() == "yes":
+                    c["changed"] += 1
+            continue
+        if ev not in GATE_EVENTS:
+            continue
         gate = str(row.get("gate") or "unknown")
         counts = per_gate.setdefault(gate, {"block": 0, "warn": 0, "override": 0,
                                             "suppressed": 0, "fp": 0,
                                             "response": 0, "elsewhere": 0})
-        if row.get("event") == "response":
+        if ev == "response":
             counts["response"] += 1
             if str(row.get("performed_elsewhere") or "").lower() == "yes":
                 counts["elsewhere"] += 1
             continue          # `response` is a counts key, so the generic increment below
                               # would double it — the arithmetic IS the instrument here
-        ev = row.get("event")
-        if ev in counts:
-            counts[ev] += 1
+        counts[ev] += 1
         # `overrides` keeps its exact old meaning (every unlock); `fp` is the adjudicating
-        # subset. Kept as a sub-key rather than a new event NAME because the increment above
-        # silently drops unknown event names — an older vendored copy would eat the signal.
+        # subset. Kept as a sub-key rather than a new event NAME because unknown event
+        # names are dropped above — an older vendored copy would eat the signal.
         if ev == "override" and str(row.get("reason_class") or "") == "gate-wrong":
             counts["fp"] += 1
     md_dir = os.path.dirname(args.md)
     if md_dir:
         os.makedirs(md_dir, exist_ok=True)
-    migrate_header(args.md)
-    new = not os.path.isfile(args.md)
-    with open(args.md, "a") as fh:
-        if new:
-            fh.write(MD_HEADER)
-        for gate in sorted(per_gate):
-            c = per_gate[gate]
-            fh.write("| {} | {} | {} | {} | {} | {} | {} |\n".format(
-                args.date, gate, c["block"], c["warn"], c["override"], c["suppressed"],
-                c["fp"]))
+    if per_gate:
+        migrate_header(args.md)
+        new = not os.path.isfile(args.md)
+        with open(args.md, "a") as fh:
+            if new:
+                fh.write(MD_HEADER)
+            for gate in sorted(per_gate):
+                c = per_gate[gate]
+                fh.write("| {} | {} | {} | {} | {} | {} | {} |\n".format(
+                    args.date, gate, c["block"], c["warn"], c["override"],
+                    c["suppressed"], c["fp"]))
     response_lines = _write_response_rows(
         getattr(args, "response_md", None) or default_response_md(), args.date, per_gate)
+    usage_lines = _write_usage_rows(
+        getattr(args, "usage_md", None) or default_usage_md(), args.date, per_scenario)
     os.remove(args.log)  # drained — the committed rollup is the durable record
     print("rollup: {} gate(s) recorded for {} in {} (raw log drained)".format(
         len(per_gate), args.date, args.md))
     for ln in response_lines:
+        print(ln)
+    for ln in usage_lines:
         print(ln)
     return 0
 
@@ -458,11 +552,45 @@ def cmd_dataflow_trend(args):
     return 1 if flags else 0
 
 
+def cmd_usage_note(args):
+    """One line of self-report per use of the readable surface, riding the ONE write path
+    as an EVENT (the guard_note.py pattern) — never an edit to the committed record.
+    Joined to machine `usage` events at the next rollup; a note whose scenario saw no
+    machine use is an orphan (reported, never counted), so a forged note cannot create a
+    denominator row BY CONSTRUCTION. Exit 0 recorded · 2 usage."""
+    for name, val in (("--dispatched", args.dispatched),
+                      ("--changed-a-decision", args.changed_a_decision)):
+        if val not in ("yes", "no"):
+            sys.stderr.write("usage-note: {} must be exactly yes|no (got {!r}) — a vague "
+                             "answer is not a record\n".format(name, val))
+            return 2
+    if not (args.scenario or "").strip():
+        sys.stderr.write("usage-note: --scenario is required (an S-row id, or `full`)\n")
+        return 2
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "..", "hooks", "scripts"))
+    try:
+        from _common import log_yield_event
+    except Exception as exc:
+        sys.stderr.write("usage-note: cannot reach hooks/scripts/_common.py — the note "
+                         "was NOT recorded ({})\n".format(exc))
+        return 2
+    log_yield_event("readable-surface", "usage-note",
+                    {"scenario": args.scenario.strip(),
+                     "dispatched": args.dispatched,
+                     "changed_a_decision": args.changed_a_decision},
+                    source="agent")
+    print("usage-note: recorded for '{}' (dispatched={}, changed_a_decision={})".format(
+        args.scenario.strip(), args.dispatched, args.changed_a_decision))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Gate yield: the §13 second-direction "
                                              "instrument (cost decay).")
     ap.add_argument("command", choices=["rollup", "candidates",
-                                        "dataflow-rollup", "dataflow-trend"])
+                                        "dataflow-rollup", "dataflow-trend",
+                                        "usage-note"])
     ap.add_argument("--log", default=default_log())
     ap.add_argument("--md", default=None,
                     help="committed record (defaults per command: gate_yield.md / "
@@ -476,7 +604,18 @@ def main(argv=None):
     ap.add_argument("--response-md", default=None,
                     help="rollup: committed guard-response record (default: beside the "
                          "yield record)")
+    ap.add_argument("--usage-md", default=None,
+                    help="rollup: committed readable-surface usage record (default: "
+                         "beside the yield record)")
+    ap.add_argument("--scenario", default=None,
+                    help="usage-note: the S-row asked about, or `full`")
+    ap.add_argument("--dispatched", default=None,
+                    help="usage-note: did you dispatch an adversary from it (yes|no)")
+    ap.add_argument("--changed-a-decision", default=None,
+                    help="usage-note: did the answer change what you did (yes|no)")
     args = ap.parse_args(argv)
+    if args.command == "usage-note":
+        return cmd_usage_note(args)
     if args.command in ("dataflow-rollup", "dataflow-trend"):
         args.md = args.md or default_dataflow_md()
         args.min_cycles = args.min_cycles if args.min_cycles is not None else 3

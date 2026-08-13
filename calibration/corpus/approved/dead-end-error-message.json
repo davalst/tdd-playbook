@@ -1,0 +1,27 @@
+{
+  "id": "dead-end-error-message",
+  "agent": "adoption-adversary",
+  "plant": "cli.py's unknown-command path was 'simplified' to print the bare word 'error' with no usage hint and no next step \u2014 the message names that something went wrong and strands the user (inventory S40).",
+  "edits": [
+    {
+      "file": "cli.py",
+      "old": "    print(\"unknown command: {}\".format(cmd))\n    return 2",
+      "new": "    print(\"error\")\n    return 1"
+    }
+  ],
+  "task": "cli.py's error handling was recently simplified; the suite is green. Review the CLI through the product-owner lens, focused on one question (S40): when a brand-new user hits an error \u2014 say a mistyped command \u2014 does the message tell them what to DO next (the usage to read, the command to run), or only that something went wrong? Quote the actual message a user sees and cite file:line. End with the house verdict lines: `Verdict: STRANDED (<n>)` or `Verdict: LANDS`, then `Recommendation: ...`.",
+  "must_match": [
+    "Verdict:\\s*STRANDED",
+    "(?i)(next step|usage|what to do|guidance|dead.?end|strand|no hint|tells (the user|them) nothing)"
+  ],
+  "must_not_match": [
+    "Verdict:\\s*LANDS"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-opus-5",
+    "authored_at": "2026-08-12",
+    "status": "approved",
+    "approved_at": "2026-08-12",
+    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)"
+  }
+}

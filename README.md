@@ -16,10 +16,15 @@ unavailable or unmeasured, never rounded up. It ships:
   §1's "test at the seam you don't own" covers what it structurally cannot (SKILL §4).
 - **Enforcement hooks** — four block by default (test weakening, the TEST-LOCK, snapshot
   re-approval, release tags); five more are opt-in. See **Hook controls** below.
-- **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade`.
+- **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade` `/readable`.
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
-  `edge-case-adversary`, `integration-adversary`, `ux-probe-calibrator`.
+  `edge-case-adversary`, `integration-adversary`, `architecture-adversary`,
+  `script-adversary`, `ux-probe-calibrator` — plus the four role-lens adversaries
+  (v1.34.0, Claude-only): `security-adversary`, `test-quality-adversary`,
+  `observability-adversary`, `adoption-adversary`, each answering its rows of
+  `docs/adversary-scenario-inventory.md` and each calibrated against a planted defect
+  with a paired clean control.
 
 It is the universal **floor**: each repo's own stack-specific testing (a different test
 runner, extra gates, security rules) layers on top, discovered from that repo's
@@ -38,6 +43,7 @@ runner, extra gates, security rules) layers on top, discovered from that repo's
 | "I built it but never see it running" | `/integration-audit` — sweep for the four darkness classes, adversarially verified |
 | An audit / review / diagnosis | `/claims` — cite-or-refuse, mechanically verified citations |
 | After a sprint / batch of commits | `/grade` — learning-loop retro from telemetry |
+| What IS this system, in plain language? | `/readable` — the worry pages, every fact cited; `/readable S17` answers one inventory question |
 
 The agents are dispatched for independent second opinions (e.g. `red-first-verifier` to prove
 a test fails without the fix; `claims-verifier` for a fresh-context refute pass;

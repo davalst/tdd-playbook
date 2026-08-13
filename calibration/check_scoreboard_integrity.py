@@ -50,6 +50,11 @@ LEDGER = "docs/calibration/ledger.md"
 # corpus is immutable: a form you can rewrite lets a holdout plant that was
 # tuned against be quietly reclassified as a clean measurement.
 PLANT_FORMS = "calibration/plant-forms.md"
+# (v1.34.0 D5) the readable-surface usage record: machine-written denominator plus
+# self-reported note columns. Append-only for the same reason as the ledger — a usage row
+# you can rewrite lets the keep/kill evidence be quietly edited after the fact. Absent at
+# baseline it is free (appended_since_baseline treats a newly protected file as all-new).
+USAGE_RECORD = "docs/calibration/usage.md"
 SKILL = "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
 AGENTS_DIR = "plugins/tdd-playbook/agents"
 COMMANDS_DIR = "plugins/tdd-playbook/commands"
@@ -137,7 +142,7 @@ def check(repo, rev):
     # each file's appended-since-baseline text — the journals authorize ONLY through it,
     # so a rewritten journal can never retro-authorize (and no per-file special cases).
     added, prefix_violations = appended_since_baseline(
-        repo, rev, (HISTORY, JOURNAL, GATE_JOURNAL, LEDGER, PLANT_FORMS))
+        repo, rev, (HISTORY, JOURNAL, GATE_JOURNAL, LEDGER, PLANT_FORMS, USAGE_RECORD))
     violations.extend(prefix_violations)
     journal_added = added[JOURNAL]
 

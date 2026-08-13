@@ -4,12 +4,12 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `1ae0e1a0f591efce119e345f66c5ca8c31468fc6511f0888bdf3352f058e469b`
+- `gate-manifest.json` — `8d200f4ca47bc5308b0e462652bae3fba7361077d69ae34cef973bc1022cd226`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
-- `docs/architecture/host-parity-policy.json` — `9b97797bcdbd9885f645e2d4791c28711f05ba1439d0060139fd771980fda755`
-- `docs/architecture/host-parity.json` — `986d406d24b8529c7426be2f10c54f7f3da5817f36033a7791a6cfbd069303d8`
+- `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
+- `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `f6602e1f574ca98e52f4925f553b19b8c0c6f932e094767ff554f721c5e8c493`
+- `capabilities.json` — `357661e38be921155ddf8a45d8731fe1e299967a355c8132f4a402cb1428a3e3`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -28,22 +28,22 @@
 
 - `sh scripts/civerd_gate.sh` — **AUTHORIZING** complete local gate and CIVerd suite command.
 - `sh scripts/civerd_gate.sh affected --base <revision>` — **NON-AUTHORIZING** diagnostic subset; ambiguous scope falls back to full.
-- Discovered suites: 25. Fixed stages: 4. Total stages: 29.
-- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_portable_core`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
+- Discovered suites: 26. Fixed stages: 4. Total stages: 30.
+- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
-- Acknowledged roster digest: `cfec9a3908546b5d9faba994212f0f083c7549c07bae5841566426abbb22b68a`
+- Acknowledged roster digest: `3e5d6a58e0f0ef45c0355ef33ff49392a23448fe500ba6384bd99287f74eb03c`
 - Acknowledged execution-manifest digest: `4bfd3e672c92d0f32eead8d39bcadb2a68f71065d5a4903f47454eff439d634e`
 
 ## Host parity
 
-- Canonical assets: 33. Exact host dispositions: 66.
-- Claude: 33 supported, 0 unavailable, 0 debt.
-- Codex: 1 supported, 32 unavailable, 0 debt.
-- Acknowledged inventory digest: `5a878b2b7b6b5918259731d831095161d65677fd5261653668afaa8c55a2a040`
+- Canonical assets: 38. Exact host dispositions: 76.
+- Claude: 38 supported, 0 unavailable, 0 debt.
+- Codex: 1 supported, 37 unavailable, 0 debt.
+- Acknowledged inventory digest: `51fde71ab1373fc2654724acb6461afeb86750489a650dc7a4b6759dea00c880`
 
 ## Capability registry
 
-- Registered capabilities: 26. Owned dated integration-debt entries: 55.
+- Registered capabilities: 29. Owned dated integration-debt entries: 61.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -51,6 +51,7 @@
 - `test-lock/codex-guard-family-parity` — CODEX GUARD-FAMILY PARITY… (owner `david`, expires `2026-09-30`)
 - `test-lock/shell-classifier-adapter-boundary` — SHELL CLASSIFIER ADAPTER BOUNDARY… (owner `david`, expires `2026-09-30`)
 - `test-lock/codex-command-agent-discovery` — CODEX COMMAND/AGENT DISCOVERY… (owner `david`, expires `2026-09-30`)
+- `capability-registry/consumer-reference-typed-schema-decision` — H2 FOLLOW-THROUGH… (owner `david`, expires `2026-11-30`)
 - `calibration-loop` — RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep… (owner `david`, expires `2026-09-30`)
 - `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-30`)
 - `calibration-loop` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
@@ -99,6 +100,11 @@
 - `vendor-uninstall` — INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0)… (owner `david`, expires `2026-10-31`)
 - `advisory-guards-optin` — RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `generated-agents-md` — HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0)… (owner `david`, expires `2026-11-30`)
+- `role-adversaries/role-adversaries-live-calibration` — SHIPPED UNCALIBRATED-LIVE… (owner `david`, expires `2026-08-31`)
+- `role-adversaries/role-adversaries-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
+- `scenario-inventory/scenario-inventory-not-vendored` — THIS REPO ONLY, BY DECISION (dissolves the parity exception both reviewers flagged)… (owner `david`, expires `2026-11-30`)
+- `readable-surface/readable-surface-keep-kill` — THE R&D DECISION… (owner `david`, expires `2026-09-30`)
+- `readable-surface/readable-surface-downstream-inert-emitter` — JOINS THE EXISTING gate-yield DOWNSTREAM WRITE-ONLY DEBT (capabilities.json gate-yield entry)… (owner `david`, expires `2026-12-31`)
 
 ## Adversarial review records
 

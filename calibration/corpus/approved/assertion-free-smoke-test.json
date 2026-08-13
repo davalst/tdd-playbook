@@ -1,0 +1,28 @@
+{
+  "id": "assertion-free-smoke-test",
+  "agent": "test-quality-adversary",
+  "plant": "tests/test_calc.py gains TestExportSmoke.test_export_smoke which CALLS export_csv and asserts nothing \u2014 a test that cannot fail (inventory S26, SKILL 4a): it goes green with the function's output entirely wrong.",
+  "edits": [
+    {
+      "file": "tests/test_calc.py",
+      "old": "if __name__ == \"__main__\":\n    unittest.main()",
+      "new": "class TestExportSmoke(unittest.TestCase):\n    def test_export_smoke(self):\n        export_csv([(\"carol\", 30)])\n\n\nif __name__ == \"__main__\":\n    unittest.main()"
+    }
+  ],
+  "task": "A smoke test for the CSV export was just added to tests/test_calc.py and the suite is green. Review the suite through the head-of-QA lens, focused on one question (S26): is there a test here that cannot fail \u2014 no real assertion behind its green? For any suspect, state in one line what a violating output would look like and whether this test would catch it. Cite file:line. End with the house verdict lines: `Verdict: HOLLOW (<n>)` or `Verdict: LOAD-BEARING`, then `Recommendation: ...`.",
+  "must_match": [
+    "Verdict:\\s*HOLLOW",
+    "test_export_smoke",
+    "(?i)(no (real )?assert|assert(s|ion)? nothing|cannot fail|never fail|assertion-free|without (an |any )?assert)"
+  ],
+  "must_not_match": [
+    "Verdict:\\s*LOAD-BEARING"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-opus-5",
+    "authored_at": "2026-08-12",
+    "status": "approved",
+    "approved_at": "2026-08-12",
+    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)"
+  }
+}

@@ -172,7 +172,7 @@ def test_compact_parity_output():
     # cannot reveal its own narrowing).
     check("parity output: success is compact and denominator-bearing",
           proc.returncode == 0 and len(proc.stdout.splitlines()) <= 2
-          and "33 assets" in proc.stdout and "66 dispositions" in proc.stdout,
+          and "38 assets" in proc.stdout and "76 dispositions" in proc.stdout,
           (proc.returncode, proc.stdout, proc.stderr))
 
 

@@ -207,12 +207,30 @@ def guards_dark(root):
     return "live", "heartbeat current relative to the latest commit"
 
 
+def runtime_host():
+    """Which host runtime invoked this process — from HOST-RUNTIME-PROVIDED signals only
+    (v1.34.0 D5). CLAUDE_PROJECT_DIR is set by the Claude Code runtime itself when it
+    invokes hooks and bins; the Codex adapter sets TDD_PLAYBOOK_PROJECT_ROOT
+    (adapters/codex/pre_tool_test_lock.py). Not cwd, not a source path, not user config —
+    those label the TREE, not the runtime. Unrecognised contexts are `unknown`, and the
+    row is STILL LOGGED with that label: silent non-logging on an unclassified context is
+    the fatal-flaw shape the readable-surface re-review removed, and this module's own
+    invariant is that no producer silently drops out of the record. Scope stated (§12):
+    this labels by invoking runtime; it does not defend against a deliberately exported
+    variable, any more than the log file defends against an editor."""
+    if os.environ.get("CLAUDE_PROJECT_DIR"):
+        return "claude"
+    if os.environ.get("TDD_PLAYBOOK_PROJECT_ROOT"):
+        return "codex"
+    return "unknown"
+
+
 def log_yield_event(gate, event, extra=None, source="hook"):
-    """One line of gate-yield exhaust (R4): {ts, source, gate, event, ...} appended to
-    $TDD_PLAYBOOK_YIELD_LOG or <project>/.claude/playbook-yield.jsonl. This is the SINGLE
-    write path for the yield instrument — every guard flows through emit(), so no guard can
-    silently drop out of the record and read as zero-yield. MUST never raise: telemetry
-    failing must never change enforcement."""
+    """One line of gate-yield exhaust (R4): {ts, source, host, gate, event, ...} appended
+    to $TDD_PLAYBOOK_YIELD_LOG or <project>/.claude/playbook-yield.jsonl. This is the
+    SINGLE write path for the yield instrument — every guard flows through emit(), so no
+    guard can silently drop out of the record and read as zero-yield. MUST never raise:
+    telemetry failing must never change enforcement."""
     try:
         path = os.environ.get("TDD_PLAYBOOK_YIELD_LOG") or os.path.join(
             project_root(), ".claude", "playbook-yield.jsonl")
@@ -221,7 +239,7 @@ def log_yield_event(gate, event, extra=None, source="hook"):
             os.makedirs(parent, exist_ok=True)
         row = {"ts": datetime.datetime.now(datetime.timezone.utc)
                                      .isoformat(timespec="seconds"),
-               "source": source, "gate": gate, "event": event}
+               "source": source, "host": runtime_host(), "gate": gate, "event": event}
         row.update(extra or {})
         with open(path, "a") as fh:
             fh.write(json.dumps(row) + "\n")

@@ -3,6 +3,76 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.34.0 — 2026-08-12
+
+**The Readable Surface: the first output that is a description, not a verdict.** Origin:
+David plays CTO, CISO, head of QA, ops and product simultaneously, through AI, and cannot
+read Python fluently. Two different things were missing: he doesn't know all the questions
+to ask, and he doesn't know what deterministic data exists to answer them. Plan (4 review
+rounds, 2 external reviewers, 2 adversary passes — one finding proven by execution):
+`docs/plans/gated/2026-08-12-readable-surface.md`.
+
+**Four role-lens adversaries** — `security-adversary` (S17–S24), `test-quality-adversary`
+(S25–S27, S31), `observability-adversary` (S02, S32, S33), `adoption-adversary`
+(S38–S41) — each a judgment verifier pinned `model: opus`, each with a planted defect and
+a paired clean control in `calibration/corpus/` (R1: every agent ≥1 plant, enforced).
+Before adding them, `test_agents.py`'s model-pin check got the completeness guard it was
+missing: it iterated a hand list, so a new agent's `model: opus` would have shipped
+unchecked and green.
+
+**The 42-row scenario inventory** (`docs/adversary-scenario-inventory.md`) — the questions
+a human asks at 11pm, with stable IDs. The draft routed 17 rows to agents that did not
+exist; now 41/42 route to real agents (S14 keeps an honest dash — `gate_yield` measures
+it, no agent judges it). New `Class` column crosswalks each row into the shared failure
+taxonomy (one machine owner: `readable_surface.CLASSES`; T1–T7 previously existed only as
+prose). New `Facts` column joins rows to `readable_surface.PAGES`, pinned in BOTH
+directions from ONE derivation.
+
+**`readable_surface.py facts` + `/readable`** — worry-organised, `file:line`-cited facts
+composed from the existing authorities. Stdout only: no committed artifact, no staleness
+gate, because that machinery only pays off if the surface is read repeatedly — which is
+exactly what this release measures. Prose never gates; the command never dispatches a paid
+adversary (inventory row S23, dogfooded). An absent fact renders "not stated" — an absent
+fact and a false fact must look different. Empty registry → vacuous refusal (exit 3, the
+`dataflow_sweeps` constant) with the init instruction.
+
+**The usage record** (`docs/calibration/usage.md`) — the R&D instrument. The facts CLI
+logs one machine event per run through the single write path (now HOST-stamped:
+`claude`/`codex`/`unknown` from host-runtime-provided signals, never suppressed — a
+labelled unknown beats a silent absence). `gate_yield.py rollup` commits per-cycle rows:
+machine-written `uses` as the denominator; `gate_yield.py usage-note` self-reports
+`dispatched`/`changed_a_decision` as EVENTS on the same log (orphan notes are reported,
+never counted — a forged note cannot mint a denominator row BY CONSTRUCTION). Append-only
+under `check_scoreboard_integrity` rule (a). En route, a latent bug fixed at the owner:
+rollup registered a gate row BEFORE inspecting the event name, so any non-gate producer
+minted a phantom zero-yield row in the retirement instrument — proven by execution during
+plan review. The roster decision (closed `GATE_EVENTS`) is now separate from the counting
+decision, for every future producer.
+
+**`doctor` reports consumer references** (H2) — `emits[].consumers` may now carry an
+optional typed reference (`{ref, kind: capability|file|human|external}`, R-SCHEMA-checked);
+`doctor` buckets all 43 existing consumer strings as known-local / human-or-prose /
+unresolved-review-needed / unset. The report SURFACES AMBIGUITY and never certifies a
+connection; whether the typed schema becomes a `validate` rule is a dated decision
+(2026-11-30) that reads this report first. The gap it narrows is real: a capability
+declaring a fabricated consumer passes `validate` today.
+
+**Two deliberate, dated facts, stated so they cannot read as surprises:**
+- **`/readable` and the four agents are Claude-only.** They are codex-`unavailable` under
+  the standing `codex-command-agent-discovery` debt, and adding 5 assets grew that gap to
+  37/38. **On 2026-09-30 the repository gate deliberately goes RED** unless Codex
+  discovery lands or the debt is consciously re-dated with a recovery trigger. Chosen
+  over silent re-dating: scope growing is evidence of MORE urgency, not less.
+- **The four agents ship live-uncalibrated until a real run executes their pairs** (the
+  2026-08-06 run largely env-failed). A live calibration covering the four new
+  plant/control pairs is the precondition for the v1.34.0 TAG, soft deadline 2026-08-31.
+
+The keep/kill call on the whole surface is dated 2026-09-30 and reads `usage.md`. Kill
+means `/readable` and the bin are deleted, not left dark; the inventory survives as a
+manual checklist. Dropped deliberately, not deferred: routing tables, exposure ledgers,
+route plants, and the demotion journal — automation of a choice David makes by reading,
+justified only if the usage record ever shows the reading happens.
+
 ## 1.33.1 — 2026-08-12
 
 **Hotfix: the debt list says what each debt is.** `render_reference.py` keyed every

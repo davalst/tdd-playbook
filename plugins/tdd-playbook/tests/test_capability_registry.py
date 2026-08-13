@@ -688,10 +688,67 @@ def test_user_facing():
           unannotated == [], unannotated)
 
 
+def test_consumer_references():
+    """H2 (v1.34.0): the registry is the instrument the owner leans on BECAUSE he cannot
+    read the code — and R-WRITE-ONLY only checks `consumers` is non-empty, so an entry
+    claiming a consumer that does not exist reads as wired. The fix is NOT a validate rule
+    over prose (a real external consumer and a fabricated one are both arbitrary strings —
+    the keying-on-a-proxy failure): consumers may now carry an OPTIONAL typed reference
+    ({"ref": ..., "kind": capability|file|human|external}), R-SCHEMA validates the shape,
+    and `doctor` reports three buckets whose names hold the line — the report SURFACES
+    AMBIGUITY, it never certifies a connection. Its noise level against the real untyped
+    denominator is the evidence for whether requiring `kind` later earns its migration."""
+    mod = load_tool()
+    base = {"version": 1, "capabilities": [
+        {"id": "producer", "summary": "s", "surfaces": ["local"], "user_facing": False,
+         "activation": {"default": "on"}, "wired_by": ["w"], "exercised_by": ["e"],
+         "emits": [{"topic": "t1", "consumers": [
+             # CONTROL: typed capability ref that resolves -> known-local-reference
+             {"ref": "reader", "kind": "capability"},
+             # PLANT: typed capability ref that resolves to NOTHING -> unresolved
+             {"ref": "a-thing-that-does-not-exist", "kind": "capability"},
+             # CONTROL: a typed human reference — legitimate, NOT a finding
+             {"ref": "David, reading the check mark", "kind": "human"},
+             # untyped prose (today's whole registry) -> unset/review bucket
+             "learning-loop (/grade reads unlock reasons)",
+         ]}]},
+        {"id": "reader", "summary": "s", "surfaces": ["local"], "user_facing": False,
+         "activation": {"default": "on"}, "wired_by": ["w"], "exercised_by": ["e"]},
+    ]}
+    v = mod.validate(base)
+    check("typed consumer refs: valid shapes pass validate", v == [], v)
+    rep = mod.doctor(base)
+    check("doctor: consumer-reference section present with the REAL denominator (4)",
+          "[consumer references: 4" in rep, rep[-600:])
+    check("doctor: resolving typed ref lands in known-local-reference",
+          "known-local-reference" in rep and "reader" in rep, rep[-600:])
+    check("PLANTED fabricated typed ref lands in `unresolved — review needed`",
+          "a-thing-that-does-not-exist" in rep and "review needed" in rep.lower(),
+          rep[-600:])
+    check("CONTROL human reference is its own bucket, NOT a finding",
+          "human-or-prose" in rep, rep[-600:])
+    check("doctor: the report never certifies (states the resolver's limit)",
+          "never certifies" in rep.lower() or "may still be stale" in rep.lower(),
+          rep[-600:])
+
+    # PLANT: a bad kind value is an R-SCHEMA violation naming the capability
+    bad = {"version": 1, "capabilities": [dict(base["capabilities"][0])]}
+    bad["capabilities"][0] = dict(bad["capabilities"][0])
+    bad["capabilities"][0]["emits"] = [{"topic": "t1", "consumers": [
+        {"ref": "x", "kind": "not-a-kind"}]}]
+    v = mod.validate(bad)
+    check("PLANTED bad `kind` trips R-SCHEMA naming the capability",
+          any(s.startswith("R-SCHEMA") and "producer" in s and "kind" in s
+              for s in v), v)
+    # CONTROL: a typed-dict consumer still counts as non-empty for R-WRITE-ONLY
+    check("CONTROL: typed consumers still satisfy R-WRITE-ONLY (no false write-only)",
+          not any(s.startswith("R-WRITE-ONLY") for s in v), v)
+
+
 def main():
     print("capability_registry planted-input calibration")
     for fn in (test_validate, test_doctor, test_cli, test_own_registry,
-               test_probe_survivor_gaps, test_user_facing):
+               test_probe_survivor_gaps, test_user_facing, test_consumer_references):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))

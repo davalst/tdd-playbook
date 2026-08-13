@@ -1,6 +1,23 @@
 {
   "assets": {
     "agents": {
+      "adoption-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/adoption-adversary.md",
+          "installed_target": ".claude/agents/adoption-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/adoption-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/adoption-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
       "architecture-adversary": {
         "claude": {
           "activation_prerequisite": "Claude project/plugin agent discovery",
@@ -86,6 +103,23 @@
           "status": "unavailable"
         }
       },
+      "observability-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/observability-adversary.md",
+          "installed_target": ".claude/agents/observability-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/observability-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/observability-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
       "planted-error-probe": {
         "claude": {
           "activation_prerequisite": "Claude project/plugin agent discovery",
@@ -133,6 +167,40 @@
           "debt_ref": "test-lock/codex-command-agent-discovery",
           "expires": "2026-09-30",
           "installed_target": ".codex/tdd-playbook/agents/script-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "security-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/security-adversary.md",
+          "installed_target": ".claude/agents/security-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/security-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/security-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "test-quality-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/test-quality-adversary.md",
+          "installed_target": ".claude/agents/test-quality-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/test-quality-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/test-quality-adversary.md",
           "owner": "david",
           "status": "unavailable"
         }
@@ -288,6 +356,23 @@
           "debt_ref": "test-lock/codex-command-agent-discovery",
           "expires": "2026-09-30",
           "installed_target": ".codex/tdd-playbook/commands/probe.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "readable": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/readable.md",
+          "installed_target": ".claude/commands/readable.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/readable.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/readable.md",
           "owner": "david",
           "status": "unavailable"
         }
@@ -571,6 +656,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "5a878b2b7b6b5918259731d831095161d65677fd5261653668afaa8c55a2a040",
+  "inventory_sha256": "51fde71ab1373fc2654724acb6461afeb86750489a650dc7a4b6759dea00c880",
   "schema_version": 2
 }

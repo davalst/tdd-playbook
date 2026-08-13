@@ -1011,6 +1011,42 @@ def test_yield_logging():
               and rows[0].get("event") == "block" and rows[0].get("findings", 0) >= 1,
               (rc, rows))
 
+        # v1.34.0 D5 — every row carries a HOST label from host-runtime-provided signals
+        # (CLAUDE_PROJECT_DIR is set by the Claude Code runtime itself; the Codex adapter
+        # sets TDD_PLAYBOOK_PROJECT_ROOT — adapters/codex/pre_tool_test_lock.py:32).
+        # NEVER suppression: an unrecognised context is stamped `unknown` and still
+        # logged — silent non-logging is the fatal-flaw shape the readable-surface
+        # re-review removed, and _common's own invariant is that no producer silently
+        # drops out of the record. All three directions pinned EXPLICITLY (an inherited
+        # session env would make this pass-at-home / fail-in-CI):
+        log3 = os.path.join(d, "host.jsonl")
+        for env_extra, want in (
+                ({"CLAUDE_PROJECT_DIR": d}, "claude"),
+                ({"TDD_PLAYBOOK_PROJECT_ROOT": d}, "codex"),
+                ({}, "unknown")):
+            env = {"TDD_PLAYBOOK_YIELD_LOG": log3}
+            env.update(env_extra)
+            hp = subprocess.run(
+                [sys.executable, "-c",
+                 "import importlib.util, os, sys\n"
+                 "os.environ.pop('CLAUDE_PROJECT_DIR', None)\n"
+                 "os.environ.pop('TDD_PLAYBOOK_PROJECT_ROOT', None)\n"
+                 + "".join("os.environ[{!r}] = {!r}\n".format(k, v)
+                           for k, v in env.items())
+                 + "spec = importlib.util.spec_from_file_location('_common', {!r})\n"
+                   "m = importlib.util.module_from_spec(spec)\n"
+                   "spec.loader.exec_module(m)\n"
+                   "m.log_yield_event('readable-surface', 'usage', "
+                   "{{'scenario': 'full'}}, source='cli')\n".format(
+                       os.path.join(HOOKS, "_common.py"))],
+                capture_output=True, text=True, timeout=20)
+            hrows = ([json.loads(ln) for ln in open(log3)]
+                     if os.path.isfile(log3) else [])
+            check("yield: host stamped `{}` from its runtime signal, row LOGGED".format(
+                      want),
+                  hp.returncode == 0 and hrows and hrows[-1].get("host") == want,
+                  (hp.returncode, hp.stderr[-120:], hrows[-1:] or "no rows"))
+
         def rows_of():
             return [json.loads(ln) for ln in open(log)] if os.path.isfile(log) else []
 

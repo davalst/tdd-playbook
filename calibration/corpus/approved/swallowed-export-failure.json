@@ -1,0 +1,27 @@
+{
+  "id": "swallowed-export-failure",
+  "agent": "observability-adversary",
+  "plant": "cli.py export wraps the write in try/except Exception: pass and still returns 0 \u2014 a failure invisible to the caller, the operator, and the exit code (inventory S02/S33): the error goes nowhere and success is reported.",
+  "edits": [
+    {
+      "file": "cli.py",
+      "old": "        sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        return 0",
+      "new": "        try:\n            sys.stdout.write(export_csv([(\"alice\", 10), (\"bob\", 20)]))\n        except Exception:\n            pass\n        return 0"
+    }
+  ],
+  "task": "cli.py's export was recently made more defensive against write errors; the suite is green. Review the export path through the 3am operations lens, focused on one question (S02/S33): if this fails, does anyone find out? Trace each failure path from the raise to a human-visible surface (message, stderr, exit code) and say where the trace dead-ends. Cite file:line. End with the house verdict lines: `Verdict: SILENT (<n>)` or `Verdict: OBSERVABLE`, then `Recommendation: ...`.",
+  "must_match": [
+    "Verdict:\\s*SILENT",
+    "(?i)(swallow|except[^\\n]{0,40}pass|silent|invisible|nobody|no one|exit(s)?\\s*(code\\s*)?0|return(s)?\\s*0)"
+  ],
+  "must_not_match": [
+    "Verdict:\\s*OBSERVABLE"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-opus-5",
+    "authored_at": "2026-08-12",
+    "status": "approved",
+    "approved_at": "2026-08-12",
+    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)"
+  }
+}

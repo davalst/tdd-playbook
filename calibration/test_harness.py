@@ -30,6 +30,11 @@ os.environ["TDD_PLAYBOOK_YIELD_MD"] = os.path.join(_YIELD_ISO, "gate_yield.md")
 _REPO_YIELD_MD = os.path.join(os.path.dirname(HERE), "docs", "calibration", "gate_yield.md")
 _REPO_YIELD_MD_BEFORE = (open(_REPO_YIELD_MD, "rb").read()
                          if os.path.isfile(_REPO_YIELD_MD) else None)
+# v1.34.0 D5: the usage record is the FOURTH table of the same instrument and inherits the
+# same pollution guard — test exhaust in a committed record is a logged incident class.
+_REPO_USAGE_MD = os.path.join(os.path.dirname(HERE), "docs", "calibration", "usage.md")
+_REPO_USAGE_MD_BEFORE = (open(_REPO_USAGE_MD, "rb").read()
+                         if os.path.isfile(_REPO_USAGE_MD) else None)
 
 _results = {"pass": 0, "fail": 0}
 
@@ -2235,6 +2240,10 @@ def main():
     after = (open(_REPO_YIELD_MD, "rb").read() if os.path.isfile(_REPO_YIELD_MD) else None)
     check("suite left repo docs/calibration/gate_yield.md untouched",
           after == _REPO_YIELD_MD_BEFORE, "record changed during the test run")
+    after_u = (open(_REPO_USAGE_MD, "rb").read()
+               if os.path.isfile(_REPO_USAGE_MD) else None)
+    check("suite left repo docs/calibration/usage.md untouched (D5 sibling)",
+          after_u == _REPO_USAGE_MD_BEFORE, "usage record changed during the test run")
 
     # H15/§12: this tally is SELF-REFERENTIAL — it counts the checks that ran, so a section
     # dropped from main() lowers it silently and still reads green. Compare the registered

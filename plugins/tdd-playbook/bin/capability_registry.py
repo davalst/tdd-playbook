@@ -55,6 +55,10 @@ DEBT_FIELDS = _debt.DEBT_FIELDS
 # class) while every other Tripwire leg passes about the laptop. See SKILL.md §6 RUNNING leg.
 DEPLOY_FIELDS = ("runs_on", "gets_there_by", "running_version_probe", "divergence")
 DEBT_WARN_DAYS = 14
+# H2 (v1.34.0): optional typed consumer references. Unset (a plain string) is today's
+# entire registry and stays legal; requiring `kind` later is a separate, dated decision
+# that reads doctor's report first.
+CONSUMER_KINDS = ("capability", "file", "human", "external")
 
 TEMPLATE = {
     "version": 1,
@@ -129,6 +133,20 @@ def validate(reg: dict, today: _dt.date | None = None) -> list[str]:
                 out.append("R-WRITE-ONLY %s: emits '%s' with no named consumer — a "
                            "write-only loop; name the reader or file integration debt"
                            % (cid, topic))
+            # H2 (v1.34.0): a consumer may be a plain string (today's registry — prose,
+            # unset) OR a typed reference {"ref", "kind"}. Only the SHAPE is validated
+            # here; resolution lives in `doctor` as a REPORT, never a gate — a rule
+            # matching names against prose would key a check on a proxy, and this must
+            # never migrate into validate without the full typed-schema migration.
+            for con in (em or {}).get("consumers") or []:
+                if isinstance(con, dict):
+                    if not (con.get("ref") or "").strip():
+                        out.append("R-SCHEMA %s: typed consumer on '%s' missing `ref`"
+                                   % (cid, topic))
+                    if con.get("kind") not in CONSUMER_KINDS:
+                        out.append("R-SCHEMA %s: consumer `kind` must be one of %s "
+                                   "(got %r)" % (cid, "|".join(CONSUMER_KINDS),
+                                                 con.get("kind")))
 
         ds = cap.get("deploy_surface")
         if ds is not None:
@@ -214,6 +232,49 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
     lines.append("\n[no liveness probe (staleness undetectable): %d]" % len(no_liveness))
     for cid in no_liveness:
         lines.append("  %s" % cid)
+
+    # H2 (v1.34.0): consumer references, bucketed by what the tool can actually KNOW.
+    # `consumes` is topic-shaped data so the orphan check below genuinely resolves;
+    # `emits[].consumers` is historically untyped prose, where a real external consumer
+    # and a fabricated one are both arbitrary strings — so this section SURFACES
+    # AMBIGUITY and never certifies a connection. Buckets: known-local-reference (typed,
+    # resolver concrete — the reference may still be stale), human-or-prose (legitimate,
+    # unresolvable by construction, NOT a finding), unresolved (typed but resolving to
+    # nothing — review needed), unset (untyped prose — the migration denominator).
+    cap_ids = {c.get("id") for c in caps}
+    known, human_prose, unresolved, unset = [], [], [], []
+    for c in caps:
+        for em in (c.get("emits") or []):
+            for con in (em or {}).get("consumers") or []:
+                if not isinstance(con, dict):
+                    unset.append((c.get("id"), str(con)))
+                    continue
+                ref, kind = con.get("ref"), con.get("kind")
+                if kind in ("human", "external"):
+                    human_prose.append((c.get("id"), ref))
+                elif kind == "capability" and ref in cap_ids:
+                    known.append((c.get("id"), ref))
+                elif kind == "file" and os.path.isfile(
+                        os.path.join(os.getcwd(), str(ref))):
+                    known.append((c.get("id"), ref))
+                else:
+                    unresolved.append((c.get("id"), ref))
+    total = len(known) + len(human_prose) + len(unresolved) + len(unset)
+    lines.append("\n[consumer references: %d total — this report surfaces ambiguity and "
+                 "never certifies a connection]" % total)
+    lines.append("  known-local-reference (resolver concrete; may still be stale): %d"
+                 % len(known))
+    for cid, ref in known:
+        lines.append("    %-26s -> %s" % (cid, ref))
+    lines.append("  human-or-prose reference (legitimate, not a finding): %d"
+                 % len(human_prose))
+    for cid, ref in human_prose:
+        lines.append("    %-26s -> %s" % (cid, ref))
+    lines.append("  unresolved reference — review needed: %d" % len(unresolved))
+    for cid, ref in unresolved:
+        lines.append("    %-26s -> %s" % (cid, ref))
+    lines.append("  unset (untyped prose — the typed-schema migration denominator): %d"
+                 % len(unset))
 
     emitted = {(em or {}).get("topic") for c in caps for em in (c.get("emits") or [])}
 

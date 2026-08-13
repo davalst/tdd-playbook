@@ -339,6 +339,7 @@ def main():
               p.returncode == 0 and "unmeasured" in p.stdout.lower(),
               (p.returncode, p.stdout[-400:]))
 
+    test_usage_record_and_gate_roster()
     test_override_reason_class()
     test_replay_motivating_artifact()
     test_dataflow_rollup_and_trend()
@@ -368,6 +369,116 @@ def _md(path, rows, header=True):
             fh.write("| date | gate | blocks | warns | overrides | suppressed | fp |\n"
                      "|---|---|---|---|---|---|---|\n")
         fh.write("\n".join(rows) + "\n")
+
+
+def test_usage_record_and_gate_roster():
+    """v1.34.0 D5 — the usage record, and the roster/counting split that makes it safe.
+
+    PROVEN-BY-EXECUTION origin (readable-surface plan re-review, both adversaries
+    independently): cmd_rollup registered the per_gate key BEFORE inspecting the event
+    name, so ANY non-gate producer riding the one write path minted a phantom zero-yield
+    gate row in the retirement instrument — three `invocation` events produced
+    `| readable-surface | 0 | 0 | 0 | 0 | 0 |`, and `candidates` then counted a non-gate
+    in its measured denominator. The fix separates the ROSTER decision (closed GATE_EVENTS
+    vocabulary) from the COUNTING decision, and routes usage events to their own per-cycle
+    table — same shape as the three sibling records, append-only, no per-invocation id.
+    """
+    with tempfile.TemporaryDirectory() as d:
+        raw = os.path.join(d, "raw.jsonl")
+        md = os.path.join(d, "gate_yield.md")
+        usage = os.path.join(d, "usage.md")
+        seed_raw(raw, [
+            {"ts": "t", "source": "hook", "gate": "testlock", "event": "block",
+             "findings": 1},
+            # PLANT (the phantom-row shape): machine usage events from the facts tool
+            {"ts": "t", "source": "cli", "gate": "readable-surface", "event": "usage",
+             "scenario": "S17", "rows_surfaced": 12, "host": "claude"},
+            {"ts": "t", "source": "cli", "gate": "readable-surface", "event": "usage",
+             "scenario": "S17", "rows_surfaced": 12, "host": "claude"},
+            {"ts": "t", "source": "cli", "gate": "readable-surface", "event": "usage",
+             "scenario": "full", "rows_surfaced": 40, "host": "claude"},
+            # the agent's note rides the same log as an EVENT (guard_note pattern),
+            # never an edit — append-only is the data model
+            {"ts": "t", "source": "agent", "gate": "readable-surface",
+             "event": "usage-note", "scenario": "S17", "dispatched": "yes",
+             "changed_a_decision": "yes"},
+            # PLANT (orphan): a note for a scenario with no machine use this cycle
+            {"ts": "t", "source": "agent", "gate": "readable-surface",
+             "event": "usage-note", "scenario": "S99", "dispatched": "yes",
+             "changed_a_decision": "no"},
+            # CONTROL: a genuinely unknown event still mints nothing anywhere
+            {"ts": "t", "source": "hook", "gate": "mystery-tool", "event": "mystery"},
+        ])
+        p = run_gy("rollup", "--log", raw, "--md", md, "--date", "2026-08-12",
+                   env_extra={"TDD_PLAYBOOK_USAGE_MD": usage})
+        check("usage rollup: exits 0", p.returncode == 0, (p.returncode, p.stderr))
+        gate_text = open(md).read() if os.path.isfile(md) else ""
+        # the phantom-row regression, BOTH directions
+        check("roster split: real gate event still lands its row",
+              "| testlock |" in gate_text.replace("2026-08-12", "").replace("  ", " ")
+              or "testlock" in gate_text, gate_text)
+        check("roster split: usage producer mints NO gate row (the phantom-row fix)",
+              "readable-surface" not in gate_text, gate_text)
+        check("roster split: unknown event mints NO gate row (old tolerance preserved)",
+              "mystery-tool" not in gate_text, gate_text)
+        usage_text = open(usage).read() if os.path.isfile(usage) else ""
+        check("usage table: S17 row carries uses=2 dispatched=1 changed=1",
+              "| 2026-08-12 | S17 | 2 | 1 | 1 |" in usage_text, usage_text)
+        check("usage table: full row carries uses=1 and untouched note cells",
+              "| 2026-08-12 | full | 1 | 0 | 0 |" in usage_text, usage_text)
+        check("usage table: orphan note is REPORTED, never a denominator row",
+              "S99" not in usage_text and "ORPHAN" in p.stdout.upper(),
+              (usage_text, p.stdout))
+        check("usage table: drain happened once (raw log gone)",
+              not os.path.isfile(raw))
+
+        # anti-gaming, now true by construction: a forged note alone creates NO row
+        seed_raw(raw, [
+            {"ts": "t", "source": "agent", "gate": "readable-surface",
+             "event": "usage-note", "scenario": "S17", "dispatched": "yes",
+             "changed_a_decision": "yes"},
+        ])
+        usage2 = os.path.join(d, "usage2.md")
+        p = run_gy("rollup", "--log", raw, "--md", os.path.join(d, "g2.md"),
+                   "--date", "2026-08-13", env_extra={"TDD_PLAYBOOK_USAGE_MD": usage2})
+        check("forged note alone: no usage row minted (denominator is machine-only)",
+              p.returncode == 0 and (not os.path.isfile(usage2)
+                                     or "S17" not in open(usage2).read()),
+              (p.returncode, os.path.isfile(usage2)))
+
+    # the sibling-path contract (one instrument, one seam): every harness that isolates
+    # TDD_PLAYBOOK_YIELD_MD isolates the usage record too — the G5 leak class
+    with tempfile.TemporaryDirectory() as d:
+        raw = os.path.join(d, "raw.jsonl")
+        seed_raw(raw, [
+            {"ts": "t", "source": "cli", "gate": "readable-surface", "event": "usage",
+             "scenario": "full", "rows_surfaced": 3, "host": "claude"},
+        ])
+        p = run_gy("rollup", "--log", raw, "--md", os.path.join(d, "gate_yield.md"),
+                   "--date", "2026-08-12",
+                   env_extra={"TDD_PLAYBOOK_YIELD_MD": os.path.join(d, "gate_yield.md")})
+        sibling = os.path.join(d, "usage.md")
+        check("default_usage_md derives from TDD_PLAYBOOK_YIELD_MD's dirname (sibling)",
+              p.returncode == 0 and os.path.isfile(sibling)
+              and "| full | 1 |" in open(sibling).read(),
+              (p.returncode, os.listdir(d)))
+
+    # usage-note subcommand: an EVENT appender in the guard_note shape — refuses bad args
+    with tempfile.TemporaryDirectory() as d:
+        raw = os.path.join(d, "raw.jsonl")
+        p = run_gy("usage-note", "--scenario", "S17", "--dispatched", "yes",
+                   "--changed-a-decision", "no",
+                   env_extra={"TDD_PLAYBOOK_YIELD_LOG": raw})
+        rows = [json.loads(l) for l in open(raw)] if os.path.isfile(raw) else []
+        check("usage-note: appends a source=agent event on the ONE write path",
+              p.returncode == 0 and len(rows) == 1 and rows[0]["event"] == "usage-note"
+              and rows[0]["source"] == "agent" and rows[0]["scenario"] == "S17",
+              (p.returncode, rows))
+        p = run_gy("usage-note", "--scenario", "S17", "--dispatched", "maybe",
+                   "--changed-a-decision", "no",
+                   env_extra={"TDD_PLAYBOOK_YIELD_LOG": raw})
+        check("usage-note: refuses a non-yes/no answer (exit 2, usage never proof)",
+              p.returncode == 2, p.returncode)
 
 
 def test_override_reason_class():

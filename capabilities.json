@@ -154,6 +154,14 @@
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_capability_registry.py"
+      ],
+      "integration_debt": [
+        {
+          "id": "consumer-reference-typed-schema-decision",
+          "what": "H2 FOLLOW-THROUGH: doctor now buckets emits[].consumers (43 untyped at introduction \u2014 the real denominator). By expiry, read the unresolved/unset noise level and either migrate the registry to typed {ref, kind} consumers (making R-CONSUMER a validate rule) or record the decision that prose consumers stay legal and why. The report must never migrate into validate without this decision",
+          "owner": "david",
+          "expires": "2026-11-30"
+        }
       ]
     },
     {
@@ -330,6 +338,16 @@
           "topic": "docs/calibration/gate_yield.md (committed rollups)",
           "consumers": [
             "calibration cycle review (retirement decisions, R4.3 demotion shape when the first candidate appears)"
+          ]
+        },
+        {
+          "topic": "docs/calibration/usage.md (committed usage rollups, append-only under scoreboard rule a)",
+          "consumers": [
+            {
+              "ref": "human",
+              "kind": "human"
+            },
+            "gate_yield.py usage-note (self-report joined at drain; orphans reported never counted)"
           ]
         }
       ],
@@ -1114,6 +1132,158 @@
         }
       ],
       "notes": "Born 2026-08-10 after the hand-maintained mirror was found carrying the PRE-v1.32.0 calibration section \u2014 a Codex reader following it would have done the opposite of current doctrine, and no gate said so. David caught it; no mechanism did."
+    },
+    {
+      "id": "role-adversaries",
+      "summary": "The four v1.34.0 role-lens adversaries \u2014 security (S17-S24), test-quality (S25-S27,S31), observability (S02,S32,S33), adoption (S38-S41) \u2014 each a judgment verifier pinned model: opus, each calibrated against a planted defect with a paired clean control (calibration/corpus/, R1 coverage enforced by run_calibration). They answer the inventory rows nothing could answer before; dispatch is ALWAYS human-initiated (S23 dogfooded: no auto-spend path exists).",
+      "user_facing": true,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/agents/security-adversary.md",
+        "plugins/tdd-playbook/agents/test-quality-adversary.md",
+        "plugins/tdd-playbook/agents/observability-adversary.md",
+        "plugins/tdd-playbook/agents/adoption-adversary.md",
+        "docs/architecture/host-parity.json (claude supported; codex unavailable under debt)"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_agents.py (contracts, opus pin, completeness guard)",
+        "calibration/corpus/approved/secret-token-reaches-output.json (+3 plants, +4 controls)",
+        "calibration/run_calibration.py (R1: every agent >=1 plant)"
+      ],
+      "emits": [
+        {
+          "topic": "adversary.verdict_lines",
+          "consumers": [
+            {
+              "ref": "human",
+              "kind": "human"
+            },
+            "calibration/run_calibration.py oracle() must_match anchors"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 120,
+        "probe": "calibration/run_calibration.py --agent <name> (live plant/control pair)"
+      },
+      "integration_debt": [
+        {
+          "id": "role-adversaries-live-calibration",
+          "what": "SHIPPED UNCALIBRATED-LIVE: the 8 plant/control pairs pass --dry-run validation but no LIVE run has executed them (the 2026-08-06 run largely env-failed and is unresolved). Release precondition for the v1.34.0 TAG, soft deadline 2026-08-31: run calibration as a non-root user with budget covering the four new pairs; if it cannot run, the decision (tag without/wait/drop) is made deliberately, not by drift",
+          "owner": "david",
+          "expires": "2026-08-31"
+        },
+        {
+          "id": "role-adversaries-codex-unavailable",
+          "what": "CLAUDE-ONLY BY PARITY: the four agents are codex-unavailable under the standing codex-command-agent-discovery debt (test-lock capability). Its expiry is a DELIBERATE known-RED: on 2026-09-30 the gate goes red unless Codex discovery lands or the debt is consciously re-dated with a recovery trigger \u2014 stated in CHANGELOG v1.34.0 so it cannot read as a surprise",
+          "owner": "david",
+          "expires": "2026-09-30"
+        }
+      ]
+    },
+    {
+      "id": "scenario-inventory",
+      "summary": "docs/adversary-scenario-inventory.md \u2014 the standing 42-row catalogue of what goes wrong, phrased as the question a human asks at 11pm, with stable IDs (S01-S42), a Route to a real dispatchable agent (or an honest dash), a Class crosswalk into the shared failure taxonomy (anti-double-homing for the section-13 repeat-class metric), and a Facts join to readable_surface.PAGES pinned in both directions. Hand-maintained, append-mostly; governance G1-G5 in the file.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "docs/adversary-scenario-inventory.md",
+        "plugins/tdd-playbook/bin/readable_surface.py::parse_inventory (the ONE parser)"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_readable_surface.py::test_inventory_contract"
+      ],
+      "emits": [
+        {
+          "topic": "inventory.scenario_ids",
+          "consumers": [
+            {
+              "ref": "plugins/tdd-playbook/commands/readable.md",
+              "kind": "file"
+            },
+            {
+              "ref": "readable-surface",
+              "kind": "capability"
+            },
+            "calibration plant docstrings (S-row citations in corpus entries)"
+          ]
+        }
+      ],
+      "integration_debt": [
+        {
+          "id": "scenario-inventory-not-vendored",
+          "what": "THIS REPO ONLY, BY DECISION (dissolves the parity exception both reviewers flagged): docs/ never vendors, so downstream /readable degrades gracefully (planted test) and Codex users read the file in-repo. Done = either a host-neutral generated artifact, a reference parity family, or a recorded decision this stays repo-local",
+          "owner": "david",
+          "expires": "2026-11-30"
+        }
+      ]
+    },
+    {
+      "id": "readable-surface",
+      "summary": "readable_surface.py facts (+ /readable) \u2014 the first Playbook output whose job is DESCRIPTION, not a verdict: worry-organised, file:line-cited facts composed from the existing machine authorities, for the reader who cannot fall back to source. Stdout-only (no committed artifact, no staleness gate \u2014 those only pay off if the surface is read repeatedly, which is exactly what v1.34.0 measures). Prose never gates; the command never dispatches a paid adversary.",
+      "user_facing": true,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/commands/readable.md",
+        "README.md (scaffolding roster + routing table \u2014 the canonical discovery surface)",
+        "plugins/tdd-playbook/bin/readable_surface.py"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_readable_surface.py"
+      ],
+      "consumes": [
+        "capabilities.json (nodes)",
+        "dataflow-sweeps.json (edges)",
+        "gate-manifest.json (suites)",
+        "docs/architecture/host-parity.json (surfaces)"
+      ],
+      "emits": [
+        {
+          "topic": "readable-surface.usage_events",
+          "consumers": [
+            {
+              "ref": "docs/calibration/usage.md",
+              "kind": "file"
+            },
+            "gate_yield.py rollup (roster-split: usage events NEVER mint a gate row)"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 60,
+        "probe": "docs/calibration/usage.md rows (a quiet surface IS the keep/kill signal)"
+      },
+      "integration_debt": [
+        {
+          "id": "readable-surface-keep-kill",
+          "what": "THE R&D DECISION: by 2026-09-30 read docs/calibration/usage.md (uses per scenario; dispatched/changed_a_decision self-reports) and record keep/flip/kill. Kill = /readable and readable_surface.py are DELETED, not left dark; the inventory survives as a manual checklist. Usage measures whether the surface was ASKED, not whether it helped \u2014 the criterion is rows nobody asks about",
+          "owner": "david",
+          "expires": "2026-09-30"
+        },
+        {
+          "id": "readable-surface-downstream-inert-emitter",
+          "what": "JOINS THE EXISTING gate-yield DOWNSTREAM WRITE-ONLY DEBT (capabilities.json gate-yield entry): rollup is invoked only from calibration/, which downstream repos never run, so vendored copies emit usage events nothing drains. Same Done as the parent debt; named here so the scope growth is visible, not silent",
+          "owner": "david",
+          "expires": "2026-12-31"
+        }
+      ]
     }
   ]
 }

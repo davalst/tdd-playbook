@@ -77,6 +77,16 @@ AGENT_CONTRACTS = {
     "mutation-runner": (True, []),
     "planted-error-probe": (True, [r"SAFETY NET VERIFIED", r"BLOCKING GAP"]),
     "ux-probe-calibrator": (True, [r"PROBE VERIFIED", r"BLOCKING GAP", r"Recommendation:"]),
+    # v1.34.0 (readable-surface plan D1): the four role-lens adversaries. Verdict lines are
+    # HOUSE contracts (calibration oracles anchor on them) — same rule as above.
+    "security-adversary": (False, [r"Recommendation:", r"Verdict:\s*EXPOSED",
+                                   r"Verdict:\s*CONTAINED"]),
+    "test-quality-adversary": (False, [r"Recommendation:", r"Verdict:\s*HOLLOW",
+                                       r"Verdict:\s*LOAD-BEARING"]),
+    "observability-adversary": (False, [r"Recommendation:", r"Verdict:\s*SILENT",
+                                        r"Verdict:\s*OBSERVABLE"]),
+    "adoption-adversary": (False, [r"Recommendation:", r"Verdict:\s*STRANDED",
+                                   r"Verdict:\s*LANDS"]),
 }
 TREE_TOUCHING = {"red-first-verifier", "mutation-runner", "planted-error-probe",
                  "ux-probe-calibrator"}
@@ -554,8 +564,26 @@ def test_verifier_model_pins():
     checks). Mechanical test-runners stay inherit — they run suites, not judgment."""
     PINNED = {"claims-verifier", "tripwire-auditor", "architecture-adversary",
               "integration-adversary", "edge-case-adversary", "mutation-runner",
-              "script-adversary"}
+              "script-adversary",
+              # v1.34.0 role-lens adversaries — judgment verifiers, pinned
+              "security-adversary", "test-quality-adversary",
+              "observability-adversary", "adoption-adversary"}
     INHERIT = {"red-first-verifier", "planted-error-probe", "ux-probe-calibrator"}
+    # COMPLETENESS GUARD (v1.34.0, adversary re-review finding 6): before this assertion,
+    # the loop below iterated a hand-list with no tie to the real directory, so a NEW
+    # judgment agent could ship carrying `model: opus` in frontmatter with that property
+    # NEVER CHECKED — the declared property test silently not running. Every agent must be
+    # consciously classified pinned-or-inherit; the roster is the REAL directory, vacuity-
+    # guarded (an empty listing must not pass by checking nothing).
+    real = {fn[:-3] for fn in os.listdir(AGENTS) if fn.endswith(".md")}
+    check("model-pin roster: real agents dir is non-empty (vacuity guard)", bool(real))
+    check("model-pin roster: PINNED|INHERIT covers exactly the real agents dir",
+          PINNED | INHERIT == real, sorted((PINNED | INHERIT) ^ real))
+    # PLANTED: an agent file the classification does not know must be DETECTABLE — the
+    # symmetric difference is the detector, so a fabricated roster member must surface.
+    check("planted: an unclassified agent is detected by the completeness guard",
+          (PINNED | INHERIT) != (real | {"planted-unclassified-agent"}),
+          "symmetric-difference detector cannot see a new member")
     for name in sorted(PINNED):
         with open(os.path.join(AGENTS, name + ".md")) as fh:
             fm = frontmatter(fh.read())
