@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
   "review_range": {
     "base": "3fafc9ecb7b68877a8dcf943680af857de69e910",
-    "head": "e15bd84c4472006937f8ed5d655e46156e4ac7b0"
+    "head": "f800c2655f7932812621b1302a4aa1449fcc2043"
   },
   "reviewers": [
     "architecture-adversary",
@@ -21,7 +21,7 @@
         "plugins/tdd-playbook/tests/test_gate_yield.py"
       ],
       "status": "verified_closed",
-      "remediation_commit": "13b6f0aec8cacc4b8723baa594247a8ba56c9235",
+      "remediation_commit": "f800c2655f7932812621b1302a4aa1449fcc2043",
       "closure_review": "integration-adversary",
       "closure_evidence": [
         "plugins/tdd-playbook/tests/test_gate_yield.py::test_usage_record_and_gate_roster"
@@ -36,7 +36,7 @@
         "plugins/tdd-playbook/tests/test_hooks.py"
       ],
       "status": "verified_closed",
-      "remediation_commit": "13b6f0aec8cacc4b8723baa594247a8ba56c9235",
+      "remediation_commit": "f800c2655f7932812621b1302a4aa1449fcc2043",
       "closure_review": "integration-adversary",
       "closure_evidence": [
         "plugins/tdd-playbook/tests/test_hooks.py::test_yield_logging"
@@ -50,7 +50,7 @@
         "plugins/tdd-playbook/tests/test_agents.py"
       ],
       "status": "verified_closed",
-      "remediation_commit": "13b6f0aec8cacc4b8723baa594247a8ba56c9235",
+      "remediation_commit": "f800c2655f7932812621b1302a4aa1449fcc2043",
       "closure_review": "architecture-adversary",
       "closure_evidence": [
         "plugins/tdd-playbook/tests/test_agents.py::test_verifier_model_pins"
@@ -81,10 +81,48 @@
     {
       "id": "RS-P2-LIVE-CALIBRATION-IS-THE-TAG-GATE",
       "severity": "P2",
-      "summary": "The four agents pass --dry-run validation and R1 coverage but NO live run has executed their plant/control pairs (the 2026-08-06 run largely env-failed, unresolved: ~20 INVALID rows, one BLOCKING FAIL on red-first-verifier's control). Tagging v1.34.0 before a live calibration would ship uncalibrated verifiers with a green dry-run reading as evidence. Precondition registered as dated debt (role-adversaries-live-calibration, expires 2026-08-31) with the decision point stated: tag-without-the-agents / wait / drop, made deliberately.",
+      "summary": "PAID ON EVIDENCE 2026-08-13. Live calibration ran for all four pairs. security 3/3+3/3 PASS, test-quality 3/3+3/3 PASS at the haiku lower bound. adoption 3/3+3/3 PASS after its CONTROL was found mis-authored (below), with the plant oracle TIGHTENED to require naming the defect. observability 3/3+3/3 PASS at OPUS, its production tier, while its control is FLAKY at haiku (2/3 AMBER twice; a 3-rep reproduction went 3/3). The AMBER rows STAY in the record \u2014 never retried into green (section 7) \u2014 and the remaining obligation is re-scoped as dated debt observability-haiku-flakiness (2026-09-30) rather than closed by re-rolling.",
       "evidence": [
         "capabilities.json",
         "docs/calibration/history.md"
+      ],
+      "status": "incorporated",
+      "disposition": "PAID ON EVIDENCE 2026-08-13 (docs/calibration/history.md), not closed by a repo test \u2014 no suite can prove a live model run happened, so this is incorporated rather than verified_closed. Residual obligation re-scoped as dated debt observability-haiku-flakiness (2026-09-30)."
+    },
+    {
+      "id": "RS-P1-MY-OWN-SUITE-POLLUTED-THE-COMMITTED-RECORD",
+      "severity": "P1",
+      "summary": "The new test_readable_surface.py DELETED TDD_PLAYBOOK_YIELD_LOG rather than redirecting it, so readable_surface.py fell through to the repo's real .claude/playbook-yield.jsonl; the next live calibration ran gate_yield rollup and drained 24 fabricated uses into the committed docs/calibration/usage.md \u2014 the exact record the 2026-09-30 keep/kill decision reads. The pollution pin I wrote for this release lives in calibration/test_harness.py, which snapshots the file when the HARNESS starts, by which time this suite had already written: a pin in the wrong suite. Fixed by redirecting unconditionally (the test_gate_yield.py precedent) and pinning BOTH the committed record and the raw log inside the offending suite; proven red-first by reverting the isolation, which makes the new pin fail. Fabricated rows purged before any commit.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_readable_surface.py",
+        "docs/calibration/usage.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "f800c2655f7932812621b1302a4aa1449fcc2043",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_readable_surface.py::test_suite_left_committed_records_untouched"
+      ]
+    },
+    {
+      "id": "RS-P2-MIS-AUTHORED-CONTROL-A-THIRD-CATEGORY",
+      "severity": "P2",
+      "summary": "The adoption control sat at 0/3 through an agent fix. Capturing the agent's actual output BEFORE touching it again showed the agent was RIGHT: it built the required table, computed the verdict mechanically, and named FOUR genuine S40 dead ends left standing in the fixture (missing-arg IndexError, non-numeric ValueError, out-of-range ValueError, bare print('denied')). The control had cleaned only the unknown-command path, so it was never clean code and could not measure restraint. A fourth 'fix' would have trained a working verifier to ignore real defects and turned the calibration green on a WORSE agent. This is a third category beyond 'fix the agent, never the plant' \u2014 a MIS-AUTHORED CONTROL \u2014 and the discipline separating it from rationalisation is EVIDENCE BEFORE THE EDIT. Pair re-authored to differ only in the planted defect; plant oracle tightened; both directions then 3/3.",
+      "evidence": [
+        "calibration/corpus/approved/control-helpful-error-message.json",
+        "calibration/corpus/approved/dead-end-error-message.json",
+        "docs/calibration/ledger.md"
+      ],
+      "status": "incorporated",
+      "disposition": "Pair re-authored to differ only in the planted defect; plant oracle TIGHTENED to require naming it; both directions then 3/3 live (history.md). SEVERITY IS P2 BY THIS REPO'S OWN CONVENTION, not convenience: P1 here means closed by a mechanical test (v1.33.0's AGENTS.md finding), P2 means resolved with a recorded disposition where the resolution is not a test (v1.33.0's tag_guard finding). This one's proof is a live model run, which no repo suite can assert. A structural pair-invariant test WAS added (test_plant_control_pairs_differ_only_in_the_planted_defect) and is explicitly NOT cited as closure: planting the original defect shape showed it PASSES cleanly \u2014 the broken pair had exactly one differing edit at the same anchor and was semantically wrong via the untouched fixture. Citing it would be gate-by-proxy. The transferable rule \u2014 EVIDENCE BEFORE THE EDIT when a control fails \u2014 lives in ledger L-20260813-02 and this record."
+    },
+    {
+      "id": "RS-P2-BROAD-BRIEF-NARROW-PLANT-IS-A-CLASS",
+      "severity": "P2",
+      "summary": "Two of four new agents failed live in the SAME way: each brief hunts a broad list while each plant/control pair tests ONE question, so where the fixture is legitimately thin on the other items (no README, no status surface, no telemetry) a weak doer imports out-of-scope gaps into the verdict and flags clean work. Fixed in observability and adoption by a SCOPE RULE (a named focus question bounds the verdict; everything else is a note) plus a computed verdict table. security and test-quality passed 2/2 but partly BECAUSE this fixture is clean on their other hunt rows \u2014 the same latent mismatch exists there, untouched, because editing green agents without a failing test to prove the edit right is the move this repo forbids.",
+      "evidence": [
+        "plugins/tdd-playbook/agents/observability-adversary.md",
+        "plugins/tdd-playbook/agents/adoption-adversary.md"
       ],
       "status": "open"
     }

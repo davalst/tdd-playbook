@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
 - `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `357661e38be921155ddf8a45d8731fe1e299967a355c8132f4a402cb1428a3e3`
+- `capabilities.json` — `cd9b336ed33ec6402ddfa9406b3222236958edf396ead200aa4ea79bd34c9de3`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -22,8 +22,8 @@
 - `docs/reviews/2026-08-09-owner-control-phase5-release.json` — `2322c48835121a967742acaed15a3a01cd42445e0dff5de818e009d33455eea7`
 - `docs/reviews/2026-08-10-v1.33.0-release.json` — `f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688`
 - `docs/reviews/2026-08-12-v1.33.1-hotfix.json` — `918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57`
-- `docs/reviews/2026-08-12-v1.34.0-release.json` — `072fe69a0fb257ad277944cae31b5f6e609706a8c4032d64985dc7f267a04083`
-- `docs/reviews/index.json` — `a6952c1090ad74affbc4362886be4faae48a1ef29726cd4b1bd2ba0fc838de09`
+- `docs/reviews/2026-08-12-v1.34.0-release.json` — `c1cd7dc7d7cb3d2a001a63954c0738818b479e295a30c33d4e311eee1f33fc27`
+- `docs/reviews/index.json` — `fbeff69d31e6657f5aa4d5ec52598c04c42606d2b4f600a5a8259ab180a522e6`
 
 ## Gate surface
 
@@ -101,7 +101,7 @@
 - `vendor-uninstall` — INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0)… (owner `david`, expires `2026-10-31`)
 - `advisory-guards-optin` — RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `generated-agents-md` — HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0)… (owner `david`, expires `2026-11-30`)
-- `role-adversaries/role-adversaries-live-calibration` — SHIPPED UNCALIBRATED-LIVE… (owner `david`, expires `2026-08-31`)
+- `role-adversaries/observability-haiku-flakiness` — PAID 2026-08-13 on evidence, then RE-SCOPED… (owner `david`, expires `2026-09-30`)
 - `role-adversaries/role-adversaries-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
 - `scenario-inventory/scenario-inventory-not-vendored` — THIS REPO ONLY, BY DECISION (dissolves the parity exception both reviewers flagged)… (owner `david`, expires `2026-11-30`)
 - `readable-surface/readable-surface-keep-kill` — THE R&D DECISION… (owner `david`, expires `2026-09-30`)
@@ -109,8 +109,8 @@
 
 ## Adversarial review records
 
-- Review records: 13. Findings: 77.
-- `incorporated`: 10
+- Review records: 13. Findings: 80.
+- `incorporated`: 12
 - `open`: 2
 - `rejected`: 0
-- `verified_closed`: 65
+- `verified_closed`: 66
