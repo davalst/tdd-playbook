@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-13-readable-first-read-response",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
+  "review_range": {
+    "base": "2a951011849200eeb3037139878d7276d9eb7197",
+    "head": "be77743c69b53a40b61d31a68b35013595b04c5c"
+  },
+  "reviewers": [
+    "adoption-adversary"
+  ],
+  "findings": [
+    {
+      "id": "RD1-P1-FIRST-READ-FAILED-ITS-ONLY-READER",
+      "severity": "P1",
+      "summary": "The surface's first real render passed every mechanical check (207/207 citations) and FAILED its purpose: the narration was repo idiom \u2014 'declared unarmed sweeps', 'no liveness probe', citations mid-sentence \u2014 and David, the one reader the feature exists for, had to ask for plain English again, a request he has made repeatedly. This is the S40-shape escape applied to our own product, and it is the experiment's first recorded finding: usage happened, value did not, and the gap was the narration layer the command trusts the model to provide. Fixed where the failure lives: /readable step 2 now carries THE BUSINESS-OWNER TEST as mechanical wording with examples ('nothing will tell you if this breaks', never 'no liveness probe'), and the rule is saved to standing session memory so it applies to every report, not only this command.",
+      "evidence": [
+        "plugins/tdd-playbook/commands/readable.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "be77743c69b53a40b61d31a68b35013595b04c5c",
+      "closure_review": "adoption-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_readable_surface.py::test_readable_command_and_discoverability"
+      ]
+    },
+    {
+      "id": "RD1-P2-DARK-INVENTORY-FINDINGS-ACTIONED",
+      "severity": "P2",
+      "summary": "David's anti-dark challenge, applied to the surface's own first findings. The 7 'emits not stated' entries were paperwork: each now names what it produces and its real readers (validate stays green). The 6 'liveness declared but NO probe' entries were the real exposure \u2014 alive-looking, unwatched, unowned: each now carries a dated liveness-probe-missing debt (owner david, 2026-10-31, trigger proven: validate --as-of 2026-11-01 exits 1). They stay on the worry page until real probes exist \u2014 the debt owns the fix; the page keeps telling the truth.",
+      "evidence": [
+        "capabilities.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "be77743c69b53a40b61d31a68b35013595b04c5c",
+      "closure_review": "adoption-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "RD1-P2-DEMOTION-CHECK-WAS-DIRECTION-BLIND",
+      "severity": "P2",
+      "summary": "Found by its own first false positive: the standing-demotion check flagged ANY TDD_PLAYBOOK_HOOK_* env var \u2014 presence, a proxy \u2014 and REDded the gate when exitcode (shipped default: off) was promoted to warn on measured evidence. Direction is the fact: weaker-than-shipped is a demotion; at-or-above is the opt-in the v1.32.0 retirement invited. Check now compares against _DEFAULT_MODES, fails closed on unknown guard names, and freezes three plants: a real block->warn demotion flagged, the motivating promotion NOT flagged, an unknown name flagged.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py",
+        "plugins/tdd-playbook/hooks/scripts/_common.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "be77743c69b53a40b61d31a68b35013595b04c5c",
+      "closure_review": "adoption-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_yield_logging"
+      ]
+    }
+  ]
+}

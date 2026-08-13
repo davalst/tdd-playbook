@@ -23,7 +23,8 @@
 - `docs/reviews/2026-08-10-v1.33.0-release.json` — `f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688`
 - `docs/reviews/2026-08-12-v1.33.1-hotfix.json` — `918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57`
 - `docs/reviews/2026-08-12-v1.34.0-release.json` — `f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294`
-- `docs/reviews/index.json` — `5f44d4845b9f9fec0488f925d3951d1e70dac2172eda3e7ff7cc2fff23e05118`
+- `docs/reviews/2026-08-13-readable-first-read-response.json` — `dfb2080f44f3cd01c355731967e3ddff1134fc20073e9b4b7c1bb26013af31df`
+- `docs/reviews/index.json` — `a16fd8a215ec0998bd3983dc636607c7e82c6604d1dd9fe26061b16bc05d9f79`
 
 ## Gate surface
 
@@ -117,8 +118,8 @@
 
 ## Adversarial review records
 
-- Review records: 13. Findings: 84.
+- Review records: 14. Findings: 87.
 - `incorporated`: 15
 - `open`: 3
 - `rejected`: 0
-- `verified_closed`: 66
+- `verified_closed`: 69
