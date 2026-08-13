@@ -72,6 +72,7 @@ EFFECTFUL = ("calibration/scenarios.json", "calibration/corpus/approved/",
 EXPECTS = ("up", "down", "none")
 VERDICTS = ("HIT", "PARTIAL", "FLAT", "REGRESSED", "HELD", "SURPRISE")
 _ID = re.compile(r"^L-\d{8}-\d{2}$")
+_SCORED_REPO = re.compile(r"repo\s+([0-9a-f]{7,40})")
 _EPOCH = re.compile(r"^EPOCH:\s*([0-9a-f]{7,40})\s*$", re.MULTILINE)
 
 
@@ -122,7 +123,7 @@ def parse_ledger(text):
     """
     epoch_m = _EPOCH.search(text or "")
     epoch = epoch_m.group(1) if epoch_m else None
-    registered, scored, section = [], [], None
+    registered, scored, section, scored_repo = [], [], None, None
     for raw in (text or "").splitlines():
         line = raw.strip()
         if line.startswith("#"):
@@ -135,6 +136,12 @@ def parse_ledger(text):
                 continue
             if head.startswith("Scored"):
                 section = "sco"
+                # v1.34.0: carry the block's `repo <sha>` onto its rows. Coverage needs to
+                # know WHEN a prediction was priced, not merely THAT it was — see
+                # coverage_problems. A block without a repo sha yields None, and coverage
+                # fails closed on it rather than assuming.
+                m = _SCORED_REPO.search(head)
+                scored_repo = m.group(1) if m else None
                 continue
             section = None
             continue
@@ -159,7 +166,8 @@ def parse_ledger(text):
                 raise LedgerUnreadable("scored row needs 7 cells, got {}: {}"
                                        .format(len(c), line[:90]))
             scored.append({"id": c[0], "scenario": c[1], "baseline": c[2], "actual": c[3],
-                           "delta": c[4], "verdict": c[5], "note": c[6]})
+                           "delta": c[4], "verdict": c[5], "note": c[6],
+                           "scored_at": scored_repo})
     return registered, scored, epoch
 
 
@@ -358,7 +366,7 @@ def no_effect_problems(registered):
 
 
 def coverage_problems(changed_paths, registered, fresh_ids, path_state, head, rev, epoch,
-                      is_ancestor):
+                      is_ancestor, scored_at=None):
     """A changed gate surface needs a covering entry: NEW this cycle, naming the path, whose
     baseline is real prior history, and where the path actually MOVED after that baseline.
 
@@ -379,12 +387,33 @@ def coverage_problems(changed_paths, registered, fresh_ids, path_state, head, re
     was actually missing: a sha nobody can place in history proves nothing about ordering.
     (`is_ancestor` was already a parameter here and never used — its own small tell.)
     """
+    scored_at = scored_at or {}
     out = []
     for p in sorted(changed_paths):
         covered = False
         for e in registered:
-            if e["id"] not in fresh_ids or p not in e["surface"]:
+            if p not in e["surface"]:
                 continue
+            if e["id"] not in fresh_ids:
+                # 2026-08-13, FOUND LIVE during the v1.34.0 release. Freshness used to mean
+                # "never scored", which ALSO revoked an entry for the very edit it was
+                # written for — and scoring is MANDATORY for any entry a run binds, so the
+                # release could not register and score at once though both are correct. Paths
+                # untouched for two releases went uncovered the moment `check` demanded their
+                # scoring. That is this function's own documented trap (see above: the
+                # anti-backfill clause had it, SKILL.md crossed the line, "un-satisfiable,
+                # and silent until the moment someone tried") surviving in the other clause.
+                #
+                # The property freshness was REACHING for is stated in fresh_ids_from: a
+                # priced prediction "cannot be reused to authorize a LATER edit". "Scored at
+                # all" is a proxy for that. The honest test is temporal — a scored entry
+                # still covers a path that has NOT MOVED since it was priced, and covers
+                # nothing after. Anti-reuse is preserved exactly; anti-backfill is untouched.
+                pricing_sha = scored_at.get(e["id"])
+                if not pricing_sha:
+                    continue      # priced, but we cannot place WHEN: fail closed
+                if path_state(p, pricing_sha, head) != "same":
+                    continue      # moved again after pricing — this is the reuse case
             if not is_ancestor(e["baseline_sha"], head):
                 continue          # not real prior history: cannot establish "written before"
             if path_state(p, e["baseline_sha"], head) != "differs":
@@ -490,6 +519,20 @@ def fresh_ids_from(appended_ids, scored):
     return {i for i in appended_ids if i not in {s["id"] for s in scored}}
 
 
+def scored_at_from(scored):
+    """{entry id: the repo sha its scoring block priced it at}. EARLIEST wins — an entry
+    scored twice was priced the first time, and coverage must ask whether the path moved
+    since THAT moment, not since the most recent restatement. Rows from a block with no
+    `repo <sha>` contribute nothing, so coverage fails closed on them (see
+    coverage_problems) rather than treating an unplaceable pricing as harmless."""
+    out = {}
+    for s in scored:
+        sha = s.get("scored_at")
+        if sha and s["id"] not in out:
+            out[s["id"]] = sha
+    return out
+
+
 def _fresh_ids(repo, rev, ledger_rel, registered):
     """Entry ids appearing in ledger.md's text ADDED since the baseline — the same
     added-since-baseline mechanism the oracle/gate journals authorize through."""
@@ -501,10 +544,16 @@ def _fresh_ids(repo, rev, ledger_rel, registered):
 
 
 def _floor_from(blocks, covered):
-    """Noise floor in reps from the two most recent run blocks, or 0 when unknowable."""
-    if len(blocks) < 2:
+    """Noise floor in reps from the most recent COMPARABLE pair of run blocks, or (0, None)
+    when unknowable. v1.34.0: `blocks[-2:]` was wrong under the README's own chunk-by-agent
+    advice — adjacent chunks share no scenarios, so the floor was computed from an empty
+    intersection and reported 0, which reads as "any movement is evidence". None means
+    UNMEASURED and the caller says so; it is never a floor of zero by another name."""
+    pair = pw.comparable_blocks(blocks or [])
+    if pair is None:
         return 0, None
-    stats = pw.noise_floor(blocks[-2]["rows"], blocks[-1]["rows"], covered)
+    a, b = pair
+    stats = pw.noise_floor(a["rows"], b["rows"], covered)
     return (1 if stats["moved_1"] else 0), stats
 
 
@@ -576,7 +625,8 @@ def cmd_check(args):
                                       fresh_ids_from(
                                           _fresh_ids(repo, rev, args.ledger, registered),
                                           scored),
-                                      path_state, head, rev, epoch, is_ancestor)
+                                      path_state, head, rev, epoch, is_ancestor,
+                                      scored_at_from(scored))
         blocks, skipped = hfmt.parse_run_blocks(_read(os.path.join(repo, args.history)))
         if skipped:
             # plant_vitality reports this loudly; ledger used to bind it and throw it away.

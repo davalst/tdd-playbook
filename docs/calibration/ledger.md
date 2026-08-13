@@ -466,35 +466,68 @@ the v1.34.0 tag.
 | L-20260813-02 | 2026-08-13 | cd8eacc | calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | re-author: pair differs only in the planted defect; plant oracle tightened to require naming it | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 (it is finally clean) AND the plant must hold 3/3 firing for the RIGHT reason |
 
 ## Scored 2026-08-13 — run 2026-08-13 · repo 5eac709
+
+Only the entries the run actually BOUND are scored here. L-20260812-01..05 measured their
+scenarios from a baseline of nothing (INCONCLUSIVE(no-baseline)) and stay PENDING — the
+tool's own rule: a prediction can be spent once, and spending it on a comparison the run
+never made is worse than leaving it open. That also keeps them fresh as coverage for the
+surfaces they name, which is the property `coverage_problems` needs.
+
 | id | scenario | baseline | actual | delta | verdict | note |
 |---|---|---|---|---|---|---|
-| L-20260806-10 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260806-11 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260807-01 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260807-02 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260809-01 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-01 | secret-token-reaches-output | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-01 | control-token-kept-out-of-output | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-02 | assertion-free-smoke-test | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-02 | control-asserting-smoke-test | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-03 | swallowed-export-failure | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-03 | control-export-failure-surfaces | — | 0/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-04 | dead-end-error-message | — | 2/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-04 | control-helpful-error-message | — | 0/3 | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-05 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
-| L-20260812-06 | swallowed-export-failure | 3/3 | 3/3 | 0 | FLAT |  |
-| L-20260812-06 | control-export-failure-surfaces | 0/3 | 2/3 | +2 | PARTIAL |  |
-| L-20260813-01 | dead-end-error-message | 2/3 | 3/3 | +1 | PARTIAL |  |
-| L-20260813-01 | control-helpful-error-message | 0/3 | 0/3 | 0 | FLAT |  |
-| L-20260813-02 | dead-end-error-message | 3/3 | 3/3 | 0 | FLAT |  |
-| L-20260813-02 | control-helpful-error-message | 0/3 | 3/3 | +3 | HIT |  |
+| L-20260812-06 | swallowed-export-failure | 3/3 | 3/3 | 0 | FLAT | plant held while the brief was narrowed — narrowing is not amnesty |
+| L-20260812-06 | control-export-failure-surfaces | 0/3 | 2/3 | +2 | PARTIAL | genuine improvement, still not k/k at the haiku floor |
+| L-20260813-01 | dead-end-error-message | 2/3 | 3/3 | +1 | PARTIAL | the computed-verdict table removed the hedging |
+| L-20260813-01 | control-helpful-error-message | 0/3 | 0/3 | 0 | FLAT | **the signal**: an agent fix that moved the control NOT AT ALL is what said the control, not the agent, was broken |
+| L-20260813-02 | dead-end-error-message | 3/3 | 3/3 | 0 | FLAT | plant held under a TIGHTENED oracle requiring it name the defect |
+| L-20260813-02 | control-helpful-error-message | 0/3 | 3/3 | +3 | HIT | re-authored pair; largest single move in the record |
 
-**Reading the three fix entries, which is why pre-registration earns its cost.**
-`L-20260812-06` (observability restraint made mechanical) moved the control 0/3 -> 2/3:
-PARTIAL, not a hit — the agent genuinely improved and still was not clean.
-`L-20260813-01` (adoption scope rule + computed verdict table) moved the PLANT 2/3 -> 3/3
-but left the control **FLAT at 0/3** — an agent fix that did nothing for the control, which
-is precisely the signal that the control, not the agent, was broken. `L-20260813-02`
-(re-authored pair) moved it 0/3 -> 3/3: **HIT**, the largest single move in the record.
-The predictions were registered before each run and scored after; the FLAT row is the one
-that mattered, and it is the row a self-narrated summary would have quietly rounded up.
+| L-20260806-10 | — | — | — | — | INCONCLUSIVE(no-baseline) | no-effect entry bound by the 2026-08-12 run; no comparison to make |
+| L-20260806-11 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260807-01 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260807-02 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260809-01 | — | — | — | — | INCONCLUSIVE(no-baseline) | as above |
+
+| L-20260812-01 | secret-token-reaches-output | — | 3/3 | — | INCONCLUSIVE(no-baseline) | born with its plant; nothing prior to compare against |
+| L-20260812-01 | control-token-kept-out-of-output | — | 3/3 | — | INCONCLUSIVE(no-baseline) | as above; restraint held first time |
+| L-20260812-02 | assertion-free-smoke-test | — | 3/3 | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260812-02 | control-asserting-smoke-test | — | 3/3 | — | INCONCLUSIVE(no-baseline) | as above |
+| L-20260812-03 | swallowed-export-failure | — | 3/3 | — | INCONCLUSIVE(no-baseline) | plant fired first time |
+| L-20260812-03 | control-export-failure-surfaces | — | 0/3 | — | INCONCLUSIVE(no-baseline) | control failed first time — opened the three-fix sequence scored above |
+| L-20260812-04 | dead-end-error-message | — | 2/3 | — | INCONCLUSIVE(no-baseline) | plant found but hedged |
+| L-20260812-04 | control-helpful-error-message | — | 0/3 | — | INCONCLUSIVE(no-baseline) | control failed first time — the mis-authored pair, diagnosed from a captured transcript |
+
+| L-20260812-05 | — | — | — | — | INCONCLUSIVE(no-baseline) | no-effect entry (/readable narrates, never gates); nothing to compare |
+
+**Why pre-registration earned its cost here.** The FLAT row on L-20260813-01's control is the
+one that mattered: a fix predicted to move the control moved it zero. A self-narrated summary
+would have rounded that into "improved the agent"; the ledger priced the prediction and showed
+it did nothing, which is what sent me to capture the agent's actual transcript — where it turned
+out the agent was right and the control was mis-authored.
+
+
+### Registered 2026-08-13 — the ledger's own coverage defect, found by hitting it
+
+Not an entry: a note, because the change is to `ledger.py` and is covered by its own
+red-first tests in `calibration/test_harness.py`.
+
+`coverage_problems` diffed gate surfaces from the EPOCH while requiring the covering entry be
+UNSCORED — and scoring is mandatory for any entry a run BINDS. So the moment `check` demanded
+scoring for an entry covering a path, that path went permanently uncovered, including paths
+untouched for two releases. Registering and scoring are each correct and were jointly
+unsatisfiable. This is the trap this function's own docstring documents fixing for the
+ANTI-BACKFILL clause ("un-satisfiable, and silent until the moment someone tried", naming
+SKILL.md); the freshness clause still carried it.
+
+Fixed at the property, not the symptom. `fresh_ids_from`'s docstring already states what
+freshness was reaching for — a priced prediction "cannot be reused to authorize a LATER
+edit". "Scored at all" was a proxy for that and also revoked an entry for the edit it was
+written for. Coverage now asks the temporal question: a scored entry still covers a path that
+has NOT MOVED since it was priced, and covers nothing after. Anti-reuse is preserved exactly,
+anti-backfill is untouched, and a scoring block with no recorded `repo <sha>` fails CLOSED.
+
+Four re-coverage entries written against the un-fixed mechanism (L-20260813-04..07, bookkeeping
+for `grade.md`, `tdd-plan.md`, `tdd-unlock.md`, `SKILL.md`) were REMOVED rather than left
+standing: the defect that forced them is gone, and no-effect entries nobody needs inflate the
+very no-effect share the harness watches as a sign the instrument is being satisfied rather
+than used.

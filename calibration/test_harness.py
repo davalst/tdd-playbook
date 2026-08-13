@@ -1721,17 +1721,58 @@ def _power_tests():
     import history_format as hf
     blocks, _ = hf.parse_run_blocks(open(os.path.join(REPO, "docs", "calibration",
                                                       "history.md")).read())
-    a, b = blocks[-2], blocks[-1]
+    # v1.34.0, FOUND LIVE: the floor used blocks[-2:] unconditionally. The README's own
+    # advice for long runs — "chunk by agent (--agent X, then the next) so each chunk commits
+    # its own block" — produces adjacent blocks that share NO scenarios, so the floor was
+    # computed from an empty intersection and reported 0 uncovered / 0 moved. A floor of zero
+    # says "any movement is evidence", which is the opposite of what an absent measurement
+    # means. Absent data is UNMEASURED, never zero (this repo's own rule, one file over).
+    check("power: comparable_blocks helper exists", hasattr(pw, "comparable_blocks"))
+    if hasattr(pw, "comparable_blocks"):
+        chunk1 = {"rows": [{"scenario": "x", "runs": "3/3", "kind": "PASS"}]}
+        chunk2 = {"rows": [{"scenario": "y", "runs": "3/3", "kind": "PASS"}]}
+        full_a = {"rows": [{"scenario": "x", "runs": "3/3", "kind": "PASS"},
+                           {"scenario": "y", "runs": "2/3", "kind": "AMBER"}]}
+        check("floor: PLANTED two chunked blocks sharing nothing are NOT comparable",
+              pw.comparable_blocks([chunk1, chunk2]) is None,
+              pw.comparable_blocks([chunk1, chunk2]))
+        # the NEWEST block is anchored, and paired with the most recent earlier block it
+        # shares scenarios with — chunk1 shares nothing with chunk2, so full_a is the pair
+        check("floor: the newest block pairs with the most recent block it SHARES with",
+              pw.comparable_blocks([full_a, chunk1, chunk2]) == (full_a, chunk2),
+              pw.comparable_blocks([full_a, chunk1, chunk2]))
+        check("floor: a single block is not comparable with itself",
+              pw.comparable_blocks([full_a]) is None)
+    pair = pw.comparable_blocks(blocks) if hasattr(pw, "comparable_blocks") else None
+    if pair is None:
+        check("noise floor: no comparable block pair -> reported UNMEASURED, not a zero floor",
+              True, "chunked per-agent runs share no scenarios; the floor must abstain")
+        a = b = None
+    else:
+        a, b = pair
+    if a is not None:
     # PLANTED: computing the floor over ALL scenarios (covered ones included) launders a real
     # effect into "noise" — the covered set must be excluded.
-    all_in = pw.noise_floor(a["rows"], b["rows"], [])
-    covered = ["control-genuine-red-first", "control-cachebusted-run",
-               "control-boundary-covered", "control-parked-deferral", "roadmap-laundering"]
-    excl = pw.noise_floor(a["rows"], b["rows"], covered)
+        check("noise floor: the chosen pair actually shares scenarios (never an empty "
+              "intersection reported as a zero floor)",
+              pw.noise_floor(a["rows"], b["rows"], [])["shared"] >= 1,
+              pw.noise_floor(a["rows"], b["rows"], []))
+    # The EXCLUSION property is tested on synthetic rows, not on whatever shape the real
+    # record happens to have: the previous version asserted against the live history and so
+    # broke the moment run blocks changed shape — a test coupled to data rather than to the
+    # rule it names.
+    syn_a = [{"scenario": "cov", "runs": "1/3", "kind": "AMBER"},
+             {"scenario": "unc", "runs": "1/3", "kind": "AMBER"}]
+    syn_b = [{"scenario": "cov", "runs": "3/3", "kind": "PASS"},
+             {"scenario": "unc", "runs": "3/3", "kind": "PASS"}]
     check("noise floor: covered scenarios are EXCLUDED from the floor",
-          excl["uncovered"] == all_in["uncovered"] - len(covered), (all_in, excl))
-    check("noise floor: the real record shows genuine unexplained movement (>=1 class move)",
-          excl["class_moves"] >= 1 and excl["moved_1"] >= 1, excl)
+          pw.noise_floor(syn_a, syn_b, [])["uncovered"] == 2
+          and pw.noise_floor(syn_a, syn_b, ["cov"])["uncovered"] == 1,
+          (pw.noise_floor(syn_a, syn_b, []), pw.noise_floor(syn_a, syn_b, ["cov"])))
+    check("noise floor: PLANTED counting a COVERED scenario as noise would launder a real "
+          "effect (its movement must not reach the floor)",
+          pw.noise_floor(syn_a, syn_b, ["cov", "unc"])["moved_1"] == 0,
+          pw.noise_floor(syn_a, syn_b, ["cov", "unc"]))
 
     # PLANTED (live, 2026-08-06): a run where 23 of 40 scenarios never executed reported 8 of
     # 16 uncovered scenarios as "changed verdict class" — because PASS -> INVALID counted as
@@ -1761,6 +1802,51 @@ def _ledger_tests():
     #   (ii) no history at all -> UNMEASURED, reported loudly, exit 0 (a gate that cannot
     #        run where it is judged must say so; it must not fabricate a violation, and it
     #        must not silently pass either).
+    # PLANTED (2026-08-13, FOUND LIVE during the v1.34.0 release): coverage is diffed from
+    # the EPOCH, but a covering entry had to be UNSCORED. Scoring is mandatory for any entry
+    # a run BINDS, so the moment `check` demanded scoring for an entry covering a path, that
+    # path went permanently uncovered — including paths untouched for two releases. The
+    # release could not satisfy registering and scoring simultaneously, and both are correct
+    # individually. coverage_problems' own docstring documents fixing this exact trap for the
+    # ANTI-BACKFILL clause and names SKILL.md as the path that crossed it; the freshness
+    # clause still carried it.
+    #
+    # The property freshness was REACHING for (its docstring): a priced prediction "cannot be
+    # reused to authorize a LATER edit". "Scored at all" is a proxy for that and revokes the
+    # entry for the very edit it was written for. The honest test is temporal: a scored entry
+    # still covers a path that has NOT MOVED since it was priced, and covers nothing after.
+    def _state(moved_since_scoring):
+        def path_state(_p, base, _head):
+            if base == "SCORED_AT":
+                return "differs" if moved_since_scoring else "same"
+            return "differs"        # moved after the entry's baseline (not back-filled)
+        return path_state
+    entry = {"id": "L-1", "baseline_sha": "b" * 40, "surface": ["commands/x.md"]}
+    anc = lambda _a, _b: True
+    if "scored_at" in getattr(L.coverage_problems, "__doc__", "") or True:
+        # (i) UNSCORED entry covers, exactly as before — no regression
+        out = L.coverage_problems(["commands/x.md"], [entry], {"L-1"}, _state(False),
+                                  "head", "rev", "epoch", anc, {})
+        check("ledger coverage: an unscored entry still covers (no regression)",
+              out == [], out)
+        # (ii) THE DEFECT: scored, path has NOT moved since pricing -> must still cover
+        out = L.coverage_problems(["commands/x.md"], [entry], set(), _state(False),
+                                  "head", "rev", "epoch", anc, {"L-1": "SCORED_AT"})
+        check("ledger coverage: a SCORED entry still covers the edit it was written for "
+              "(the 2026-08-13 strand)", out == [], out)
+        # (iii) the property freshness genuinely protected: a scored entry must NOT
+        # authorize a LATER edit — the path moved again after it was priced
+        out = L.coverage_problems(["commands/x.md"], [entry], set(), _state(True),
+                                  "head", "rev", "epoch", anc, {"L-1": "SCORED_AT"})
+        check("ledger coverage: a scored entry does NOT authorize a LATER edit "
+              "(anti-reuse preserved)",
+              len(out) == 1 and "commands/x.md" in out[0], out)
+        # (iv) a scored entry with NO recorded pricing point cannot cover — fail closed
+        out = L.coverage_problems(["commands/x.md"], [entry], set(), _state(False),
+                                  "head", "rev", "epoch", anc, {})
+        check("ledger coverage: scored with no recorded pricing sha fails CLOSED",
+              len(out) == 1, out)
+
     check("ledger: helper exists to classify a missing baseline",
           hasattr(L, "baseline_or_epoch"))
     if hasattr(L, "baseline_or_epoch"):

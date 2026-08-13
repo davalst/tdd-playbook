@@ -81,6 +81,30 @@ def min_entries_for_signal(alpha=ALPHA):
     return None
 
 
+def comparable_blocks(blocks):
+    """The most recent PAIR of run blocks that actually share scenarios, or None.
+
+    v1.34.0, found live. The floor used `blocks[-2:]` unconditionally. The calibration
+    README's own advice for long runs — "chunk by agent (`--agent X`, then the next) so each
+    chunk commits its own block" — produces adjacent blocks with a DISJOINT scenario set, so
+    the intersection was empty and the floor came back 0 uncovered / 0 moved. A zero floor
+    reads as "any movement at all is evidence", which is the exact inverse of what an absent
+    measurement means, and it is the fabricated-zero this repo bans one file over ("a gate
+    absent from the record is UNMEASURED, never zero").
+
+    Scanning newest-first for the first pair with a non-empty intersection keeps the floor
+    honest under both usage patterns; when no pair shares anything the caller must report
+    UNMEASURED rather than a number.
+    """
+    for i in range(len(blocks) - 1, 0, -1):
+        b = {r["scenario"] for r in blocks[i].get("rows") or []}
+        for j in range(i - 1, -1, -1):
+            a = {r["scenario"] for r in blocks[j].get("rows") or []}
+            if a & b:
+                return blocks[j], blocks[i]
+    return None
+
+
 def noise_floor(rows_a, rows_b, covered=()):
     """How much UNCOVERED scenarios moved between two runs — the empirical noise floor.
 
