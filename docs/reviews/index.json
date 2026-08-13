@@ -48,6 +48,10 @@
     {
       "path": "2026-08-12-v1.33.1-hotfix.json",
       "sha256": "918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57"
+    },
+    {
+      "path": "2026-08-12-v1.34.0-release.json",
+      "sha256": "072fe69a0fb257ad277944cae31b5f6e609706a8c4032d64985dc7f267a04083"
     }
   ]
 }

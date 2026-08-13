@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-12-v1.34.0-release-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
+  "review_range": {
+    "base": "3fafc9ecb7b68877a8dcf943680af857de69e910",
+    "head": "e15bd84c4472006937f8ed5d655e46156e4ac7b0"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "RS-P1-PHANTOM-GATE-ROW",
+      "severity": "P1",
+      "summary": "gate_yield.py cmd_rollup registered the per_gate key BEFORE inspecting the event name, so ANY non-gate producer riding the one write path minted a phantom zero-yield gate row in the retirement instrument \u2014 the integration-adversary PROVED IT BY EXECUTION at plan re-review (three usage events -> `| readable-surface | 0 | 0 | 0 | 0 | 0 |`, then `candidates` reported the non-gate in its measured denominator) and both adversaries independently converged on the same seam. Fixed at the owner: the ROSTER decision (closed GATE_EVENTS vocabulary) is now separate from the COUNTING decision, for every future producer; usage events route to their own table; unknown events stay ignored-without-a-row.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/gate_yield.py",
+        "plugins/tdd-playbook/tests/test_gate_yield.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "13b6f0aec8cacc4b8723baa594247a8ba56c9235",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_gate_yield.py::test_usage_record_and_gate_roster"
+      ]
+    },
+    {
+      "id": "RS-P1-HOST-CLASSIFIER-WOULD-HAVE-LOGGED-NOTHING",
+      "severity": "P1",
+      "summary": "The approved plan's first D5 design classified host from the bin's __file__ path / an installer marker and suppressed logging when unrecognised. This repo has no .claude/bin/ and no marker \u2014 it dogfoods via the marketplace plugin \u2014 so BOTH real invocation paths classified as not-Claude and the experiment would have produced a permanently empty usage record, auto-reading as `kill` on 2026-09-30 regardless of use. Replaced at the producer: _common.log_yield_event stamps host from host-runtime-provided signals (CLAUDE_PROJECT_DIR / TDD_PLAYBOOK_PROJECT_ROOT), unknown is LABELLED and still logged, never suppressed \u2014 all three directions pinned explicitly (an inherited session env would pass at home and fail in CI).",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py",
+        "plugins/tdd-playbook/tests/test_hooks.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "13b6f0aec8cacc4b8723baa594247a8ba56c9235",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_yield_logging"
+      ]
+    },
+    {
+      "id": "RS-P2-MODEL-PIN-TEST-COULD-NOT-SEE-NEW-AGENTS",
+      "severity": "P2",
+      "summary": "test_agents.py's opus-pin check iterated a hand list with no completeness guard, so the four new judgment agents would have shipped with `model: opus` NEVER CHECKED, green. Guard added BEFORE the agents: PINNED|INHERIT must equal the real directory, vacuity-guarded, with a planted unclassified-agent detector.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "13b6f0aec8cacc4b8723baa594247a8ba56c9235",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_verifier_model_pins"
+      ]
+    },
+    {
+      "id": "RS-P2-GATE-CAUGHT-UNREGISTERED-SURFACES",
+      "severity": "P2",
+      "summary": "The first full gate run went RED at the calibration stage: five new gate surfaces (4 briefs + /readable) had no covering ledger entries \u2014 the gate-surface ledger working as designed. Entries registered with expect=up for the four briefs (each born with its plant/control pair, so the first live run scores recall and FP from zero) and expect=none for the narration command. An auto-checkpoint landed the surfaces before the ledger commit; per the recovered 2026-08-07 precedent this is in-window late registration against the true baseline (3fafc9e), stated in the commit message rather than smoothed over.",
+      "evidence": [
+        "docs/calibration/ledger.md",
+        "calibration/ledger.py"
+      ],
+      "status": "incorporated",
+      "disposition": "Ledger entries L-20260812-01..05 committed separately (e15bd84); ledger check exits 0 vs v1.33.1; the same-commit blind spot remains dated debt on gate-surface-ledger."
+    },
+    {
+      "id": "RS-P2-DISCARDED-EXIT-CODES-DURING-VERIFICATION",
+      "severity": "P2",
+      "summary": "Twice during release verification the operator (the model) piped a checker into grep/head and echoed $? \u2014 reading the FILTER's exit code as the checker's, exactly the \u00a74a discarded-truth sin this repo's gate script warns about. Both self-caught on re-run (the scoreboard planted probe first reported a false rc, and the as-of expiry proof reported rc=0 from head); both re-verified unpiped before any claim was recorded. Named here because a verification habit that survives two occurrences in one release is a candidate for the next planted-error probe.",
+      "evidence": [
+        "calibration/check_scoreboard_integrity.py",
+        "scripts/civerd_gate.sh"
+      ],
+      "status": "incorporated",
+      "disposition": "All recorded claims re-verified with unpiped rc. The exitcode_guard exists for exactly this and ships opt-in; whether to opt it in for this repo is David's call, noted not smuggled."
+    },
+    {
+      "id": "RS-P2-LIVE-CALIBRATION-IS-THE-TAG-GATE",
+      "severity": "P2",
+      "summary": "The four agents pass --dry-run validation and R1 coverage but NO live run has executed their plant/control pairs (the 2026-08-06 run largely env-failed, unresolved: ~20 INVALID rows, one BLOCKING FAIL on red-first-verifier's control). Tagging v1.34.0 before a live calibration would ship uncalibrated verifiers with a green dry-run reading as evidence. Precondition registered as dated debt (role-adversaries-live-calibration, expires 2026-08-31) with the decision point stated: tag-without-the-agents / wait / drop, made deliberately.",
+      "evidence": [
+        "capabilities.json",
+        "docs/calibration/history.md"
+      ],
+      "status": "open"
+    }
+  ]
+}
