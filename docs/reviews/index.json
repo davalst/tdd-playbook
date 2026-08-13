@@ -56,6 +56,10 @@
     {
       "path": "2026-08-13-readable-first-read-response.json",
       "sha256": "5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156"
+    },
+    {
+      "path": "2026-08-13-cheliped-proposals-adjudication.json",
+      "sha256": "faa1dc89c58573ff63cddc2bdc81ef553d1548f111a3b92d546bb9af403140b0"
     }
   ]
 }

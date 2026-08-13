@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-13-cheliped-proposals-adjudication",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
+  "review_range": {
+    "base": "09d23fb6275ffa011e78ee4daaac63ad17407d35",
+    "head": "a16761a27277b3332fd398d254ab371675d89b4c"
+  },
+  "reviewers": [
+    "claims-verifier"
+  ],
+  "findings": [
+    {
+      "id": "CH-P2-TWO-PROPOSALS-ALREADY-WERE-DOCTRINE",
+      "severity": "P2",
+      "summary": "Of cheliped's four handoff proposals, two ARE this playbook's existing doctrine: seam-contract is v1.26 (seam rule, field-granularity emits, family parity, mutation-scope note) and guard-calibration is v1.25 (motivating-artifact replay, double-existence rule, the what-would-still-be-true trigger). Landing either would have duplicated eight rules. All 13 coverage claims behind the adjudication were cross-checked by a fresh-context claims-verifier over the full 1048-line file (22/22 citations mechanically verified): 11 confirmed, 2 REFUTED \u2014 and both refutations SHRANK the additions: probe-the-real-enforcer was already SKILL 131 and last-match-wins ordering already SKILL 603 (T6), so the deny-table block cross-references instead of restating; and the boundary-strengthening false-red case brushed the never-weaken rule as drafted, so it now routes explicitly through the journaled test-wrong unlock class.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md",
+        "docs/calibration/ledger.md"
+      ],
+      "status": "incorporated",
+      "disposition": "Two rejections recorded; seven deduplicated additions landed (SKILL sections 1, 2, 4, 4a, 9, 10, 12), all rule-d free additions, ledger L-20260813-10 registered first. Cheliped's own status table still marks both rejected proposals 'Proposed' \u2014 updating it is a cheliped-session action, flagged to David, not performed from here (write boundary)."
+    }
+  ]
+}
