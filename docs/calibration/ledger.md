@@ -578,3 +578,18 @@ readable; the reader must never leave more alarmed than the facts warrant.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260813-09 | 2026-08-13 | f72c5fc | plugins/tdd-playbook/commands/readable.md | step 2 gains SIZE EVERY WORRY: every count carries its disposition in the same breath; "off" is never bare (which KIND of off); the page ends with the one thing worth doing or "nothing to do" | — | none | 0 | command prose; narration quality is deliberately not scenario-measured — the rule's teeth are the reader |
+
+### Registered 2026-08-13 — baseline 09d23fb (cheliped proposal adjudication: 7 doctrine additions)
+
+Four proposals read from cheliped's handoff queue. Two REJECTED as already-landed doctrine
+(seam-contract IS v1.26 — SKILL :180/:53-66/:668-690/:277; guard-calibration IS v1.25 —
+:999-1002/:171-177/:220/:131). Two landed in part: deny-table-first (the real gap — deny=0,
+enforcer=0, last-match=0 hits in SKILL) and 6 of gate-victim-sweep's 12 sub-proposals,
+merged to seven edits: a §9 deny-table block (absorbing sub-proposal 7's three gate-diff
+questions), a §1 victim-sweep bullet (sub-proposals 1+5+9 merged), a §2 check-vs-use row
+(8), and one-liners in §4a (4), §4 (12), §10 (2), §12 (10). Rejected: 3 (covered :316-318),
+6 (§6c family parity), 11 (cheliped-local).
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260813-10 | 2026-08-13 | 09d23fb | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | seven doctrine ADDITIONS (rule d — additions free): §9 deny-table-first block, §1 victim sweep, §2 check-vs-use row, §4a refusal-diagnosis line, §4 by-text-exemption clause, §10 checkpoint-out-of-place line, §12 parse-absence-claims line | — | none | 0 | doctrine prose; no calibration scenario measures doctrine text — the agents enforcing these rules are scenario-measured separately |
