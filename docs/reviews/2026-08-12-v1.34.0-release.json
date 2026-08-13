@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
   "review_range": {
     "base": "3fafc9ecb7b68877a8dcf943680af857de69e910",
-    "head": "92a3938a5a556ce2521d9b0473b6eade4d73387f"
+    "head": "478ce97c5d895ef6713c9f9f5301ef8b79312e9c"
   },
   "reviewers": [
     "architecture-adversary",
@@ -158,6 +158,17 @@
         "gate-manifest.json"
       ],
       "status": "open"
+    },
+    {
+      "id": "RS-P2-DURABLE-RECORD-CITED-AN-ORPHANED-SHA",
+      "severity": "P2",
+      "summary": "The 2026-08-13 scoring blocks cited `repo 5eac709`, a commit this session's own resets and cherry-picks ORPHANED. It resolved locally \u2014 still in my object store \u2014 and is absent from the pushed history, so every local gate run passed and the fresh-clone CI run could not place the pricing point. Caught by the fail-closed rule added hours earlier in the same release (an unplaceable pricing sha covers nothing), which was written as a defensive edge case and turned out to be the check that stopped a durable record citing evidence nobody else could verify. Re-pointed to f800c26, the shipped commit carrying the scored tree state, verified by the scored paths being unchanged since it, and re-verified in a FRESH CLONE rather than in place. Transferable rule, recorded in the ledger: a durable record may only cite shas that exist in SHIPPED history, and the machine that wrote them is the one machine that cannot detect the mistake \u2014 which is the standing argument for keeping an independent re-run even when the local gate is green.",
+      "evidence": [
+        "docs/calibration/ledger.md",
+        "calibration/ledger.py"
+      ],
+      "status": "incorporated",
+      "disposition": "Re-pointed and verified in a fresh clone (ledger check rc=0, 0 REDs). Recorded as incorporated: the proof is a fresh-clone run plus the shipped CI result, neither of which the review resolver can cite \u2014 see RS-P2-CLOSURE-EVIDENCE-CANNOT-CITE-FIXED-STAGES."
     }
   ]
 }
