@@ -128,6 +128,20 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
 ## 1. The TDD loop
 - Author tests from the spec, run RED, then implement to green. **Never weaken/delete a test to pass.**
 - Test BEHAVIOR and OUTCOMES, not implementation details or "did the route fire."
+- **A new refusal needs a VICTIM SWEEP before the first test run.** A change that starts denying
+  something breaks every caller and FIXTURE that relied on the old permissiveness; discovering
+  them one test run at a time pushes the remainder into progressively slower gates (origin: 8
+  fixture victims across 8 cycles ≈ 35 min — the last two caught by the pre-push hook and the
+  mutation baseline; the sweep finding all 8 ran in under a second). Sweep for what CALLS the
+  guarded thing, never for the attribute the guard reads: a fail-closed guard fires on ABSENCE,
+  so grepping the wrong-value case misses every caller that supplies nothing — usually most of
+  them (the 9th victim set no attribute at all). A RESEAM (moving a decision to a new source of
+  truth) sweeps a second shape — fixtures that PRODUCE the old state (17 signature victims found
+  in a second; 22 state victims found three slow runs later) — and doubles as a fixture-realism
+  audit: every state victim was supplying a state production cannot produce. This is §12's
+  exhaustive-negatives rule in the other direction (a CLAIM of absence needs a sweep; a CHANGE
+  that creates absence needs the same sweep), and the tightening-side kin of §6c's consumer-parity
+  DoD, which covers what a REPLACED seam fed.
 - **Assert the outcome, not the proxy — this reaches every CHECK, not just tests.** A health check that
   inspects a systemd unit instead of exercising the service, a config READ instead of the remote QUERIED,
   source text GREPPED instead of parsed — each is the "route fired" trap wearing operational clothes.
@@ -231,7 +245,12 @@ boundaries/limits · empty/null/missing · malformed/invalid/wrong-type input ·
 cases · state/lifecycle transitions + idempotency/double-submit/re-entry · concurrency/ordering/retries/
 duplicates · failure & error paths + rollback/cleanup · scale/large input · second-order/cross-surface ·
 **adversarial content** — injection into human-facing text, logs, and inter-process payloads
-(newlines/CR/control chars, field forgery, truncation-to-mislead).
+(newlines/CR/control chars, field forgery, truncation-to-mislead). ·
+**check-vs-use divergence** — when a guard and the operation it guards each normalise the same
+input (`~`, `..`, symlinks, case, unicode form, relative bases), assert they AGREE — or resolve
+once in the consumer and hand the guard the resolved value, so divergence is unrepresentable
+(origin: a containment guard judged the unexpanded path while the tool expanded `~`, and wrote
+`$HOME/evil.py` from "inside" the root — every guard test passed, because none used a `~` path).
 - The adversarial-content line is its own question, not a rephrasing of auth-negative: **for every
   string that reaches a human, a log, or another process, which parts can an ADVERSARY influence, and
   can they change its MEANING rather than just its content?** Tests overwhelmingly check PRESENCE
@@ -349,7 +368,12 @@ a high score is a claim about the code's interior, never global assurance of pro
   (b) EXACT-substitution matching — the changed line must be exactly the documented before→after,
   so an entry can never swallow a neighboring real mutant — and (c) its own can't-overmatch test
   asserting a nearby DIFFERENT mutation is still kept. Ledger entries match by line TEXT, not
-  location: before adding one, check the same line doesn't recur elsewhere in scope. Keep the
+  location: before adding one, check the same line doesn't recur elsewhere in scope — and keep a
+  STANDING recurrence audit (occurrences == expected per file), because a line COPIED later into
+  gated scope silently extends the proof to code nobody proved; this governs every by-text
+  exemption mechanism (equivalence ledgers, lint baselines keyed on content), and an accessor
+  extracted to kill the duplication must be written in DIFFERENT text or it just moves the
+  collision. Keep the
   ledger SHORT — a growing ledger is a smell that the code should be made killable instead.
 - **String mutants are classed by ROLE, never chased uniformly:** logic and DATA strings (SQL,
   dict/subscript keys, hash-domain inputs, PERSISTED audit/forensic content) stay zero-survivor —
@@ -420,6 +444,11 @@ nothing. These are the documented false-green modes — each has bitten a real g
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
   the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
   shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
+- **A refusing gate prints the diagnosis it already holds.** "Refusing a vacuous pass" held for
+  four days because nothing named the CAUSE sitting in the gate's own captured output — the
+  refusal message carries the failing assertion/path, and the same condition is mirrored by a
+  cheap test in the fast suite, so the breakage surfaces in seconds instead of on the next
+  slow-gate run.
 
 ## 5. UX journeys — `@pytest.mark.ux` — interface-agnostic
 A UX journey drives the REAL interface a user touches and asserts the user-visible outcome + the persisted
@@ -748,6 +777,29 @@ enumeration unprompted — the flow table in §0 is where it lands.
   and reads as rework. Three of the nine defects in the field report that produced this rule were
   consent/exec-seam defects that a boundary-time review would have caught while the seam was one commit
   old.
+- **A boundary is specified by its DENY TABLE, written first.** A sandbox profile, permission
+  gate, firewall rule, or authz check is defined by what it REFUSES — write the enumerated
+  refusals BEFORE the boundary and assert them against the real enforcement engine (the kernel,
+  the live policy evaluator, a real request): red-first applied to the only half of a boundary
+  that matters, and §1's assert-the-outcome rule at its highest stakes — the config text you
+  generated is the proxy; the enforcer is the fact. **Deny-lists are banned at boundaries**:
+  enumerate the few state paths the tool MAY touch (deny-the-root-then-allow), never the
+  dangerous ones — the list that named `config.toml` missed `hooks.json` beside it (origin: 9
+  real holes across 3 review rounds, several inside fixes for the previous round's holes, each
+  under a confident docstring — "I wrote the narrative of the security and treated having
+  written it as having done it"). Emission ORDER is policy in a last-match-wins engine — §6's
+  T6 shadowing ban at a boundary, visible only to an enforcer probe (an allow emitted after a
+  home-dir deny exposed `~/.ssh` through a review-passing profile). **When a strengthened
+  boundary turns an artefact-shaped test red** (three per-path greps broke on a strictly-better
+  root-deny), the disposal is §1's journaled `test-wrong` unlock class — re-point the test at
+  the enforcer; editing the assertion to match the new config text is exactly the move the lock
+  exists to stop. **Every security sentence in prose names the test that proves it, or is
+  deleted** (§12 — a claim about a defence is a claim). A guard that NARROWS fails safe when its
+  inputs are unavailable — degrade to the other guards, never widen. Test the kill switch
+  against a RUNNING instance; switches tested static fail live. And a diff that adds or moves a
+  gate gets the fresh-context pass (`security-adversary`) with three questions: what reaches the
+  guarded operation WITHOUT the gate; does every error path fail closed; and does the guard
+  resolve its input exactly as the guarded operation does (§2 check-vs-use).
 - Beyond review, WRITE security tests: negative authz (denied → 403/refused), input fuzzing/injection on
   untrusted surfaces, rate-limit. Keep dependency/SAST scanning in CI (supply chain).
 - **LLM-app repos: layer adversarial red-teaming on top of the floor** (e.g. [DeepTeam](https://github.com/confident-ai/deepteam) —
@@ -770,6 +822,10 @@ enumeration unprompted — the flow table in §0 is where it lands.
   "tests affected by my diff" command (the repo's graph/coverage tool, or the cheap floor:
   `pytest <changed test files + tests importing changed modules>`); the FULL suite still gates
   every checkpoint commit (§11) and merge. Selection speeds the loop; it never replaces the net.
+- **A full-suite run mid-phase is a checkpoint run out of place** — its cost is its wall-clock
+  plus a serialised session (felt, on a developer machine, as heat and a blocked laptop).
+  Reaching for the full suite to ask "did I break anything else?" is the victim-sweep question
+  (§1): answer it statically, then run the affected slice.
 - **Trust gates must fire AUTOMATICALLY on the diffs that can break them** — "remember to run it" is the
   honor-system seam §13 calls gameable (a regression sits green-on-`main` until someone remembers). The
   PRINCIPLE is auto-on-risky-diff; the MECHANISM scales to need:
@@ -854,6 +910,11 @@ unverified NEGATIVE about a file it never read.)
   wired / dead" requires grepping ALL reference/assignment sites and citing the SWEEP. Citing one
   file where X *should* appear proves nothing — the refutation usually lives in a file you didn't
   open (e.g. the "unreachable" toolset that was wired via a profiles file nobody cited).
+- **Absence claims about code PARSE the code.** `assert "x" not in source` matches the very
+  comment explaining the removal (4-for-4 false REDs in one cycle) and, inverted, stays green on
+  a comment while the real call remains — assert on AST nodes (attribute access, calls),
+  excluding docstrings. The sweep above says WHERE to look; this is the instrument it must use —
+  the general parse-over-grep rule (§1, §6's EXERCISED leg) applied to the absence direction.
 - **Built ≠ wired-in ≠ usable applies to claims too:** trace the wire end-to-end — who SETS the
   value, who CONSUMES it, which config gates it — before claiming wired or unwired. A registration,
   an export, or a comment is not a wire.
