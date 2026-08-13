@@ -23,8 +23,8 @@
 - `docs/reviews/2026-08-10-v1.33.0-release.json` — `f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688`
 - `docs/reviews/2026-08-12-v1.33.1-hotfix.json` — `918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57`
 - `docs/reviews/2026-08-12-v1.34.0-release.json` — `f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294`
-- `docs/reviews/2026-08-13-readable-first-read-response.json` — `dfb2080f44f3cd01c355731967e3ddff1134fc20073e9b4b7c1bb26013af31df`
-- `docs/reviews/index.json` — `a16fd8a215ec0998bd3983dc636607c7e82c6604d1dd9fe26061b16bc05d9f79`
+- `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
+- `docs/reviews/index.json` — `a279323e9a2698c0d669b219c48d0d5a661ce73f5583af99b7fa1eb38b582a3f`
 
 ## Gate surface
 
