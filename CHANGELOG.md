@@ -3,6 +3,25 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.33.1 — 2026-08-12
+
+**Hotfix: the debt list says what each debt is.** `render_reference.py` keyed every
+integration-debt line on the OPTIONAL `id` field — present on 4 of 55 entries — and printed
+`unnamed` for the rest, while the REQUIRED `what` (`_debt.py` DEBT_FIELDS) went unrendered.
+The reader of `docs/reference/current-state.md` is the one person who cannot fall back to
+source, so 51 anonymous rows were 51 facts the instrument held and refused to say.
+
+Debt lines now render the first clause of `what` (shortening visibly with an ellipsis,
+never silently — §12), and a debt that DOES carry an `id` keeps its `cap/id` join key:
+`host-parity-policy.json` cites three of those keys by value, so fixing the label must not
+discard the reference (the adversarial re-review caught that the first fix draft would
+have). Planted contract in `test_reference_docs.py`: an id-less debt renders its clause and
+never `unnamed`; a keyed debt keeps both; the clause cut is visible.
+
+Found by the architecture-adversary during plan review of the Readable Surface work
+(`docs/plans/gated/2026-08-12-readable-surface.md`): the plan had cited the `unnamed` rows
+as evidence a new comprehension surface was needed — the evidence was this bug.
+
 ## 1.33.0 — 2026-08-10
 
 **Calibration loses its clock; AGENTS.md stops rotting; the debt list says what it means.**

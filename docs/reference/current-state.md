@@ -43,61 +43,61 @@
 ## Capability registry
 
 - Registered capabilities: 26. Owned dated integration-debt entries: 55.
-- `integrity-guards/unnamed` — owner `david`, expires `2026-12-31`
-- `integrity-guards/unnamed` — owner `david`, expires `2026-11-15`
-- `integrity-guards/unnamed` — owner `david`, expires `2026-10-15`
-- `test-lock/claude-test-lock-refresh` — owner `david`, expires `2026-09-30`
-- `test-lock/codex-guard-family-parity` — owner `david`, expires `2026-09-30`
-- `test-lock/shell-classifier-adapter-boundary` — owner `david`, expires `2026-09-30`
-- `test-lock/codex-command-agent-discovery` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-12-31`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-30`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
-- `calibration-loop/unnamed` — owner `david`, expires `2026-09-15`
-- `scoreboard-integrity/unnamed` — owner `david`, expires `2026-12-31`
-- `scoreboard-integrity/unnamed` — owner `david`, expires `2026-11-15`
-- `gate-yield/unnamed` — owner `david`, expires `2026-12-31`
-- `gate-yield/unnamed` — owner `david`, expires `2026-11-15`
-- `gate-yield/unnamed` — owner `david`, expires `2026-11-15`
-- `civerd-release-gate/unnamed` — owner `david`, expires `2027-02-01`
-- `deliberation-capture/unnamed` — owner `david`, expires `2026-08-31`
-- `deliberation-capture/unnamed` — owner `david`, expires `2026-10-31`
-- `dataflow-sweeps/unnamed` — owner `david`, expires `2026-09-15`
-- `dataflow-sweeps/unnamed` — owner `david`, expires `2026-09-15`
-- `dataflow-sweeps/unnamed` — owner `david`, expires `2026-09-15`
-- `dataflow-sweeps/unnamed` — owner `david`, expires `2026-09-30`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-05`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-09-15`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-31`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-15`
-- `gate-surface-ledger/unnamed` — owner `david`, expires `2026-10-31`
-- `plant-forms/unnamed` — owner `david`, expires `2026-10-15`
-- `plant-vitality/unnamed` — owner `david`, expires `2026-11-01`
-- `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
-- `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
-- `release-tag-authority/unnamed` — owner `david`, expires `2026-10-15`
-- `release-tag-authority/unnamed` — owner `david`, expires `2026-09-30`
-- `independent-gate-rerun/unnamed` — owner `david`, expires `2026-11-15`
-- `state-reset/unnamed` — owner `david`, expires `2026-10-31`
-- `vendor-uninstall/unnamed` — owner `david`, expires `2026-10-31`
-- `advisory-guards-optin/unnamed` — owner `david`, expires `2026-11-15`
-- `generated-agents-md/unnamed` — owner `david`, expires `2026-11-30`
+- `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
+- `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
+- `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
+- `test-lock/claude-test-lock-refresh` — RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep… (owner `david`, expires `2026-09-30`)
+- `test-lock/codex-guard-family-parity` — CODEX GUARD-FAMILY PARITY… (owner `david`, expires `2026-09-30`)
+- `test-lock/shell-classifier-adapter-boundary` — SHELL CLASSIFIER ADAPTER BOUNDARY… (owner `david`, expires `2026-09-30`)
+- `test-lock/codex-command-agent-discovery` — CODEX COMMAND/AGENT DISCOVERY… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
+- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — APPLY_EDITS CREATE capability (v1.24 §6c D15 — promoted from the corpus README's 'possible future enhancement' to owned… (owner `david`, expires `2026-09-15`)
+- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE)… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE)… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE)… (owner `david`, expires `2026-09-30`)
+- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-15`)
+- `calibration-loop` — MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F — the one substantive ite… (owner `david`, expires `2026-09-15`)
+- `calibration-loop` — ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point)… (owner `david`, expires `2026-09-15`)
+- `scoreboard-integrity` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
+- `scoreboard-integrity` — SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 — DEFERRED, stated not dropped)… (owner `david`, expires `2026-11-15`)
+- `gate-yield` — PAID 2026-08-09 — VERIFIED, not assumed… (owner `david`, expires `2026-12-31`)
+- `gate-yield` — PER-GATE ADJUDICATION SEAM (v1.27, found by integration-adversary)… (owner `david`, expires `2026-11-15`)
+- `gate-yield` — DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden)… (owner `david`, expires `2026-11-15`)
+- `civerd-release-gate` — ARCHIVAL-ONLY, NO CONSUMER (v1.32.0)… (owner `david`, expires `2027-02-01`)
+- `deliberation-capture` — ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30)… (owner `david`, expires `2026-08-31`)
+- `deliberation-capture` — CONSUMER… (owner `david`, expires `2026-10-31`)
+- `dataflow-sweeps` — TIER-2 FIELD-PAIRING SWEEP (v1.26 F3 deferral, David's call 2026-08-05)… (owner `david`, expires `2026-09-15`)
+- `dataflow-sweeps` — CHELIPED TIER-2 PILOT VERDICT… (owner `david`, expires `2026-09-15`)
+- `dataflow-sweeps` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-15`)
+- `dataflow-sweeps` — ARM THE TWO DARK SWEEPS (H15, v1.30)… (owner `david`, expires `2026-09-30`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
+- `gate-surface-ledger` — PRE-COMMIT GATE BLIND SPOT (found live 2026-08-05)… (owner `david`, expires `2026-09-15`)
+- `gate-surface-ledger` — SELF-REFERENTIAL DENOMINATORS (H15, v1.30)… (owner `david`, expires `2026-10-31`)
+- `gate-surface-ledger` — WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0)… (owner `david`, expires `2026-10-15`)
+- `gate-surface-ledger` — DOCTRINE SHRINK NOT DONE (v1.32.0)… (owner `david`, expires `2026-10-31`)
+- `plant-forms` — FIRST HOLDOUT ASSIGNMENT (v1.29, David's ships-on-or-triggered rule)… (owner `david`, expires `2026-10-15`)
+- `plant-vitality` — SATURATION K IS PROVISIONAL (v1.29)… (owner `david`, expires `2026-11-01`)
+- `release-tag-authority` — SERVER-SIDE TAG PROTECTION NOT ARMED… (owner `david`, expires `2026-09-30`)
+- `release-tag-authority` — NO SIGNING KEY CONFIGURED… (owner `david`, expires `2026-09-30`)
+- `release-tag-authority` — TAG-CADENCE COUPLING IS NOW MANUAL (v1.32.0)… (owner `david`, expires `2026-10-15`)
+- `release-tag-authority` — CODEX SURFACE DIVERGENCE (stated, not discovered)… (owner `david`, expires `2026-09-30`)
+- `independent-gate-rerun` — PAID 2026-08-09 — first green run observed on the real runner… (owner `david`, expires `2026-11-15`)
+- `state-reset` — --shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0)… (owner `david`, expires `2026-10-31`)
+- `vendor-uninstall` — INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0)… (owner `david`, expires `2026-10-31`)
+- `advisory-guards-optin` — RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0)… (owner `david`, expires `2026-11-15`)
+- `generated-agents-md` — HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0)… (owner `david`, expires `2026-11-30`)
 
 ## Adversarial review records
 

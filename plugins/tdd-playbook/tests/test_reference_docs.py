@@ -74,6 +74,67 @@ def test_stale_or_manually_edited_output_is_refused():
         check("PLANTED manual generated-doc edit is refused", rr.check(tmp))
 
 
+def test_debt_lines_carry_the_required_what_not_a_fabricated_name():
+    """H1 (v1.33.1): the renderer keyed debt lines on the OPTIONAL `id` field (present on
+    4 of 55 entries) and printed `unnamed` for the rest — a label fabricated from a field
+    no validator owns, while the REQUIRED `what` (_debt.py DEBT_FIELDS) went unrendered.
+    The reader of current-state.md is the one person who cannot fall back to source, so
+    51 anonymous debt rows were 51 facts the instrument held and refused to say.
+
+    Contract pinned here:
+      - a debt WITHOUT `id` renders its `what` first clause — never `unnamed`;
+      - a debt WITH `id` keeps the `cap/id` join key (host-parity-policy.json cites three
+        of those keys by value) AND gains the `what` clause — fixing the label must not
+        discard the reference;
+      - shortening is VISIBLE (an ellipsis), never silent (§12).
+    """
+    rr = load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        for rel in rr.provenance_inputs(REPO):
+            src = os.path.join(REPO, rel)
+            dst = os.path.join(tmp, rel)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+        reg_path = os.path.join(tmp, "capabilities.json")
+        with open(reg_path, encoding="utf-8") as fh:
+            registry = json.load(fh)
+        # PLANT: one capability, two debts — one id-less (the 51-row shape), one carrying
+        # an id (the join-key shape host-parity-policy.json depends on).
+        registry["capabilities"].append({
+            "id": "h1-planted-cap",
+            "summary": "planted for the H1 debt-naming contract",
+            "user_facing": False,
+            "surfaces": ["local"],
+            "activation": {"default": "on"},
+            "wired_by": ["plugins/tdd-playbook/tests/test_reference_docs.py"],
+            "exercised_by": ["plugins/tdd-playbook/tests/test_reference_docs.py"],
+            "integration_debt": [
+                {"what": "H1PLANT NO-ID CLAUSE: the tail past the first clause boundary "
+                         "must not render",
+                 "owner": "david", "expires": "2099-01-01"},
+                {"id": "h1-planted-key",
+                 "what": "H1PLANT KEYED CLAUSE: id and what must both survive",
+                 "owner": "david", "expires": "2099-01-01"},
+            ],
+        })
+        with open(reg_path, "w", encoding="utf-8") as fh:
+            json.dump(registry, fh)
+        rendered = rr.render(tmp)
+        planted = [l for l in rendered.splitlines() if "h1-planted-cap" in l]
+        check("planted id-less debt renders its `what` clause, not `unnamed`",
+              any("H1PLANT NO-ID CLAUSE" in l and "unnamed" not in l for l in planted),
+              planted)
+        check("planted id-less clause cut is visible (ellipsis), tail not rendered",
+              any("H1PLANT NO-ID CLAUSE…" in l for l in planted)
+              and not any("must not render" in l for l in planted), planted)
+        # CONTROL: the keyed debt keeps its cross-file join key AND gains the clause.
+        check("planted keyed debt keeps the `cap/id` join key and gains the clause",
+              any("`h1-planted-cap/h1-planted-key`" in l
+                  and "H1PLANT KEYED CLAUSE" in l for l in planted), planted)
+        check("no debt line anywhere fabricates `unnamed`", "unnamed" not in rendered,
+              [l for l in rendered.splitlines() if "unnamed" in l][:3])
+
+
 def test_review_summary_is_generated_from_consumed_records():
     rr = load_module()
     rendered = rr.render(REPO)
@@ -133,6 +194,7 @@ if __name__ == "__main__":
     test_agents_md_is_generated_and_current()
     test_provenance_hashes_cover_authorities()
     test_stale_or_manually_edited_output_is_refused()
+    test_debt_lines_carry_the_required_what_not_a_fabricated_name()
     test_review_summary_is_generated_from_consumed_records()
     print("\nResult: {}/{} passed".format(PASSED, TOTAL))
     raise SystemExit(0 if PASSED == TOTAL else 1)

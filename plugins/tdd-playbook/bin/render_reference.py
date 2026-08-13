@@ -39,6 +39,22 @@ def provenance_inputs(root: str) -> tuple[str, ...]:
     return PROVENANCE_INPUTS + tuple(reviews)
 
 
+def _debt_key(cap_id: str, debt: dict) -> str:
+    """`cap/id` when the optional id exists (a cross-file join key), bare `cap` when not."""
+    return "{}/{}".format(cap_id, debt["id"]) if debt.get("id") else cap_id
+
+
+def _first_clause(text: str, limit: int = 120) -> str:
+    """First clause of a debt's `what`, shortening VISIBLY (§12 — never silent)."""
+    cuts = [i for sep in (". ", ": ", "; ") for i in (text.find(sep),) if 0 < i < limit]
+    if cuts:
+        clause = text[:min(cuts)]
+        return clause + ("…" if clause != text else "")
+    if len(text) > limit:
+        return text[:limit].rstrip() + "…"
+    return text
+
+
 def _load(root: str, relative: str):
     with open(os.path.join(root, relative), encoding="utf-8") as fh:
         return json.load(fh)
@@ -61,7 +77,12 @@ def render(root: str) -> str:
             for host, row in hosts.items():
                 dispositions[host][row["status"]] += 1
     capabilities = registry.get("capabilities") or []
-    debts = [(cap["id"], debt.get("id", "unnamed"), debt["owner"], debt["expires"])
+    # H1 (v1.33.1): the label comes from the REQUIRED `what` (_debt.py DEBT_FIELDS), never
+    # from the optional `id` — keying on `id` fabricated `unnamed` for 51 of 55 entries.
+    # When an `id` exists the `cap/id` join key is KEPT: host-parity-policy.json cites
+    # three of those keys by value, so fixing the label must not discard the reference.
+    debts = [(_debt_key(cap["id"], debt), _first_clause(debt["what"]),
+              debt["owner"], debt["expires"])
              for cap in capabilities for debt in (cap.get("integration_debt") or [])]
     reviews = [_load(root, path) for path in provenance_inputs(root)
                if path.startswith("docs/reviews/") and not path.endswith("/index.json")]
@@ -106,7 +127,7 @@ def render(root: str) -> str:
         "- Registered capabilities: {}. Owned dated integration-debt entries: {}.".format(
             len(capabilities), len(debts)),
     ])
-    lines.extend("- `{}/{}` — owner `{}`, expires `{}`".format(*row) for row in debts)
+    lines.extend("- `{}` — {} (owner `{}`, expires `{}`)".format(*row) for row in debts)
     lines.extend([
         "",
         "## Adversarial review records",
