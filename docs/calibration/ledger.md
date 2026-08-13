@@ -554,3 +554,15 @@ state for both surfaces (the briefs and the corpus pair existed there in their o
 form, so the anti-backfill clause still holds). Fixing one instance of a class and not
 sweeping for its siblings is the same failure as a narrowed check reporting a true fact
 about the wrong scope.
+
+### Registered 2026-08-13 — baseline 2a95101 (/readable narration: the business-owner test)
+
+The surface's FIRST real read failed its only reader: the facts were fine, the narration
+was repo idiom ("declared unarmed sweeps", "no liveness probe"), and David had to ask for
+plain English again — the escape the feature exists to prevent, recorded as the first
+finding of its own experiment. The command's step 2 gains the mechanical wording of the
+rule so any session fails the same way visibly instead of by taste.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260813-08 | 2026-08-13 | 2a95101 | plugins/tdd-playbook/commands/readable.md | step 2 gains the business-owner test (plain-language rule made mechanical wording, with examples) | — | none | 0 | command prose; narration quality is deliberately not scenario-measured (reading 2, rejected) — the rule's teeth are the reader |
