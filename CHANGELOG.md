@@ -3,6 +3,48 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.35.0 — 2026-08-13
+
+**The surface learns to speak; the doctrine absorbs the cheliped lessons.** Everything here
+came from the first day of really using v1.34.0.
+
+**/readable gained its two narration rules, both from live failures on day one.** The first
+render passed every mechanical check and failed its only reader twice: once on jargon
+(repo idiom where plain language was the whole point) and once on alarm-without-sizing
+("13 possibly dead things" whose disposition dissolved every worry). The command now
+carries THE BUSINESS-OWNER TEST (if a sentence wouldn't make sense to a smart business
+owner who can't read code, rewrite it) and SIZE EVERY WORRY (every count carries its
+disposition in the same breath; "off" is never bare; the render ends with the one thing
+worth doing). Both pinned by tests; both recorded as the experiment's first findings —
+which is exactly the usage evidence the 2026-09-30 keep/kill call reads.
+
+**The dark inventory got actioned, not admired.** Its 13 first findings dispositioned per
+the anti-dark rule: 7 "emits not stated" paperwork gaps filled (every capability now names
+what it produces and who reads it — not-stated went to 0); the 6 alive-looking-but-
+unwatched entries each carry a dated liveness-probe-missing debt (owner david, 2026-10-31,
+trigger proven via --as-of). Quiet death now has an owner and a deadline instead of a hope.
+
+**A direction-blind check fixed by its own first false positive:** the standing-demotion
+scan flagged ANY guard env var — presence, a proxy — and REDded the gate when exitcode
+(shipped default: off) was promoted to warn on measured evidence (43 suppressed findings
+in one cycle, ≥3 real). It now compares against the shipped default: weaker-than-shipped
+is a demotion; at-or-above is the opt-in the v1.32.0 retirement invited. Three plants
+frozen, including the motivating promotion NOT firing.
+
+**The cheliped handoff adjudicated: 7 doctrine additions, 2 proposals rejected as
+already-landed.** seam-contract IS v1.26 and guard-calibration IS v1.25 — landing them
+would have written eight rules twice. A fresh-context claims-verifier checked all 13
+coverage claims over the full SKILL (22/22 citations mechanical): 11 confirmed, 2 refuted,
+and both refutations SHRANK the additions. Landed: §9 deny-table-first (a boundary is
+specified by its deny table, probed against the real enforcer; deny-lists banned at
+boundaries; a strengthened-boundary false-red routes through the journaled test-wrong
+class — the verifier caught that as-drafted it brushed never-weaken); §1 victim sweep (a
+new refusal sweeps callers AND fixtures before the first test run; sweep for the consumer
+shape, not the attribute — fail-closed guards fire on absence; a reseam also sweeps
+fixture STATE); §2 check-vs-use divergence; §4a refusing-gates-print-their-diagnosis;
+§4 by-text-exemption standing audit; §10 checkpoint-run-out-of-place; §12 absence-claims-
+parse-the-code.
+
 ## 1.34.0 — 2026-08-12
 
 **The Readable Surface: the first output that is a description, not a verdict.** Origin:
