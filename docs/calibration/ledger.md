@@ -566,3 +566,15 @@ rule so any session fails the same way visibly instead of by taste.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260813-08 | 2026-08-13 | 2a95101 | plugins/tdd-playbook/commands/readable.md | step 2 gains the business-owner test (plain-language rule made mechanical wording, with examples) | — | none | 0 | command prose; narration quality is deliberately not scenario-measured (reading 2, rejected) — the rule's teeth are the reader |
+
+### Registered 2026-08-13 — baseline f72c5fc (/readable narration rule 2: size every worry)
+
+Second narration failure of the surface's first day, distinct from the first: the render
+was alarming without being sized — "13 possibly dead things", "7 off" — and the owner's
+follow-up questions ("why aren't they on? are we violating anti-dark?") were all answered
+by context the narration ALREADY HAD and did not say. Worry without disposition is not
+readable; the reader must never leave more alarmed than the facts warrant.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260813-09 | 2026-08-13 | f72c5fc | plugins/tdd-playbook/commands/readable.md | step 2 gains SIZE EVERY WORRY: every count carries its disposition in the same breath; "off" is never bare (which KIND of off); the page ends with the one thing worth doing or "nothing to do" | — | none | 0 | command prose; narration quality is deliberately not scenario-measured — the rule's teeth are the reader |
