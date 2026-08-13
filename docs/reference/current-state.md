@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
 - `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `79b31af757d184b18991ab69ea13adbdebf6a67195ef6a9d667659105ef4374f`
+- `capabilities.json` — `b66bd5b932ee61dd4c4127a1b42d22e74efa9112b6fe6fdc381cd5644a1ebfcd`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -44,7 +44,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 29. Owned dated integration-debt entries: 63.
+- Registered capabilities: 29. Owned dated integration-debt entries: 69.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -98,11 +98,17 @@
 - `release-tag-authority` — NO SIGNING KEY CONFIGURED… (owner `david`, expires `2026-09-30`)
 - `release-tag-authority` — TAG-CADENCE COUPLING IS NOW MANUAL (v1.32.0)… (owner `david`, expires `2026-10-15`)
 - `release-tag-authority` — CODEX SURFACE DIVERGENCE (stated, not discovered)… (owner `david`, expires `2026-09-30`)
+- `release-tag-authority/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `independent-gate-rerun` — PAID 2026-08-09 — first green run observed on the real runner… (owner `david`, expires `2026-11-15`)
+- `independent-gate-rerun/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `state-reset` — --shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0)… (owner `david`, expires `2026-10-31`)
+- `state-reset/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `vendor-uninstall` — INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0)… (owner `david`, expires `2026-10-31`)
+- `vendor-uninstall/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `advisory-guards-optin` — RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0)… (owner `david`, expires `2026-11-15`)
+- `advisory-guards-optin/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `generated-agents-md` — HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0)… (owner `david`, expires `2026-11-30`)
+- `generated-agents-md/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `role-adversaries/observability-haiku-flakiness` — PAID 2026-08-13 on evidence, then RE-SCOPED… (owner `david`, expires `2026-09-30`)
 - `role-adversaries/role-adversaries-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
 - `scenario-inventory/scenario-inventory-not-vendored` — THIS REPO ONLY, BY DECISION (dissolves the parity exception both reviewers flagged)… (owner `david`, expires `2026-11-30`)

@@ -1095,8 +1095,33 @@ def test_yield_logging():
         check("suppressed: clean pass under off-mode logs nothing",
               rc == 0 and len(rows) == 1, (rc, rows))
 
-    # PLANTED (hole 2): this repo's committed settings must carry no standing demotions —
-    # an env-block demotion is the persistent, invisible variant of the kill switch
+    # PLANTED (hole 2): this repo's settings must carry no standing DEMOTIONS — an
+    # env-block demotion is the persistent, invisible variant of the kill switch.
+    # 2026-08-13, found by its own first false positive: the check used to flag ANY
+    # TDD_PLAYBOOK_HOOK_* env var — the variable's PRESENCE, a proxy — and so REDded the
+    # gate when exitcode (shipped default: off) was promoted to warn on measured evidence
+    # (43 suppressed findings in one cycle, >=3 real). Direction is the fact: an override
+    # WEAKER than the shipped default is a demotion; an override at or above it is an
+    # opt-in, which is exactly what the v1.32.0 retirement invited.
+    import importlib.util as _il2
+    _sp2 = _il2.spec_from_file_location("_common", os.path.join(HOOKS, "_common.py"))
+    _cm2 = _il2.module_from_spec(_sp2)
+    _sp2.loader.exec_module(_cm2)
+    _strength = {"off": 0, "warn": 1, "block": 2}
+
+    def _standing_demotions(envblock):
+        out = []
+        for k, v in envblock.items():
+            if not k.startswith("TDD_PLAYBOOK_HOOK_"):
+                continue
+            gate = k[len("TDD_PLAYBOOK_HOOK_"):].lower()
+            shipped = _cm2._DEFAULT_MODES.get(gate)
+            if shipped is None:
+                out.append("{}={} (names no shipped guard)".format(k, v))
+            elif _strength.get(str(v), -1) < _strength.get(shipped, 0):
+                out.append("{}={} (shipped default: {})".format(k, v, shipped))
+        return out
+
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HOOKS))))
     demotions = []
     for rel in (".claude/settings.json", ".claude/settings.local.json"):
@@ -1106,10 +1131,18 @@ def test_yield_logging():
                 envblock = json.load(open(sp)).get("env", {}) or {}
             except ValueError:
                 envblock = {}
-            demotions += ["{}: {}={}".format(rel, k, v) for k, v in envblock.items()
-                          if k.startswith("TDD_PLAYBOOK_HOOK")]
-    check("no standing guard demotions in committed settings env blocks",
+            demotions += ["{}: {}".format(rel, d) for d in _standing_demotions(envblock)]
+    check("no standing guard DEMOTIONS in settings env blocks (direction-aware)",
           demotions == [], demotions)
+    # PLANTED both directions — the check must fail on a real demotion and stay quiet on
+    # a promotion (the motivating false positive, frozen):
+    check("planted: block->warn demotion IS flagged",
+          _standing_demotions({"TDD_PLAYBOOK_HOOK_TESTWEAKEN": "warn"}) != [])
+    check("planted: default-off guard promoted to warn is NOT flagged (the 2026-08-13 "
+          "false positive)",
+          _standing_demotions({"TDD_PLAYBOOK_HOOK_EXITCODE": "warn"}) == [])
+    check("planted: unknown guard name IS flagged (fail closed)",
+          _standing_demotions({"TDD_PLAYBOOK_HOOK_NOTAGUARD": "off"}) != [])
 
 
 # ---------------------------------------------------------------- guards heartbeat (H8)

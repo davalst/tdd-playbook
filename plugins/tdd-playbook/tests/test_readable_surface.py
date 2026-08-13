@@ -254,6 +254,14 @@ def test_readable_command_and_discoverability():
           and "subagent" not in text.lower(), "dispatch instruction found")
     check("/readable: paste-the-summary rule (self-reported N/N is narration)",
           "summary line" in text.lower())
+    # 2026-08-13: the surface's first real read failed its only reader — facts fine,
+    # narration in repo idiom. The command now carries the rule mechanically; this pin
+    # keeps it there (removing it is a gate-surface change the ledger would price anyway,
+    # but a pin fails FAST and names the reason).
+    check("/readable: carries THE BUSINESS-OWNER TEST with its examples",
+          "BUSINESS-OWNER TEST" in text
+          and "nothing" in text and "will tell you if this breaks" in text
+          and "readability is the deliverable" in text.lower())
     # README discoverability, SCOPED to the roster/routing lines — a substring anywhere
     # is the proxy trap (`/tdd-unlock` matches outside the roster today)
     readme = open(os.path.join(REPO, "README.md")).read()
@@ -353,18 +361,30 @@ def test_suite_left_committed_records_untouched():
 
 def main():
     print("readable_surface calibration")
-    if not os.path.isfile(RS):
-        check("bin/readable_surface.py exists", False, "missing")
-    if not os.path.isfile(INVENTORY):
-        check("docs/adversary-scenario-inventory.md exists", False, "missing")
-    if os.path.isfile(RS) and os.path.isfile(INVENTORY):
-        for fn in (test_inventory_contract, test_facts_tool,
-                   test_readable_command_and_discoverability,
-                   test_plant_control_pairs_differ_only_in_the_planted_defect):
-            try:
-                fn()
-            except Exception as exc:
-                check(fn.__name__ + " executes", False, repr(exc))
+    check("bin/readable_surface.py exists", os.path.isfile(RS), "missing")
+    check("docs/adversary-scenario-inventory.md exists", os.path.isfile(INVENTORY),
+          "missing")
+    # Dispatches sit at main's TOP LEVEL (inside try only): the review-ledger
+    # closure-evidence resolver recurses into Try and tuple-For, but not into an If whose
+    # test it cannot evaluate — a call under `if os.path.isfile(...)` is invisible to it.
+    # Missing files fail the two checks above AND surface as "executes" FAILs below.
+    try:
+        test_inventory_contract()
+    except Exception as exc:
+        check("test_inventory_contract executes", False, repr(exc))
+    try:
+        test_facts_tool()
+    except Exception as exc:
+        check("test_facts_tool executes", False, repr(exc))
+    try:
+        test_readable_command_and_discoverability()
+    except Exception as exc:
+        check("test_readable_command_and_discoverability executes", False, repr(exc))
+    try:
+        test_plant_control_pairs_differ_only_in_the_planted_defect()
+    except Exception as exc:
+        check("test_plant_control_pairs_differ_only_in_the_planted_defect executes",
+              False, repr(exc))
     test_suite_left_committed_records_untouched()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     assert not _results["fail"], "readable_surface calibration failed"

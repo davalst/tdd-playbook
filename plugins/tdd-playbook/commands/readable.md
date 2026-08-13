@@ -25,6 +25,17 @@ code's nouns. Every sentence that carries a claim must cite a fact the tool prin
 (`file:line`). A scenario whose Facts column is `—` gets the honest answer the tool
 prints: no mechanical facts — name the Route agent as the next step, and stop there.
 
+**THE BUSINESS-OWNER TEST, applied sentence by sentence before presenting** (added after
+the surface's first real read failed its only reader — the facts were fine, the narration
+was repo idiom, and the reader had to ask for plain English again): if a sentence would
+not make sense to a smart business owner who cannot read code, rewrite it. Say "nothing
+will tell you if this breaks", never "no liveness probe". Say "a rule that's written down
+but switched off", never "declared unarmed". Say "things you run by hand", never
+"opt-in CLI surfaces". Citations go at the END of a section or stay in the mechanical
+output — never mid-sentence, where they break the reading. Shorter is plainer: cut before
+explaining. Repo idiom in the narration is a FAILURE of this command even when every fact
+is correct — readability is the deliverable, not polish on it.
+
 **3. MECHANICAL GATE on your own narration (the workflow, because Markdown cannot refuse):**
 run the citation check over what you are about to present, BEFORE presenting it:
 

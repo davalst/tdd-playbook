@@ -134,6 +134,16 @@
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_verify_citations.py"
+      ],
+      "emits": [
+        {
+          "topic": "Citations: N summary line + exit code",
+          "consumers": [
+            "commands/claims.md (pastes the summary)",
+            "commands/readable.md (N>=1 floor on narration)",
+            "commands/integration-audit.md (findings demoted on failure)"
+          ]
+        }
       ]
     },
     {
@@ -162,6 +172,19 @@
           "owner": "david",
           "expires": "2026-11-30"
         }
+      ],
+      "emits": [
+        {
+          "topic": "validate violations + doctor dark-inventory report",
+          "consumers": [
+            "gate_runner (test_capability_registry suite REDs the blessed gate on violations)",
+            {
+              "ref": "human",
+              "kind": "human"
+            },
+            "commands/integration-audit.md + agents/integration-adversary.md (both run doctor every dispatch)"
+          ]
+        }
       ]
     },
     {
@@ -180,6 +203,18 @@
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_grade_from_otel.py"
+      ],
+      "emits": [
+        {
+          "topic": "grade card block (files read, greps run, tokens, tests-vs-source) from an OTel export",
+          "consumers": [
+            "commands/grade.md (pastes the block; absent export = narration-grade label)",
+            {
+              "ref": "human",
+              "kind": "human"
+            }
+          ]
+        }
       ]
     },
     {
@@ -311,6 +346,15 @@
           "owner": "david",
           "expires": "2026-11-15"
         }
+      ],
+      "emits": [
+        {
+          "topic": "CLEAN/RED verdict vs a named baseline rev",
+          "consumers": [
+            "calibration/test_harness.py (runs it against the latest tag every suite run)",
+            "CLAUDE.md release flow (explicit pre-bump step)"
+          ]
+        }
       ]
     },
     {
@@ -387,6 +431,14 @@
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_hooks.py"
+      ],
+      "emits": [
+        {
+          "topic": "UserPromptSubmit additionalContext reminder",
+          "consumers": [
+            "the live session's context (hookSpecificOutput.additionalContext \u2014 read by the model each prompt)"
+          ]
+        }
       ]
     },
     {
@@ -407,6 +459,18 @@
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_installer.py",
         "plugins/tdd-playbook/tests/test_vendoring.py::test_doctor_detects_the_shallow_clone_and_carries_a_fix"
+      ],
+      "emits": [
+        {
+          "topic": "doctor report (version skew, H8 guards-dark, vendored-copy sync)",
+          "consumers": [
+            {
+              "ref": "human",
+              "kind": "human"
+            },
+            "CLAUDE.md release flow (install_into_repo.py --doctor . is a named release step)"
+          ]
+        }
       ]
     },
     {
@@ -434,7 +498,18 @@
           "expires": "2027-02-01"
         }
       ],
-      "notes": "RETIRED 2026-08-09 (v1.32.0) \u2014 ALSO records the sibling deletions made with the engine, because a capability removed whole leaves its WHY nowhere the doctor prints: plan-authoring (bin/plan_block.py + suite + corpus fixture) existed only to emit a civerd-plan block for the engine's plan-predicate evaluator and was recorded as never armed \u2014 plans landed INERT; civerd-integrity.yml (the repo-side plant-target handoff) had no other reader. Producer and consumer deleted together. | RETIRED 2026-08-09 (v1.32.0, owner-control plan rev 3). release_verify.py and its suite deleted; deploy_surface removed with the VPS. Retained historical record: | PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded \u2014 CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay \u2014 the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day \u2014 a paid loan, not a silent deletion."
+      "notes": "RETIRED 2026-08-09 (v1.32.0) \u2014 ALSO records the sibling deletions made with the engine, because a capability removed whole leaves its WHY nowhere the doctor prints: plan-authoring (bin/plan_block.py + suite + corpus fixture) existed only to emit a civerd-plan block for the engine's plan-predicate evaluator and was recorded as never armed \u2014 plans landed INERT; civerd-integrity.yml (the repo-side plant-target handoff) had no other reader. Producer and consumer deleted together. | RETIRED 2026-08-09 (v1.32.0, owner-control plan rev 3). release_verify.py and its suite deleted; deploy_surface removed with the VPS. Retained historical record: | PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded \u2014 CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay \u2014 the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day \u2014 a paid loan, not a silent deletion.",
+      "emits": [
+        {
+          "topic": "verdict read-back of archived signed CIVerd bundles",
+          "consumers": [
+            {
+              "ref": "human",
+              "kind": "human"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "deliberation-capture",
@@ -957,6 +1032,12 @@
           "what": "CODEX SURFACE DIVERGENCE (stated, not discovered): tag_guard.py is BLOCKING on the Claude host but `unavailable` on Codex - host-parity-policy.json's codex guards default, debt_ref test-lock/codex-guard-family-parity. Only test_lock_guard has a Codex adapter today. So on Codex the SESSION half of release-tag authority is absent and only the tracked-script scanner applies. By expiry: a Codex adapter for tag_guard, or an explicit decision that Codex sessions do not cut releases in this repo.",
           "owner": "david",
           "expires": "2026-09-30"
+        },
+        {
+          "id": "liveness-probe-missing",
+          "what": "NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13): this claims liveness (max_quiet_days) but names no probe, so death is silent \u2014 the tag-blocking hook could silently stop loading (plugin disabled, hooks unloaded) and nothing says so until someone tags. Done = a real probe named in liveness.probe (the cheapest thing that would actually notice death), or a recorded decision that gate-run frequency IS the probe for this entry and why that is sufficient",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ],
       "notes": "Born 2026-08-09 with the retirement of the CIVerd release gate (v1.32.0). The pairing is deliberate: the wall's deletion is only safe while no automated tag path can be reintroduced quietly, so the scanner ships in the SAME commit as the deletion."
@@ -995,6 +1076,12 @@
           "what": "PAID 2026-08-09 \u2014 first green run observed on the real runner: GitHub Actions run 31315865230, `gate` job on main, conclusion=success in 1m21s, on the sha of the Phase 2 review commit. That answers every leg the debt asked about: the ubuntu-24.04 image and python-3.12 work, and fetch-depth:0 + fetch-tags did make the ledger stage MEASURED rather than UNMEASURED \u2014 the shallow-clone failure this repo already knew about did not occur. Committed != running, and this is the running evidence. | ORIGINAL: UNPROVEN ON THE REAL RUNNER (born 2026-08-09). The workflow is YAML-validated and the gate it runs is green locally, but it has never executed on GitHub: the runner image, the Python version, and above all whether fetch-depth:0 + fetch-tags actually makes the ledger stage MEASURED rather than UNMEASURED are unverified. A shallow clone is the documented default-CI failure this repo already knows about. SUCCESSOR ASK: the run above proves it CAN go green; it does not prove anyone READS it. By expiry: at least one release cut following CLAUDE.md::Releasing step 4 (push -> wait for the check -> tag), or the step is dropped as ceremony nobody performs \u2014 the guard_response 0-of-7 shape applied to this capability.",
           "owner": "david",
           "expires": "2026-11-15"
+        },
+        {
+          "id": "liveness-probe-missing",
+          "what": "NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13): this claims liveness (max_quiet_days) but names no probe, so death is silent \u2014 Actions could be disabled or the workflow broken; release step 4 treats a MISSING check as stop, but nothing watches between releases. Done = a real probe named in liveness.probe (the cheapest thing that would actually notice death), or a recorded decision that gate-run frequency IS the probe for this entry and why that is sufficient",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ],
       "notes": "Born 2026-08-09 with the CIVerd retirement (v1.32.0). Registered so that deleting the repo's only independent re-execution is a visible, gate-failing act rather than a quiet one.",
@@ -1034,6 +1121,12 @@
           "what": "--shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0). Removing common-dir state from one worktree is an unlock of every OTHER worktree without a journal entry \u2014 the exact thing /tdd-unlock exists to prevent. PARTIALLY PAID 2026-08-09: the reason is now journaled to the capture store (.reset-journal.jsonl), which reset never removes. STILL UNPAID, and the debt previously OVERSTATED its mitigation: reset_plan has NO lock logic, so a foreign active lock is NOT refused and the listing emits a worktree COUNT, not names. A debt whose stated mitigation is fictional under-reports its own severity, which is why this correction is written down rather than quietly fixed. By expiry: the burn record written somewhere reset never removes, or --shared restricted to single-worktree repos.",
           "owner": "david",
           "expires": "2026-10-31"
+        },
+        {
+          "id": "liveness-probe-missing",
+          "what": "NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13): this claims liveness (max_quiet_days) but names no probe, so death is silent \u2014 a reset that silently stopped deleting what it lists would leave ghost state while reporting clean. Done = a real probe named in liveness.probe (the cheapest thing that would actually notice death), or a recorded decision that gate-run frequency IS the probe for this entry and why that is sufficient",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ],
       "notes": "Born 2026-08-09 (owner-control Phase 4). The worktree refusal is the load-bearing safety property: this repo carries five linked worktrees under .claude/worktrees/, one locked and several on unpushed branches."
@@ -1065,6 +1158,12 @@
       "integration_debt": [
         {
           "what": "INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0). install pops extraKnownMarketplaces and enabledPlugins from settings.json and records them NOWHERE, so no uninstall can restore them; and .claude/.gitignore lines cannot be told apart from lines the user already had. Both are REPORTED as note rows rather than silently ignored. The proper fix is a deterministic install manifest (.claude/.tdd-playbook-manifest.json with file hashes and displaced values, and NO installed_at, so the byte-identical round-trip test still holds). By expiry: the manifest, or a conscious decision that the two losses are acceptable.",
+          "owner": "david",
+          "expires": "2026-10-31"
+        },
+        {
+          "id": "liveness-probe-missing",
+          "what": "NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13): this claims liveness (max_quiet_days) but names no probe, so death is silent \u2014 an uninstall that drifts from the installer's roster leaves orphans it can no longer see. Done = a real probe named in liveness.probe (the cheapest thing that would actually notice death), or a recorded decision that gate-run frequency IS the probe for this entry and why that is sufficient",
           "owner": "david",
           "expires": "2026-10-31"
         }
@@ -1100,6 +1199,12 @@
           "what": "RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0). These five were retired on 31 warnings / 0 blocks over six cycles from mostly ONE operator \u2014 and a warn-tier guard cannot produce blocks BY CONSTRUCTION, so 'never blocked' is partly a statement about the tier, not the guard. By expiry: read docs/calibration/gate_yield.md again and either confirm the retirement, restore one that turns out to have carried load, or delete the five outright. The one outcome not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one.",
           "owner": "david",
           "expires": "2026-11-15"
+        },
+        {
+          "id": "liveness-probe-missing",
+          "what": "NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13): this claims liveness (max_quiet_days) but names no probe, so death is silent \u2014 an opted-in guard that stops firing looks identical to a quiet one; the yield record only shows rows when something fires. Done = a real probe named in liveness.probe (the cheapest thing that would actually notice death), or a recorded decision that gate-run frequency IS the probe for this entry and why that is sufficient",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ],
       "notes": "Split out of integrity-guards on 2026-08-09 after a tripwire audit REDded the ACTIVATED leg: the combined capability declared default:on while five of nine hooks shipped off, so the dark inventory could not see them."
@@ -1141,6 +1246,12 @@
           "what": "HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0). The doctrine body cannot drift \u2014 it is CLAUDE.md verbatim \u2014 but the curated host-differences header can: nothing checks that its claims about Codex are still true. It currently asserts that only test_lock_guard has a Codex adapter, which is true today and is exactly the sort of fact that changes without anyone re-reading a header. By expiry: derive the guard list from docs/architecture/host-parity-policy.json instead of restating it, or a test that the two agree.",
           "owner": "david",
           "expires": "2026-11-30"
+        },
+        {
+          "id": "liveness-probe-missing",
+          "what": "NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13): this claims liveness (max_quiet_days) but names no probe, so death is silent \u2014 the byte-exact pin runs only when the gate runs; a machine where Codex reads a stale AGENTS.md between gates has no watcher. Done = a real probe named in liveness.probe (the cheapest thing that would actually notice death), or a recorded decision that gate-run frequency IS the probe for this entry and why that is sufficient",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ],
       "notes": "Born 2026-08-10 after the hand-maintained mirror was found carrying the PRE-v1.32.0 calibration section \u2014 a Codex reader following it would have done the opposite of current doctrine, and no gate said so. David caught it; no mechanism did."
