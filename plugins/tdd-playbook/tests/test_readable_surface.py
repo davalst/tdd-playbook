@@ -51,11 +51,31 @@ def load(path, name):
     return mod
 
 
+# G5 ISOLATION (found by its own incident, 2026-08-13). The first version of run_rs
+# DELETED TDD_PLAYBOOK_YIELD_LOG rather than redirecting it, so readable_surface.py fell
+# through to the REPO's real .claude/playbook-yield.jsonl; the next live calibration ran
+# `gate_yield rollup` and drained this suite's events into the committed
+# docs/calibration/usage.md — 24 fabricated uses in the very record the keep/kill decision
+# reads. Redirect UNCONDITIONALLY rather than relying on every call site remembering, and
+# pin the real record below: an instrument whose own record is test exhaust measures
+# nothing. (The pin in calibration/test_harness.py could not catch this — it snapshots the
+# file when the HARNESS starts, by which time this suite has already written.)
+_ISO = tempfile.mkdtemp(prefix="rs-iso-")
+_REPO_USAGE_MD = os.path.join(REPO, "docs", "calibration", "usage.md")
+_REPO_USAGE_BEFORE = (open(_REPO_USAGE_MD, "rb").read()
+                      if os.path.isfile(_REPO_USAGE_MD) else None)
+_REPO_YIELD_LOG = os.path.join(REPO, ".claude", "playbook-yield.jsonl")
+_REPO_YIELD_LOG_BEFORE = (open(_REPO_YIELD_LOG, "rb").read()
+                          if os.path.isfile(_REPO_YIELD_LOG) else None)
+
+
 def run_rs(*args, cwd=None, env_extra=None):
     env = dict(os.environ)
     for k in list(env):
         if k.startswith("TDD_PLAYBOOK_") or k == "CLAUDE_PROJECT_DIR":
             del env[k]
+    env["TDD_PLAYBOOK_YIELD_LOG"] = os.path.join(_ISO, "y.jsonl")
+    env["TDD_PLAYBOOK_YIELD_MD"] = os.path.join(_ISO, "gate_yield.md")
     if env_extra:
         env.update(env_extra)
     return subprocess.run([sys.executable, RS, *args], capture_output=True, text=True,
@@ -269,6 +289,21 @@ def main():
                 fn()
             except Exception as exc:
                 check(fn.__name__ + " executes", False, repr(exc))
+    # PLANTED-BY-CONSTRUCTION: this suite drives the REAL readable_surface.py many times
+    # and must leave the repo's committed instrument records byte-identical. It did not —
+    # 24 fabricated uses reached docs/calibration/usage.md before this pin existed. The
+    # denominator of the keep/kill decision must never be this suite's own exhaust.
+    after_md = (open(_REPO_USAGE_MD, "rb").read()
+                if os.path.isfile(_REPO_USAGE_MD) else None)
+    check("suite left the repo's real docs/calibration/usage.md untouched",
+          after_md == _REPO_USAGE_BEFORE,
+          "committed usage record was written by the test suite")
+    after_log = (open(_REPO_YIELD_LOG, "rb").read()
+                 if os.path.isfile(_REPO_YIELD_LOG) else None)
+    check("suite left the repo's real .claude/playbook-yield.jsonl untouched "
+          "(the drain path into the committed record)",
+          after_log == _REPO_YIELD_LOG_BEFORE,
+          "real yield log received this suite's events")
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     assert not _results["fail"], "readable_surface calibration failed"
 
