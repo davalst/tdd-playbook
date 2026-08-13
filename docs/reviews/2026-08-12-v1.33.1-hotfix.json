@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-12-v1.33.1-hotfix-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
+  "review_range": {
+    "base": "d67242e5d28d9475db768719d251a747af8db66d",
+    "head": "7c85805526b491b4a84d1bd86e52875368ca6beb"
+  },
+  "reviewers": [
+    "architecture-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "H1-P2-JOIN-KEY-WOULD-HAVE-BEEN-DISCARDED",
+      "severity": "P2",
+      "summary": "The first draft of the debt-naming fix replaced the `cap/id` label wholesale with the `what` clause \u2014 discarding a CROSS-FILE JOIN KEY: host-parity-policy.json cites three `cap/id` debt keys by value (test-lock/codex-command-agent-discovery and siblings), and the two derivations of that key already disagreed on the missing-id case (render_reference.py fabricated `unnamed` where host_parity.py silently skips). Caught by the architecture-adversary at plan re-review (finding F8) before any code. Shipped form renders `cap/id \u2014 what-clause` when an id exists and `cap \u2014 what-clause` when it does not, with the clause cut VISIBLE (ellipsis, \u00a712) and a planted contract pinning both shapes.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/render_reference.py",
+        "docs/architecture/host-parity-policy.json",
+        "docs/plans/gated/2026-08-12-readable-surface.md"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "7c85805526b491b4a84d1bd86e52875368ca6beb",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_reference_docs.py::test_debt_lines_carry_the_required_what_not_a_fabricated_name"
+      ]
+    },
+    {
+      "id": "H1-P2-TAGGUARD-REPORT-CONTAINS-ITS-TRIGGER-AGAIN",
+      "severity": "P2",
+      "summary": "tag_guard fired twice during this release on commands that created no tag: a heredoc writing a MEMORY index line whose PROSE names the tag command, and then the guard_note record whose --objected text quoted the same phrase \u2014 the report contains its own trigger, the exact allow-direction limitation the v1.33.0 release review recorded (REL133-P2-TAGGUARD-FALSE-POSITIVE-IS-SELF-REINFORCING). Disposition unchanged and re-affirmed: the conservative block is accepted (a string-content exemption would be trivially abusable), the note was reworded without the trigger phrase and recorded as an ACCOUNTED block, the file edit was made through the Edit tool (no shell), and no tag was created by any route. Recurrence is now on the record twice; if it recurs again the guard's allow-direction calibration table (\u00a713 both-directions rule) is the seam to extend, not the wording of reports.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py",
+        "plugins/tdd-playbook/bin/guard_note.py",
+        "docs/reviews/2026-08-10-v1.33.0-release.json"
+      ],
+      "status": "incorporated",
+      "disposition": "Block accepted both times; note reworded without the trigger phrase and recorded as an ACCOUNTED block via guard_note; the file edit performed through the Edit tool (no shell); no tag created by any route. Second recorded recurrence \u2014 next recurrence extends the guard's allow-direction calibration table (\u00a713), not report wording."
+    },
+    {
+      "id": "H1-P2-V1330-WAS-NEVER-TAGGED",
+      "severity": "P2",
+      "summary": "Discovered during this release: the latest tag that exists is v1.32.0. v1.33.0 was released in the files (commit 42050297da44f18c101f0570c45deb8b7c110c92, CHANGELOG dated 2026-08-10, all four identity files bumped, its own release review recorded) but the final step \u2014 David creating the tag \u2014 never happened, and nothing noticed for two days: the CHANGELOG saying shipped and the tag existing are separate facts with separate owners, and no check compares them. Consequence: every baseline keyed on the latest tag (the gate's {ledger_base}, check_scoreboard_integrity --baseline-rev) silently spans TWO releases. Scoreboard integrity vs v1.32.0 verified CLEAN, so nothing rotted. Owner: David \u2014 decide whether to tag 4205029 retroactively as v1.33.0 alongside tagging v1.33.1. Candidate standing fix for a later release: a release-gate check comparing the CHANGELOG head version against `git tag` reachable from HEAD, so a skipped tag REDs the NEXT release instead of hiding.",
+      "evidence": [
+        "CHANGELOG.md",
+        "calibration/check_scoreboard_integrity.py"
+      ],
+      "status": "open"
+    }
+  ]
+}
