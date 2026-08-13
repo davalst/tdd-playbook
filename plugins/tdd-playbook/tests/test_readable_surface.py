@@ -276,23 +276,68 @@ def test_readable_command_and_discoverability():
         check("README: agent roster names {}".format(a), a in readme, a)
 
 
-def main():
-    print("readable_surface calibration")
-    if not os.path.isfile(RS):
-        check("bin/readable_surface.py exists", False, "missing")
-    if not os.path.isfile(INVENTORY):
-        check("docs/adversary-scenario-inventory.md exists", False, "missing")
-    if os.path.isfile(RS) and os.path.isfile(INVENTORY):
-        for fn in (test_inventory_contract, test_facts_tool,
-                   test_readable_command_and_discoverability):
-            try:
-                fn()
-            except Exception as exc:
-                check(fn.__name__ + " executes", False, repr(exc))
-    # PLANTED-BY-CONSTRUCTION: this suite drives the REAL readable_surface.py many times
-    # and must leave the repo's committed instrument records byte-identical. It did not —
-    # 24 fabricated uses reached docs/calibration/usage.md before this pin existed. The
-    # denominator of the keep/kill decision must never be this suite's own exhaust.
+def test_plant_control_pairs_differ_only_in_the_planted_defect():
+    """v1.34.0 D1 — the structural half of what live calibration caught the hard way.
+
+    The adoption control sat at 0/3 because it CLEANED ONLY ONE of the fixture's error
+    paths and left four genuine S40 dead ends standing: it was never clean code, so it
+    could not measure restraint, and the agent flagging it was RIGHT. A control that
+    differs from its plant by more than the planted defect is measuring the difference,
+    not the defect — and no live run is needed to see that. This asserts the invariant
+    mechanically for the four v1.34.0 pairs: every edit in the control is either identical
+    to one in the plant, or is the single differing edit that IS the planted defect.
+
+    SCOPE, measured not assumed (§12). This does NOT catch the 2026-08-13 defect. Verified
+    by planting it: the original pair had exactly ONE differing edit at the SAME anchor and
+    passed this check cleanly — it was structurally perfect and semantically wrong, because
+    the FIXTURE carried four other S40 dead ends neither side touched. That failure is only
+    visible from a live run and a captured transcript, and it is recorded as such in the
+    review ledger rather than pinned here. What this DOES catch: a control that patches a
+    location its plant never touches, that drifts to a second difference, that loses its
+    `control_for`, or that ships without `must_not_match` (and so cannot fail)."""
+    corpus = os.path.join(REPO, "calibration", "corpus", "approved")
+    pairs = [("secret-token-reaches-output", "control-token-kept-out-of-output"),
+             ("assertion-free-smoke-test", "control-asserting-smoke-test"),
+             ("swallowed-export-failure", "control-export-failure-surfaces"),
+             ("dead-end-error-message", "control-helpful-error-message")]
+    check("pair roster non-empty (vacuity guard)", len(pairs) == 4, len(pairs))
+    for plant_id, control_id in pairs:
+        try:
+            with open(os.path.join(corpus, plant_id + ".json")) as fh:
+                plant = json.load(fh)
+            with open(os.path.join(corpus, control_id + ".json")) as fh:
+                control = json.load(fh)
+        except OSError as exc:
+            check("{}: pair files readable".format(plant_id), False, repr(exc))
+            continue
+        check("{}: control declares control_for = the plant".format(control_id),
+              control.get("control_for") == plant_id, control.get("control_for"))
+        check("{}: control carries must_not_match (else it cannot fail)".format(control_id),
+              bool(control.get("must_not_match")))
+        p_edits = [(e["file"], e["old"], e["new"]) for e in plant.get("edits") or []]
+        c_edits = [(e["file"], e["old"], e["new"]) for e in control.get("edits") or []]
+        shared = [e for e in c_edits if e in p_edits]
+        differing = [e for e in c_edits if e not in p_edits]
+        check("{}: differs from its plant in EXACTLY ONE edit (the planted defect) — "
+              "{} shared, {} differing".format(control_id, len(shared), len(differing)),
+              len(differing) == 1, [e[1][:60] for e in differing])
+        check("{}: the differing edit targets the same source anchor as the plant's"
+              .format(control_id),
+              bool(differing) and any(d[0] == pe[0] and d[1] == pe[1]
+                                      for d in differing for pe in p_edits),
+              "control patches a location the plant never touches")
+
+
+def test_suite_left_committed_records_untouched():
+    """PLANTED-BY-CONSTRUCTION: this suite drives the REAL readable_surface.py many times
+    and must leave the repo's committed instrument records byte-identical. It did NOT —
+    run_rs originally DELETED TDD_PLAYBOOK_YIELD_LOG instead of redirecting it, so the bin
+    wrote to the repo's real .claude/playbook-yield.jsonl and the next live calibration's
+    `gate_yield rollup` drained 24 fabricated uses into docs/calibration/usage.md: the very
+    record the 2026-09-30 keep/kill decision reads. An instrument whose own denominator is
+    test exhaust measures nothing. (The equivalent pin in calibration/test_harness.py could
+    not catch this — it snapshots the file when the HARNESS starts, by which time this
+    suite has already written. A pin belongs in the suite that does the writing.)"""
     after_md = (open(_REPO_USAGE_MD, "rb").read()
                 if os.path.isfile(_REPO_USAGE_MD) else None)
     check("suite left the repo's real docs/calibration/usage.md untouched",
@@ -304,6 +349,23 @@ def main():
           "(the drain path into the committed record)",
           after_log == _REPO_YIELD_LOG_BEFORE,
           "real yield log received this suite's events")
+
+
+def main():
+    print("readable_surface calibration")
+    if not os.path.isfile(RS):
+        check("bin/readable_surface.py exists", False, "missing")
+    if not os.path.isfile(INVENTORY):
+        check("docs/adversary-scenario-inventory.md exists", False, "missing")
+    if os.path.isfile(RS) and os.path.isfile(INVENTORY):
+        for fn in (test_inventory_contract, test_facts_tool,
+                   test_readable_command_and_discoverability,
+                   test_plant_control_pairs_differ_only_in_the_planted_defect):
+            try:
+                fn()
+            except Exception as exc:
+                check(fn.__name__ + " executes", False, repr(exc))
+    test_suite_left_committed_records_untouched()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     assert not _results["fail"], "readable_surface calibration failed"
 

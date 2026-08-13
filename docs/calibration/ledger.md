@@ -438,3 +438,63 @@ change right.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260813-01 | 2026-08-13 | 2eb92f0 | plugins/tdd-playbook/agents/adoption-adversary.md | scope rule (focus question bounds the verdict), computed verdict table, anti-hedging | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 quiet AND the plant must reach 3/3 unhedged — both directions, narrowing is not amnesty |
+
+### Registered 2026-08-13 — baseline cd8eacc (adoption pair RE-AUTHORED — the control was the bug)
+
+The adoption control sat at 0/3 through an agent fix. Before touching the agent again I
+captured what it actually says, and it was RIGHT: it produced the required table, computed
+the verdict mechanically, and named FOUR genuine S40 dead ends in the fixture — missing
+discount arguments (IndexError traceback), non-numeric price (ValueError), out-of-range
+pct (ValueError), and a bare `print("denied")` — none of which tell a new user what to do
+next. The control had cleaned only the unknown-command path, so it was never clean code
+and could not measure restraint.
+
+This is a THIRD category beyond "fix the agent, never the plant": a MIS-AUTHORED CONTROL.
+That rule assumes the pair was authored correctly; blunting a verifier that is behaving
+correctly, to satisfy a test that tests the wrong thing, is the inversion of it. Evidence
+first (the captured transcript), then the pair changed — never the other way round.
+
+Re-authored so plant and control differ ONLY in the planted defect: both now give guidance
+on the discount and authorization paths; the plant alone degrades the unknown-command
+message to bare "error". The plant's oracle is TIGHTENED (rule c — tightenings always
+pass) to require it NAME the unknown-command defect, so it can no longer fire on ambient
+noise. Legal vs baseline v1.33.1 because these files did not exist there; they freeze at
+the v1.34.0 tag.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260813-02 | 2026-08-13 | cd8eacc | calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | re-author: pair differs only in the planted defect; plant oracle tightened to require naming it | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 (it is finally clean) AND the plant must hold 3/3 firing for the RIGHT reason |
+
+## Scored 2026-08-13 — run 2026-08-13 · repo 5eac709
+| id | scenario | baseline | actual | delta | verdict | note |
+|---|---|---|---|---|---|---|
+| L-20260806-10 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260806-11 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260807-01 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260807-02 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260809-01 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-01 | secret-token-reaches-output | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-01 | control-token-kept-out-of-output | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-02 | assertion-free-smoke-test | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-02 | control-asserting-smoke-test | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-03 | swallowed-export-failure | — | 3/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-03 | control-export-failure-surfaces | — | 0/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-04 | dead-end-error-message | — | 2/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-04 | control-helpful-error-message | — | 0/3 | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-05 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260812-06 | swallowed-export-failure | 3/3 | 3/3 | 0 | FLAT |  |
+| L-20260812-06 | control-export-failure-surfaces | 0/3 | 2/3 | +2 | PARTIAL |  |
+| L-20260813-01 | dead-end-error-message | 2/3 | 3/3 | +1 | PARTIAL |  |
+| L-20260813-01 | control-helpful-error-message | 0/3 | 0/3 | 0 | FLAT |  |
+| L-20260813-02 | dead-end-error-message | 3/3 | 3/3 | 0 | FLAT |  |
+| L-20260813-02 | control-helpful-error-message | 0/3 | 3/3 | +3 | HIT |  |
+
+**Reading the three fix entries, which is why pre-registration earns its cost.**
+`L-20260812-06` (observability restraint made mechanical) moved the control 0/3 -> 2/3:
+PARTIAL, not a hit — the agent genuinely improved and still was not clean.
+`L-20260813-01` (adoption scope rule + computed verdict table) moved the PLANT 2/3 -> 3/3
+but left the control **FLAT at 0/3** — an agent fix that did nothing for the control, which
+is precisely the signal that the control, not the agent, was broken. `L-20260813-02`
+(re-authored pair) moved it 0/3 -> 3/3: **HIT**, the largest single move in the record.
+The predictions were registered before each run and scored after; the FLAT row is the one
+that mattered, and it is the row a self-narrated summary would have quietly rounded up.

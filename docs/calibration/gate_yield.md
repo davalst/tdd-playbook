@@ -29,3 +29,5 @@ DATED CORRECTION (v1.27, pre-fix sha 119e2de): rows on or before 2026-08-05 have
 | 2026-08-13 | exitcode | 0 | 0 | 0 | 2 | 0 |
 | 2026-08-13 | exitcode | 0 | 0 | 0 | 1 | 0 |
 | 2026-08-13 | exitcode | 0 | 0 | 0 | 2 | 0 |
+| 2026-08-13 | exitcode | 0 | 0 | 0 | 1 | 0 |
+| 2026-08-13 | exitcode | 0 | 0 | 0 | 1 | 0 |

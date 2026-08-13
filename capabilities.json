@@ -1174,10 +1174,10 @@
       },
       "integration_debt": [
         {
-          "id": "role-adversaries-live-calibration",
-          "what": "SHIPPED UNCALIBRATED-LIVE: the 8 plant/control pairs pass --dry-run validation but no LIVE run has executed them (the 2026-08-06 run largely env-failed and is unresolved). Release precondition for the v1.34.0 TAG, soft deadline 2026-08-31: run calibration as a non-root user with budget covering the four new pairs; if it cannot run, the decision (tag without/wait/drop) is made deliberately, not by drift",
+          "id": "observability-haiku-flakiness",
+          "what": "PAID 2026-08-13 on evidence, then RE-SCOPED. Live calibration ran for all four pairs (docs/calibration/history.md): security 3/3+3/3 PASS, test-quality 3/3+3/3 PASS, adoption 3/3+3/3 PASS at haiku (after the control was found MIS-AUTHORED and re-authored, with the plant oracle tightened to require naming the defect). observability PASSES 3/3+3/3 at OPUS (its production tier) but its control is FLAKY at haiku (2/3 AMBER twice, 3/3 in a 3-rep reproduction) \u2014 the remaining obligation: bring the observability control to k/k at the HAIKU lower bound, or record the decision that production-tier calibration is the bar for this agent and why. Never retry-into-green (section 7): the AMBER rows stay in the record",
           "owner": "david",
-          "expires": "2026-08-31"
+          "expires": "2026-09-30"
         },
         {
           "id": "role-adversaries-codex-unavailable",

@@ -1,8 +1,18 @@
 {
   "id": "dead-end-error-message",
   "agent": "adoption-adversary",
-  "plant": "cli.py's unknown-command path was 'simplified' to print the bare word 'error' with no usage hint and no next step \u2014 the message names that something went wrong and strands the user (inventory S40).",
+  "plant": "cli.py's unknown-command path was 'simplified' to print the bare word 'error' with no usage hint and no next step \u2014 the message names that something went wrong and strands the user (inventory S40). The other error paths in the fixture are given guidance in BOTH plant and control, so the pair differs only in this planted defect (re-authored 2026-08-13: the original pair left four pre-existing S40 dead ends standing, which the agent correctly reported \u2014 a mis-authored control, not an agent fault).",
   "edits": [
+    {
+      "file": "cli.py",
+      "old": "    if cmd == \"discount\":\n        if not authorize(user, \"discount\"):\n            print(\"denied\")\n            return 1\n        print(apply_discount(float(argv[1]), float(argv[2])))\n        return 0",
+      "new": "    if cmd == \"discount\":\n        if not authorize(user, \"discount\"):\n            print(\"denied: you need the 'discount' grant; ask an admin to add it\")\n            return 1\n        try:\n            print(apply_discount(float(argv[1]), float(argv[2])))\n        except (IndexError, ValueError) as exc:\n            print(\"bad arguments ({}); usage: cli.py discount PRICE PCT \"\n                  \"where PRICE is a number and PCT is 0-100\".format(exc))\n            return 2\n        return 0"
+    },
+    {
+      "file": "cli.py",
+      "old": "        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1",
+      "new": "        if not authorize(user, \"export\"):\n            print(\"denied: you need the 'export' grant; ask an admin to add it\")\n            return 1"
+    },
     {
       "file": "cli.py",
       "old": "    print(\"unknown command: {}\".format(cmd))\n    return 2",
@@ -12,7 +22,8 @@
   "task": "cli.py's error handling was recently simplified; the suite is green. Review the CLI through the product-owner lens, focused on one question (S40): when a brand-new user hits an error \u2014 say a mistyped command \u2014 does the message tell them what to DO next (the usage to read, the command to run), or only that something went wrong? Quote the actual message a user sees and cite file:line. End with the house verdict lines: `Verdict: STRANDED (<n>)` or `Verdict: LANDS`, then `Recommendation: ...`.",
   "must_match": [
     "Verdict:\\s*STRANDED",
-    "(?i)(next step|usage|what to do|guidance|dead.?end|strand|no hint|tells (the user|them) nothing)"
+    "(?i)unknown command|cli\\.py:2[0-9]|\"error\"|'error'",
+    "(?i)(next step|usage|what to do|guidance|dead.?end|strand)"
   ],
   "must_not_match": [
     "Verdict:\\s*LANDS"
@@ -22,6 +33,8 @@
     "authored_at": "2026-08-12",
     "status": "approved",
     "approved_at": "2026-08-12",
-    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)"
+    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)",
+    "reauthored_at": "2026-08-13",
+    "reauthored_why": "control was not clean for the question asked; agent output verified correct before the pair was changed"
   }
 }

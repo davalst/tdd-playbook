@@ -2,8 +2,18 @@
   "id": "control-helpful-error-message",
   "agent": "adoption-adversary",
   "control_for": "dead-end-error-message",
-  "plant": "PAIRED CLEAN CONTROL: the unknown-command path names the bad command AND prints the usage line \u2014 the user is told what to do next; the agent must NOT invent a stranding.",
+  "plant": "PAIRED CLEAN CONTROL: every error path a new user hits names the problem AND the next step \u2014 the unknown-command handler prints the usage line, bad discount arguments print the expected format, and the authorization denials name the grant needed. The agent must NOT invent a stranding. (Re-authored 2026-08-13: the first version cleaned only the unknown-command path and left four genuine S40 dead ends, so it could not measure restraint; the agent found all four and was right.)",
   "edits": [
+    {
+      "file": "cli.py",
+      "old": "    if cmd == \"discount\":\n        if not authorize(user, \"discount\"):\n            print(\"denied\")\n            return 1\n        print(apply_discount(float(argv[1]), float(argv[2])))\n        return 0",
+      "new": "    if cmd == \"discount\":\n        if not authorize(user, \"discount\"):\n            print(\"denied: you need the 'discount' grant; ask an admin to add it\")\n            return 1\n        try:\n            print(apply_discount(float(argv[1]), float(argv[2])))\n        except (IndexError, ValueError) as exc:\n            print(\"bad arguments ({}); usage: cli.py discount PRICE PCT \"\n                  \"where PRICE is a number and PCT is 0-100\".format(exc))\n            return 2\n        return 0"
+    },
+    {
+      "file": "cli.py",
+      "old": "        if not authorize(user, \"export\"):\n            print(\"denied\")\n            return 1",
+      "new": "        if not authorize(user, \"export\"):\n            print(\"denied: you need the 'export' grant; ask an admin to add it\")\n            return 1"
+    },
     {
       "file": "cli.py",
       "old": "    print(\"unknown command: {}\".format(cmd))\n    return 2",
@@ -22,6 +32,8 @@
     "authored_at": "2026-08-12",
     "status": "approved",
     "approved_at": "2026-08-12",
-    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)"
+    "approved_via": "docs/plans/gated/2026-08-12-readable-surface.md (D1, David-approved plan)",
+    "reauthored_at": "2026-08-13",
+    "reauthored_why": "control was not clean for the question asked; agent output verified correct before the pair was changed"
   }
 }
