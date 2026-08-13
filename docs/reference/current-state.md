@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
 - `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `cd9b336ed33ec6402ddfa9406b3222236958edf396ead200aa4ea79bd34c9de3`
+- `capabilities.json` — `79b31af757d184b18991ab69ea13adbdebf6a67195ef6a9d667659105ef4374f`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -22,8 +22,8 @@
 - `docs/reviews/2026-08-09-owner-control-phase5-release.json` — `2322c48835121a967742acaed15a3a01cd42445e0dff5de818e009d33455eea7`
 - `docs/reviews/2026-08-10-v1.33.0-release.json` — `f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688`
 - `docs/reviews/2026-08-12-v1.33.1-hotfix.json` — `918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57`
-- `docs/reviews/2026-08-12-v1.34.0-release.json` — `c1cd7dc7d7cb3d2a001a63954c0738818b479e295a30c33d4e311eee1f33fc27`
-- `docs/reviews/index.json` — `fbeff69d31e6657f5aa4d5ec52598c04c42606d2b4f600a5a8259ab180a522e6`
+- `docs/reviews/2026-08-12-v1.34.0-release.json` — `0c60aee2502a1d7a7bfdb94967e3e0af4794d1afcaa54fc3181f00b23654e366`
+- `docs/reviews/index.json` — `dbe4c808f71ab84e7690edb7ae3055ab37f1c49566faac2e0180798a56f94f15`
 
 ## Gate surface
 
@@ -44,7 +44,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 29. Owned dated integration-debt entries: 61.
+- Registered capabilities: 29. Owned dated integration-debt entries: 63.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -90,6 +90,8 @@
 - `gate-surface-ledger` — SELF-REFERENTIAL DENOMINATORS (H15, v1.30)… (owner `david`, expires `2026-10-31`)
 - `gate-surface-ledger` — WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0)… (owner `david`, expires `2026-10-15`)
 - `gate-surface-ledger` — DOCTRINE SHRINK NOT DONE (v1.32.0)… (owner `david`, expires `2026-10-31`)
+- `gate-surface-ledger/ledger-L-20260812-06-followup` — REFUTATION OWNED (L-20260812-06)… (owner `david`, expires `2026-09-30`)
+- `gate-surface-ledger/ledger-L-20260813-01-followup` — REFUTATION OWNED (L-20260813-01)… (owner `david`, expires `2026-11-30`)
 - `plant-forms` — FIRST HOLDOUT ASSIGNMENT (v1.29, David's ships-on-or-triggered rule)… (owner `david`, expires `2026-10-15`)
 - `plant-vitality` — SATURATION K IS PROVISIONAL (v1.29)… (owner `david`, expires `2026-11-01`)
 - `release-tag-authority` — SERVER-SIDE TAG PROTECTION NOT ARMED… (owner `david`, expires `2026-09-30`)
@@ -109,8 +111,8 @@
 
 ## Adversarial review records
 
-- Review records: 13. Findings: 80.
-- `incorporated`: 12
-- `open`: 2
+- Review records: 13. Findings: 83.
+- `incorporated`: 14
+- `open`: 3
 - `rejected`: 0
 - `verified_closed`: 66
