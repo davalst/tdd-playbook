@@ -24,3 +24,5 @@ because nothing asserted this file was untouched by a suite run. The leak is now
 at the source (`run_gy` redirects `TDD_PLAYBOOK_RESPONSE_MD` unconditionally) and pinned
 by a byte-identity check at the end of that suite. The two rows above are the real ones —
 the first genuine guard-response cycle, and its honest reading is 0 of 7 accounted.
+| 2026-08-12 | tagguard | 7 | 3 | 4 | 1 |
+| 2026-08-12 | testlock | 1 | 1 | 0 | 0 |

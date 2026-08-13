@@ -307,3 +307,33 @@
 | 2026-08-06 | haiku vs claude-fable-5 | seam-self-consistency-return-only | integration-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
 | 2026-08-06 | haiku vs claude-fable-5 | shadowed-import-vacuous-suite | mutation-runner | 0/0 | env-failure | INVALID — env failure on all reps |
 | 2026-08-06 | haiku vs claude-fable-5 | special-case-bypasses-both-copies | architecture-adversary | 0/0 | env-failure | INVALID — env failure on all reps |
+
+### Run 2026-08-12 — model haiku · repo 8a94ca8 · selected 2 of 48 (26 shipped + 22 corpus · 22 controls) · recall 1/1 [0.21–1.00] · FP 0/1 [0.00–0.79] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-12 | haiku vs claude-opus-5 | control-token-kept-out-of-output | security-adversary | 3/3 | — | PASS |
+| 2026-08-12 | haiku vs claude-opus-5 | secret-token-reaches-output | security-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-12 — model haiku · repo da98ee1 · selected 2 of 48 (26 shipped + 22 corpus · 22 controls) · recall 1/1 [0.21–1.00] · FP 0/1 [0.00–0.79] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-12 | haiku vs claude-opus-5 | assertion-free-smoke-test | test-quality-adversary | 3/3 | — | PASS |
+| 2026-08-12 | haiku vs claude-opus-5 | control-asserting-smoke-test | test-quality-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-12 — model haiku · repo f4b4227 · selected 2 of 48 (26 shipped + 22 corpus · 22 controls) · recall 1/1 [0.21–1.00] · FP 1/1 [0.21–1.00] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-12 | haiku vs claude-opus-5 | control-export-failure-surfaces | observability-adversary | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-12 | haiku vs claude-opus-5 | swallowed-export-failure | observability-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-13 — model haiku · repo eecdcbe · selected 2 of 48 (26 shipped + 22 corpus · 22 controls) · recall 1/1 [0.21–1.00] · FP 1/1 [0.21–1.00] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-13 | haiku vs claude-opus-5 | control-export-failure-surfaces | observability-adversary | 2/3 | wrong-verdict-line | AMBER |
+| 2026-08-13 | haiku vs claude-opus-5 | swallowed-export-failure | observability-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-13 — model haiku · repo 2e2a41e · selected 2 of 48 (26 shipped + 22 corpus · 22 controls) · recall 1/1 [0.21–1.00] · FP 1/1 [0.21–1.00] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-13 | haiku vs claude-opus-5 | control-export-failure-surfaces | observability-adversary | 2/3 | wrong-verdict-line | **BLOCKING FAIL** (AMBER×2) |
+| 2026-08-13 | haiku vs claude-opus-5 | swallowed-export-failure | observability-adversary | 3/3 | — | PASS |

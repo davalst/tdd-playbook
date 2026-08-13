@@ -20,3 +20,11 @@ DATED CORRECTION (v1.27, pre-fix sha 119e2de): rows on or before 2026-08-05 have
 | 2026-08-06 | exhaustive | 0 | 2 | 0 | 0 | 0 |
 | 2026-08-06 | exitcode | 0 | 24 | 0 | 0 | 0 |
 | 2026-08-06 | redlock | 0 | 1 | 0 | 0 | 0 |
+| 2026-08-12 | exhaustive | 0 | 1 | 0 | 1 | 0 |
+| 2026-08-12 | exitcode | 0 | 196 | 0 | 43 | 0 |
+| 2026-08-12 | tagguard | 7 | 0 | 0 | 0 | 0 |
+| 2026-08-12 | testlock | 1 | 0 | 1 | 0 | 0 |
+| 2026-08-12 | exitcode | 0 | 0 | 0 | 1 | 0 |
+| 2026-08-12 | exitcode | 0 | 0 | 0 | 1 | 0 |
+| 2026-08-13 | exitcode | 0 | 0 | 0 | 2 | 0 |
+| 2026-08-13 | exitcode | 0 | 0 | 0 | 1 | 0 |

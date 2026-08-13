@@ -400,3 +400,18 @@ rejected, in the plan).
 | L-20260812-03 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/observability-adversary.md; calibration/corpus/approved/swallowed-export-failure.json; calibration/corpus/approved/control-export-failure-surfaces.json | NEW brief: 3am ops loss function, rows S02+S32+S33, forced SILENT/OBSERVABLE verdict lines | swallowed-export-failure; control-export-failure-surfaces | up | 3 | same shape: plant (except:pass, exit 0) + paired control (stderr + exit 1) |
 | L-20260812-04 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/adoption-adversary.md; calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | NEW brief: product-owner loss function, rows S38–S41, forced STRANDED/LANDS verdict lines | dead-end-error-message; control-helpful-error-message | up | 3 | same shape: plant (bare "error", no next step) + paired control (usage hint kept) |
 | L-20260812-05 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/commands/readable.md | NEW command: render the readable surface; citation workflow (verify_citations, N>=1 floor); never dispatches; never gates | — | none | 0 | narration workflow only — prose never gates by design, and no calibration scenario measures narration quality (plan reading 2, rejected) |
+
+### Registered 2026-08-12 — baseline f4b4227 (observability-adversary restraint fix)
+
+First live calibration of the four new pairs: security 2/2 PASS, test-quality 2/2 PASS,
+observability plant 3/3 PASS but its paired control **0/3 BLOCKING FAIL**
+(wrong-verdict-line) — the agent called clean code SILENT, where the failure path writes
+stderr AND returns 1. False-positive direction: the brief's restraint was prose
+("match the ask to the repo's shape"), and a weak doer over-applied the S32/S33 hunt
+items to demand alerting infrastructure from a CLI. Fix the AGENT, never the plant: the
+restraint becomes a mechanical rule — for a CLI, stderr + nonzero exit IS a watched
+surface, and SILENT is reserved for a path reaching NO surface.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260812-06 | 2026-08-12 | f4b4227 | plugins/tdd-playbook/agents/observability-adversary.md | restraint made mechanical: stderr+nonzero-exit is a surface for a CLI; SILENT requires a path reaching NO surface | swallowed-export-failure; control-export-failure-surfaces | up | 3 | the control must go 0/3->3/3 quiet AND the plant must STAY 3/3 (narrowing is not amnesty — replay both directions) |
