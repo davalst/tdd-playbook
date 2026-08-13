@@ -401,7 +401,7 @@ rejected, in the plan).
 | L-20260812-04 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/adoption-adversary.md; calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | NEW brief: product-owner loss function, rows S38–S41, forced STRANDED/LANDS verdict lines | dead-end-error-message; control-helpful-error-message | up | 3 | same shape: plant (bare "error", no next step) + paired control (usage hint kept) |
 | L-20260812-05 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/commands/readable.md | NEW command: render the readable surface; citation workflow (verify_citations, N>=1 floor); never dispatches; never gates | — | none | 0 | narration workflow only — prose never gates by design, and no calibration scenario measures narration quality (plan reading 2, rejected) |
 
-### Registered 2026-08-12 — baseline f4b4227 (observability-adversary restraint fix)
+### Registered 2026-08-12 — baseline 8a94ca8 (observability-adversary restraint fix)
 
 First live calibration of the four new pairs: security 2/2 PASS, test-quality 2/2 PASS,
 observability plant 3/3 PASS but its paired control **0/3 BLOCKING FAIL**
@@ -414,7 +414,7 @@ surface, and SILENT is reserved for a path reaching NO surface.
 
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
-| L-20260812-06 | 2026-08-12 | f4b4227 | plugins/tdd-playbook/agents/observability-adversary.md | restraint made mechanical: stderr+nonzero-exit is a surface for a CLI; SILENT requires a path reaching NO surface | swallowed-export-failure; control-export-failure-surfaces | up | 3 | the control must go 0/3->3/3 quiet AND the plant must STAY 3/3 (narrowing is not amnesty — replay both directions) |
+| L-20260812-06 | 2026-08-12 | 8a94ca8 | plugins/tdd-playbook/agents/observability-adversary.md | restraint made mechanical: stderr+nonzero-exit is a surface for a CLI; SILENT requires a path reaching NO surface | swallowed-export-failure; control-export-failure-surfaces | up | 3 | the control must go 0/3->3/3 quiet AND the plant must STAY 3/3 (narrowing is not amnesty — replay both directions) |
 
 ### Registered 2026-08-13 — baseline 2eb92f0 (adoption-adversary scope rule + computed verdict)
 
@@ -439,7 +439,7 @@ change right.
 |---|---|---|---|---|---|---|---|---|
 | L-20260813-01 | 2026-08-13 | 2eb92f0 | plugins/tdd-playbook/agents/adoption-adversary.md | scope rule (focus question bounds the verdict), computed verdict table, anti-hedging | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 quiet AND the plant must reach 3/3 unhedged — both directions, narrowing is not amnesty |
 
-### Registered 2026-08-13 — baseline cd8eacc (adoption pair RE-AUTHORED — the control was the bug)
+### Registered 2026-08-13 — baseline 8a94ca8 (adoption pair RE-AUTHORED — the control was the bug)
 
 The adoption control sat at 0/3 through an agent fix. Before touching the agent again I
 captured what it actually says, and it was RIGHT: it produced the required table, computed
@@ -463,7 +463,7 @@ the v1.34.0 tag.
 
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
-| L-20260813-02 | 2026-08-13 | cd8eacc | calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | re-author: pair differs only in the planted defect; plant oracle tightened to require naming it | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 (it is finally clean) AND the plant must hold 3/3 firing for the RIGHT reason |
+| L-20260813-02 | 2026-08-13 | 8a94ca8 | calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | re-author: pair differs only in the planted defect; plant oracle tightened to require naming it | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 (it is finally clean) AND the plant must hold 3/3 firing for the RIGHT reason |
 
 ## Scored 2026-08-13 — run 2026-08-13 · repo f800c26
 
@@ -544,3 +544,13 @@ The transferable lesson is about EVIDENCE, not git: a durable record may only ci
 exist in the SHIPPED history, and a local object store hides orphaned ones. Verify records
 that cite history in a FRESH CLONE, because the machine that wrote them is the one machine
 that cannot detect the mistake.
+
+**Second correction, same class, same day — the sweep I should have done the first time.**
+`L-20260812-06` and `L-20260813-02` also cited baselines (`f4b4227`, `cd8eacc`) that this
+session's squashing orphaned. When the scoring-block sha was found unreachable I fixed that
+one instance and did not sweep the file for the rest, so CI round-tripped twice on the same
+defect. Both re-pointed to `8a94ca8` — the shipped v1.34.0 commit carrying the pre-change
+state for both surfaces (the briefs and the corpus pair existed there in their original
+form, so the anti-backfill clause still holds). Fixing one instance of a class and not
+sweeping for its siblings is the same failure as a narrowed check reporting a true fact
+about the wrong scope.
