@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
   "review_range": {
     "base": "3fafc9ecb7b68877a8dcf943680af857de69e910",
-    "head": "478ce97c5d895ef6713c9f9f5301ef8b79312e9c"
+    "head": "971525425ee0d14d5fbb8edc4b275dfa1912789d"
   },
   "reviewers": [
     "architecture-adversary",
@@ -162,7 +162,7 @@
     {
       "id": "RS-P2-DURABLE-RECORD-CITED-AN-ORPHANED-SHA",
       "severity": "P2",
-      "summary": "The 2026-08-13 scoring blocks cited `repo 5eac709`, a commit this session's own resets and cherry-picks ORPHANED. It resolved locally \u2014 still in my object store \u2014 and is absent from the pushed history, so every local gate run passed and the fresh-clone CI run could not place the pricing point. Caught by the fail-closed rule added hours earlier in the same release (an unplaceable pricing sha covers nothing), which was written as a defensive edge case and turned out to be the check that stopped a durable record citing evidence nobody else could verify. Re-pointed to f800c26, the shipped commit carrying the scored tree state, verified by the scored paths being unchanged since it, and re-verified in a FRESH CLONE rather than in place. Transferable rule, recorded in the ledger: a durable record may only cite shas that exist in SHIPPED history, and the machine that wrote them is the one machine that cannot detect the mistake \u2014 which is the standing argument for keeping an independent re-run even when the local gate is green.",
+      "summary": "The 2026-08-13 scoring blocks cited `repo 5eac709`, a commit this session's own resets and cherry-picks ORPHANED. It resolved locally \u2014 still in my object store \u2014 and is absent from the pushed history, so every local gate run passed and the fresh-clone CI run could not place the pricing point. Caught by the fail-closed rule added hours earlier in the same release (an unplaceable pricing sha covers nothing), which was written as a defensive edge case and turned out to be the check that stopped a durable record citing evidence nobody else could verify. Re-pointed to f800c26, the shipped commit carrying the scored tree state, verified by the scored paths being unchanged since it, and re-verified in a FRESH CLONE rather than in place. Transferable rule, recorded in the ledger: a durable record may only cite shas that exist in SHIPPED history, and the machine that wrote them is the one machine that cannot detect the mistake \u2014 which is the standing argument for keeping an independent re-run even when the local gate is green. SECOND ROUND-TRIP, same class: two ledger baseline_sha fields (f4b4227, cd8eacc) were orphaned the same way. I fixed the first instance and did not sweep the file, so CI round-tripped twice on one defect. All 12 baseline_sha fields are now verified reachable from origin/main by a single sweep, and the fresh-clone reproduction is now run BEFORE pushing rather than after CI reports.",
       "evidence": [
         "docs/calibration/ledger.md",
         "calibration/ledger.py"

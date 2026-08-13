@@ -22,8 +22,8 @@
 - `docs/reviews/2026-08-09-owner-control-phase5-release.json` — `2322c48835121a967742acaed15a3a01cd42445e0dff5de818e009d33455eea7`
 - `docs/reviews/2026-08-10-v1.33.0-release.json` — `f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688`
 - `docs/reviews/2026-08-12-v1.33.1-hotfix.json` — `918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57`
-- `docs/reviews/2026-08-12-v1.34.0-release.json` — `47d8c14b45eb7475926df6349755a36b320afae75ea5b280f4f5da4c626dc1ef`
-- `docs/reviews/index.json` — `aa89c81091aca44e9cf45484de619c89051631cf06f0a7ae6e131bbfb43a5264`
+- `docs/reviews/2026-08-12-v1.34.0-release.json` — `f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294`
+- `docs/reviews/index.json` — `5f44d4845b9f9fec0488f925d3951d1e70dac2172eda3e7ff7cc2fff23e05118`
 
 ## Gate surface
 
