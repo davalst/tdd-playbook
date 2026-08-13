@@ -465,7 +465,7 @@ the v1.34.0 tag.
 |---|---|---|---|---|---|---|---|---|
 | L-20260813-02 | 2026-08-13 | cd8eacc | calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | re-author: pair differs only in the planted defect; plant oracle tightened to require naming it | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 (it is finally clean) AND the plant must hold 3/3 firing for the RIGHT reason |
 
-## Scored 2026-08-13 — run 2026-08-13 · repo 5eac709
+## Scored 2026-08-13 — run 2026-08-13 · repo f800c26
 
 Only the entries the run actually BOUND are scored here. L-20260812-01..05 measured their
 scenarios from a baseline of nothing (INCONCLUSIVE(no-baseline)) and stay PENDING — the
@@ -531,3 +531,16 @@ for `grade.md`, `tdd-plan.md`, `tdd-unlock.md`, `SKILL.md`) were REMOVED rather 
 standing: the defect that forced them is gone, and no-effect entries nobody needs inflate the
 very no-effect share the harness watches as a sign the instrument is being satisfied rather
 than used.
+
+**Correction, same day, found by CI and not by me.** The 2026-08-13 scoring blocks first
+cited `repo 5eac709` — a commit my own resets and cherry-picks during this release ORPHANED.
+It resolved locally (it was still in my object store) and does not exist in the pushed
+history, so the fresh-clone gate could not place the pricing point and refused coverage. The
+new fail-closed rule behaved exactly as designed: an unplaceable pricing sha covers nothing.
+Re-pointed to `f800c26`, the shipped commit that carries the scored tree state, verified by
+`git diff f800c26..HEAD` over the scored paths being empty — they have not moved since.
+
+The transferable lesson is about EVIDENCE, not git: a durable record may only cite shas that
+exist in the SHIPPED history, and a local object store hides orphaned ones. Verify records
+that cite history in a FRESH CLONE, because the machine that wrote them is the one machine
+that cannot detect the mistake.
