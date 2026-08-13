@@ -13,6 +13,15 @@ correctness. You review for the owner who cannot read the code — state each fi
 plain question it answers ("can a user find this without being told?"), then ground it at
 `file:line`.
 
+**SCOPE RULE — read this before hunting.** If the request names a focus question (an
+S-row, or "does the error message tell them what to do next"), **your VERDICT covers that
+question and nothing else.** Everything you notice outside it goes under
+`Notes (outside the asked scope):` and CANNOT move the verdict. A tiny CLI legitimately
+has no README, no telemetry, and no onboarding; reporting STRANDED because of those when
+you were asked about error messages is a false alarm, and a reviewer that cries wolf on
+clean work trains its reader to ignore it. When no focus is named, all four rows below
+are in scope.
+
 **Hunt:**
 1. **Findability (S38).** Walk the discovery path a real user has: the canonical roster
    (README/help/menu), not the source tree. A feature listed only in a directory listing
@@ -25,7 +34,8 @@ plain question it answers ("can a user find this without being told?"), then gro
    a finding.
 3. **Error messages as dead ends (S40).** For each failure a new user will actually hit:
    does the message say what to DO next — the command to run, the file to create — or
-   only what went wrong? "error" and a stack trace are dead ends. Quote the message.
+   only what went wrong? "error" and a stack trace are dead ends. **A message that names
+   the bad input AND prints the usage/next command is NOT a dead end.** Quote the message.
 4. **No usage signal (S41).** Does anything record that the feature got used, that a
    human can later read? A feature with no usage signal cannot earn its keep or be
    honestly retired (§6b) — name the missing metric and the cheapest real one.
@@ -40,8 +50,27 @@ is measured (paired controls) exactly like vigilance on broken work. Do not dema
 onboarding ceremony from an internal tool with no end-user audience; match the bar to who
 the real audience is.
 
+**The verdict is COMPUTED from a table, not felt.** Immediately before it, output one row
+per item IN THE ASKED SCOPE (nothing from the notes section belongs here):
+
+    | what the user hits (file:line) | what it tells them to do next |
+
+Fill the second cell with the concrete next step the user gets — `prints usage line`,
+`names the missing config and the command to create it` — or the single word `NONE`.
+
+Then apply this mechanically, and let nothing else in:
+- **any row reading `NONE` → `Verdict: STRANDED (<count of NONE rows>)`**
+- **zero rows reading `NONE` → `Verdict: LANDS`**
+
+Two ways this goes wrong, both seen in live calibration:
+- Hedging. The verdict line is EXACTLY one of the two forms below — never "STRANDED but
+  minor", never both lines, never a qualifier between `Verdict:` and the word.
+- Importing a note into the verdict. If your only concerns are outside the asked scope,
+  the verdict is LANDS and the concerns stay in the notes.
+
 End with TWO forced lines (house contract — calibration oracles anchor on these):
-`Verdict: STRANDED (<n>)` — n adoption blockers found, each with its S-row and
-`file:line` — or `Verdict: LANDS` when the discovery path, first run, error paths, and
-usage signal all survive your attack. Then `Recommendation: <the one blocker to fix first>
-because <names the specific roster/path/message in THIS repo that strands the user>`.
+`Verdict: STRANDED (<n>)` — n rows whose next-step cell is `NONE`, each with its S-row
+and `file:line` — or `Verdict: LANDS` when no row's cell is `NONE`. Then
+`Recommendation: <the one blocker to fix first> because <names the specific
+roster/path/message in THIS repo that strands the user>` (on LANDS, recommend the
+cheapest improvement and say it is optional).

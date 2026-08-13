@@ -415,3 +415,26 @@ surface, and SILENT is reserved for a path reaching NO surface.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260812-06 | 2026-08-12 | f4b4227 | plugins/tdd-playbook/agents/observability-adversary.md | restraint made mechanical: stderr+nonzero-exit is a surface for a CLI; SILENT requires a path reaching NO surface | swallowed-export-failure; control-export-failure-surfaces | up | 3 | the control must go 0/3->3/3 quiet AND the plant must STAY 3/3 (narrowing is not amnesty — replay both directions) |
+
+### Registered 2026-08-13 — baseline 2eb92f0 (adoption-adversary scope rule + computed verdict)
+
+Live run: plant 2/3 (found-but-hedged, AMBER), control 0/3 (wrong-verdict-line, BLOCKING
+FAIL) — the SAME root cause as observability, which makes it a class, not an incident.
+The task names ONE focus question (S40, error messages) and the control answers it
+(prints the bad command AND the usage line), but the brief hunts FOUR rows; the fixture
+legitimately has no README (S38) and no usage signal (S41), so a weak doer imports those
+out-of-scope gaps into the verdict and reports STRANDED on clean work.
+
+Fix the AGENT, never the plant: (a) a SCOPE RULE — when the request names a focus, the
+verdict covers only that and everything else goes to notes; (b) the verdict is computed
+from a table of in-scope rows; (c) explicit anti-hedging, since the plant was found but
+the verdict line was qualified.
+
+Security and test-quality passed 2/2 live, but they passed partly because this fixture is
+clean on THEIR other hunt rows — the same latent mismatch exists there and is registered
+as dated debt on role-adversaries rather than changed without a failing test to prove the
+change right.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260813-01 | 2026-08-13 | 2eb92f0 | plugins/tdd-playbook/agents/adoption-adversary.md | scope rule (focus question bounds the verdict), computed verdict table, anti-hedging | dead-end-error-message; control-helpful-error-message | up | 3 | control must go 0/3->3/3 quiet AND the plant must reach 3/3 unhedged — both directions, narrowing is not amnesty |

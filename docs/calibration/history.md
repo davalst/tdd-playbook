@@ -337,3 +337,9 @@
 |---|---|---|---|---|---|---|
 | 2026-08-13 | haiku vs claude-opus-5 | control-export-failure-surfaces | observability-adversary | 2/3 | wrong-verdict-line | **BLOCKING FAIL** (AMBER×2) |
 | 2026-08-13 | haiku vs claude-opus-5 | swallowed-export-failure | observability-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-13 — model haiku · repo 2eb92f0 · selected 2 of 48 (26 shipped + 22 corpus · 22 controls) · recall 0/1 [0.00–0.79] · FP 1/1 [0.21–1.00] · form dev
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-13 | haiku vs claude-opus-5 | control-helpful-error-message | adoption-adversary | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-13 | haiku vs claude-opus-5 | dead-end-error-message | adoption-adversary | 2/3 | found-but-hedged | AMBER |
