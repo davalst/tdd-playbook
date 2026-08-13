@@ -377,3 +377,26 @@ had to be recovered).
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260809-01 | 2026-08-09 | 0c114ca | plugins/tdd-playbook/commands/tdd-plan.md | remove the `plan_block.py scaffold/validate` step; approved plans land as ordinary markdown in docs/plans/gated/ | — | none | 0 | tooling-path documentation only — no calibration scenario measures how a gated plan FILE is scaffolded; the §0 plan CONTENT rules the agents are scored on are untouched |
+
+### Registered 2026-08-12 — baseline 3fafc9e (the Readable Surface, v1.34.0 D1/D4)
+
+Four NEW role-lens adversary briefs and one NEW command, per the approved plan
+(`docs/plans/gated/2026-08-12-readable-surface.md`). Registered BEFORE the surface commit,
+in its own commit, because `ledger.py check` reads committed state — an entry landing in
+the same commit as its surface is invisible to the coverage predicate (the dated
+`gate-surface-ledger` blind spot; the 2026-08-09 precedent).
+
+The four agent entries predict `up` from zero: each brief is born WITH its plant/control
+pair in `calibration/corpus/`, so the first live run scores recall (plant fired) and FP
+(control quiet) from a baseline of nothing. `claimed` is 3 reps per scenario (the house
+default). The command entry is `none`: `/readable` is a narration workflow — prose never
+gates, and no calibration scenario measures narration quality by design (reading 2,
+rejected, in the plan).
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260812-01 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/security-adversary.md; calibration/corpus/approved/secret-token-reaches-output.json; calibration/corpus/approved/control-token-kept-out-of-output.json | NEW brief: CISO loss function, rows S17–S24, forced EXPOSED/CONTAINED verdict lines, born with its plant/control pair | secret-token-reaches-output; control-token-kept-out-of-output | up | 3 | first live run scores recall (plant fired) and FP (control quiet) from a baseline of zero |
+| L-20260812-02 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/test-quality-adversary.md; calibration/corpus/approved/assertion-free-smoke-test.json; calibration/corpus/approved/control-asserting-smoke-test.json | NEW brief: head-of-QA loss function, rows S25–S27+S31, forced HOLLOW/LOAD-BEARING verdict lines | assertion-free-smoke-test; control-asserting-smoke-test | up | 3 | same shape: plant (test that cannot fail) + paired control (real assertion) |
+| L-20260812-03 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/observability-adversary.md; calibration/corpus/approved/swallowed-export-failure.json; calibration/corpus/approved/control-export-failure-surfaces.json | NEW brief: 3am ops loss function, rows S02+S32+S33, forced SILENT/OBSERVABLE verdict lines | swallowed-export-failure; control-export-failure-surfaces | up | 3 | same shape: plant (except:pass, exit 0) + paired control (stderr + exit 1) |
+| L-20260812-04 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/agents/adoption-adversary.md; calibration/corpus/approved/dead-end-error-message.json; calibration/corpus/approved/control-helpful-error-message.json | NEW brief: product-owner loss function, rows S38–S41, forced STRANDED/LANDS verdict lines | dead-end-error-message; control-helpful-error-message | up | 3 | same shape: plant (bare "error", no next step) + paired control (usage hint kept) |
+| L-20260812-05 | 2026-08-12 | 3fafc9e | plugins/tdd-playbook/commands/readable.md | NEW command: render the readable surface; citation workflow (verify_citations, N>=1 floor); never dispatches; never gates | — | none | 0 | narration workflow only — prose never gates by design, and no calibration scenario measures narration quality (plan reading 2, rejected) |
