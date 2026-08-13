@@ -23,9 +23,9 @@
 - `docs/reviews/2026-08-10-v1.33.0-release.json` — `f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688`
 - `docs/reviews/2026-08-12-v1.33.1-hotfix.json` — `918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57`
 - `docs/reviews/2026-08-12-v1.34.0-release.json` — `f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294`
-- `docs/reviews/2026-08-13-cheliped-proposals-adjudication.json` — `faa1dc89c58573ff63cddc2bdc81ef553d1548f111a3b92d546bb9af403140b0`
+- `docs/reviews/2026-08-13-cheliped-proposals-adjudication.json` — `e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b`
 - `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
-- `docs/reviews/index.json` — `8352d7c5b38c94c4892d419021ec1f4d47ae24e87c6e668bddd6b9076af3a5e1`
+- `docs/reviews/index.json` — `f09d85174cdd52bc8188b5e90661147e50123527d8705c339e4b43ad0aaefce4`
 
 ## Gate surface
 

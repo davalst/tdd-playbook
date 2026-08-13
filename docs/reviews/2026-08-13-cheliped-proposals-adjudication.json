@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-12-readable-surface.md",
   "review_range": {
     "base": "09d23fb6275ffa011e78ee4daaac63ad17407d35",
-    "head": "a16761a27277b3332fd398d254ab371675d89b4c"
+    "head": "b76cab63f9d67476b88ab1a96c3872e944b87efd"
   },
   "reviewers": [
     "claims-verifier"
