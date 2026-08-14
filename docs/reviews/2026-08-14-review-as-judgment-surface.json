@@ -5,37 +5,53 @@
   "plan": "docs/plans/gated/2026-08-14-review-as-judgment-surface.md",
   "review_range": {
     "base": "b76cab63f9d67476b88ab1a96c3872e944b87efd",
-    "head": "89e53140ff2ba87d8f0bac89cf4a2e6c77ec32e2"
+    "head": "1d4f89280969da2ddc0c0e40c025290d0fc15341"
   },
-  "reviewers": ["tripwire-auditor", "architecture-adversary"],
+  "reviewers": [
+    "tripwire-auditor",
+    "architecture-adversary"
+  ],
   "findings": [
     {
       "id": "RJ1-P2-LEDGER-ROW-OUTSIDE-PARSED-SCOPE",
       "severity": "P2",
-      "summary": "Self-caught during implementation: the L-20260814-01 registration was appended under a heading not named 'Registered', so parse_ledger silently skipped the row while `ledger.py check` printed CLEAN — a green over an unparsed entry (the §12 scope class: the check answered the question its selector asked, not the one the author heard).",
-      "evidence": ["docs/calibration/ledger.md", "calibration/ledger.py"],
+      "summary": "Self-caught during implementation: the L-20260814-01 registration was appended under a heading not named 'Registered', so parse_ledger silently skipped the row while `ledger.py check` printed CLEAN \u2014 a green over an unparsed entry (the \u00a712 scope class: the check answered the question its selector asked, not the one the author heard).",
+      "evidence": [
+        "docs/calibration/ledger.md",
+        "calibration/ledger.py"
+      ],
       "status": "incorporated",
-      "disposition": "Heading renamed to 'Registered 2026-08-14 — …' in the same session; the row now parses (59 registered, verified through parse_ledger directly). Recorded as the taxonomy's first dogfood: a deterministic miss — no vacuity guard ties an appended block to the parser's section grammar.",
+      "disposition": "Heading renamed to 'Registered 2026-08-14 \u2014 \u2026' in the same session; the row now parses (59 registered, verified through parse_ledger directly). Recorded as the taxonomy's first dogfood: a deterministic miss \u2014 no vacuity guard ties an appended block to the parser's section grammar.",
       "class": "deterministic",
       "recurrence_key": "row-outside-parsed-scope"
     },
     {
       "id": "RJ2-P1-ROOT-RESOLVER-IGNORES-ADAPTER-CONTRACT",
       "severity": "P1",
-      "summary": "Arch F1/F2: the A12 fix introduced a 9th root resolver that read only CLAUDE_PROJECT_DIR — ignoring TDD_PLAYBOOK_PROJECT_ROOT, the adapter contract tdd_lock.py and _common.runtime_host declare for the Codex host this file is vendored to — and kept the old four-hop derivation as a live, untested fallback byte-identical to the defect A12 removed.",
-      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py", "plugins/tdd-playbook/bin/tdd_lock.py", "plugins/tdd-playbook/hooks/scripts/_common.py"],
+      "summary": "Arch F1/F2: the A12 fix introduced a 9th root resolver that read only CLAUDE_PROJECT_DIR \u2014 ignoring TDD_PLAYBOOK_PROJECT_ROOT, the adapter contract tdd_lock.py and _common.runtime_host declare for the Codex host this file is vendored to \u2014 and kept the old four-hop derivation as a live, untested fallback byte-identical to the defect A12 removed.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/review_ledger.py",
+        "plugins/tdd-playbook/bin/tdd_lock.py",
+        "plugins/tdd-playbook/hooks/scripts/_common.py"
+      ],
       "status": "verified_closed",
       "remediation_commit": "89e53140ff2ba87d8f0bac89cf4a2e6c77ec32e2",
       "closure_review": "architecture-adversary",
-      "closure_evidence": ["plugins/tdd-playbook/tests/test_review_ledger.py::test_root_resolution_vendored_and_canonical"],
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_root_resolution_vendored_and_canonical"
+      ],
       "class": "deterministic",
       "recurrence_key": "nth-copy-of-owned-helper"
     },
     {
       "id": "RJ3-P2-EXIT-CONSTANT-SECOND-HOME",
       "severity": "P2",
-      "summary": "Arch F3: EXIT_VACUOUS gained a try/except literal fallback justified by a partial vendored copy the installer cannot produce (bin/ ships only as a whole tree) — an unreachable, untestable second home for a constant the repo's own plan says must never be re-typed.",
-      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py", "scripts/install_into_repo.py", "docs/plans/gated/2026-08-12-readable-surface.md"],
+      "summary": "Arch F3: EXIT_VACUOUS gained a try/except literal fallback justified by a partial vendored copy the installer cannot produce (bin/ ships only as a whole tree) \u2014 an unreachable, untestable second home for a constant the repo's own plan says must never be re-typed.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/review_ledger.py",
+        "scripts/install_into_repo.py",
+        "docs/plans/gated/2026-08-12-readable-surface.md"
+      ],
       "status": "incorporated",
       "disposition": "Hard-imported from dataflow_sweeps (the readable_surface pattern); the vendored-layout test now copies the real sibling set so the test tree matches the only layout the installer can produce.",
       "class": "deterministic",
@@ -44,42 +60,58 @@
     {
       "id": "RJ4-P3-POINTER-BLOCK-FIFTH-COPY",
       "severity": "P3",
-      "summary": "Arch F4: the new calibration cycle block is the fifth copy-pasted isfile→run→print-or-unmeasured pointer block in run_calibration.py, diverging from its neighbours (prints stderr; resolves via REPO not HERE).",
-      "evidence": ["calibration/run_calibration.py"],
+      "summary": "Arch F4: the new calibration cycle block is the fifth copy-pasted isfile\u2192run\u2192print-or-unmeasured pointer block in run_calibration.py, diverging from its neighbours (prints stderr; resolves via REPO not HERE).",
+      "evidence": [
+        "calibration/run_calibration.py"
+      ],
       "status": "rejected",
-      "rationale": "The four prior blocks predate this plan; extracting a shared helper is a calibration-file refactor that belongs in its own reviewed change, not a drive-by here (§6 reverse check). The two divergences are deliberate, not drift: stderr carries the vacuous-refusal statement (the only pointer whose tool distinguishes empty-scan from clean), and REPO because review_ledger.py is the only pointed-at tool living outside calibration/. Revisit when a sixth block wants a home.",
+      "rationale": "The four prior blocks predate this plan; extracting a shared helper is a calibration-file refactor that belongs in its own reviewed change, not a drive-by here (\u00a76 reverse check). The two divergences are deliberate, not drift: stderr carries the vacuous-refusal statement (the only pointer whose tool distinguishes empty-scan from clean), and REPO because review_ledger.py is the only pointed-at tool living outside calibration/. Revisit when a sixth block wants a home.",
       "class": "judgment",
       "recurrence_key": "copy-pasted-pointer-block"
     },
     {
       "id": "RJ5-P2-SHIP-DATE-SEVEN-COPIES",
       "severity": "P2",
-      "summary": "Arch F5: the six brief blocks pinned the class vocabulary to its owner but left TAXONOMY_SHIP_DATE as seven unpinned prose copies — slipping the future-dated constant by a day would leave six briefs stating a false refusal date under a green suite.",
-      "evidence": ["plugins/tdd-playbook/agents/integration-adversary.md", "plugins/tdd-playbook/bin/review_ledger.py"],
+      "summary": "Arch F5: the six brief blocks pinned the class vocabulary to its owner but left TAXONOMY_SHIP_DATE as seven unpinned prose copies \u2014 slipping the future-dated constant by a day would leave six briefs stating a false refusal date under a green suite.",
+      "evidence": [
+        "plugins/tdd-playbook/agents/integration-adversary.md",
+        "plugins/tdd-playbook/bin/review_ledger.py"
+      ],
       "status": "verified_closed",
       "remediation_commit": "89e53140ff2ba87d8f0bac89cf4a2e6c77ec32e2",
       "closure_review": "architecture-adversary",
-      "closure_evidence": ["plugins/tdd-playbook/tests/test_agents.py::test_review_record_producing_seam"],
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_review_record_producing_seam"
+      ],
       "class": "deterministic",
       "recurrence_key": "unpinned-prose-constant"
     },
     {
       "id": "RJ6-P2-ROSTER-COUNT-AND-DIALECT-BLIND",
       "severity": "P2",
-      "summary": "Arch F6: the roster pin anchored on the cardinality word ('four blocking guards') without validating it — five guards behind prose still saying 'four' passed — and phantom detection covered only README's full-name dialect, not CLAUDE.md's short-name slash-run.",
-      "evidence": ["plugins/tdd-playbook/tests/test_hooks.py", "CLAUDE.md", "README.md"],
+      "summary": "Arch F6: the roster pin anchored on the cardinality word ('four blocking guards') without validating it \u2014 five guards behind prose still saying 'four' passed \u2014 and phantom detection covered only README's full-name dialect, not CLAUDE.md's short-name slash-run.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py",
+        "CLAUDE.md",
+        "README.md"
+      ],
       "status": "verified_closed",
       "remediation_commit": "89e53140ff2ba87d8f0bac89cf4a2e6c77ec32e2",
       "closure_review": "architecture-adversary",
-      "closure_evidence": ["plugins/tdd-playbook/tests/test_hooks.py::test_guard_roster_derived_and_pinned"],
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_guard_roster_derived_and_pinned"
+      ],
       "class": "deterministic",
       "recurrence_key": "pin-misses-a-dialect"
     },
     {
       "id": "RJ7-P2-FOURTH-HOOKS-PARSER",
       "severity": "P2",
-      "summary": "Arch F7: the D-D test inlined a fourth hooks.json command traversal after the plan twice said to reuse host_parity's — literal reuse was impossible (the owner hardcoded the Claude path and returned basenames), which was the case for generalizing the owner, not forking it.",
-      "evidence": ["plugins/tdd-playbook/tests/test_installer.py", "plugins/tdd-playbook/bin/host_parity.py"],
+      "summary": "Arch F7: the D-D test inlined a fourth hooks.json command traversal after the plan twice said to reuse host_parity's \u2014 literal reuse was impossible (the owner hardcoded the Claude path and returned basenames), which was the case for generalizing the owner, not forking it.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "plugins/tdd-playbook/bin/host_parity.py"
+      ],
       "status": "incorporated",
       "disposition": "host_parity.registered_scripts(hooks_json_path) is now the one parser (matches both hosts' root variables, returns plugin-relative paths); _guard_names and the D-D test both consume it.",
       "class": "deterministic",
@@ -89,29 +121,39 @@
       "id": "RJ8-P3-USAGE-BOOTSTRAP-COPY",
       "severity": "P3",
       "summary": "Arch F8: _log_usage duplicates readable_surface's 12-line bootstrap-and-degradation wrapper around the single-owner write path (_common.log_yield_event).",
-      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py", "plugins/tdd-playbook/bin/readable_surface.py"],
+      "evidence": [
+        "plugins/tdd-playbook/bin/review_ledger.py",
+        "plugins/tdd-playbook/bin/readable_surface.py"
+      ],
       "status": "rejected",
-      "rationale": "The write path already has one owner; what is duplicated is the sys.path bootstrap needed to REACH that owner, which cannot itself be shared without being bootstrapped first — a _common.log_usage helper would still leave the bootstrap and the except-degradation in every CLI, saving roughly two lines. The plan authorized the copy (A9). Revisit if a third CLI copy appears — three is where this becomes the pattern the repo's doctrine unifies.",
+      "rationale": "The write path already has one owner; what is duplicated is the sys.path bootstrap needed to REACH that owner, which cannot itself be shared without being bootstrapped first \u2014 a _common.log_usage helper would still leave the bootstrap and the except-degradation in every CLI, saving roughly two lines. The plan authorized the copy (A9). Revisit if a third CLI copy appears \u2014 three is where this becomes the pattern the repo's doctrine unifies.",
       "class": "judgment",
       "recurrence_key": "authorized-bootstrap-copy"
     },
     {
       "id": "RJ9-P2-CATALOG-ROW-SHAPE-ONLY",
       "severity": "P2",
-      "summary": "Arch F9: catalog_row was gated on shape (^H\\d+$), not membership — H99 validated and recurrence printed it as though it named a real HACK_CATALOG map row, while no machine reader of that table existed.",
-      "evidence": ["plugins/tdd-playbook/bin/review_ledger.py", "docs/HACK_CATALOG.md"],
+      "summary": "Arch F9: catalog_row was gated on shape (^H\\d+$), not membership \u2014 H99 validated and recurrence printed it as though it named a real HACK_CATALOG map row, while no machine reader of that table existed.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/review_ledger.py",
+        "docs/HACK_CATALOG.md"
+      ],
       "status": "verified_closed",
       "remediation_commit": "89e53140ff2ba87d8f0bac89cf4a2e6c77ec32e2",
       "closure_review": "architecture-adversary",
-      "closure_evidence": ["plugins/tdd-playbook/tests/test_review_ledger.py::test_taxonomy_required_after_ship_date"],
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_taxonomy_required_after_ship_date"
+      ],
       "class": "deterministic",
       "recurrence_key": "shape-not-membership"
     },
     {
       "id": "RJ10-P3-CYCLE-BLOCK-UNPINNED",
       "severity": "P3",
-      "summary": "Tripwire note: the A8 review-recurrence cycle block runs only in opt-in real calibration runs (not --dry-run) and no test pins the block's presence in run_calibration.py — its removal would be silent until the next real cycle.",
-      "evidence": ["calibration/run_calibration.py"],
+      "summary": "Tripwire note: the A8 review-recurrence cycle block runs only in opt-in real calibration runs (not --dry-run) and no test pins the block's presence in run_calibration.py \u2014 its removal would be silent until the next real cycle.",
+      "evidence": [
+        "calibration/run_calibration.py"
+      ],
       "status": "open",
       "class": "deterministic",
       "recurrence_key": "reader-unpinned"
@@ -120,11 +162,26 @@
       "id": "RJ11-P3-JOURNAL-PATH-MISREAD",
       "severity": "P3",
       "summary": "Tripwire note claimed the Phase-4 tdd-lock ceremony was not journaled (.claude/tdd-lock-journal.jsonl last entry 2026-08-07).",
-      "evidence": [".git/tdd-playbook/events.jsonl"],
+      "evidence": [
+        ".git/tdd-playbook/events.jsonl"
+      ],
       "status": "rejected",
-      "rationale": "Refuted by direct read: the lock and the feature-end unlock are journaled in .git/tdd-playbook/events.jsonl — the lock's ONE versioned authority under Git's common dir (the TEST-LOCK design) — with the red-commit sha 8641b70 and the full reason. The auditor checked a .claude/ path the tool does not use.",
+      "rationale": "Refuted by direct read: the lock and the feature-end unlock are journaled in .git/tdd-playbook/events.jsonl \u2014 the lock's ONE versioned authority under Git's common dir (the TEST-LOCK design) \u2014 with the red-commit sha 8641b70 and the full reason. The auditor checked a .claude/ path the tool does not use.",
       "class": "deterministic",
       "recurrence_key": "reviewer-checked-wrong-path"
+    },
+    {
+      "id": "RJ12-P2-CHECKPOINT-SWEEPS-UNTRACKED-STATE",
+      "severity": "P2",
+      "summary": "The Stop-hook auto-checkpoint swept the user's deliberately-untracked .codex/config.toml into tracked history (8ea214b) \u2014 the SKILL 11 class: auto-checkpoints must exclude state another actor holds; a sweep that adds files the session's own commits deliberately excluded is silent scope creep.",
+      "evidence": [
+        ".git/info/exclude",
+        ".codex/config.toml"
+      ],
+      "status": "incorporated",
+      "disposition": "Untracked again at 1d4f892 after verifying the file holds no secrets (a benign local exitcode_guard opt-in, so the 8ea214b blob staying in unpushed-then-pushed history is acceptable); .codex/ added to .git/info/exclude \u2014 local-only, so no repo policy is set for a directory the owner left untracked.",
+      "class": "deterministic",
+      "recurrence_key": "checkpoint-sweeps-untracked-state"
     }
   ]
 }
