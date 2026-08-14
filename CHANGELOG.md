@@ -3,9 +3,9 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
-## Unreleased
+## 1.36.0 — 2026-08-14
 
-**The review-as-judgment-surface plan (2026-08-14) — the review ledger learns to speak
+**The review-as-judgment-surface plan — the review ledger learns to speak
 about itself.** Four deliverables landed from the 3×-adversaried v2 plan (~85% smaller
 than its draft; three draft deliverables were deleted as already-existing).
 

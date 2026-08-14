@@ -199,6 +199,12 @@ Local-machine plugin installs update separately (no prompt needed):
      truth). `rc` must be `0`.
   2. Bump the four identity files + `CHANGELOG.md`; regenerate
      `docs/reference/current-state.md`; commit.
+  2a. **Cover the bump with the review ledger** (the v1.35.0/v1.36.0 pattern): every
+     non-metadata commit must be covered by a closed implementation review record —
+     `review_ledger.validate_repository` REDs the gate otherwise. Author/extend a record
+     in `docs/reviews/` whose `review_range.head` is the bump commit, update
+     `index.json`, regenerate `current-state.md`, and commit that metadata tail (only
+     `docs/reviews/` + `current-state.md` may follow the reviewed head).
   3. **`git push origin main` FIRST — before any tag.** The order is the point, not a
      formality: `.github/workflows/gate.yml` triggers on push, so it can only re-run the gate
      on a commit that has been pushed. Tagging first would mean the check David is told to
@@ -231,6 +237,16 @@ Local-machine plugin installs update separately (no prompt needed):
   hook. A repo-side check never can. The binding control there is a GitHub `v*` ruleset
   restricting tag creation to `davalst` — dated debt on `release-tag-authority` until armed,
   stated rather than assumed.
+- **Review records carry a finding taxonomy (v1.36.0 — review-as-judgment-surface).**
+  Findings in `docs/reviews/` records dated on/after 2026-08-15 REQUIRE
+  `class: deterministic|judgment` (could a machine have caught it?) and a short-kebab
+  `recurrence_key` (REUSE keys when the same defect shape recurs), optional
+  `catalog_row: H<n>` membership-checked against `docs/HACK_CATALOG.md`'s Guard ↔ entry
+  map. `python3 plugins/tdd-playbook/bin/review_ledger.py recurrence` prints the
+  UNBUILT GUARD lines (a deterministic key in ≥2 records = a guard nobody built — turn
+  it into a catalog row + guard), the keyed-of-total ratio, and logs one machine usage
+  event; the calibration cycle block is its scheduled reader. The six authoring briefs
+  carry the contract, needle-pinned to `review_ledger.FINDING_CLASSES`.
 - **Historical verdicts stay readable.** `plugins/tdd-playbook/bin/verify_verdict.py` (+
   `_ed25519_verify.py`) is KEPT and DELIBERATELY UNWIRED: stdlib-only, no caller, the sole way
   to check a pre-v1.32 signed CIVerd bundle —
