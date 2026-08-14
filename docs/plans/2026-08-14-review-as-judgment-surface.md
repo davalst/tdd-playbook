@@ -1,557 +1,329 @@
 # Plan — Review as a judgment surface: closing the codification loop
 
-**Date:** 2026-08-14
-**Author:** engineering (CTO/senior-dev framing, per David's request)
+**Date:** 2026-08-14 · **Revision:** v2, post-adversary
 **Branch:** `claude/code-review-taste-judgment-2czk91`
 **Provenance:** four recommendations derived from reading *"Code review is a taste problem"*
-(Jain & Poll, TNS, 2026-08-13) against this repo's actual doctrine and artifacts. The article's
-authors sell a product in this space; the recommendations below survived only where this repo's
-own evidence — not the article — supports them.
+(Jain & Poll, TNS, 2026-08-13) against this repo's doctrine and artifacts.
 
 ---
 
-## Executive summary — what this is and why
+## What happened to this plan
 
-This repo is unusually good at one of code review's three jobs (**verification**) and has already
-built most of a second (**capturing intent before the code**, via §0 plans, `capture.py`,
-`deliberation.py`, and the `docs/reviews/` ledger). What it has not built is the **feedback
-loop that turns judgment into mechanism**, and — more seriously — it has no counter-pressure
-against its own growth.
+The v1 draft proposed five deliverables, ~335 lines. Three fresh-context adversaries were
+dispatched against it per §0. All three returned negative verdicts:
 
-The numbers this repo already collects, read in aggregate for what appears to be the first time:
-
-| measure | value | source |
+| adversary | verdict | the finding that mattered |
 |---|---|---|
-| SKILL.md size | 1109 lines | `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md` |
-| registered doctrine changes | 112 rows | `docs/calibration/ledger.md` |
-| …carrying an outcome verdict | 51 (16 HIT · 13 FLAT · 20 INCONCLUSIVE(no-baseline) · 2 PARTIAL) | ibid., column 7 |
-| …carrying no scenario at all | 15 (`scenarios: —`, `expect: none`) | ibid. |
-| review findings recorded | 88 (69 verified_closed · 16 incorporated · 3 open) | `docs/reviews/*.json` |
-| review findings ever **rejected** | **0** — despite `rejected` being a valid status since the schema was written | `bin/review_ledger.py:VALID_STATUS` |
-| registered capabilities | 29 | `capabilities.json` |
+| `architecture-adversary` | **BAND-AID (7)** — "net-negative as written, should be roughly 90% smaller" | four of five deliverables are refuted by code that already exists in this repo |
+| `integration-adversary` | **ISLANDS (4)** | three human-only emitters with no scheduled reader; D2's required fields have no producing seam anywhere in the shipped surface |
+| `adoption-adversary` | **STRANDED (4)** | the plan's own dark-feature mitigation does not measure usage; `capability_registry.py:187` computes darkness from *declared activation*, never observation |
 
-Two readings jump out and they are the spine of this plan:
+**Every load-bearing claim in all three reports was independently verified against the tree
+before acceptance** (§12: subagent reports are unverified claims). The verification is recorded
+below, per finding. Nothing was accepted on the adversary's word.
 
-1. **Roughly a third of the doctrine changes that were measurable measured as HIT.** Twenty were
-   registered against no baseline and are permanently unmeasurable. That is not damning on its own —
-   but nothing in the repo reads that column in aggregate, so the ratio has never informed a
-   decision. `gate_yield.py` does exactly this job for *machine gates* and has no sibling for
-   *doctrine*. §13's decay principle is instrumented in one direction (gates getting weaker) and,
-   for hooks only, in the other (gates getting more expensive than the risk). Doctrine — the
-   largest and fastest-growing surface in the repo, and the one with exactly one reader — is
-   instrumented in neither.
+**Outcome: ~335 lines → ~55 lines plus one re-scoped deliverable.** Three of five deliverables are
+**deleted**, one is **replaced by a decision rather than code**, and the two survivors are
+re-seamed onto machinery that already exists.
 
-2. **Eighty-eight findings, zero rejections.** Either the adversary fleet is perfectly calibrated,
-   or the review surface is confirmation wearing review's clothes. §0 already names this failure
-   in its own words — *"a confirming reviewer rubber-stamps islands"* — and the rejection path it
-   would show up in has never once been exercised. An unexercised control is an unfalsified
-   control, which is a class this repo is otherwise ruthless about (§4a vacuity, §13 liveness-vs-
-   detection plants).
-
-**Design constraint that governs the whole plan:** every deliverable here *adds* surface to a repo
-whose diagnosed disease is accretion. Therefore the deliverable that can *remove* surface ships
-first. Shipping the accretion instruments before the retirement instrument would be the plan
-enacting the very failure it diagnoses — the same logic as §0's "the deploy path is deliverable #1"
-and §1's red-first.
+This is the plan working. A plan whose premise was "this repo's disease is accretion" proposed to
+rebuild three things the repo already had — because it did not read the existing surface first.
+`readable_surface.py:9-10` states the rule the draft needed: *"Not an extractor: any new derivation
+belongs to the existing owner."*
 
 ---
 
-## Correction record (§12 — a claim I made, refuted before it propagated)
+## Correction record (§12) — five claims of mine, refuted and verified
 
-In the conversation preceding this plan I asserted that `CLAUDE.md` "names v1.32.0 four times in
-load-bearing positions while `plugin.json` is at 1.35.0", and offered version-drift as
-deliverable #4.
+The draft's executive summary carried a statistics table. Most of it was wrong. Each correction
+below was verified by me directly, not taken from the adversary.
 
-**REFUTED.** All five occurrences (`CLAUDE.md:3,76,190,193,236`) are correctly-dated *historical*
-markers — "changed in v1.32.0", "since v1.32.0", "until v1.32.0", "v1.32.0 onward", "pre-v1.32".
-None claims to be the current version. The claim was a grep count read as a staleness signal
-without reading the surrounding clause: precisely §12's "cite-or-refuse" failure, and precisely the
-"absence/presence claims about text must parse the context" rule.
+**C1 — "112 registered doctrine changes."** *Refuted.* Running this repo's own parser:
+`parse_ledger` returns **58 registered + 54 scored = 112**. I read a union of two row types as one
+count. The honest coverage figure is **54 of 58 registered entries priced = 93%**, which is the
+near-opposite of the ~46% my table implied.
 
-**What survived the refutation** is a different and smaller finding, carried forward as D4: the
-standing prompt at `CLAUDE.md:76` makes a **roster claim** — "the four BLOCKING guards:
-test_weakening_guard, test_lock_guard, snapshot_guard, tag_guard; plus the opt-in
-exitcode/overmock/exhaustive/flaky/red_lock" — that is asserted in prose, shipped to every
-downstream repo as instructions, and pinned by nothing. `test_agents.py:893-897,962` checks
-`CLAUDE.md` with **substring presence** assertions only. That roster can drift the moment a
-guard is added or retired, and the drift would be invisible.
+**C2 — "roughly a third of measurable doctrine changes measured as HIT."** *Refuted.* 16/51 put 20
+`INCONCLUSIVE(no-baseline)` rows into the denominator — the exact coercion the draft's own D1
+honesty rules ordered the tool to refuse. Measured-only: 16 HIT + 2 PARTIAL of 32 = **56%**. I also
+dropped `REGRESSED 1` and `INCONCLUSIVE(below-noise-floor) 2` — and `REGRESSED` is the single most
+decision-relevant class in the table.
 
-This correction is itself the argument for D2: the finding that a rule was walked past is worth
-more than the rule.
+**C3 — "nothing in the repo reads that column in aggregate."** *Refuted.* `calibration/ledger.py:720`
+`cmd_report` counts every scored row by verdict, runs a one-sided sign test, and is registered as a
+verb at `:803`. It prints `LEDGER SIGNAL: 18 of 19 moved entries moved as predicted — p=0.000`.
 
----
+**C4 — "rule (d) makes doctrine additions free; nothing makes them accountable."** *Refuted.*
+`calibration/ledger.py:758-782` `cmd_debts` requires every FLAT/REGRESSED/SURPRISE entry to carry a
+dated follow-up, **exits 1** when one is missing, and `--emit` prints paste-ready registry debt JSON.
 
-## Spec integrity (once, before deliverables — §0)
+**C5 — "`CLAUDE.md` names v1.32.0 while the plugin is at 1.35.0" (carried from the conversation).**
+*Refuted in v1 and still refuted:* all five occurrences are correctly-dated historical markers.
 
-### Assumptions, stated rather than picked silently
-
-1. **The reader is one person and his attention is the scarce resource.** Every instrument below
-   is designed to produce a *short read*, not a complete one. If a deliverable's output cannot be
-   read in under a minute, it has failed regardless of correctness.
-2. **Nothing here is allowed to block a release on judgment.** D3 makes taste *auditable*, never
-   *blocking*. The architecture- and adoption-adversaries stay advisory (§0 says so explicitly);
-   what changes is that their disposition becomes an artifact instead of a chat turn.
-3. **`docs/calibration/ledger.md` column 7 is schema-mixed across eras** — early rows carry
-   scenario names, later rows carry outcome verdicts (HIT/FLAT/INCONCLUSIVE/PARTIAL). D1 must
-   read what is actually there and report the mixed-era rows as **UNMEASURED**, never coerce them
-   into a verdict. Inferring a class into a durable record is the exact fabrication the v1.27
-   dated correction in `gate_yield.md` exists to end; D1 inherits that prohibition verbatim.
-4. **Recurrence keys are authored, not inferred.** D2 does not attempt semantic clustering of
-   finding text. A human (or the authoring agent) supplies the key; the tool only counts. An
-   inferred key would produce a confident wrong number, which is worse than no number.
-
-### Materially simpler approaches — considered, and where they win
-
-- **Instead of D1 (doctrine yield):** just delete SKILL sections by judgment, periodically.
-  *Rejected* — that is the current state, and 112 registered rows with no aggregate read is the
-  result. But note honestly: D1's value is entirely in whether David *acts* on the candidate list.
-  If after two cycles no candidate has ever been retired, D1 has failed and should itself be
-  retired under its own rule. That self-application is written into D1's DoD.
-- **Instead of D2 (taxonomy + recurrence):** keep classifying findings in prose. *Rejected on this
-  repo's own evidence* — §12's Cheliped entry records "three rules in context the whole time,
-  three misses in one sprint", a recurrence event captured as prose and never counted.
-- **Instead of D3 (judgment artifacts):** nothing. *This is the closest call in the plan.* D3's
-  entire value is making a zero-rejection rate visible. That could be achieved with a five-line
-  script over `docs/reviews/*.json` and no schema change at all. **D3 is therefore scoped down to
-  exactly that** — see D3, which deliberately does *not* add a new record type.
-- **Instead of D4 (roster pin):** accept the prose. *Rejected* — it is ~15 lines and it converts a
-  downstream-shipped instruction from honor-system into mechanism, which is §12's "when a class is
-  named, ship the mechanism".
-
-### Deferrals — trigger, not roadmap (H7)
-
-Two items are deferred, each as a **dated `integration_debt` entry registered in the same commit**,
-with `validate --as-of <expiry+1>` proven to exit **1 (EXPIRED)** before the commit lands:
-
-| deferred | why | owner | expiry | trigger |
-|---|---|---|---|---|
-| Retirement *execution* (actually deleting a SKILL section that D1 flags) | Retirement is a human decision with the R4.3 shape; `gate_yield` made the same split and it was right | david | 2026-11-15 | first D1 candidate surviving two cycles |
-| Back-classifying the 88 historical findings with D2's taxonomy | Historical records are append-only; re-classifying them retroactively is the record-rewriting D1 assumption #3 forbids. New findings only. | david | 2026-12-31 | if recurrence detection produces no signal in 3 cycles, revisit whether a historical seed is needed |
-
-### Questions for David (do not plan around — §0)
-
-- **Q1 (blocking for D1's threshold):** what should the retirement-candidate rule be? Proposed:
-  *a SKILL section with ≥3 registered changes across ≥2 cycles and zero HITs*. That is a guess. The
-  `gate_yield` precedent uses `--min-cycles 2` plus adjudicated friction; I have mirrored the shape
-  but the numerator is genuinely arbitrary here and a wrong threshold produces noise that trains
-  you to ignore the instrument.
-- **Q2 (shapes D3):** if the zero-rejection rate turns out to be real rubber-stamping rather than
-  calibration, is the intended response to strengthen the adversaries, or to accept that this
-  repo's adversaries are advisory-by-design and stop treating rejection as a health signal?
+**What survived C1–C4:** the ledger has no *section* granularity, and doctrine is unmeasurable by
+design. That is a real gap — but it is a decision at the registration seam, not a missing reader.
+See "The one open decision" below.
 
 ---
 
-## Ceremony sizing (§0 preamble, in numbers)
+## Deleted deliverables, with the evidence that killed them
 
-Feature / multi-deliverable work touching `bin/` and the release gate → **full flow**. Every
-deliverable gets: red-first tests, edge cases, integration surface, flow table, and the closing
-adversary dispatch. D4 alone is sub-threshold by line count (~15 lines) but touches `CLAUDE.md`,
-which `gate-manifest.json:force_full` lists — so it runs the full suite regardless, and the
-ceremony is charged to the gate rather than to the diff.
+### D0 (vendoring roster) — DELETED. The premise was false.
 
----
+The draft claimed *"new `bin/` files must be added to its vendoring roster or they simply do not
+ship."* **There is no such roster.** `scripts/install_into_repo.py:43-50` `COPY_TREES` names
+*directories* — `("bin", "bin")` — and `_copy_tree` at `:74-98` walks them with `os.walk`. Every
+`bin/*.py` vendors by construction. `capabilities.json:573` already registers this by name:
+*"COPY_TREES bin/ vendor rule — auto-vendors"*.
 
-## Deploy surface (§0 — required: this plugin RUNS where this session does not control it)
+D0's red-first test could not have gone red for its stated reason: the planted file would vendor.
+The draft would have *created* the per-file roster it proposed to guard.
 
-Every deliverable adds or changes files under `plugins/tdd-playbook/bin/`, which are **vendored
-into downstream repos' `.claude/bin/`** by `scripts/install_into_repo.py`. This is a real deploy
-surface and the reflex "commit-and-push IS the deploy" is false here.
+Its own deferred question is also answered: `_merge_hooks:124-166` prunes and re-adds from
+`hooks/hooks.json` wholesale — no roster, already covered.
 
-- **Runs where:** downstream repos' vendored `.claude/` copies (memrebel, cheliped, and any repo
-  refreshed via the standing prompt in `CLAUDE.md`), plus this repo's own gate.
-- **Gets there how:** `scripts/install_into_repo.py` — the reconciling installer. New `bin/` files
-  must be added to its vendoring roster or they simply do not ship. **This is the single most
-  likely way this plan ships dark**, and it is D0 below.
-- **Verified how:** the existing scratch-repo `install_into_repo.py` parity run in the release gate,
-  extended to assert the new bins and verbs are present; `test_vendoring.py` is the mechanical seam.
-- **Divergence:** a downstream repo on an older vendored copy silently lacks the new verbs. It
-  notices at its next refresh via the standing prompt's step 2 checklist, which D0 updates.
+**The one real hand-maintained roster in this family is `CODEX_COPY_FILES:58-61`** (two files, for
+the Codex host). That is the only place the D0 *class* of drift can occur. Retained as D-D below,
+optional, ~5 lines.
 
-**D0 is therefore deliverable #0 and is not optional:** before any instrument is built, extend the
-vendoring roster and its test so a new `bin/` file *cannot* be added without shipping. Same logic
-as §0's deploy-path-first rule.
+### D1 (doctrine-yield reader) — DELETED as a reader. Structurally vacuous.
 
----
+Verified directly: **all 9 SKILL.md-surfaced ledger entries carry `expect: none`**, and
+`calibration/ledger.py:67-70` explains why in a comment — `EFFECTFUL` covers
+`scenarios.json`, `corpus/approved/` and `agents/` because *"Doctrine prose and command text can
+legitimately be inert."*
 
-## Deliverables
+Consequences, both fatal:
+- Under D1's own inherited honesty rule (INCONCLUSIVE ⇒ unmeasured), **every** SKILL.md row is
+  unmeasured ⇒ SKILL.md is UNMEASURED ⇒ **zero candidates, permanently**.
+- The `surface` cell holds file paths (`ledger.py:161`), not section anchors. All 9 entries carry
+  the identical cell. There is no section history to group by. Worse, 8 of the 9 are dated
+  `2026-08-06` — one cycle — so nothing clears the ≥2-cycles leg either.
 
-Order is load-bearing. D1 ships before D2/D3 because D1 is the only deliverable that can *remove*
-surface, and this plan otherwise adds four instruments to a repo diagnosed with accretion.
+The draft called section-keying "the hardest part of D1"; it is not an edge case, it is the entire
+feature, and it requires a **ledger schema change the draft never listed as a deliverable**.
 
----
+**The plan's sole stated mitigation for its own accretion risk — "the deliverable that can remove
+surface ships first" — was therefore not a promise. It was a promise that provably could not be
+kept.** That is the honest verdict on the draft and it is recorded rather than softened.
 
-### D0 — Vendoring roster becomes self-enforcing (enabling; ~30 lines)
+### D3 (zero-rejection visibility) — DELETED. Already shipped and gate-enforced.
 
-**Plain English:** today, adding a new tool to `bin/` and forgetting to list it in the installer
-means downstream repos never get it, and nothing complains. Make that impossible.
+`docs/reference/current-state.md` already contains, under "Adversarial review records":
 
-**Red-first:** a test that adds a synthetic `bin/_plant_unvendored.py` to a scratch tree and
-asserts `install_into_repo.py`'s roster check REDs. Must fail before the fix and pass after.
+```
+- Review records: 15. Findings: 88.
+- `incorporated`: 16   · `open`: 3   · `rejected`: 0   · `verified_closed`: 69
+```
 
-**Behavior:** `test_vendoring.py` gains a roster-parity check — every `plugins/tdd-playbook/bin/*.py`
-not explicitly exempted must appear in the installer's vendoring set. Exemptions are an explicit,
-commented list (today: `verify_verdict.py` + `_ed25519_verify.py` are deliberately kept and
-deliberately unwired, per `CLAUDE.md`; they still vendor, so likely no exemptions are needed at all
-— **verify this rather than assume it**).
+Generated by `render_reference.py:130-140`, staleness-REDs at `:151`, wired into
+`gate-manifest.json`, pinned by `test_reference_docs.py`. Those are the draft's own
+executive-summary numbers — I took them from this artifact and then proposed building it.
 
-**Edge cases:**
-- a new `_private.py` helper imported by a vendored tool but never invoked directly → must still
-  vendor, or the vendored tool breaks on import downstream (this is the `_debt.py` / `dataflow_sweeps.py`
-  sibling pattern already in the repo — the fixture must cover it);
-- a file added under `bin/` that is a fixture or data file, not a tool → exemption list, with reason;
-- the check must count from `git ls-files`, not `os.listdir`, so an untracked scratch file cannot
-  RED the gate and an untracked-but-committed-later file cannot slip past (§12: the roster must be
-  one the file cannot drift with).
-
-**UX test:** a developer adds a tool and forgets the roster → the gate names the missing file and
-the exact line to add. Not "roster mismatch".
-
-**Integration surface:**
-- *Consumes:* `scripts/install_into_repo.py` (vendoring roster), `git ls-files`.
-- *Emits → named consumer:* a RED in `test_vendoring.py`, consumed by `gate_runner.py` via
-  `gate-manifest.json:suite_glob` (`plugins/tdd-playbook/tests/test_*.py`) — field granularity: the
-  suite's non-zero exit is read by `gate_runner.py`'s stage loop.
-- *Surface parity:* n/a — this is a repo-internal gate, no user-facing surface.
-- *Reverse sweep:* the same roster-drift class applies to `hooks/scripts/*.py`. **Check whether the
-  installer's hook merge already covers this**; if it does not, that is a second finding and becomes
-  either a deliverable or dated debt — not a silent pass.
-- *Activation:* on by default, part of the standing suite. No flag.
-
-**Flow table (§6c):**
-
-| flow | producer | consumer | liveness test |
-|---|---|---|---|
-| bin roster | `git ls-files plugins/tdd-playbook/bin/*.py` | `install_into_repo.py` vendoring set | `test_vendoring.py::test_bin_roster_parity` (planted unvendored file REDs) |
-
-**DoD:** planted unvendored file REDs; real tree passes; scratch-repo install parity run still green.
+If the *words* are the deliverable, that is D-C below: ~3 lines in the existing generator.
 
 ---
 
-### D1 — Doctrine yield: `ledger.py candidates` (the retirement instrument)
+## What survives
 
-**Plain English:** the repo already records, for every doctrine change, whether it moved a
-calibration scenario. Nobody reads those 112 rows together. This adds one command that reads them
-and says which parts of the playbook have grown without ever demonstrably helping — the same job
-`gate_yield candidates` does for hooks, pointed at prose.
+### D-A — Finding taxonomy + recurrence detection (the only substantial survivor)
 
-**Why first:** it is the only deliverable in this plan that can subtract. Rule (d) makes doctrine
-*additions* free; nothing makes them accountable. Shipping D2/D3 before D1 would add three
-instruments to the accretion problem while the counter-pressure stayed unbuilt.
+**Plain English:** when a review finds something, record what *kind* of thing it is and give it a
+short key. When the same key appears twice, that is a guard nobody built, and the tool says so.
 
-**Red-first:** a fixture ledger with a section at 3 changes / 2 cycles / 0 HITs must appear as a
-candidate; a section at 3 changes / 2 cycles / 1 HIT must not; a section whose rows are all
-mixed-era must be reported **UNMEASURED**, never as a candidate. All three assertions written and
-RED before implementation.
+This survived all three adversaries as the one genuinely missing mechanism. It is also the one the
+draft under-specified most, so the re-scope is substantial.
 
-**Behavior:** `calibration/ledger.py candidates [--min-cycles 2] [--min-changes 3]`, mirroring
-`gate_yield.py candidates` in shape, flags, and honesty rules. Output: one line per candidate
-section, plus an explicit **coverage line** (§12: never a numerator without its denominator) —
-`sections scanned N · measured M · unmeasured K`.
-
-**Honesty rules inherited verbatim from `gate_yield.py` (these are not decoration — they are the
-reason `gate_yield` is trustworthy):**
-- a section absent from the record is **UNMEASURED, never zero**;
-- `INCONCLUSIVE(no-baseline)` rows count toward *unmeasured*, never toward "no effect" — a change
-  that could not be measured is not a change that did nothing;
-- mixed-era rows (assumption #3) are excluded from the numerator and **named in the output**, so
-  the exclusion is visible rather than silent;
-- candidates require ≥`--min-cycles` **committed** cycles, so a fresh clone cannot manufacture them.
-
-**Edge cases:**
-- a section renamed between cycles (SKILL headings do change) → rows must key on something more
-  stable than the heading text, or renames silently reset a section's history. **This is the hardest
-  part of D1 and should be designed before coding**; proposed: key on section *number* (`§12`), with
-  a renames map in the ledger when a number changes, and a RED if a registered row cites a section
-  number that does not exist in current SKILL.md;
-- a section with exactly one cycle of history → UNMEASURED, not a candidate;
-- zero candidates → must print "no candidates" plus the coverage line, never empty output (an empty
-  render reads as "not run");
-- the whole ledger unreadable/malformed → exit non-zero with the parse error, never an empty pass.
-
-**UX test:** David runs `ledger.py candidates` and in one screen learns which sections to consider
-cutting and how much of the playbook the answer covers. If the output needs a follow-up question to
-be actionable, it has failed the `/readable` "size every worry" rule (L-20260813-09) — which is
-this repo's own most recent lesson and applies directly.
-
-**Integration surface:**
-- *Consumes:* `docs/calibration/ledger.md` (existing, append-only), `calibration/ledger.py`'s
-  existing `parse_ledger`/`_cells` parsers — **reuse them, do not write a second parser** (the
-  Nth-copy band-aid the architecture-adversary exists to catch).
-- *Emits → named consumer:* stdout, read by David. **This is deliberately a human-only consumer and
-  therefore write-only by the §0 field-granularity rule** — no code reads it. That is registered as
-  the honest answer, not hidden: an advisory human-facing report is legitimate, but it must be
-  *named* as such, and it means D1 gets **no gate stage** and cannot RED a release.
-- *Surface parity:* CLI only. Not a hook, not a gate stage. Matches `gate_yield candidates`, which
-  is also CLI-only — parity with the sibling instrument is the point.
-- *Reverse sweep:* `/grade` (§13's process-grading command) should mention this instrument, since
-  that is where a human already goes to read the learning loop. One line in `commands/grade.md`.
-- *Activation:* opt-in CLI, run by a human. Per §6b (onboard, don't hide), it needs an onboarding
-  contract: a line in `CLAUDE.md`'s calibration block and in `docs/calibration/README.md`.
-
-**Flow table (§6c):**
-
-| flow | producer | consumer | liveness test |
-|---|---|---|---|
-| doctrine change rows | `calibration/ledger.py score` (existing) | `ledger.py candidates` | `test_ledger_candidates::test_zero_hit_section_is_a_candidate` |
-| candidate list | `ledger.py candidates` | **David (human)** — no code consumer, registered as advisory | reader-facing; no mechanical liveness (stated, not hidden) |
-| coverage line | `ledger.py candidates` | `test_ledger_candidates::test_coverage_line_names_unmeasured` | planted mixed-era row must be named in output |
-
-**DoD:** all three red-first assertions green; run against the real 112-row ledger and the output
-reviewed by David for signal-vs-noise; **registered in `capabilities.json`** with the advisory
-human-consumer honestly stated; ledger entry registered for any SKILL/CLAUDE.md text added.
-
-**Self-application (the rule D1 must survive):** if after two cycles D1 has produced candidates and
-none was ever acted on, D1 is itself a zero-yield instrument and gets retired under its own
-criterion. Registered as dated debt, owner david, expiry 2026-11-15.
-
----
-
-### D2 — Finding taxonomy + recurrence detection (the codification loop's missing input)
-
-**Plain English:** when a review finds something, record what *kind* of thing it is — a rule a
-machine could check, something a test could catch, or a genuine judgment call — and give it a short
-key. When the same key shows up twice, that is a guard nobody built yet, and the tool says so.
-
-**Red-first:** a fixture with two records sharing `recurrence_key: "grep-counts-docstrings"` and
-`class: deterministic` must produce exactly one unbuilt-guard finding; the same key across two
-records with `class: judgment` must produce none (judgment recurring is not a missing guard — it is
-a genuinely recurring judgment); a single occurrence must produce none. RED before implementation.
+**Red-first:** two records sharing `recurrence_key: "grep-counts-docstrings"` at
+`class: deterministic` → exactly one UNBUILT GUARD line; same key at `class: judgment` → none
+(recurring judgment is not a missing guard); single occurrence → none. RED before implementation.
 
 **Behavior:**
-1. `bin/review_ledger.py` finding schema gains two **optional-then-required** fields:
-   `class: deterministic | execution-testable | judgment` and `recurrence_key: <short-slug>`.
-   Optional for existing records (append-only; assumption #4 and the deferral above forbid
-   retroactive classification), **required for records whose `id` date is ≥ the ship date** —
-   enforced in `validate_record`, so the requirement arrives without rewriting history.
-2. New verb `review_ledger.py recurrence`: prints keys appearing in ≥2 records, grouped by class,
-   with the record ids. A `deterministic` key at ≥2 is labelled **UNBUILT GUARD** and cites §13's
-   authoring ritual (replay against the motivating artifact, freeze as a planted fixture citing the
-   pre-fix sha) as the next step.
+1. `bin/review_ledger.py` finding schema gains `class` + `recurrence_key`, **optional for existing
+   records, required for records whose `id` date is ≥ ship date** — enforced in `validate_record`,
+   so the requirement arrives without rewriting append-only history.
+2. New verb `review_ledger.py recurrence`: keys appearing in ≥2 records, grouped by class. A
+   `deterministic` key at ≥2 is labelled **UNBUILT GUARD**.
 
-**Why this is one schema change and not two:** D3 also wants to read `docs/reviews/`. Doing D2 and
-D3 as separate migrations of the same record type would be the Nth-copy pattern. **One schema, two
-readers** — stated here so the architecture-adversary has something to refute rather than discover.
+**Changes forced by the adversaries — each with its evidence:**
 
-**Edge cases:**
-- an author picks a fresh key for a recurring problem (the obvious defeat) → the tool cannot detect
-  this and **must say so in its own output**: "counts authored keys; a re-keyed recurrence is
-  invisible to this instrument" (§12: a control carries its denominator, and this one's blind spot
-  is the honest denominator);
-- a key recurring across *the same* review record → counts once, not twice;
-- `class` present but `recurrence_key` absent on a post-ship record → RED with the specific missing
-  field, not a generic schema error;
-- an existing pre-ship record touched for an unrelated reason → must not suddenly require the new
-  fields, or every historical edit becomes a migration (this is the trap that makes "optional-then-
-  required" schemas fail in practice, and it needs its own planted test);
-- key collision between unrelated findings (`"parser"`) → no mechanical defense; mitigated by
-  requiring keys to be ≥3 hyphenated words, checked in `validate_record`.
-
-**UX test:** after a review, David runs `recurrence` and sees a short list of "this keeps happening
-and no guard exists". Empty list prints "no recurring keys" plus the coverage line — never nothing.
-
-**Integration surface:**
-- *Consumes:* `docs/reviews/*.json` + `index.json`, `bin/review_ledger.py`'s existing
-  `validate_record`.
-- *Emits → named consumer:* (a) the RED path — `validate_record`'s problem strings are consumed by
-  `validate_repository` → `main()` → **`gate-manifest.json`'s ledger-adjacent stage and
-  `force_full` on `docs/reviews/**`**, so a malformed record already fails the gate at field
-  granularity; (b) the `recurrence` verb's stdout → David (human, advisory, no code consumer —
-  stated, not hidden, same as D1).
-- *Surface parity:* CLI only; the schema half is enforced everywhere the gate runs (local + CI),
-  which is the important parity.
-- *Reverse sweep:* the adversary agent briefs (`agents/*.md`) should instruct agents to emit
-  `class` and `recurrence_key` in their findings — otherwise the fields are populated by hand
-  forever and will rot. **This is the deliverable's real integration risk** and gets its own
-  sub-task: update `claims-verifier`, `integration-adversary`, `architecture-adversary`,
-  `adoption-adversary` briefs. Note that `agents/*.md` is a **watched gate surface** under rule (d),
-  so this needs a `calibration/gate-changes.md` entry.
-- *Activation:* schema enforcement on by default (it is part of an existing blocking validator);
-  `recurrence` verb is opt-in CLI with a §6b onboarding line.
-
-**Flow table (§6c):**
-
-| flow | producer | consumer | liveness test |
-|---|---|---|---|
-| `class` / `recurrence_key` fields | adversary agents + human authors | `validate_record` (RED on post-ship record missing them) | planted post-ship record without `class` must RED |
-| recurrence counts | `review_ledger.py recurrence` | David (human, advisory) | planted 2× deterministic key → exactly one UNBUILT GUARD line |
-| agent-emitted fields | `agents/*.md` briefs | the record files themselves | a brief that does not mention the fields is caught by `test_agents.py` roster check |
-
-**DoD:** red-first assertions green; four agent briefs updated *and* `gate-changes.md` entry
-written; run against the real 88 records with all pre-ship records still validating; registered in
-`capabilities.json`.
-
----
-
-### D3 — Make the zero-rejection rate visible (deliberately the smallest deliverable)
-
-**Plain English:** in 88 findings, nothing has ever been rejected. Print that number so it stops
-being invisible. Do not build a system around it.
-
-**Scope discipline (why this is 20 lines, not 200):** the spec-integrity section asked whether a
-materially simpler approach exists, and here it plainly does. My first instinct was a new record
-type for advisory-adversary findings with required dispositions. That is speculative machinery
-built on a number nobody has looked at yet. **Look at the number first.** If the rate stays zero
-for two more cycles with a visible counter, *then* the machinery is justified by evidence rather
-than by hunch — and by then D2's taxonomy makes it nearly free.
-
-**Red-first:** a fixture with 3 incorporated / 1 rejected must report `rejected 1 of 4 (25%)`; a
-fixture with 0 rejected must report `rejected 0 of N (0%) — no finding has ever been rejected`
-as an explicit, unmissable line rather than a `0` in a table.
-
-**Behavior:** `review_ledger.py stats` (or a `--stats` flag on the existing verb — decide at
-implementation, one entry point either way) prints the status distribution across all records, with
-the zero-rejection case called out in words. Advisory. **Never gates.**
-
-**Edge cases:**
-- a single record with one finding → percentages are meaningless at N=1; print counts and suppress
-  the percentage below a stated N;
-- `open` findings → excluded from the rejection denominator (an open finding has not been
-  adjudicated yet), and the exclusion is **named in the output**, not silent;
-- new statuses added later → unknown status must be counted and listed, never dropped into "other".
-
-**UX test:** the line reads as plain English to a non-code reader — "no finding has ever been
-rejected" — per the `/readable` business-owner test (L-20260813-08). It must not read
-"rejection-class cardinality: 0".
-
-**Integration surface:**
-- *Consumes:* `docs/reviews/*.json` — same loader as D2, **shared, not duplicated**.
-- *Emits → named consumer:* stdout → David (human, advisory, no code consumer — stated).
-- *Surface parity:* CLI only.
-- *Reverse sweep:* `/grade` should surface this alongside D1's candidates — both are learning-loop
-  reads and should not be two separate rituals.
-- *Activation:* opt-in CLI. Explicitly **not** a gate stage: gating on a rejection *rate* would
-  create direct pressure to manufacture rejections, which is the metric-gaming failure §13 is built
-  around. Stated here so the decision is on the record rather than assumed.
-
-**Flow table (§6c):**
-
-| flow | producer | consumer | liveness test |
-|---|---|---|---|
-| status distribution | `docs/reviews/*.json` | `review_ledger.py stats` → David | fixture with 1 rejected → `25%`; fixture with 0 → the words |
-
-**DoD:** red-first assertions green; real-tree run prints `0 of 85 adjudicated`; **Q2 answered by
-David** before any follow-on machinery is considered.
-
----
-
-### D4 — Pin the standing prompt's guard roster (~15 lines, mechanism over prose)
-
-**Plain English:** `CLAUDE.md` tells every downstream repo which guards exist. That list is prose.
-Make a test compare it to the guards that actually exist.
-
-**Red-first:** delete a guard name from `CLAUDE.md`'s roster line in a fixture → RED; add a
-non-existent guard name → RED; add a real new guard to `hooks/scripts/` without updating
-`CLAUDE.md` → RED. The third is the one that matters and is the one a substring check cannot do.
-
-**Behavior:** `test_agents.py` (which already reads `CLAUDE.md`) gains a roster-parity check:
-the guard names in the standing prompt's roster == the guard scripts in
-`plugins/tdd-playbook/hooks/scripts/` that are registered as PreToolUse hooks in `hooks.json`,
-partitioned into blocking vs opt-in, matching what the prose claims. Replaces presence-by-substring
-with a set comparison.
-
-**Edge cases:**
-- a hook script that is a helper, not a guard (`_common.py`, `capture.py`, `intent_nudge.py`,
-  `build_completion_reminder.py`) → must be excluded by *what `hooks.json` registers it as*, not by
-  a hardcoded name list that drifts (§12's "a roster this file cannot drift with");
-- a guard registered but demoted by default → belongs in the opt-in partition; the test must
-  distinguish the two partitions, since conflating them is exactly the v1.32.0 fact the prose
-  encodes;
-- `AGENTS.md` is byte-equal to `CLAUDE.md` + HOST_NOTES (`test_reference_docs.py:168`) → the fix
-  must not break that equality; the check reads `CLAUDE.md` only and the existing equality test
-  covers propagation.
-
-**UX test:** a developer adds a guard, forgets the prompt, and the failure message says which guard
-is missing from which line — not "roster mismatch".
-
-**Integration surface:**
-- *Consumes:* `CLAUDE.md` roster line, `hooks/hooks.json` registrations, `hooks/scripts/*.py`.
-- *Emits → named consumer:* RED in `test_agents.py` → `gate_runner.py` stage loop (same field-level
-  path as D0).
-- *Surface parity:* the pin protects the *downstream* surface — every vendored repo receives the
-  roster as instructions, so this is the highest-leverage 15 lines in the plan.
-- *Reverse sweep:* the same prose-roster class exists in the standing prompt's step-2 verification
-  checklist (it names `tdd_lock.py`, `with_snapshot.py`, `grade_from_otel.py`,
-  `capability_registry.py`, `dataflow_sweeps.py`). **That list is also unpinned and also ships
-  downstream** — D0's vendoring roster and this check should share one source of truth rather than
-  become a third list. Fold into D0's implementation or register as dated debt; do not leave as a
-  silent third copy.
-- *Activation:* on by default; part of the standing suite.
-
-**Flow table (§6c):**
-
-| flow | producer | consumer | liveness test |
-|---|---|---|---|
-| guard roster | `hooks.json` registrations | `CLAUDE.md:76` prose ← pinned by `test_agents.py` | planted new guard without prose update REDs |
-| bin roster (D0) | `git ls-files bin/*.py` | `CLAUDE.md` step-2 checklist + installer | shared source of truth or dated debt |
-
-**DoD:** all three red-first assertions green; `AGENTS.md` equality still holds; the reverse-sweep
-third-list question answered (folded or dated), not left open.
-
----
-
-## Sequencing and rationale
-
-| # | deliverable | size | why here |
-|---|---|---|---|
-| D0 | vendoring roster self-enforcing | ~30 lines | nothing else ships correctly without it — deploy path first |
-| D1 | doctrine yield candidates | ~120 lines | the only subtractive instrument; must precede the additive ones |
-| D2 | taxonomy + recurrence | ~150 lines + 4 agent briefs | the codification loop's missing input side |
-| D3 | zero-rejection visibility | ~20 lines | scoped down deliberately; evidence before machinery |
-| D4 | roster pin | ~15 lines | highest leverage per line; protects the downstream surface |
-
-Total ≈ 335 lines of implementation plus tests. **D2 is the only deliverable that touches watched
-gate surfaces** (`agents/*.md`) and therefore the only one needing a `gate-changes.md` entry under
-rule (d).
-
-## Release-gate impact (checked against `gate-manifest.json`)
-
-- New `bin/` verbs and new `tests/test_*.py` files are picked up automatically by `suite_glob`.
-- `bin/review_ledger.py` is already in `force_full` — D2 and D3 will trigger full-suite runs. Expected, not a problem.
-- `CLAUDE.md` and `capabilities.json` are in `force_full` — D1, D2 and D4 all trigger it.
-- **New test files may need `safe_rules` entries** so unrelated future diffs do not run them
-  needlessly. Add during implementation; verify with `gate_plan.py` rather than by inspection.
-- `capability_registry.py validate` must pass with the new capability entries — this is enforced
-  mechanically by `test_capability_registry.py::test_own_registry` on the real clock, so an
-  expired debt entry REDs the suite, not just the checklist.
-
-## Risks — what would make this plan wrong
-
-1. **The plan is itself accretion.** Four new instruments in a repo whose disease is too much
-   surface. Mitigated by D1-first and by D1's self-application clause, but the mitigation is a
-   promise, not a mechanism. **This is the finding I most want the architecture-adversary to press
-   on**, and if it says the plan is net-negative, that verdict should be taken seriously rather
-   than folded in as a caveat.
-2. **D1's threshold is a guess (Q1).** A wrong threshold produces noise, noise trains the reader to
-   ignore the instrument, and an ignored instrument is worse than none because it looks like coverage.
-3. **D2's keys are authored, so D2 is defeatable by anyone who re-keys.** Stated in its own output;
-   no mechanical fix exists. Honest limit, not a bug.
-4. **D3's number may mean the opposite of what it looks like.** Zero rejections could be genuine
-   calibration. The deliverable is built to *show* the number, not to interpret it — Q2 must be
-   answered by a human.
-5. **Three of four instruments have a human as their only consumer.** By this repo's own §0
-   field-granularity rule that is write-only, and write-only is not integrated. It is stated
-   honestly in every integration surface above rather than dressed up — but if David does not
-   actually run these, they are dark features, and §6a will correctly report them as such.
-
-## Adversary dispatch (§0 — mandatory, this plan adds user-facing capabilities)
-
-| agent | why | mandatory? |
+| # | change | why (verified) |
 |---|---|---|
-| `integration-adversary` | every deliverable adds a config gate or user-facing capability — §0 makes this dispatch mandatory, and the risk-5 write-only concern is exactly its hunt | **yes** |
-| `architecture-adversary` | four instruments sharing two loaders and one schema — the Nth-copy and knob-sprawl risk is concentrated here; also asked to rule on risk #1 | **yes** |
-| `adoption-adversary` | three new CLI verbs whose only consumer is one human who must *find and choose* to run them — the S38/S41 hunt (can a user find this; does anything say whether it got used) is the plan's central weakness | **yes** |
-| `script-adversary` | no operator-facing verify/deploy/health script in this plan — dispatch would be ceremony | no, and stated |
+| A1 | **Six agent briefs, not four** — add `tripwire-auditor` and `script-adversary` | real records name six reviewers: `integration-adversary` 13, `architecture-adversary` 8, **`tripwire-auditor` 4**, `script-adversary` 1, `claims-verifier` 1, `adoption-adversary` 1. The draft's list missed the third most frequent author. |
+| A2 | **Ship the producing seam, or a dated debt saying records stay hand-authored** | exhaustive sweep (`grep -rn "docs/reviews"` across `commands/`, `agents/`, `skills/`, `CLAUDE.md`) returns **zero** authoring instructions. Every hit is a reader. The record type has no producer in the shipped surface. |
+| A3 | **Replace the liveness test** — assert on a *record*, not on brief text | the draft's test ("a brief that does not mention the fields is caught by `test_agents.py`") is a §1 self-consistency test: it reads a file this repo authors, with no representation of the consumer. It would still pass with `validate_record` deleted. |
+| A4 | **Name the vocabulary's owner** — one tuple in `review_ledger.py`, imported by the briefs' roster test and the verb | `readable_surface.py:44-49` establishes the rule by citation: a class vocabulary needs ONE machine owner, *"a rename would leave every copy silently wrong."* |
+| A5 | **Feed `docs/HACK_CATALOG.md:294`, don't parallel it** | that table is headed *"Guard ↔ entry map (kept current; a row with '—' is a known open gap)"* — a curated unbuilt-guard list with a quarterly ritual and a DECAY WARNING. `recurrence` output names the H-row it maps to, or proposes a new one. One place a reader learns "this class has no guard." |
+| A6 | **Budget the ledger cost** | `agents/` is in `EFFECTFUL` (`ledger.py:69-70`), so `no_effect_problems:356-365` REDs any covering entry using `expect: none`. Six brief edits must pre-register named scenarios and a `claimed` movement at plan time, and `unscored_problems:430-435` makes scoring mandatory once a run binds. Plus a `calibration/gate-changes.md` entry (rule d). |
+| A7 | **Ship a coverage ratio instead of declaring the blind spot unfixable** | the draft said re-keying defeats it and *"no mechanical fix exists."* `guard_note.py:24-29` documents the house answer: *"Self-report can move the numerator; it cannot touch the denominator."* Keyed-vs-total findings is a denominator that moves against re-keying with no semantic clustering. |
+| A8 | **Route into the cycle block** — `calibration/run_calibration.py:750-811` | that block already carries `gate_yield` rollup/candidates, the dataflow trend, `ledger.py report` and plant vitality. A verb with no scheduled reader is §6b dark waste. ~4 lines, wrapped like its neighbours so it never fails the run. |
+| A9 | **Log a machine usage event** — copy `readable_surface.py:285-294` (6 lines) | `capability_registry.py:187` computes the dark inventory as `activation.default == "off"` — declared, never observed. The draft's risk-5 mitigation ("§6a will report them as dark") measures nothing either way. `docs/calibration/usage.md` is the real denominator. |
+| A10 | **Register the consumer as typed `kind: "human"`** | `capability_registry.py:61` `CONSUMER_KINDS = ("capability","file","human","external")`, and `doctor:236-259` buckets human/external as *legitimate, NOT a finding*. So a human consumer **is** legal — but only in typed form; untyped prose lands in the `unset` bucket and grows the registry's own open migration debt (57 untyped today). |
+| A11 | **Correct the emits citation** | the draft cited *"`gate-manifest.json`'s ledger-adjacent stage"*. That stage is `calibration/ledger.py check` — a different tool. `review_ledger.py` reaches the gate via `test_review_ledger.py:181`, which calls `validate_repository(REPO)` on the real tree. |
+| A12 | **First-run contract** | `review_ledger.py:328` resolves the repo root with four `dirname` hops — correct at `plugins/tdd-playbook/bin/`, **off by one** at a vendored `.claude/bin/`, where it names the repo's *parent*. Inherit `readable_surface.py:141-142`'s exit-3 vacuous refusal with a relay instruction, and prove root resolution from a vendored layout in the same test. |
 
-Findings are folded in below as deliverables or owned debt, or rejected with a reason —
-and per D3's own subject matter, **a rejection here should actually be exercised if one is
-warranted**, since this plan's premise is that the rejection path has never fired.
+**A12 is a pre-existing defect in shipped code, not a plan gap** — it affects `review_ledger.py`
+today in every downstream vendored copy. It is folded here because D-A is the diff that touches
+that file; if D-A is dropped, A12 should be filed separately rather than lost.
+
+**DoD:** red-first assertions green · six briefs updated · `gate-changes.md` entry · ledger
+pre-registration with named scenarios · real-tree run with all 88 pre-ship records still validating
+· typed `kind:"human"` registry entry with a `liveness.probe` on `usage.md` rows · usage row proven
+to appear after one invocation · cycle-block line landed.
+
+### D-B — Guard roster pin, re-seamed (~15 lines, strictly better coverage than the draft's)
+
+**Plain English:** `CLAUDE.md` and `README.md` each tell readers which guards exist. Both are prose.
+Derive the answer from the machinery instead of pinning one copy.
+
+**The draft's spec was wrong in a way that would have shipped broken.** It said the check reads
+guards *"registered as PreToolUse hooks in `hooks.json`, partitioned into blocking vs opt-in."*
+Verified by parsing `hooks/hooks.json`:
+
+```
+PreToolUse  -> exitcode_guard, snapshot_guard, tag_guard, test_lock_guard
+PostToolUse -> exhaustive_claim_guard, flaky_guard, overmock_guard, red_lock, test_weakening_guard
+```
+
+`test_weakening_guard` — the guard the roster **leads with**, one of the four BLOCKING — is
+PostToolUse. A PreToolUse-restricted check would have excluded 5 of 9. And the blocking/opt-in
+partition does not come from the event type at all: it lives in `hooks/scripts/_common.py:26-53`
+`_DEFAULT_MODES`, which is **three**-valued (`off`/`warn`/`block`), not two.
+
+**Re-specified behavior:** derive from `host_parity.canonical_inventory()["guards"]`
+(`bin/host_parity.py:38-48` already parses the roster out of `hooks.json` — do not write a second
+parser) × `_common._DEFAULT_MODES` for the partition. Assert set-equality against **both**
+`CLAUDE.md:76` and `README.md:72-74`, and **replace `test_hooks.py:478-483`'s hardcoded name lists
+in the same diff** so the fix does not become a sixth roster.
+
+**There are five prose rosters, not the three the draft counted:** `CLAUDE.md:76` (guards),
+`CLAUDE.md` step-2 (bins), `README.md:72-74` (guards), `README.md:69-70` (bins), and
+`test_hooks.py:478,481` (hardcoded partition). **The two bin lists already disagree today** —
+README says `verify_citations`, CLAUDE.md says `dataflow_sweeps.py`. D-B fixes the guard rosters and
+**names the bin-roster divergence as dated debt** rather than silently leaving it.
+
+**Open sub-decision (advisory finding, worth a minute of David's time):** generation may beat
+pinning. `render_agents.py:31-36` already generates `AGENTS.md` from `CLAUDE.md` with a byte-equality
+gate and the banner *"GENERATED FILE — do not edit by hand"* — and its docstring describes exactly
+this failure: *"hand-maintained as a mirror and it rotted exactly as hand-maintained mirrors do."*
+A pin makes drift loud; generation makes it impossible and deletes the maintenance. Counterweight:
+the roster sits inside hand-authored editorial prose, so generating all of `CLAUDE.md` is not on the
+table — a marked generated *block* would be. **Pin first, note the option.**
+
+**DoD:** three red-first assertions green (missing name / phantom name / new guard added without
+prose update) · both files asserted · `test_hooks.py` hardcoded lists removed in the same diff ·
+`AGENTS.md` byte-equality still holds · bin-roster divergence filed as dated debt.
+
+### D-C — The rejection sentence, in the artifact that already exists (~3 lines)
+
+`current-state.md` prints `rejected: 0` as a table row. The one thing worth adding is the *words*,
+per the `/readable` business-owner test: **"no finding has ever been rejected"** rather than a `0` a
+reader's eye slides past. Land it in `render_reference.py`'s existing review section, and unify the
+two duplicate status enums (`review_ledger.VALID_STATUS:15` and
+`render_reference.VALID_REVIEW_STATUS:26`) in the same diff.
+
+### D-D — Codex roster check (~5 lines, optional)
+
+`CODEX_COPY_FILES:58-61` is a genuine hand-maintained two-file roster and the only real drift
+surface D0 was reaching for. Assert it covers every script the Codex adapter's `hooks.json`
+registers, reusing `host_parity._guard_names`. Take it or leave it; it is not load-bearing.
 
 ---
 
-## Adversary findings and dispositions
+## The one open decision (replaces D1 — a decision, not code)
 
-*(populated after dispatch — see the closing section)*
+Doctrine yield is unmeasurable **by design**, at one line: `calibration/ledger.py:69-70`.
+
+**Q1 — should `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md` join `EFFECTFUL`?**
+
+- **Yes** → doctrine changes must pre-register scenarios and a predicted effect, exactly as agent
+  briefs do. Doctrine stops being free. Costs real work per doctrine edit. In two cycles the ledger
+  would hold data a reader could group, and D1 could be re-opened **non-vacuously**.
+- **No** → the current comment stands (*"Doctrine prose can legitimately be inert"*), and the honest
+  position is that this repo does not measure doctrine yield and does not intend to. That is
+  defensible — but it should be a **recorded decision**, not a default nobody revisited.
+
+Either answer is ~1–5 lines. Both are better than the draft's ~120-line reader. **The second half
+of the decision, if "yes":** the `surface` cell needs section-anchor granularity (`SKILL.md#§12`),
+which is a ledger schema change and its own deliverable.
+
+**Q2 (unchanged from the draft, still unanswered):** the integration adversary demoted to a lead a
+point worth taking seriously — `docs/reviews/*.json` records *plan and implementation* reviews whose
+blockers must be closed to pass the gate (`review_ledger.py:91-99`), not the advisory adversary
+dispositions where a rejection would naturally live. **The zero may be a schema fact rather than a
+rubber-stamp signal.** That materially weakens the draft's framing of it, and D-C prints the number
+without interpreting it — which is now the right scope.
+
+---
+
+## Sequencing
+
+| # | deliverable | size | note |
+|---|---|---|---|
+| 1 | **Q1 decision** | 1–5 lines or a recorded "no" | unblocks whether doctrine yield is ever measurable |
+| 2 | D-B roster pin | ~15 lines | highest leverage per line; removes a live inconsistency |
+| 3 | D-C rejection sentence | ~3 lines | lands in a generated, gate-checked artifact |
+| 4 | D-A taxonomy + recurrence | ~150 lines + 6 briefs | the only substantial build; carries A1–A12 |
+| 5 | D-D codex roster | ~5 lines | optional |
+
+**D-A ships last, not first.** The draft ordered D1 first on the theory that the subtractive
+instrument must precede the additive ones. That theory was sound and its instance was vacuous. The
+replacement ordering is: **make the cheap corrections that remove existing inconsistency first, then
+build the one new thing** — and D-A now carries A8/A9 (a scheduled reader and a usage denominator),
+so it cannot become the sixth human-only instrument sitting unread beside the five that exist
+(`readable_surface facts`, `gate_yield candidates`, `ledger report`, `capability_registry doctor`,
+`current-state.md`).
+
+Evidence that this matters: `docs/calibration/usage.md` contains its header and **no rows**, while
+`gate_yield.md` carries rollups dated 2026-08-12 and 2026-08-13 from the same drain pass. Two cycles
+recorded zero machine usage events for the most recent human-facing instrument this repo shipped.
+
+## Gate impact
+
+`bin/review_ledger.py`, `CLAUDE.md`, `capabilities.json` are all in `gate-manifest.json:force_full`
+— D-A and D-B trigger full-suite runs. Expected. New tests under
+`plugins/tdd-playbook/tests/test_*.py` are picked up by `suite_glob`; anything under `calibration/`
+is **not** and reaches the gate only via the `calibration/test_harness.py` fixed stage — the draft
+got this wrong and it is corrected here. `capability_registry.py validate` must pass with the new
+typed entries, enforced by `test_capability_registry.py::test_own_registry` on the real clock.
+
+---
+
+## Adversary findings — dispositions
+
+Every finding, with its outcome. **Two are rejected with reasons** — the draft's own subject matter
+made it worth checking whether the rejection path can actually be exercised, and it can.
+
+| finding | disposition |
+|---|---|
+| arch F1 / integ P1-1 / adopt note — D0 premise false | **ACCEPTED** — D0 deleted; retargeted at `CODEX_COPY_FILES` as optional D-D |
+| arch F2 — statistics are a denominator error | **ACCEPTED** — C1/C2 in the correction record; verified independently |
+| arch F3 / integ P1-2 — D1 structurally vacuous | **ACCEPTED** — D1 deleted as a reader; became the Q1 registration-seam decision |
+| integ P0-1 — `ledger.py report` already aggregates; `cmd_debts` already holds FLAT accountable | **ACCEPTED** — C3/C4; the draft's spine claim was false |
+| arch F4 — D3 already shipped and gate-enforced | **ACCEPTED** — D3 deleted; reduced to D-C |
+| arch F5 / F6 — D4 pins one of ≥2 disagreeing rosters; generation is the established seam | **ACCEPTED** — D-B asserts both files, replaces the hardcoded list, names all five rosters; generation noted as an open sub-decision |
+| integ P1-4 — D4's PreToolUse spec excludes 5 of 9 guards; `host_parity._guard_names` already exists | **ACCEPTED** — verified by parsing `hooks.json`; D-B re-specified |
+| integ P0-3 — D2's fields have no producing seam; 6 reviewers not 4 | **ACCEPTED** — A1, A2, A3 |
+| arch F7 / F8 — vocabulary needs an owner; HACK_CATALOG H-map already exists | **ACCEPTED** — A4, A5 |
+| arch F10 — `agents/` is EFFECTFUL, brief edits carry unbudgeted ledger cost | **ACCEPTED** — A6 |
+| arch F9 / integ P0-2 / P1-5 / adopt F1, F2 — human-only instruments, no scheduled reader, no usage signal | **ACCEPTED** — A8, A9, A10 |
+| adopt F3 — cold/vendored first run resolves above the repo | **ACCEPTED** — A12, and flagged as a pre-existing shipped defect |
+| integ P2-3 — emits citation names a stage that does not exist | **ACCEPTED** — A11 |
+| arch/integ — D2's re-keying blind spot has a house answer | **ACCEPTED** — A7 |
+| integ P1-3 — deploy surface is per-deliverable, not uniform | **ACCEPTED** — corrected in Gate impact; `calibration/` is deliberately never vendored |
+| adopt F5/F6, integ P2-2 — `/grade` and README routing unowned | **ACCEPTED for D-A** (DoD), **REJECTED for D-B/D-C** — those land in generated artifacts already routed from `README.md:19`; adding routing lines for a 3-line generator edit is the ceremony §0's preamble warns against |
+| integ P2-6 — verbs not reachable through `tdd.py`, the portable front door | **REJECTED, with reason** — `tdd.py:373-394` hosts health and state-changing verbs (`doctor`, `reset`, `uninstall`), not reporting. The adversary demoted this to lead L1 itself ("cannot prove the convention excludes reporting"). Adding a reporting verb there would set a convention on one data point. Revisit if a second reporting verb ever wants a home. |
+| integ P2-1 — human consumers must be typed | **ACCEPTED** — A10; and it partly *rescues* the draft's honesty claim: `kind:"human"` is explicitly legitimate |
+| integ P2-4 — five prose rosters, not three | **ACCEPTED** — D-B names all five; bin divergence filed as dated debt |
+| adopt F4 — D2 onboarding line names no file | **ACCEPTED** — folded into A8/A9 (shipping ON with a metric is the cheapest satisfying move) |
+| adopt S40 — error messages clean | **noted, no action** |
+
+**Claims: 22 load-bearing · 22 verified (parser runs, `hooks.json` parse, greps, file reads cited
+inline) · 0 demoted to leads.** Every adversary claim I acted on was re-derived from the tree.
 
 ## Loop closed
 
-*(stated after dispatch: yes/no)*
+**Yes.** Three adversaries dispatched (`integration`, `architecture`, `adoption`);
+`script-adversary` correctly not dispatched — no operator-facing verify/deploy/health script in
+this plan. All findings dispositioned above: 20 accepted, 2 rejected with stated reasons. The plan
+shrank ~85% and two of its five deliverables were deleted as already-existing.
