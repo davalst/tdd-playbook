@@ -8,6 +8,9 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from review_ledger import VALID_STATUS as VALID_REVIEW_STATUS  # noqa: E402  (sibling; the one status-vocabulary owner)
+
 
 class ReferenceError(RuntimeError):
     pass
@@ -22,7 +25,6 @@ PROVENANCE_INPUTS = (
     "capabilities.json",
 )
 OUTPUT = "docs/reference/current-state.md"
-VALID_REVIEW_STATUS = ("incorporated", "open", "rejected", "verified_closed")
 
 
 def file_hash(root: str, relative: str) -> str:
@@ -60,6 +62,27 @@ def _load(root: str, relative: str):
         return json.load(fh)
 
 
+def review_section(reviews: list[dict]) -> list[str]:
+    """The adversarial-review lines. When no finding has ever been rejected, that fact is
+    a SENTENCE, not a `0` a reader's eye slides past (the /readable business-owner test).
+    Printed, not interpreted: whether the zero is a rubber-stamp signal or a schema fact
+    (rejections may live in advisory dispositions, not these records) stays an open
+    question this generator does not answer."""
+    findings = [finding for review in reviews for finding in review.get("findings", [])]
+    lines = [
+        "",
+        "## Adversarial review records",
+        "",
+        "- Review records: {}. Findings: {}.".format(len(reviews), len(findings)),
+    ]
+    for status in sorted(VALID_REVIEW_STATUS):
+        count = sum(1 for finding in findings if finding.get("status") == status)
+        lines.append("- `{}`: {}".format(status, count))
+    if findings and not any(finding.get("status") == "rejected" for finding in findings):
+        lines.append("- No finding has ever been rejected.")
+    return lines
+
+
 def render(root: str) -> str:
     gate = _load(root, "gate-manifest.json")
     parity = _load(root, "docs/architecture/host-parity.json")
@@ -86,7 +109,6 @@ def render(root: str) -> str:
              for cap in capabilities for debt in (cap.get("integration_debt") or [])]
     reviews = [_load(root, path) for path in provenance_inputs(root)
                if path.startswith("docs/reviews/") and not path.endswith("/index.json")]
-    review_findings = [finding for review in reviews for finding in review.get("findings", [])]
 
     lines = [
         "# Generated current state",
@@ -128,15 +150,7 @@ def render(root: str) -> str:
             len(capabilities), len(debts)),
     ])
     lines.extend("- `{}` — {} (owner `{}`, expires `{}`)".format(*row) for row in debts)
-    lines.extend([
-        "",
-        "## Adversarial review records",
-        "",
-        "- Review records: {}. Findings: {}.".format(len(reviews), len(review_findings)),
-    ])
-    for status in sorted(VALID_REVIEW_STATUS):
-        count = sum(1 for finding in review_findings if finding.get("status") == status)
-        lines.append("- `{}`: {}".format(status, count))
+    lines.extend(review_section(reviews))
     return "\n".join(lines) + "\n"
 
 

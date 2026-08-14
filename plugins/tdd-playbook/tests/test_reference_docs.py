@@ -144,6 +144,49 @@ def test_review_summary_is_generated_from_consumed_records():
           "`docs/reviews/" in rendered)
 
 
+def test_rejection_sentence_and_single_status_owner():
+    """D-C (review-as-judgment-surface plan, 2026-08-14): `rejected: 0` is a number a
+    reader's eye slides past; the FACT gets a sentence. And the status vocabulary has ONE
+    owner — review_ledger.VALID_STATUS — because two value-identical literals is how a
+    rename leaves one reader silently wrong."""
+    import ast as _ast
+    rr = load_module()
+
+    zero_rejected = [{"findings": [
+        {"status": "verified_closed"}, {"status": "open"}, {"status": "incorporated"}]}]
+    lines = rr.review_section(zero_rejected)
+    check("zero rejections renders the sentence, not only the count",
+          "- No finding has ever been rejected." in lines, lines)
+    check("...and still renders the `rejected: 0` count row",
+          "- `rejected`: 0" in lines, lines)
+
+    # PLANTED: one rejected finding — the sentence must disappear and the count move.
+    one_rejected = [{"findings": [{"status": "rejected"}, {"status": "open"}]}]
+    lines = rr.review_section(one_rejected)
+    check("PLANTED rejected finding removes the sentence",
+          not any("has ever been rejected" in line for line in lines), lines)
+    check("PLANTED rejected finding is counted", "- `rejected`: 1" in lines, lines)
+
+    # VACUITY: zero findings must not claim a spotless record it has no data for (§4a).
+    check("no findings at all -> no sentence (a vacuous zero is not a clean record)",
+          not any("has ever been rejected" in line
+                  for line in rr.review_section([{"findings": []}])))
+
+    # Single owner, parsed not grepped (§12): no tuple/set/list literal in
+    # render_reference.py may re-enumerate the status vocabulary.
+    with open(SCRIPT, encoding="utf-8") as fh:
+        tree = _ast.parse(fh.read())
+    relit = [node for node in _ast.walk(tree)
+             if isinstance(node, (_ast.Tuple, _ast.Set, _ast.List))
+             and any(isinstance(el, _ast.Constant) and el.value == "rejected"
+                     for el in node.elts)]
+    check("render_reference.py holds NO local status-vocabulary literal", relit == [],
+          ["line {}".format(node.lineno) for node in relit])
+    check("...it imports the one owner instead",
+          tuple(rr.VALID_REVIEW_STATUS) == ("open", "incorporated", "rejected",
+                                            "verified_closed"), rr.VALID_REVIEW_STATUS)
+
+
 def test_agents_md_is_generated_and_current():
     """AGENTS.md is the Codex agent-instructions convention and this repo READS it
     (gate-manifest.json, hooks/scripts/intent_nudge.py). It was hand-maintained as a mirror
@@ -196,5 +239,6 @@ if __name__ == "__main__":
     test_stale_or_manually_edited_output_is_refused()
     test_debt_lines_carry_the_required_what_not_a_fabricated_name()
     test_review_summary_is_generated_from_consumed_records()
+    test_rejection_sentence_and_single_status_owner()
     print("\nResult: {}/{} passed".format(PASSED, TOTAL))
     raise SystemExit(0 if PASSED == TOTAL else 1)

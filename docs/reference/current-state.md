@@ -125,3 +125,4 @@
 - `open`: 3
 - `rejected`: 0
 - `verified_closed`: 69
+- No finding has ever been rejected.

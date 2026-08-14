@@ -12,7 +12,10 @@ import subprocess
 import sys
 
 
-VALID_STATUS = {"open", "incorporated", "rejected", "verified_closed"}
+# The ONE owner of the finding-status vocabulary (D-C, 2026-08-14): render_reference.py
+# imports this — an ordered tuple, not a set, because the renderer's output order must be
+# deterministic. A second literal copy is how a rename leaves one reader silently wrong.
+VALID_STATUS = ("open", "incorporated", "rejected", "verified_closed")
 BLOCKERS = {"P0", "P1"}
 SHA = re.compile(r"^[0-9a-f]{40}$")
 HASH = re.compile(r"^[0-9a-f]{64}$")
