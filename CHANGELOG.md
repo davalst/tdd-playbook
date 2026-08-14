@@ -5,10 +5,48 @@ All notable changes to the TDD Playbook plugin. Versions are the plugin `version
 
 ## Unreleased
 
-**Q1 recorded (review-as-judgment-surface plan, 2026-08-14):** SKILL.md and commands/ stay
-OUT of `EFFECTFUL` in `calibration/ledger.py` — doctrine yield is deliberately unmeasured,
-now as a recorded decision (dated comment above the constant) rather than a default nobody
-revisited. Reopen only with a section-granular ledger (the deleted D1 reader).
+**The review-as-judgment-surface plan (2026-08-14) — the review ledger learns to speak
+about itself.** Four deliverables landed from the 3×-adversaried v2 plan (~85% smaller
+than its draft; three draft deliverables were deleted as already-existing).
+
+**D-A — finding taxonomy + recurrence detection (the one substantial build).** Every
+`docs/reviews/` finding in records dated ≥ 2026-08-15 carries `class:
+deterministic|judgment` (could a machine have caught it?) and a short-kebab
+`recurrence_key`; append-only history is untouched. New verb `review_ledger.py
+recurrence`: a deterministic key in ≥2 distinct records prints one **UNBUILT GUARD** line
+feeding the HACK_CATALOG Guard ↔ entry map (optional `catalog_row: H<n>`), recurring
+judgment is listed but never called a missing guard, and the keyed-of-total ratio prints
+so re-keying can't hide the unkeyed share. Exit-3 vacuous refusal on zero records; one
+machine usage event per invocation through `_common.log_yield_event`; the calibration
+cycle block is the scheduled reader. The six authoring briefs
+(integration/architecture/tripwire/script/claims/adoption) carry the record-output
+contract, needle-pinned against the ONE vocabulary owner (`FINDING_CLASSES`), with the
+brief edits pre-registered in the calibration ledger (L-20260814-01, agents/ is
+EFFECTFUL). **A12, pre-existing shipped defect fixed:** root resolution was four `dirname`
+hops — correct in-repo, the host repo's PARENT from a vendored `.claude/bin/`; now
+`CLAUDE_PROJECT_DIR`-else-walk-up, proven from both layouts.
+
+**D-B — the guard roster is derived, not quintuplicated.** One literal home (the v1.32.0
+policy pin in test_hooks.py) checked against the machinery-derived partition (hooks.json
+scripts × AST-read `NAME` × `_DEFAULT_MODES`), with CLAUDE.md and README prose pinned both
+directions (missing + phantom, planted fixtures each). The README-vs-CLAUDE.md bin-list
+divergence is dated debt on `install-doctor` (expires 2026-10-13, trigger proven via
+`--as-of`).
+
+**D-C — the zero-rejection fact gets a sentence.** current-state.md says "No finding has
+ever been rejected." beneath the counts (vacuity-guarded; printed, not interpreted — the
+zero may be a schema fact). `review_ledger.VALID_STATUS` is the one status-vocabulary
+owner; render_reference imports it, AST-enforced.
+
+**Q1 recorded:** SKILL.md and commands/ stay OUT of `EFFECTFUL` in `calibration/ledger.py`
+— doctrine yield is deliberately unmeasured, now as a recorded decision (dated comment
+above the constant) rather than a default nobody revisited. Reopen only with a
+section-granular ledger (the deleted D1 reader).
+
+**D-D — Codex vendoring parity:** every script the Codex adapter's hooks.json registers
+must resolve under `CODEX_COPY_TREES ∪ CODEX_COPY_FILES` with its repo-local imports
+resolving too (AST-parsed) — the one real hand-maintained roster of the deleted D0's
+class.
 
 ## 1.35.0 — 2026-08-13
 

@@ -82,3 +82,15 @@ the cheap tier):
 3. `Recommendation: <ship / block> because <names the specific RED deliverable>` — reject
    a generic justification.
 Do not fix anything — your value is the honest verdict.
+
+## Review record output (when these findings land in `docs/reviews/`)
+
+When this review's findings are recorded in the adversarial-review ledger, each finding
+carries `class: deterministic|judgment` — `deterministic` means a mechanical check could
+have caught it (and a recurring deterministic key is an UNBUILT GUARD, which
+`review_ledger.py recurrence` reports), `judgment` means it needed a mind — plus a
+short-kebab `recurrence_key`, REUSED when the same defect shape recurs (`python3
+plugins/tdd-playbook/bin/review_ledger.py recurrence` lists the keys already seen), and an
+optional `catalog_row` (`H<n>`) naming the `docs/HACK_CATALOG.md` Guard ↔ entry map row the
+recurrence feeds. Records dated on/after 2026-08-15 are REFUSED by `validate` without the
+class and key; earlier history is untouched.

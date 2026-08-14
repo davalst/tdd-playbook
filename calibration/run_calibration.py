@@ -824,6 +824,25 @@ def main(argv=None):
             print("vitality: unmeasured (plant_vitality.py not present)")
     except Exception as e:
         print("vitality: unmeasured (vitality unavailable: {})".format(e))
+
+    # D-A A8 (2026-08-14): the review-recurrence pointer — has the same deterministic miss
+    # been recorded twice with no guard built? A verb with no scheduled reader is §6b dark
+    # waste; this cycle block is the reader. A POINTER only, wrapped like its neighbours —
+    # reporting must never fail a calibration run (exit 3 there is a vacuous-refusal
+    # statement, not an error here).
+    try:
+        rl = os.path.join(REPO, "plugins", "tdd-playbook", "bin", "review_ledger.py")
+        if os.path.isfile(rl):
+            p = subprocess.run([sys.executable, rl, "recurrence"],
+                               capture_output=True, text=True, timeout=60)
+            if p.stdout.strip():
+                print(p.stdout.strip())
+            elif p.stderr.strip():
+                print("review-recurrence: {}".format(p.stderr.strip()))
+        else:
+            print("review-recurrence: unmeasured (review_ledger.py not present)")
+    except Exception as e:
+        print("review-recurrence: unmeasured (review ledger unavailable: {})".format(e))
     return 1 if failed else 0
 
 

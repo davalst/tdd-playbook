@@ -22,6 +22,21 @@ HASH = re.compile(r"^[0-9a-f]{64}$")
 INDEX_NAME = "index.json"
 ALLOWED_REVIEW_TAIL = ("docs/reviews/", "docs/reference/current-state.md")
 
+# D-A (review-as-judgment-surface plan, 2026-08-14): every finding says what KIND of miss
+# it was. `deterministic` = a mechanical check could have caught it; `judgment` = it needed
+# a mind. The ONE machine owner of the vocabulary — the recurrence verb, the agent briefs'
+# roster test, and any renderer import THIS tuple (a second copy is how a rename leaves one
+# reader silently wrong — readable_surface.py:42 establishes the rule).
+FINDING_CLASSES = ("deterministic", "judgment")
+# Records dated on/after this REQUIRE class + recurrence_key per finding; the append-only
+# history before it is untouched (optional, validated when present).
+TAXONOMY_SHIP_DATE = "2026-08-15"
+# Keys reach human-facing report lines: short-kebab only, so adversarial content
+# (newlines, pipes, case games) is unrepresentable rather than escaped (§2).
+RECURRENCE_KEY = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+CATALOG_ROW = re.compile(r"^H\d+$")
+RECORD_ID_DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})-")
+
 
 def file_hash(path: str) -> str:
     digest = hashlib.sha256()
@@ -52,6 +67,15 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
     for field in ("id", "plan"):
         if not isinstance(record.get(field), str) or not record[field]:
             problems.append(prefix + field + " must be a non-empty string")
+    record_date = None
+    if isinstance(record.get("id"), str) and record["id"]:
+        date_match = RECORD_ID_DATE.match(record["id"])
+        if date_match:
+            record_date = date_match.group(1)
+        else:
+            problems.append(prefix + "id must begin YYYY-MM-DD (the taxonomy requirement "
+                                     "is keyed on the record date)")
+    taxonomy_required = record_date is not None and record_date >= TAXONOMY_SHIP_DATE
     # v1.32.0: the plan path must RESOLVE, not merely be a non-empty string. `plan_block.py
     # validate` was the only reader of docs/plans/gated/*.md and it was deleted with the CIVerd
     # engine, leaving the directory write-only. A review record citing a plan that does not
@@ -91,6 +115,24 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
         status = finding.get("status")
         if status not in VALID_STATUS:
             problems.append(label + ".status is invalid")
+        cls = finding.get("class")
+        key = finding.get("recurrence_key")
+        if taxonomy_required and cls is None:
+            problems.append(label + ".class is required ({}) for records dated on/after {}"
+                            .format("|".join(FINDING_CLASSES), TAXONOMY_SHIP_DATE))
+        if cls is not None and cls not in FINDING_CLASSES:
+            problems.append(label + ".class must be one of " + "|".join(FINDING_CLASSES))
+        if taxonomy_required and key is None:
+            problems.append(label + ".recurrence_key is required for records dated on/after "
+                            + TAXONOMY_SHIP_DATE)
+        if key is not None and (not isinstance(key, str) or not RECURRENCE_KEY.fullmatch(key)):
+            problems.append(label + ".recurrence_key must be short-kebab "
+                                    "([a-z0-9]+(-[a-z0-9]+)*) — keys reach report lines")
+        catalog = finding.get("catalog_row")
+        if catalog is not None and (not isinstance(catalog, str)
+                                    or not CATALOG_ROW.fullmatch(catalog)):
+            problems.append(label + ".catalog_row must be an H<number> row of the "
+                                    "HACK_CATALOG Guard ↔ entry map")
         if status == "open" and severity in BLOCKERS:
             problems.append(label + " unresolved blocker {} cannot pass the full gate".format(fid))
         if status == "incorporated" and not finding.get("disposition"):
@@ -323,12 +365,107 @@ def validate_repository(root: str) -> list[str]:
     return problems
 
 
+def recurrence_report(records: list[dict]) -> list[str]:
+    """The judgment surface speaking back: a recurrence_key appearing in >=2 DISTINCT
+    records at class `deterministic` is an UNBUILT GUARD — a machine could have caught
+    the same miss twice and none exists. Recurring judgment is listed, never labelled a
+    missing guard. Output names the HACK_CATALOG Guard ↔ entry map row it feeds (via the
+    optional per-finding catalog_row) rather than growing a parallel list.
+
+    The denominator line prints keyed-of-total over ALL findings (A7): re-keying can game
+    which guard a finding maps to, but it cannot shrink the unkeyed share."""
+    rows = [(record.get("id") or "", finding)
+            for record in records for finding in (record.get("findings") or [])]
+    keyed = [(rid, finding) for rid, finding in rows if finding.get("recurrence_key")]
+    percent = 100 * len(keyed) // len(rows) if rows else 0
+    lines = ["recurrence: records {} · findings {} · keyed {} of {} ({}%)".format(
+        len(records), len(rows), len(keyed), len(rows), percent)]
+    groups: dict[str, list] = {}
+    for rid, finding in keyed:
+        groups.setdefault(finding["recurrence_key"], []).append((rid, finding))
+    for key in sorted(groups):
+        members = groups[key]
+        deterministic = {rid for rid, f in members if f.get("class") == "deterministic"}
+        everywhere = {rid for rid, _f in members}
+        catalog = sorted({f.get("catalog_row") for _rid, f in members if f.get("catalog_row")})
+        if len(deterministic) >= 2:
+            target = (", ".join(catalog) if catalog else
+                      "no matching row — propose one (docs/HACK_CATALOG.md Guard ↔ entry map)")
+            lines.append("UNBUILT GUARD: {} ({} records) — HACK_CATALOG: {}".format(
+                key, len(deterministic), target))
+        elif len(everywhere) >= 2:
+            lines.append("recurring judgment: {} ({} records) — not a missing guard".format(
+                key, len(everywhere)))
+    return lines
+
+
+def resolve_root() -> str:
+    """A12 fix (pre-existing shipped defect): the old four-dirname-hop derivation was
+    correct at plugins/tdd-playbook/bin/ and named the HOST REPO'S PARENT from a vendored
+    .claude/bin/. House pattern instead: CLAUDE_PROJECT_DIR when the host sets it, else
+    walk up to the first directory that actually holds docs/reviews — the artifact this
+    tool exists to read (proven from both layouts by the locked suite)."""
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env:
+        return os.path.realpath(env)
+    probe = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(6):
+        if os.path.isdir(os.path.join(probe, "docs", "reviews")):
+            return probe
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__)))))
+
+
+def _log_usage(verb: str, extra: dict) -> None:
+    """ONE machine usage event through the single write path (_common.log_yield_event —
+    the readable_surface pattern). The usage denominator must move because the tool RAN,
+    never because someone remembered to report. Telemetry failure never breaks the verb,
+    but it is SAID, not swallowed."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "..", "hooks", "scripts"))
+    try:
+        from _common import log_yield_event
+    except Exception as exc:
+        sys.stderr.write("review_ledger: usage NOT recorded (_common unreachable: "
+                         "{})\n".format(exc))
+        return
+    log_yield_event("review-ledger", "usage", dict(extra, verb=verb), source="cli")
+
+
+# The exit-code contract shared with dataflow_sweeps/readable_surface (0 clean · 2 usage ·
+# 3 vacuous refusal). Imported from the owner when the sibling is present; the literal
+# fallback keeps a partial vendored copy failing CLOSED with the same contract value.
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from dataflow_sweeps import EXIT_VACUOUS  # noqa: E402
+except Exception:
+    EXIT_VACUOUS = 3
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv not in ([], ["validate"]):
-        print("usage: review_ledger.py [validate]", file=sys.stderr)
+    if argv not in ([], ["validate"], ["recurrence"]):
+        print("usage: review_ledger.py [validate|recurrence]", file=sys.stderr)
         return 2
-    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    root = resolve_root()
+    if argv == ["recurrence"]:
+        records = _records(os.path.join(root, "docs", "reviews"))
+        if not records:
+            print("review_ledger: VACUOUS REFUSAL — no records under docs/reviews/ "
+                  "(zero scanned is not clean; §4a)", file=sys.stderr)
+            return EXIT_VACUOUS
+        lines = recurrence_report(records)
+        for line in lines:
+            print(line)
+        _log_usage("recurrence", {
+            "records": len(records),
+            "unbuilt_guards": sum(1 for line in lines if line.startswith("UNBUILT GUARD")),
+        })
+        return 0
     problems = validate_repository(root)
     if problems:
         for problem in problems:

@@ -842,7 +842,8 @@
       "wired_by": [
         "plugins/tdd-playbook/bin/review_ledger.py",
         "docs/reviews/*.json",
-        "plugins/tdd-playbook/bin/render_reference.py"
+        "plugins/tdd-playbook/bin/render_reference.py",
+        "calibration/run_calibration.py (cycle block runs `review_ledger.py recurrence` — the scheduled reader, D-A A8)"
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_review_ledger.py"
@@ -858,11 +859,24 @@
             "generated current-state reference",
             "release review"
           ]
+        },
+        {
+          "topic": "recurrence report (UNBUILT GUARD lines + keyed-of-total coverage ratio, `review_ledger.py recurrence`)",
+          "consumers": [
+            {
+              "ref": "David reads UNBUILT GUARD lines in the calibration cycle output and turns each into a HACK_CATALOG Guard ↔ entry map row (docs/HACK_CATALOG.md)",
+              "kind": "human"
+            },
+            {
+              "ref": "docs/calibration/usage.md",
+              "kind": "file"
+            }
+          ]
         }
       ],
       "liveness": {
         "max_quiet_days": 90,
-        "probe": "test_review_ledger plants an unresolved P1, an evidence-free closure, an invalid review SHA, and a duplicate finding ID"
+        "probe": "test_review_ledger plants an unresolved P1, an evidence-free closure, an invalid review SHA, and a duplicate finding ID; recurrence liveness = a `gate: review-ledger, event: usage` row lands in the yield log per invocation (drained into docs/calibration/usage.md by gate_yield rollup)"
       }
     },
     {

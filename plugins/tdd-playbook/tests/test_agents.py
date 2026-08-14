@@ -1011,6 +1011,42 @@ def test_v125_planted_fixtures():
                                     "never supply an attribute, method, or seam")))
 
 
+def test_review_record_producing_seam():
+    """D-A A1/A2/A4 (2026-08-14): the six briefs that actually author docs/reviews/
+    records (the real ledger names exactly these six reviewers) each carry the
+    review-record output contract, with the class vocabulary IMPORTED from its one owner
+    (review_ledger.FINDING_CLASSES) — so a vocabulary rename REDs here instead of leaving
+    six briefs silently stale. Producer-side hygiene only: the consumer-side enforcement
+    (a post-ship record without the fields is REFUSED) lives in
+    test_review_ledger.py::test_taxonomy_required_after_ship_date, which would still fail
+    with every one of these briefs deleted (§1 seam rule)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "review_ledger", os.path.join(ROOT, "bin", "review_ledger.py"))
+    rl = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rl)
+    vocab = "|".join(rl.FINDING_CLASSES)
+
+    producers = ("integration-adversary", "architecture-adversary", "tripwire-auditor",
+                 "script-adversary", "claims-verifier", "adoption-adversary")
+    for name in producers:
+        with open(os.path.join(AGENTS, name + ".md")) as fh:
+            brief = fh.read()
+        check("{}: carries the class vocabulary from its owner (`{}`)".format(name, vocab),
+              "class: " + vocab in brief, "expected 'class: {}'".format(vocab))
+        check("{}: names recurrence_key and its reuse rule".format(name),
+              "recurrence_key" in brief and "REUSED" in brief)
+        check("{}: routes catalog_row into the HACK_CATALOG map".format(name),
+              "catalog_row" in brief and "HACK_CATALOG" in brief)
+    # vacuity guard on the enumerator (§4a applied to sweeps): six producers, exactly
+    check("producing seam covers exactly the six reviewers the real ledger names",
+          len(producers) == 6)
+
+    # PLANTED: a brief stating a DIFFERENT vocabulary must fail the needle
+    planted = "each finding carries `class: severe|cosmetic` and a recurrence_key REUSED"
+    check("PLANTED divergent vocabulary is caught", "class: " + vocab not in planted)
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1025,7 +1061,8 @@ def main():
                test_v124_doctrine, test_v124_planted_fixtures,
                test_v124_gate_surfaces, test_v124_gate_surfaces_planted,
                test_v125_doctrine, test_v125_downstream_pins,
-               test_v125_planted_fixtures, test_v126_seam_contract_pins):
+               test_v125_planted_fixtures, test_v126_seam_contract_pins,
+               test_review_record_producing_seam):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

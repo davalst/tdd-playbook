@@ -593,3 +593,18 @@ questions), a §1 victim-sweep bullet (sub-proposals 1+5+9 merged), a §2 check-
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260813-10 | 2026-08-13 | 09d23fb | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | seven doctrine ADDITIONS (rule d — additions free): §9 deny-table-first block, §1 victim sweep, §2 check-vs-use row, §4a refusal-diagnosis line, §4 by-text-exemption clause, §10 checkpoint-out-of-place line, §12 parse-absence-claims line | — | none | 0 | doctrine prose; no calibration scenario measures doctrine text — the agents enforcing these rules are scenario-measured separately |
+
+### Registered 2026-08-14 — review-as-judgment-surface: the six authoring briefs gain the record-output contract
+
+D-A A6 (the plan budgeted this cost explicitly): `agents/` is EFFECTFUL, so the six brief
+edits register with named scenarios and a claimed movement. The appended section is an
+OUTPUT contract (class/recurrence_key/catalog_row on ledger-bound findings), not a
+detection change — the claimed movement is therefore the both-directions replay (plants
+stay caught, controls stay quiet; brief GROWTH burying the forced verdict lines is the
+documented risk this measures). A FLAT score is itself informative and converts, per the
+instrument's own rule, into the follow-up: author a PRODUCER scenario whose oracle checks
+class/key emission — the behavior no current scenario measures.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260814-01 | 2026-08-14 | 8641b70 | plugins/tdd-playbook/agents/integration-adversary.md; plugins/tdd-playbook/agents/architecture-adversary.md; plugins/tdd-playbook/agents/tripwire-auditor.md; plugins/tdd-playbook/agents/script-adversary.md; plugins/tdd-playbook/agents/claims-verifier.md; plugins/tdd-playbook/agents/adoption-adversary.md | review-record output contract appended (class deterministic-or-judgment + short-kebab recurrence_key + optional catalog_row, required for records dated >= 2026-08-15) | island-write-only-plan; control-connected-plan; band-aid-parallel-list; good-fix-single-source; unwired-deliverable; control-export-wired; script-unsafe-probe; control-script-safe-probe; false-negative-claim; control-true-dead-code; dead-end-error-message; control-helpful-error-message | up | 3 | both-directions replay: every plant stays caught AND every control stays quiet at 3/3 despite the longer briefs (burial of the forced lines is the documented brief-growth failure); FLAT converts to the named follow-up — a producer scenario scoring class/key emission from a baseline of zero |
