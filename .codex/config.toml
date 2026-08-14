@@ -1,5 +1,0 @@
-[shell_environment_policy]
-inherit = "core"
-
-[shell_environment_policy.set]
-TDD_PLAYBOOK_HOOK_EXITCODE = "warn"
