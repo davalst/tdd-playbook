@@ -182,6 +182,214 @@ def test_repository_review_records_are_valid():
     check("repository review records are consumed and valid", problems == [], problems)
 
 
+# --------------------------------------------------- D-A: taxonomy + recurrence (2026-08-14)
+
+def _dated_record(record_id, findings):
+    row = record(findings)
+    row["id"] = record_id
+    return row
+
+
+def _keyed(fid, cls, key, catalog_row=None, status="incorporated"):
+    row = finding(status)
+    row["id"] = fid
+    if cls is not None:
+        row["class"] = cls
+    if key is not None:
+        row["recurrence_key"] = key
+    if catalog_row is not None:
+        row["catalog_row"] = catalog_row
+    return row
+
+
+def test_taxonomy_required_after_ship_date():
+    """Every finding says what KIND of miss it was — mechanically catchable
+    (`deterministic`) or needing a mind (`judgment`) — plus a short recurrence key.
+    Required for records dated on/after TAXONOMY_SHIP_DATE; earlier append-only history
+    stays untouched (optional, validated when present)."""
+    rl = load_module()
+    post = rl.TAXONOMY_SHIP_DATE + "-post-ship-review"
+
+    bare = rl.validate_record(_dated_record(post, [finding()]), "plant.json", lambda _s: True)
+    check("PLANTED post-ship finding without class is refused",
+          any(".class" in p for p in bare), bare)
+    check("PLANTED post-ship finding without recurrence_key is refused",
+          any(".recurrence_key" in p for p in bare), bare)
+
+    good = rl.validate_record(
+        _dated_record(post, [_keyed("ARCH-1", "deterministic", "grep-counts-docstrings")]),
+        "control.json", lambda _s: True)
+    check("post-ship finding WITH class + key passes", good == [], good)
+
+    # boundary: dated exactly the ship date -> required (>=, not >)
+    boundary = rl.validate_record(_dated_record(post, [finding()]), "plant.json", lambda _s: True)
+    check("ship-date boundary: record dated exactly TAXONOMY_SHIP_DATE requires the fields",
+          any(".class" in p for p in boundary), boundary)
+
+    # pre-ship history: optional (the real 88-finding corpus is the standing control,
+    # test_repository_review_records_are_valid), but VALIDATED when present
+    pre_bad = rl.validate_record(
+        _dated_record("2026-08-07-old-review", [_keyed("ARCH-1", "vibes", "some-key")]),
+        "plant.json", lambda _s: True)
+    check("PLANTED unknown class value is refused even pre-ship",
+          any(".class" in p for p in pre_bad), pre_bad)
+
+    for bad_key in ("Grep Counts", "a\nb", "pipe|key", "UPPER-CASE", "-leading", ""):
+        problems = rl.validate_record(
+            _dated_record(post, [_keyed("ARCH-1", "deterministic", bad_key)]),
+            "plant.json", lambda _s: True)
+        check("PLANTED malformed recurrence_key {!r} is refused (keys reach report lines)"
+              .format(bad_key), any(".recurrence_key" in p for p in problems), problems)
+
+    cat_bad = rl.validate_record(
+        _dated_record(post, [_keyed("ARCH-1", "deterministic", "k-one", catalog_row="X9")]),
+        "plant.json", lambda _s: True)
+    check("PLANTED malformed catalog_row is refused", any("catalog_row" in p for p in cat_bad),
+          cat_bad)
+    cat_ok = rl.validate_record(
+        _dated_record(post, [_keyed("ARCH-1", "deterministic", "k-one", catalog_row="H11")]),
+        "control.json", lambda _s: True)
+    check("H-row catalog_row passes", cat_ok == [], cat_ok)
+
+    undated = rl.validate_record(_dated_record("no-date-prefix", [finding()]),
+                                 "plant.json", lambda _s: True)
+    check("PLANTED record id without a YYYY-MM-DD prefix is refused (not a crash)",
+          any("YYYY-MM-DD" in p for p in undated), undated)
+
+    check("FINDING_CLASSES is the one machine owner (deterministic|judgment)",
+          rl.FINDING_CLASSES == ("deterministic", "judgment"), rl.FINDING_CLASSES)
+
+
+def test_recurrence_report():
+    """A recurrence_key in >=2 DISTINCT records at class deterministic is an UNBUILT
+    GUARD — a machine could have caught it twice and none exists. Recurring judgment is
+    not a missing guard. Output feeds the HACK_CATALOG Guard <-> entry map, never a
+    parallel list."""
+    rl = load_module()
+    twice = [
+        _dated_record("2026-08-15-first", [_keyed("A-1", "deterministic",
+                                                  "grep-counts-docstrings")]),
+        _dated_record("2026-08-16-second", [_keyed("B-1", "deterministic",
+                                                   "grep-counts-docstrings")]),
+    ]
+    lines = rl.recurrence_report(twice)
+    unbuilt = [l for l in lines if "UNBUILT GUARD" in l]
+    check("deterministic key in 2 records -> exactly one UNBUILT GUARD line",
+          len(unbuilt) == 1 and "grep-counts-docstrings" in unbuilt[0], lines)
+    check("...that names no catalog row -> proposes one",
+          "propose" in unbuilt[0], unbuilt)
+
+    judgment = [
+        _dated_record("2026-08-15-first", [_keyed("A-1", "judgment", "scope-taste")]),
+        _dated_record("2026-08-16-second", [_keyed("B-1", "judgment", "scope-taste")]),
+    ]
+    check("judgment key in 2 records -> NO unbuilt-guard line (recurring judgment is not a missing guard)",
+          not any("UNBUILT GUARD" in l for l in rl.recurrence_report(judgment)),
+          rl.recurrence_report(judgment))
+
+    single = [_dated_record("2026-08-15-first", [_keyed("A-1", "deterministic", "once-only")])]
+    check("single occurrence -> silent", not any("once-only" in l and "UNBUILT" in l
+                                                 for l in rl.recurrence_report(single)))
+
+    same_record = [_dated_record("2026-08-15-first", [
+        _keyed("A-1", "deterministic", "same-rec-key"),
+        _keyed("A-2", "deterministic", "same-rec-key")])]
+    check("same key twice in ONE record counts as one record -> no unbuilt-guard",
+          not any("UNBUILT GUARD" in l for l in rl.recurrence_report(same_record)),
+          rl.recurrence_report(same_record))
+
+    mixed = twice + [_dated_record("2026-08-17-third", [_keyed("C-1", "judgment",
+                                                               "grep-counts-docstrings")])]
+    check("mixed classes: the deterministic leg alone triggers",
+          any("UNBUILT GUARD" in l for l in rl.recurrence_report(mixed)))
+
+    rowed = [
+        _dated_record("2026-08-15-first", [_keyed("A-1", "deterministic", "k-two", "H11")]),
+        _dated_record("2026-08-16-second", [_keyed("B-1", "deterministic", "k-two")]),
+    ]
+    check("a catalog_row in the group is surfaced on the UNBUILT GUARD line",
+          any("UNBUILT GUARD" in l and "H11" in l for l in rl.recurrence_report(rowed)),
+          rl.recurrence_report(rowed))
+
+    # A7 coverage ratio: denominator is ALL findings — re-keying cannot shrink it
+    ratio_fixture = [
+        _dated_record("2026-08-15-first", [_keyed("A-1", "deterministic", "k-one"),
+                                           finding()]),
+        _dated_record("2026-08-16-second", [_keyed("B-1", "judgment", "k-three"),
+                                            finding()]),
+    ]
+    lines = rl.recurrence_report(ratio_fixture)
+    check("denominator line: records + findings + keyed-of-total ratio",
+          any("records 2" in l and "findings 4" in l and "keyed 2 of 4" in l for l in lines),
+          lines)
+
+
+def test_recurrence_verb_vacuity_and_usage_event():
+    """The verb through the real script: vacuous refusal (exit 3) on zero records — a
+    reader must never mistake an empty scan for a clean one (§4a) — and ONE machine
+    usage event through the single write path, so the usage denominator moves without
+    anyone remembering to report (§6b)."""
+    import subprocess, sys as _sys
+    rl = load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {k: v for k, v in os.environ.items() if not k.startswith("TDD_PLAYBOOK")}
+        env["CLAUDE_PROJECT_DIR"] = tmp
+        os.makedirs(os.path.join(tmp, "docs", "reviews"))
+        p = subprocess.run([_sys.executable, SCRIPT, "recurrence"], capture_output=True,
+                           text=True, env=env, timeout=30)
+        check("zero records -> exit 3 vacuous refusal, stated", p.returncode == 3
+              and "VACUOUS" in (p.stderr + p.stdout).upper(), (p.returncode, p.stderr))
+
+        for name, rec in (("one.json", _dated_record(
+                "2026-08-15-first", [_keyed("A-1", "deterministic", "k-live")])),
+                          ("two.json", _dated_record(
+                "2026-08-16-second", [_keyed("B-1", "deterministic", "k-live")]))):
+            with open(os.path.join(tmp, "docs", "reviews", name), "w") as fh:
+                json.dump(rec, fh)
+        ylog = os.path.join(tmp, "yield.jsonl")
+        env["TDD_PLAYBOOK_YIELD_LOG"] = ylog
+        p = subprocess.run([_sys.executable, SCRIPT, "recurrence"], capture_output=True,
+                           text=True, env=env, timeout=30)
+        check("recurrence over real records exits 0 and prints the unbuilt-guard line",
+              p.returncode == 0 and "UNBUILT GUARD" in p.stdout, (p.returncode, p.stdout))
+        rows = ([json.loads(x) for x in open(ylog)] if os.path.isfile(ylog) else [])
+        check("ONE machine usage event lands via the single write path",
+              any(r.get("gate") == "review-ledger" and r.get("event") == "usage"
+                  for r in rows), rows[:3])
+
+
+def test_root_resolution_vendored_and_canonical():
+    """A12 — pre-existing shipped defect: four dirname hops resolve to the repo's PARENT
+    from a vendored `.claude/bin/`. The fix is the house pattern (CLAUDE_PROJECT_DIR,
+    else walk up to the dir that holds docs/reviews), proven from BOTH layouts."""
+    import shutil
+    rl = load_module()
+    saved = os.environ.pop("CLAUDE_PROJECT_DIR", None)
+    try:
+        check("in-repo layout resolves to the repo root",
+              os.path.realpath(rl.resolve_root()) == os.path.realpath(REPO),
+              rl.resolve_root())
+        with tempfile.TemporaryDirectory() as tmp:
+            real = os.path.realpath(tmp)
+            os.makedirs(os.path.join(real, ".claude", "bin"))
+            os.makedirs(os.path.join(real, "docs", "reviews"))
+            vendored = os.path.join(real, ".claude", "bin", "review_ledger.py")
+            shutil.copy2(SCRIPT, vendored)
+            spec = importlib.util.spec_from_file_location("review_ledger_vendored", vendored)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            check("vendored .claude/bin layout resolves to the HOST repo root, not its parent",
+                  os.path.realpath(module.resolve_root()) == real, module.resolve_root())
+            os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(real, "docs")
+            check("CLAUDE_PROJECT_DIR wins when set",
+                  os.path.realpath(module.resolve_root()) ==
+                  os.path.realpath(os.path.join(real, "docs")), module.resolve_root())
+            del os.environ["CLAUDE_PROJECT_DIR"]
+    finally:
+        if saved is not None:
+            os.environ["CLAUDE_PROJECT_DIR"] = saved
+
+
 if __name__ == "__main__":
     test_unresolved_blocker_refused()
     test_false_closure_and_scope_refused()
@@ -190,5 +398,9 @@ if __name__ == "__main__":
     test_preimplementation_review_cannot_cover_candidate()
     test_append_only_index_refuses_deleted_record()
     test_repository_review_records_are_valid()
+    test_taxonomy_required_after_ship_date()
+    test_recurrence_report()
+    test_recurrence_verb_vacuity_and_usage_event()
+    test_root_resolution_vendored_and_canonical()
     print("\nResult: {}/{} passed".format(PASSED, TOTAL))
     raise SystemExit(0 if PASSED == TOTAL else 1)
