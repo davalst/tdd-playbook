@@ -60,6 +60,10 @@
     {
       "path": "2026-08-13-cheliped-proposals-adjudication.json",
       "sha256": "e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b"
+    },
+    {
+      "path": "2026-08-14-review-as-judgment-surface.json",
+      "sha256": "81414e2a473def5da96e33271046422701314682a30d52b97fe4e48f00bc6044"
     }
   ]
 }

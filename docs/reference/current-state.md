@@ -8,7 +8,7 @@
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
 - `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
-- `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
+- `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
 - `capabilities.json` — `ec89d6ebf3a1084e7abe43907e8315398aac61540b478ea717533bc88c8ade5e`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
@@ -25,7 +25,8 @@
 - `docs/reviews/2026-08-12-v1.34.0-release.json` — `f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294`
 - `docs/reviews/2026-08-13-cheliped-proposals-adjudication.json` — `e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b`
 - `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
-- `docs/reviews/index.json` — `f09d85174cdd52bc8188b5e90661147e50123527d8705c339e4b43ad0aaefce4`
+- `docs/reviews/2026-08-14-review-as-judgment-surface.json` — `81414e2a473def5da96e33271046422701314682a30d52b97fe4e48f00bc6044`
+- `docs/reviews/index.json` — `f4ef55fe53e0e9f83c2175ce26a8be61a6180b602a32e32d1f4e016a891ec293`
 
 ## Gate surface
 
@@ -120,9 +121,8 @@
 
 ## Adversarial review records
 
-- Review records: 15. Findings: 88.
-- `incorporated`: 16
-- `open`: 3
-- `rejected`: 0
-- `verified_closed`: 69
-- No finding has ever been rejected.
+- Review records: 16. Findings: 99.
+- `incorporated`: 19
+- `open`: 4
+- `rejected`: 3
+- `verified_closed`: 73
