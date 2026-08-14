@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-14-review-as-judgment-surface.md",
   "review_range": {
     "base": "b76cab63f9d67476b88ab1a96c3872e944b87efd",
-    "head": "1d4f89280969da2ddc0c0e40c025290d0fc15341"
+    "head": "dd073e4592ce9a9c3b36c5766df8f36c78687b01"
   },
   "reviewers": [
     "tripwire-auditor",
