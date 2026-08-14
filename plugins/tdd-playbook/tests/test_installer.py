@@ -106,6 +106,7 @@ def main():
     test_vendored_skill_equality()
     test_release_version_identity()
     test_no_script_creates_a_release_tag()
+    test_codex_registered_scripts_are_vendored()
     test_doctor_sees_break_glass_as_a_standing_demotion()
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
@@ -571,6 +572,70 @@ def _tracked_scannable(repo):
         out += [os.path.relpath(os.path.join(root, f), repo)
                 for f in files if f.endswith(_SCAN_EXT)]
     return sorted(out)
+
+
+def test_codex_registered_scripts_are_vendored():
+    """D-D (review-as-judgment-surface plan, 2026-08-14): CODEX_COPY_FILES is the one
+    real hand-maintained roster of the deleted D0's class — two files that exist only
+    because the registered adapter script imports them. So the parity is TRANSITIVE:
+    every script the Codex adapter's hooks.json registers must resolve under
+    CODEX_COPY_TREES ∪ CODEX_COPY_FILES, and so must its repo-local imports (AST-parsed,
+    never grepped — §12). Dropping either roster entry strands the vendored hook at
+    import time on a host this repo cannot see."""
+    mod = load_installer()
+    plugin = os.path.join(REPO, "plugins", "tdd-playbook")
+    with open(os.path.join(plugin, "adapters", "codex", "hooks.json")) as fh:
+        hooks = json.load(fh)
+    registered = set()
+    for groups in hooks["hooks"].values():
+        for group in groups:
+            for handler in group.get("hooks", []):
+                m = re.search(r"\$\{PLUGIN_ROOT\}/([\w/.-]+\.py)",
+                              handler.get("command", ""))
+                if m:
+                    registered.add(m.group(1))
+    check("vacuity: the codex adapter registers at least one script (§4a)",
+          len(registered) >= 1, registered)
+
+    tree_prefixes = tuple(src + "/" for src, _dest in mod.CODEX_COPY_TREES)
+    file_srcs = {src for src, _dest in mod.CODEX_COPY_FILES}
+
+    def vendored(rel, files=file_srcs):
+        return rel in files or rel.startswith(tree_prefixes)
+
+    def local_imports(rel):
+        with open(os.path.join(plugin, rel)) as fh:
+            tree = ast.parse(fh.read())
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module)
+        found = set()
+        for name in names:
+            for shape in ("bin/{}.py", "hooks/scripts/{}.py", "adapters/codex/{}.py"):
+                candidate = shape.format(name.replace(".", "/"))
+                if os.path.isfile(os.path.join(plugin, candidate)):
+                    found.add(candidate)
+        return found
+
+    dependencies = set()
+    for rel in sorted(registered):
+        check("registered codex script is vendored: " + rel, vendored(rel),
+              (tree_prefixes, sorted(file_srcs)))
+        for dep in sorted(local_imports(rel)):
+            dependencies.add(dep)
+            check("...and its repo-local import is vendored: " + dep, vendored(dep))
+    check("the CODEX_COPY_FILES roster is LOAD-BEARING (some dependency rides it, "
+          "not the trees)", any(dep in file_srcs for dep in dependencies),
+          sorted(dependencies))
+
+    # PLANTED (red-first, frozen): dropping test_lock_guard.py from CODEX_COPY_FILES
+    # must be caught — the exact drift D0 was reaching for.
+    pruned = {src for src in file_srcs if "test_lock_guard" not in src}
+    check("PLANTED: dropping test_lock_guard from CODEX_COPY_FILES is caught",
+          any(not vendored(dep, pruned) for dep in dependencies), sorted(dependencies))
 
 
 def test_doctor_sees_break_glass_as_a_standing_demotion():
