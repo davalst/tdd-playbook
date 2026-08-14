@@ -70,7 +70,7 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 `grade_from_otel`, `capability_registry`, `verify_citations`) into the repo's `.claude/`, rewriting
 `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude`. The installer is **reconciling**: it prunes
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
-the four blocking guards (`test_weakening_guard`, `test_lock_guard`, `snapshot_guard`,
+four blocking guards (`test_weakening_guard`, `test_lock_guard`, `snapshot_guard`,
 `tag_guard`) plus the opt-in ones (`exitcode_guard`, `exhaustive_claim_guard`, `overmock_guard`,
 `flaky_guard`, `red_lock`) — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are

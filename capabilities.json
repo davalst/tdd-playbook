@@ -471,6 +471,14 @@
             "CLAUDE.md release flow (install_into_repo.py --doctor . is a named release step)"
           ]
         }
+      ],
+      "integration_debt": [
+        {
+          "id": "bin-roster-prose-divergence",
+          "what": "CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README: verify_citations; CLAUDE.md: dataflow_sweeps.py + _debt.py) while bin/ holds 23 scripts — reconcile the two prose lists or derive them from COPY_TREES the way the guard roster is now derived (test_guard_roster_derived_and_pinned)",
+          "owner": "david",
+          "expires": "2026-10-13"
+        }
       ]
     },
     {

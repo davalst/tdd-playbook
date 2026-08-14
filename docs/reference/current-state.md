@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
 - `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `270d33a6dfbcc291be57c80004a2e39f52ea875d7e8b799328df6b69114cfb03`
-- `capabilities.json` — `b66bd5b932ee61dd4c4127a1b42d22e74efa9112b6fe6fdc381cd5644a1ebfcd`
+- `capabilities.json` — `1a39bae75dd761ae20749d305c0137cac98dc0a07bd14e8513c095b004094616`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -46,7 +46,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 29. Owned dated integration-debt entries: 69.
+- Registered capabilities: 29. Owned dated integration-debt entries: 70.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -71,6 +71,7 @@
 - `gate-yield` — PAID 2026-08-09 — VERIFIED, not assumed… (owner `david`, expires `2026-12-31`)
 - `gate-yield` — PER-GATE ADJUDICATION SEAM (v1.27, found by integration-adversary)… (owner `david`, expires `2026-11-15`)
 - `gate-yield` — DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden)… (owner `david`, expires `2026-11-15`)
+- `install-doctor/bin-roster-prose-divergence` — CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README… (owner `david`, expires `2026-10-13`)
 - `civerd-release-gate` — ARCHIVAL-ONLY, NO CONSUMER (v1.32.0)… (owner `david`, expires `2027-02-01`)
 - `deliberation-capture` — ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30)… (owner `david`, expires `2026-08-31`)
 - `deliberation-capture` — CONSUMER… (owner `david`, expires `2026-10-31`)

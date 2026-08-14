@@ -10,14 +10,17 @@ and message. No pytest dependency (the plugin is stack-agnostic). Run:
     python3 tests/test_hooks.py
 Exit 0 = all green; non-zero = a guard regressed.
 """
+import ast
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 
-HOOKS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                     "hooks", "scripts")
+PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(PLUGIN))
+HOOKS = os.path.join(PLUGIN, "hooks", "scripts")
 
 _results = {"pass": 0, "fail": 0}
 
@@ -470,17 +473,10 @@ def test_retired_advisory_defaults():
     more expensive than the risk it retires, not only by becoming weaker than the threat.
     Retirement is never silent deletion: the scripts stay, the per-hook knob turns each back
     on, and gate_yield keeps its rows."""
-    import importlib.util as _il
-    spec = _il.spec_from_file_location("_common", os.path.join(HOOKS, "_common.py"))
-    common = _il.module_from_spec(spec)
-    spec.loader.exec_module(common)
-
-    for name in ("exitcode", "overmock", "exhaustive", "flaky", "redlock"):
-        check("retired-to-opt-in: {} defaults OFF".format(name),
-              common._DEFAULT_MODES.get(name) == "off", common._DEFAULT_MODES.get(name))
-    for name in ("testweaken", "testlock", "snapshotguard", "tagguard"):
-        check("KEPT BLOCKING: {} (evidence, not sentiment)".format(name),
-              common._DEFAULT_MODES.get(name) == "block", common._DEFAULT_MODES.get(name))
+    # The mode-per-guard policy pin (which script blocks, which is opt-in) lives in
+    # test_guard_roster_derived_and_pinned: EXPECTED_BLOCKING/EXPECTED_OPTIN are the one
+    # literal expectation, compared against the DERIVED partition — not read back from
+    # _DEFAULT_MODES, which would drift with it.
 
     # opt-in must actually work, or "off by default, available" is a story
     rc, _o, e = run("overmock_guard.py",
@@ -1178,13 +1174,149 @@ def test_guards_heartbeat():
         check("heartbeat: unwritable path never breaks the hook", rc in (0, 1), rc)
 
 
+# ------------------------------------------------------- guard roster (derived, D-B)
+# The v1.32.0 policy pin — the one LITERAL expectation in this family, kept literal on
+# purpose (§12: a derived check compared against the filter it describes cannot reveal
+# drift; these sets are the roster the machinery cannot drift with). Everything else —
+# which scripts exist, their short names, their modes, the prose copies — is DERIVED.
+EXPECTED_BLOCKING = {"test_weakening_guard", "test_lock_guard",
+                     "snapshot_guard", "tag_guard"}
+EXPECTED_OPTIN = {"exitcode_guard", "overmock_guard", "exhaustive_claim_guard",
+                  "flaky_guard", "red_lock"}
+EXPECTED_ADVISORY = {"build_completion_reminder", "capture", "intent_nudge"}
+
+
+def _script_short_name(script):
+    """AST-read a hook script's module-level NAME constant (None if absent).
+    Parsed, never grepped — a NAME in a docstring or comment must not count (§12)."""
+    with open(os.path.join(HOOKS, script + ".py"), encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if (isinstance(target, ast.Name) and target.id == "NAME"
+                        and isinstance(node.value, ast.Constant)
+                        and isinstance(node.value.value, str)):
+                    return node.value.value
+    return None
+
+
+_ROSTER_ANCHOR = re.compile(r"four blocking guards", re.IGNORECASE)
+_GUARD_TOKEN = re.compile(r"[a-z][a-z_]*_guard|red_lock")
+
+
+def _roster_chunk(text):
+    """The roster sentence region: anchor phrase + the span holding both name lists.
+    None when the anchor is missing — the caller must refuse a vacuous pass (§4a)."""
+    m = _ROSTER_ANCHOR.search(text)
+    return None if m is None else text[m.start():m.start() + 500]
+
+
+def _roster_problems(chunk, blocking, optin, shorts, machinery_tokens):
+    """Pin one prose roster chunk against the derived partition. Pure function so the
+    planted fixtures exercise it directly (release discipline: planted inputs, always).
+
+    An opt-in guard may appear by script name OR by its NAME short form (CLAUDE.md
+    writes `exitcode/overmock/...`, README writes `exitcode_guard, ...`). Directions:
+    missing (a real guard absent from prose) and phantom (a guard-shaped token in
+    prose that machinery does not have)."""
+    if chunk is None:
+        return ["roster anchor 'four blocking guards' not found — refusing a vacuous pass"]
+    problems = []
+    for script in sorted(blocking):
+        if script not in chunk:
+            problems.append("missing blocking guard in prose: " + script)
+    for script in sorted(optin):
+        if script not in chunk and shorts[script] not in chunk:
+            problems.append("missing opt-in guard in prose: {} (or '{}')".format(
+                script, shorts[script]))
+    for token in _GUARD_TOKEN.findall(chunk):
+        if token not in machinery_tokens:
+            problems.append("phantom guard in prose: " + token)
+    return problems
+
+
+def test_guard_roster_derived_and_pinned():
+    """D-B (review-as-judgment-surface plan, 2026-08-14): the guard roster is DERIVED
+    from machinery — hooks.json's registered scripts × each script's NAME constant ×
+    _common._DEFAULT_MODES — and the prose copies in CLAUDE.md and README.md are pinned
+    against it. Replaces the hardcoded name tuples this suite carried at the old
+    test_retired_advisory_defaults loops, so the roster has ONE literal home (the
+    policy pin above) instead of five prose copies."""
+    import importlib.util as _il
+    spec = _il.spec_from_file_location("_common", os.path.join(HOOKS, "_common.py"))
+    common = _il.module_from_spec(spec)
+    spec.loader.exec_module(common)
+    hp_spec = _il.spec_from_file_location(
+        "host_parity", os.path.join(PLUGIN, "bin", "host_parity.py"))
+    host_parity = _il.module_from_spec(hp_spec)
+    hp_spec.loader.exec_module(host_parity)
+
+    scanned = host_parity.canonical_inventory(REPO)["guards"]
+    partition, advisory, shorts = {}, set(), {}
+    for script in sorted(scanned):
+        short = _script_short_name(script)
+        if short in common._DEFAULT_MODES:
+            partition[script] = common._DEFAULT_MODES[short]
+            shorts[script] = short
+        else:
+            advisory.add(script)
+    blocking = {s for s, m in partition.items() if m == "block"}
+    optin = {s for s, m in partition.items() if m == "off"}
+
+    # machinery vs the policy pin — exact, not floors (§1: exact values beat orderings)
+    check("derived BLOCKING partition equals the v1.32.0 policy pin",
+          blocking == EXPECTED_BLOCKING, sorted(blocking))
+    check("derived OPT-IN partition equals the v1.32.0 policy pin",
+          optin == EXPECTED_OPTIN, sorted(optin))
+    check("advisory remainder is exactly the known non-guard set",
+          advisory == EXPECTED_ADVISORY, sorted(advisory))
+    check("every _DEFAULT_MODES key is claimed by exactly one registered script",
+          sorted(shorts.values()) == sorted(common._DEFAULT_MODES), sorted(shorts.values()))
+    print("  roster: scanned {} hooks.json scripts · classified {} guards · advisory {}"
+          .format(len(scanned), len(partition), len(advisory)))
+
+    # prose pins, both files, derived — never a hardcoded list here
+    machinery_tokens = set(partition) | set(shorts.values())
+    for name in ("CLAUDE.md", "README.md"):
+        text = open(os.path.join(REPO, name), encoding="utf-8").read()
+        problems = _roster_problems(_roster_chunk(text), blocking, optin, shorts,
+                                    machinery_tokens)
+        check("{} guard roster matches machinery".format(name), problems == [], problems)
+
+    # PLANTED fixtures — the red-first proof, frozen (a pin that cannot fail is décor)
+    good = ("...the four blocking guards (test_weakening_guard, test_lock_guard, "
+            "snapshot_guard, tag_guard) plus the opt-in ones (exitcode_guard, "
+            "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock)...")
+    check("PLANTED: clean roster prose passes",
+          _roster_problems(good, blocking, optin, shorts, machinery_tokens) == [],
+          _roster_problems(good, blocking, optin, shorts, machinery_tokens))
+    dropped = good.replace(", tag_guard)", ")")
+    check("PLANTED: missing blocking guard is caught",
+          any("missing blocking guard" in p and "tag_guard" in p
+              for p in _roster_problems(dropped, blocking, optin, shorts, machinery_tokens)))
+    phantom = good.replace("red_lock)", "red_lock, quantum_guard)")
+    check("PLANTED: phantom guard in prose is caught",
+          any("phantom" in p and "quantum_guard" in p
+              for p in _roster_problems(phantom, blocking, optin, shorts, machinery_tokens)))
+    grown = dict(shorts, new_guard="newguard")
+    check("PLANTED: newly-registered guard absent from prose is caught",
+          any("missing opt-in guard" in p and "new_guard" in p
+              for p in _roster_problems(good, blocking, optin | {"new_guard"}, grown,
+                                        machinery_tokens | {"new_guard"})))
+    check("PLANTED: anchor removal refuses a vacuous pass",
+          "refusing a vacuous pass" in _roster_problems(
+              None, blocking, optin, shorts, machinery_tokens)[0])
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
                test_exitcode, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
                test_lock_shell, test_yield_logging, test_guards_heartbeat,
-               test_break_glass, test_retired_advisory_defaults):
+               test_break_glass, test_retired_advisory_defaults,
+               test_guard_roster_derived_and_pinned):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
