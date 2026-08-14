@@ -35,17 +35,27 @@ def _markdown_names(directory: str) -> set[str]:
     return {name[:-3] for name in os.listdir(directory) if name.endswith(".md")}
 
 
-def _guard_names(plugin: str) -> set[str]:
-    with open(os.path.join(plugin, "hooks", "hooks.json"), encoding="utf-8") as fh:
+def registered_scripts(hooks_json_path: str) -> set[str]:
+    """Plugin-root-relative paths of every script a hooks.json registers — the ONE
+    hooks.json command parser (arch F7, 2026-08-14): `_guard_names` and the Codex
+    vendoring-parity test both consume this rather than forking a fourth traversal.
+    Matches both hosts' root variables (`${CLAUDE_PLUGIN_ROOT}`, `${PLUGIN_ROOT}`)."""
+    with open(hooks_json_path, encoding="utf-8") as fh:
         hooks = json.load(fh)["hooks"]
     found = set()
     for groups in hooks.values():
         for group in groups:
             for handler in group.get("hooks", []):
-                match = re.search(r"/([^/]+\.py)", handler.get("command", ""))
+                match = re.search(r"\$\{(?:CLAUDE_)?PLUGIN_ROOT\}/([\w/.-]+\.py)",
+                                  handler.get("command", ""))
                 if match:
-                    found.add(match.group(1)[:-3])
+                    found.add(match.group(1))
     return found
+
+
+def _guard_names(plugin: str) -> set[str]:
+    return {os.path.basename(path)[:-3] for path in
+            registered_scripts(os.path.join(plugin, "hooks", "hooks.json"))}
 
 
 def canonical_inventory(root: str = REPO) -> dict[str, set[str]]:

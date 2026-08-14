@@ -584,16 +584,12 @@ def test_codex_registered_scripts_are_vendored():
     import time on a host this repo cannot see."""
     mod = load_installer()
     plugin = os.path.join(REPO, "plugins", "tdd-playbook")
-    with open(os.path.join(plugin, "adapters", "codex", "hooks.json")) as fh:
-        hooks = json.load(fh)
-    registered = set()
-    for groups in hooks["hooks"].values():
-        for group in groups:
-            for handler in group.get("hooks", []):
-                m = re.search(r"\$\{PLUGIN_ROOT\}/([\w/.-]+\.py)",
-                              handler.get("command", ""))
-                if m:
-                    registered.add(m.group(1))
+    hp_spec = importlib.util.spec_from_file_location(
+        "host_parity", os.path.join(plugin, "bin", "host_parity.py"))
+    host_parity = importlib.util.module_from_spec(hp_spec)
+    hp_spec.loader.exec_module(host_parity)
+    registered = host_parity.registered_scripts(
+        os.path.join(plugin, "adapters", "codex", "hooks.json"))
     check("vacuity: the codex adapter registers at least one script (§4a)",
           len(registered) >= 1, registered)
 

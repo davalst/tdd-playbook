@@ -1038,6 +1038,10 @@ def test_review_record_producing_seam():
               "recurrence_key" in brief and "REUSED" in brief)
         check("{}: routes catalog_row into the HACK_CATALOG map".format(name),
               "catalog_row" in brief and "HACK_CATALOG" in brief)
+        # arch F5: the ship date is the constant most likely to slip; six prose copies
+        # with no pin would state a false refusal date under a green suite
+        check("{}: states the CURRENT ship date ({})".format(name, rl.TAXONOMY_SHIP_DATE),
+              rl.TAXONOMY_SHIP_DATE in brief)
     # vacuity guard on the enumerator (§4a applied to sweeps): six producers, exactly
     check("producing seam covers exactly the six reviewers the real ledger names",
           len(producers) == 6)

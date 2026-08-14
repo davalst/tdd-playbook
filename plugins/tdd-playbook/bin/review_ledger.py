@@ -59,7 +59,8 @@ def _strings(value) -> bool:
 
 
 def validate_record(record: dict, source: str, exists, evidence_exists=lambda _target: True,
-                    plan_exists=lambda _p: True) -> list[str]:
+                    plan_exists=lambda _p: True,
+                    catalog_exists=lambda _row: True) -> list[str]:
     problems = []
     prefix = source + ": "
     if record.get("schema_version") != 1:
@@ -133,6 +134,13 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
                                     or not CATALOG_ROW.fullmatch(catalog)):
             problems.append(label + ".catalog_row must be an H<number> row of the "
                                     "HACK_CATALOG Guard ↔ entry map")
+        elif catalog is not None and not catalog_exists(catalog):
+            # arch-adversary F9: shape alone would let H99 print as though it names a
+            # real row. Membership when the catalog is present; the repository caller
+            # degrades to shape-only (stated in its docstring) where the file is not
+            # vendored.
+            problems.append(label + ".catalog_row " + catalog +
+                            " is not a row of the HACK_CATALOG Guard ↔ entry map")
         if status == "open" and severity in BLOCKERS:
             problems.append(label + " unresolved blocker {} cannot pass the full gate".format(fid))
         if status == "incorporated" and not finding.get("disposition"):
@@ -217,7 +225,8 @@ def validate_index(directory: str, index: dict, baseline_records: list[dict]) ->
 
 
 def validate_directory(directory: str, exists, evidence_exists=lambda _target: True,
-                       plan_exists=lambda _p: True) -> list[str]:
+                       plan_exists=lambda _p: True,
+                       catalog_exists=lambda _row: True) -> list[str]:
     paths = sorted(path for path in glob.glob(os.path.join(directory, "*.json"))
                    if os.path.basename(path) != INDEX_NAME)
     if not paths:
@@ -237,7 +246,7 @@ def validate_directory(directory: str, exists, evidence_exists=lambda _target: T
             problems.append(path + ": duplicate review record id " + str(rid))
         record_ids.add(rid)
         problems.extend(validate_record(record, os.path.basename(path), exists,
-                                        evidence_exists, plan_exists))
+                                        evidence_exists, plan_exists, catalog_exists))
         for finding in record.get("findings") or []:
             fid = finding.get("id")
             if fid in finding_ids:
@@ -330,11 +339,25 @@ def _baseline_index(root: str) -> list[dict]:
     return (json.loads(shown.stdout).get("records") or [])
 
 
+def catalog_rows(root: str) -> set[str] | None:
+    """The H-rows of docs/HACK_CATALOG.md's Guard ↔ entry map, or None when the catalog
+    is not vendored here (downstream copies don't carry docs/) — the caller then degrades
+    to shape-only validation, stated here rather than silently."""
+    path = os.path.join(root, "docs", "HACK_CATALOG.md")
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return set(re.findall(r"^\|\s*(H\d+)\s*\|", fh.read(), re.MULTILINE))
+
+
 def validate_repository(root: str) -> list[str]:
     directory = os.path.join(root, "docs", "reviews")
+    rows = catalog_rows(root)
     problems = validate_directory(directory, lambda sha: commit_exists(root, sha),
                                   lambda target: closure_evidence_exists(root, target),
-                                  lambda p: os.path.isfile(os.path.join(root, p)))
+                                  lambda p: os.path.isfile(os.path.join(root, p)),
+                                  (lambda row: row in rows) if rows is not None
+                                  else lambda _row: True)
     try:
         with open(os.path.join(directory, INDEX_NAME), encoding="utf-8") as fh:
             index = json.load(fh)
@@ -399,25 +422,29 @@ def recurrence_report(records: list[dict]) -> list[str]:
     return lines
 
 
-def resolve_root() -> str:
+def resolve_root() -> str | None:
     """A12 fix (pre-existing shipped defect): the old four-dirname-hop derivation was
     correct at plugins/tdd-playbook/bin/ and named the HOST REPO'S PARENT from a vendored
-    .claude/bin/. House pattern instead: CLAUDE_PROJECT_DIR when the host sets it, else
-    walk up to the first directory that actually holds docs/reviews — the artifact this
-    tool exists to read (proven from both layouts by the locked suite)."""
-    env = os.environ.get("CLAUDE_PROJECT_DIR")
-    if env:
-        return os.path.realpath(env)
+    .claude/bin/. Resolution order (arch-adversary F1/F2, 2026-08-14):
+    TDD_PLAYBOOK_PROJECT_ROOT first — the adapter contract the Codex host declares
+    (tdd_lock.py, _common.runtime_host) — then CLAUDE_PROJECT_DIR, then walk up to the
+    first directory that actually holds docs/reviews (the artifact this tool exists to
+    read; works in non-git trees where a git-derived root cannot). Exhausted walk-up
+    returns None and the caller REFUSES with the real problem named — the old four-hop
+    fallback reproduced the very defect this function replaces, as a live untested
+    branch, and is deleted."""
+    for var in ("TDD_PLAYBOOK_PROJECT_ROOT", "CLAUDE_PROJECT_DIR"):
+        env = os.environ.get(var)
+        if env:
+            return os.path.realpath(env)
     probe = os.path.dirname(os.path.abspath(__file__))
-    for _ in range(6):
+    while True:
         if os.path.isdir(os.path.join(probe, "docs", "reviews")):
             return probe
         parent = os.path.dirname(probe)
         if parent == probe:
-            break
+            return None
         probe = parent
-    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__)))))
 
 
 def _log_usage(verb: str, extra: dict) -> None:
@@ -436,14 +463,12 @@ def _log_usage(verb: str, extra: dict) -> None:
     log_yield_event("review-ledger", "usage", dict(extra, verb=verb), source="cli")
 
 
-# The exit-code contract shared with dataflow_sweeps/readable_surface (0 clean · 2 usage ·
-# 3 vacuous refusal). Imported from the owner when the sibling is present; the literal
-# fallback keeps a partial vendored copy failing CLOSED with the same contract value.
-try:
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from dataflow_sweeps import EXIT_VACUOUS  # noqa: E402
-except Exception:
-    EXIT_VACUOUS = 3
+# The exit-code contract (0 clean · 2 usage · 3 vacuous refusal): imported from its one
+# owner, never re-typed (arch-adversary F3 — the installer only copies bin/ as a whole
+# tree, so a partial copy missing the sibling cannot ship; a fallback literal was an
+# unreachable, untestable second home for the constant).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dataflow_sweeps import EXIT_VACUOUS  # noqa: E402  (sibling; vendored together)
 
 
 def main(argv=None) -> int:
@@ -452,6 +477,11 @@ def main(argv=None) -> int:
         print("usage: review_ledger.py [validate|recurrence]", file=sys.stderr)
         return 2
     root = resolve_root()
+    if root is None:
+        print("review_ledger: cannot locate a repository root holding docs/reviews — "
+              "set CLAUDE_PROJECT_DIR (or TDD_PLAYBOOK_PROJECT_ROOT on Codex)",
+              file=sys.stderr)
+        return 2
     if argv == ["recurrence"]:
         records = _records(os.path.join(root, "docs", "reviews"))
         if not records:

@@ -251,6 +251,20 @@ def test_taxonomy_required_after_ship_date():
         "control.json", lambda _s: True)
     check("H-row catalog_row passes", cat_ok == [], cat_ok)
 
+    # arch F9: shape is not membership — H99 must not print as though it names a row
+    phantom_row = rl.validate_record(
+        _dated_record(post, [_keyed("ARCH-1", "deterministic", "k-one", catalog_row="H99")]),
+        "plant.json", lambda _s: True, catalog_exists=lambda _row: False)
+    check("PLANTED catalog_row naming no real map row is refused",
+          any("not a row" in p for p in phantom_row), phantom_row)
+    rows = rl.catalog_rows(REPO)
+    check("the real catalog parses to a non-vacuous row set containing H11 (§4a)",
+          rows is not None and "H11" in rows and len(rows) >= 10,
+          sorted(rows or [])[:5])
+    with tempfile.TemporaryDirectory() as tmp:
+        check("a tree without the catalog degrades to None (shape-only), stated not silent",
+              rl.catalog_rows(tmp) is None)
+
     undated = rl.validate_record(_dated_record("no-date-prefix", [finding()]),
                                  "plant.json", lambda _s: True)
     check("PLANTED record id without a YYYY-MM-DD prefix is refused (not a crash)",
@@ -358,23 +372,37 @@ def test_recurrence_verb_vacuity_and_usage_event():
                   for r in rows), rows[:3])
 
 
+def _vendor_bin(real):
+    """Mirror the REAL vendored layout: install_into_repo copies bin/ as a whole tree,
+    so review_ledger.py always ships beside its dataflow_sweeps/_debt siblings — a test
+    tree with the script alone would be a layout the installer cannot produce."""
+    import shutil
+    os.makedirs(os.path.join(real, ".claude", "bin"))
+    for sibling in ("review_ledger.py", "dataflow_sweeps.py", "_debt.py"):
+        shutil.copy2(os.path.join(PLUGIN, "bin", sibling),
+                     os.path.join(real, ".claude", "bin", sibling))
+    return os.path.join(real, ".claude", "bin", "review_ledger.py")
+
+
 def test_root_resolution_vendored_and_canonical():
     """A12 — pre-existing shipped defect: four dirname hops resolve to the repo's PARENT
-    from a vendored `.claude/bin/`. The fix is the house pattern (CLAUDE_PROJECT_DIR,
-    else walk up to the dir that holds docs/reviews), proven from BOTH layouts."""
-    import shutil
+    from a vendored `.claude/bin/`. Pre-fix shape (§13 guard calibration — the sha is the
+    anchor): `git show ba16fe4:plugins/tdd-playbook/bin/review_ledger.py` line 328,
+    `os.path.dirname(` ×4 over `__file__`. Fix order (arch F1/F2):
+    TDD_PLAYBOOK_PROJECT_ROOT (the Codex adapter contract) → CLAUDE_PROJECT_DIR → walk
+    up to the dir holding docs/reviews → REFUSE (None) — the old four-hop fallback
+    reproduced the defect and is gone."""
     rl = load_module()
-    saved = os.environ.pop("CLAUDE_PROJECT_DIR", None)
+    saved = {var: os.environ.pop(var, None)
+             for var in ("CLAUDE_PROJECT_DIR", "TDD_PLAYBOOK_PROJECT_ROOT")}
     try:
         check("in-repo layout resolves to the repo root",
               os.path.realpath(rl.resolve_root()) == os.path.realpath(REPO),
               rl.resolve_root())
         with tempfile.TemporaryDirectory() as tmp:
             real = os.path.realpath(tmp)
-            os.makedirs(os.path.join(real, ".claude", "bin"))
+            vendored = _vendor_bin(real)
             os.makedirs(os.path.join(real, "docs", "reviews"))
-            vendored = os.path.join(real, ".claude", "bin", "review_ledger.py")
-            shutil.copy2(SCRIPT, vendored)
             spec = importlib.util.spec_from_file_location("review_ledger_vendored", vendored)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
@@ -384,10 +412,31 @@ def test_root_resolution_vendored_and_canonical():
             check("CLAUDE_PROJECT_DIR wins when set",
                   os.path.realpath(module.resolve_root()) ==
                   os.path.realpath(os.path.join(real, "docs")), module.resolve_root())
+            os.environ["TDD_PLAYBOOK_PROJECT_ROOT"] = real
+            check("TDD_PLAYBOOK_PROJECT_ROOT (the adapter contract) outranks it",
+                  os.path.realpath(module.resolve_root()) == real, module.resolve_root())
             del os.environ["CLAUDE_PROJECT_DIR"]
+            del os.environ["TDD_PLAYBOOK_PROJECT_ROOT"]
+        with tempfile.TemporaryDirectory() as tmp:
+            real = os.path.realpath(tmp)
+            vendored = _vendor_bin(real)  # NO docs/reviews anywhere up the tree
+            spec = importlib.util.spec_from_file_location("review_ledger_stranded", vendored)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            check("exhausted walk-up REFUSES (None) instead of guessing a parent",
+                  module.resolve_root() is None, module.resolve_root())
+            import subprocess, sys as _sys
+            env = {k: v for k, v in os.environ.items() if k not in
+                   ("CLAUDE_PROJECT_DIR", "TDD_PLAYBOOK_PROJECT_ROOT")}
+            p = subprocess.run([_sys.executable, vendored, "recurrence"],
+                               capture_output=True, text=True, env=env, timeout=30)
+            check("...and the verb states the real problem (exit 2, names the env vars)",
+                  p.returncode == 2 and "CLAUDE_PROJECT_DIR" in p.stderr,
+                  (p.returncode, p.stderr))
     finally:
-        if saved is not None:
-            os.environ["CLAUDE_PROJECT_DIR"] = saved
+        for var, value in saved.items():
+            if value is not None:
+                os.environ[var] = value
 
 
 if __name__ == "__main__":

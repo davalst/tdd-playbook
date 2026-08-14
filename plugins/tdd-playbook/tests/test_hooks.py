@@ -1201,15 +1201,18 @@ def _script_short_name(script):
     return None
 
 
-_ROSTER_ANCHOR = re.compile(r"four blocking guards", re.IGNORECASE)
+_ROSTER_ANCHOR = re.compile(r"blocking guards", re.IGNORECASE)
 _GUARD_TOKEN = re.compile(r"[a-z][a-z_]*_guard|red_lock")
+_SLASH_RUN = re.compile(r"\b[a-z_]+(?:/[a-z_]+)+\b")
+_NUMBER_WORDS = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven"}
 
 
 def _roster_chunk(text):
-    """The roster sentence region: anchor phrase + the span holding both name lists.
-    None when the anchor is missing — the caller must refuse a vacuous pass (§4a)."""
+    """The roster sentence region: from just before the anchor phrase (the count word
+    precedes it) through the span holding both name lists. None when the anchor is
+    missing — the caller must refuse a vacuous pass (§4a)."""
     m = _ROSTER_ANCHOR.search(text)
-    return None if m is None else text[m.start():m.start() + 500]
+    return None if m is None else text[max(0, m.start() - 30):m.start() + 500]
 
 
 def _roster_problems(chunk, blocking, optin, shorts, machinery_tokens):
@@ -1218,11 +1221,21 @@ def _roster_problems(chunk, blocking, optin, shorts, machinery_tokens):
 
     An opt-in guard may appear by script name OR by its NAME short form (CLAUDE.md
     writes `exitcode/overmock/...`, README writes `exitcode_guard, ...`). Directions:
-    missing (a real guard absent from prose) and phantom (a guard-shaped token in
-    prose that machinery does not have)."""
+    missing (a real guard absent from prose), phantom (a guard-shaped token machinery
+    does not have — BOTH dialects: `*_guard` names and short-name slash-runs, arch F6b),
+    and a stale COUNT word (arch F6a: five guards behind a sentence still saying
+    "four" is green under a names-only pin — the number is asserted against
+    len(blocking), the one fact the anchor itself cannot see)."""
     if chunk is None:
-        return ["roster anchor 'four blocking guards' not found — refusing a vacuous pass"]
+        return ["roster anchor 'blocking guards' not found — refusing a vacuous pass"]
     problems = []
+    count_word = _NUMBER_WORDS.get(len(blocking))
+    if count_word is None:
+        problems.append("blocking-guard count {} has no number word — extend "
+                        "_NUMBER_WORDS".format(len(blocking)))
+    elif not re.search(count_word + r"\s+blocking guards", chunk, re.IGNORECASE):
+        problems.append("stale roster count: prose does not say '{} blocking guards' "
+                        "(machinery has {})".format(count_word, len(blocking)))
     for script in sorted(blocking):
         if script not in chunk:
             problems.append("missing blocking guard in prose: " + script)
@@ -1233,6 +1246,12 @@ def _roster_problems(chunk, blocking, optin, shorts, machinery_tokens):
     for token in _GUARD_TOKEN.findall(chunk):
         if token not in machinery_tokens:
             problems.append("phantom guard in prose: " + token)
+    for run in _SLASH_RUN.findall(chunk):
+        tokens = run.split("/")
+        if any(t in machinery_tokens for t in tokens):
+            for t in tokens:
+                if t not in machinery_tokens:
+                    problems.append("phantom guard in prose (short-name run): " + t)
     return problems
 
 
@@ -1304,6 +1323,24 @@ def test_guard_roster_derived_and_pinned():
           any("missing opt-in guard" in p and "new_guard" in p
               for p in _roster_problems(good, blocking, optin | {"new_guard"}, grown,
                                         machinery_tokens | {"new_guard"})))
+    # arch F6a: five real blocking guards behind prose still saying "four" — all five
+    # names present, no phantom, anchor intact — must fail on the COUNT
+    five_named = good.replace("tag_guard)", "tag_guard, fifth_guard)")
+    check("PLANTED: stale count word ('four' over five guards) is caught",
+          any("stale roster count" in p
+              for p in _roster_problems(five_named, blocking | {"fifth_guard"}, optin,
+                                        grown, machinery_tokens | {"fifth_guard"})),
+          _roster_problems(five_named, blocking | {"fifth_guard"}, optin, grown,
+                           machinery_tokens | {"fifth_guard"}))
+    # arch F6b: CLAUDE.md's short-name dialect — a phantom inside the slash-run
+    claude_dialect = ("...the four blocking guards: test_weakening_guard, "
+                      "test_lock_guard, snapshot_guard, tag_guard; plus the opt-in "
+                      "exitcode/overmock/quantum/flaky/red_lock, which ship OFF...")
+    check("PLANTED: phantom short name inside the slash-run is caught",
+          any("short-name run" in p and "quantum" in p
+              for p in _roster_problems(claude_dialect, blocking, optin, shorts,
+                                        machinery_tokens)),
+          _roster_problems(claude_dialect, blocking, optin, shorts, machinery_tokens))
     check("PLANTED: anchor removal refuses a vacuous pass",
           "refusing a vacuous pass" in _roster_problems(
               None, blocking, optin, shorts, machinery_tokens)[0])
