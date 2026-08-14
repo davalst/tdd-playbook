@@ -66,6 +66,10 @@ SURFACE_PATTERNS = (
 )
 # Surfaces where `expect: none` is a lie by construction: an oracle or a brief IS the thing
 # the run measures. Doctrine prose and command text can legitimately be inert.
+# 2026-08-14 decision (David, review-as-judgment-surface plan, Q1): SKILL.md and commands/
+# stay OUT of EFFECTFUL — doctrine yield is deliberately unmeasured, a recorded position
+# rather than an unrevisited default. Revisit only if a section-granular ledger (the deleted
+# D1 reader, which would need section anchors in the `surface` cell) is ever reopened.
 EFFECTFUL = ("calibration/scenarios.json", "calibration/corpus/approved/",
              "plugins/tdd-playbook/agents/")
 

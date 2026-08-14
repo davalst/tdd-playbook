@@ -3,6 +3,13 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## Unreleased
+
+**Q1 recorded (review-as-judgment-surface plan, 2026-08-14):** SKILL.md and commands/ stay
+OUT of `EFFECTFUL` in `calibration/ledger.py` — doctrine yield is deliberately unmeasured,
+now as a recorded decision (dated comment above the constant) rather than a default nobody
+revisited. Reopen only with a section-granular ledger (the deleted D1 reader).
+
 ## 1.35.0 — 2026-08-13
 
 **The surface learns to speak; the doctrine absorbs the cheliped lessons.** Everything here
