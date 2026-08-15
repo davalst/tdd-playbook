@@ -2937,6 +2937,32 @@ def _holdout_authoring_tests():
         raised_strict = True
     check("D1: author/approve still REJECT unknown args (strict, not forwarded)", raised_strict)
 
+    # --form holdout SELECTS bodies from the holdout dir (holdout-form BY CONSTRUCTION). Live bug
+    # 2026-08-15: they defaulted to `dev` (the public plant-forms.md never names them) so
+    # `--form holdout` selected nothing ("no scenarios selected"). macOS-gated: a holdout run
+    # confines the agent, which needs sandbox-exec — the same reason a holdout eval only runs on
+    # the Mac. (stub lives OUTSIDE the deny-read holdout dir so the sandbox can execute it.)
+    import confine as _cf
+    if _cf.sandbox_exec_available():
+        with tempfile.TemporaryDirectory() as hd, tempfile.TemporaryDirectory() as sd:
+            with open(os.path.join(hd, "p.json"), "w") as fh:
+                json.dump({"id": "holdout-select-plant", "agent": "claims-verifier",
+                           "plant": "p", "edits": [], "task": "t",
+                           "must_match": ["REFUTED"], "must_not_match": ["CONFIRMED"]}, fh)
+            stub = make_stub(sd, "Claim REFUTED: reached.\nClaims checked: 1 · confirmed 0 · "
+                                 "refuted 1 · demoted to leads 0")
+            env = dict(os.environ)
+            env["TDD_PLAYBOOK_HOLDOUT_DIR"] = hd
+            p = subprocess.run([sys.executable, RUNNER, "--form", "holdout", "--scenario",
+                                "holdout-select-plant", "--claude-bin", stub, "--history", "",
+                                "--repeat", "1"], capture_output=True, text=True, timeout=120,
+                               env=env)
+            check("D1: --form holdout SELECTS a holdout-dir body (not 'no scenarios selected')",
+                  "no scenarios selected" not in p.stdout
+                  and "holdout-select-plant" in p.stdout, (p.stdout[-300:], p.stderr[-200:]))
+    else:
+        check("D1: holdout-form selection test SKIPPED (no sandbox-exec on this host)", True)
+
 
 def main():
     print("Calibration-harness calibration")

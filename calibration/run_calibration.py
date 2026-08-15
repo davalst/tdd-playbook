@@ -831,6 +831,14 @@ def main(argv=None):
             print("FATAL: --form {} requested but the plant-form register is unreadable "
                   "({}). Refusing to guess a split.".format(args.form, e), file=sys.stderr)
             return 2
+    # Bodies loaded from the holdout vault (TDD_PLAYBOOK_HOLDOUT_DIR) ARE holdout-form by
+    # construction — the vault IS the holdout store, and the public plant-forms.md never names
+    # them (arch-F4 body containment). Without this, `--form holdout` resolves them to the `dev`
+    # default and selects nothing ("no scenarios selected" — live bug 2026-08-15).
+    _holdout_dir = os.environ.get(HOLDOUT_DIR_ENV)
+    if _holdout_dir:
+        for _s in load_corpus([_holdout_dir]):
+            resolved_forms[_s["id"]] = "holdout"
     if args.form != "all":
         scenarios = [s for s in scenarios
                      if _form_of(s["id"], resolved_forms) == args.form]
