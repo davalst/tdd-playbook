@@ -128,6 +128,28 @@ def adversary_prompt(category):
              known=known, fixture="\n".join(fixture_listing))
 
 
+def reject_category(problems):
+    """A short, ACTIONABLE, oracle-SAFE category for why a generated scenario was rejected. The
+    operator needs to know WHAT to fix (wrong agent, edits that don't match the fixture, a missing
+    field) — those are all safe. The ONLY validate_scenario message that echoes the answer key is
+    the oracle regex (run_calibration.py:99 'bad regex /…/'), so that one collapses to a category
+    naming the problem WITHOUT the regex. Everything else keeps enough detail to be fixable."""
+    joined = " ".join(problems).lower()
+    if "unknown agent" in joined:
+        return "unknown-agent (use one of the listed verifier agents)"
+    if "do not apply" in joined or "stale plant" in joined:
+        return "edits-do-not-apply (an edit `old` string does not EXACTLY match the fixture)"
+    if "bad regex" in joined:
+        return "bad-oracle-regex (a must_match/must_not_match pattern does not compile)"
+    if "missing/empty field" in joined:
+        return "missing-required-field (id/agent/plant/task/must_match)"
+    if "control" in joined:
+        return "control-schema (control needs control_for + must_not_match)"
+    if "duplicate id" in joined:
+        return "duplicate-id (already used by a shipped/corpus/vault scenario)"
+    return "invalid-schema"
+
+
 def generate_accepted_pairs(prompt, host, selected_bin, model, known_scenarios, *,
                             deny_read=None):
     """The adversary generation CORE, shared by public (cmd_author) and holdout authoring. Runs
@@ -135,12 +157,13 @@ def generate_accepted_pairs(prompt, host, selected_bin, model, known_scenarios, 
     (validate_scenario) and pairing_problems — one rule, no copy. Returns
     {accepted:[scenario dicts], rejected:[(id, category)], parse_failed:bool} and NEVER returns
     raw model output: the generated plants ARE an answer key, so egress is the CALLER's to own
-    (public may print freely; holdout must not). Rejection reasons are id + a short CATEGORY,
-    never the raw validate_scenario problem strings (which echo the oracle regexes,
-    run_calibration.py:99). Raises FileNotFoundError if the binary is missing (caller reports).
-    child_env keeps capture OFF (the adversary's output IS the answer key); deny_read boxes the
-    spawn when a holdout clone is on disk (F4)."""
+    (public may print freely; holdout must not). Rejection reasons are id + an ACTIONABLE category
+    (reject_category) that never echoes the oracle regex. Raises FileNotFoundError if the binary
+    is missing (caller reports). child_env keeps capture OFF (the adversary's output IS the answer
+    key); deny_read boxes the spawn when a holdout clone is on disk (F4)."""
     from child_env import child_env
+    print("authoring with {} via {} … (runs the model; can take a few minutes)".format(
+        model, host), file=sys.stderr, flush=True)
     result = host_runner.invoke(
         host, selected_bin, prompt, model, HERE, timeout=600, env=child_env(),
         extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split(),
@@ -154,8 +177,9 @@ def generate_accepted_pairs(prompt, host, selected_bin, model, known_scenarios, 
         if not isinstance(sc, dict):
             rejected.append(("?", "not-an-object"))
             continue
-        if validate_scenario(sc, existing):
-            rejected.append((sc.get("id", "?"), "invalid-schema"))
+        probs = validate_scenario(sc, existing)
+        if probs:
+            rejected.append((sc.get("id", "?"), reject_category(probs)))
             continue
         existing.add(sc["id"])  # a second generated plant reusing an id is now a duplicate
         batch.append(sc)

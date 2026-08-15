@@ -2796,8 +2796,16 @@ def _holdout_authoring_tests():
         check("D1.a: the valid pair is accepted",
               {s["id"] for s in res["accepted"]} == {"hauth-plant", "hauth-control"},
               [s["id"] for s in res["accepted"]])
-        check("D1.a: the bad-regex plant is rejected by id+CATEGORY (no oracle echo)",
-              ("hauth-bad", "invalid-schema") in res["rejected"], res["rejected"])
+        check("D1.a: the bad plant is rejected with an ACTIONABLE category (unknown-agent here)",
+              any(rid == "hauth-bad" and "unknown-agent" in cat for rid, cat in res["rejected"]),
+              res["rejected"])
+        # reject_category is actionable per type AND hides the oracle regex (the one unsafe msg)
+        check("D1.a: reject_category HIDES the oracle regex (bad-regex -> category, no pattern)",
+              "([" not in ap.reject_category(["bad regex /([unclosed/: err"])
+              and "bad-oracle-regex" in ap.reject_category(["bad regex /([unclosed/: err"]))
+        check("D1.a: reject_category is actionable — unknown-agent / edits-do-not-apply named",
+              "unknown-agent" in ap.reject_category(["unknown agent: xyz"])
+              and "edits-do-not-apply" in ap.reject_category(["edits do not apply to fixture: e"]))
 
         def fake_noarray(host, binary, prompt, model, cwd, **kw):
             return host_runner.Result(host, "ok", "SENTINEL_NOARRAY not json at all", 0, None)
