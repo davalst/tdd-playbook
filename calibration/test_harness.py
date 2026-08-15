@@ -2455,9 +2455,14 @@ def _holdout_run_tests():
     check("run: _maybe_confine leaves a dev command (no deny_read) unchanged",
           host_runner._maybe_confine(cmd, "/tmp", None) == cmd)
     with tempfile.TemporaryDirectory() as ws, tempfile.TemporaryDirectory() as ans:
-        wrapped = host_runner._maybe_confine(cmd, ws, [ans])
-        check("run: _maybe_confine wraps a holdout command in sandbox-exec",
-              wrapped[0] == "sandbox-exec" and cmd[-1] == wrapped[-1], wrapped[:2])
+        # The wrap path only succeeds where sandbox-exec exists (macOS); on Linux CI it fails
+        # closed, which the next check proves. Gate this one so the harness stays Linux-safe.
+        if confine.sandbox_exec_available():
+            wrapped = host_runner._maybe_confine(cmd, ws, [ans])
+            check("run: _maybe_confine wraps a holdout command in sandbox-exec",
+                  wrapped[0] == "sandbox-exec" and cmd[-1] == wrapped[-1], wrapped[:2])
+        else:
+            check("run: _maybe_confine wrap SKIPPED (no sandbox-exec on this host)", True)
         keep = confine.sandbox_exec_available
         confine.sandbox_exec_available = lambda: False
         try:
