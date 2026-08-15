@@ -128,51 +128,64 @@ def adversary_prompt(category):
              known=known, fixture="\n".join(fixture_listing))
 
 
+def generate_accepted_pairs(prompt, host, selected_bin, model, known_scenarios, *,
+                            deny_read=None):
+    """The adversary generation CORE, shared by public (cmd_author) and holdout authoring. Runs
+    the adversary, then validates + pair-checks its output through THE D0 validator
+    (validate_scenario) and pairing_problems — one rule, no copy. Returns
+    {accepted:[scenario dicts], rejected:[(id, category)], parse_failed:bool} and NEVER returns
+    raw model output: the generated plants ARE an answer key, so egress is the CALLER's to own
+    (public may print freely; holdout must not). Rejection reasons are id + a short CATEGORY,
+    never the raw validate_scenario problem strings (which echo the oracle regexes,
+    run_calibration.py:99). Raises FileNotFoundError if the binary is missing (caller reports).
+    child_env keeps capture OFF (the adversary's output IS the answer key); deny_read boxes the
+    spawn when a holdout clone is on disk (F4)."""
+    from child_env import child_env
+    result = host_runner.invoke(
+        host, selected_bin, prompt, model, HERE, timeout=600, env=child_env(),
+        extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split(),
+        confine_deny_read=deny_read)
+    scenarios = extract_json_array(result.output)
+    if not scenarios:
+        return {"accepted": [], "rejected": [], "parse_failed": True}
+    existing = {s["id"] for s in known_scenarios}
+    batch, rejected = [], []
+    for sc in scenarios:
+        if not isinstance(sc, dict):
+            rejected.append(("?", "not-an-object"))
+            continue
+        if validate_scenario(sc, existing):
+            rejected.append((sc.get("id", "?"), "invalid-schema"))
+            continue
+        existing.add(sc["id"])  # a second generated plant reusing an id is now a duplicate
+        batch.append(sc)
+    batch_ids = {sc["id"] for sc in batch}
+    unpaired = {p.split(":", 1)[0] for p in pairing_problems(list(known_scenarios) + batch)} \
+        & batch_ids
+    accepted = [sc for sc in batch if sc["id"] not in unpaired]
+    rejected += [(sc["id"], "unpaired-R2") for sc in batch if sc["id"] in unpaired]
+    return {"accepted": accepted, "rejected": rejected, "parse_failed": False}
+
+
 def cmd_author(args):
     prompt = adversary_prompt(args.category)
     selected_bin = (args.host_bin or args.claude_bin if args.host == "claude"
                     else args.host_bin or os.environ.get("TDD_PLAYBOOK_CODEX_BIN", "codex"))
+    known = load_scenarios() + corpus_scenarios(("proposed", "approved"))
     try:
-        # child_env: capture OFF for the adversary — its plant output IS the answer key
-        from child_env import child_env
-        result = host_runner.invoke(
-            args.host, selected_bin, prompt, args.model, HERE, timeout=600,
-            env=child_env(),
-            extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split(),
-            # F4: the authoring model is the second spawn seam (child_env.py names both). If a
-            # holdout clone is on disk, box this one in too — symmetric with run_agent, fails
-            # closed without a sandbox rather than authoring unconfined beside the answer key.
-            confine_deny_read=holdout_deny_read())
+        res = generate_accepted_pairs(prompt, args.host, selected_bin, args.model, known,
+                                      deny_read=holdout_deny_read())
     except FileNotFoundError:
         print("FATAL: {} binary not found ({})".format(args.host, selected_bin))
         return 2
-    scenarios = extract_json_array(result.output)
-    if not scenarios:
+    if res["parse_failed"]:
         print("REJECTED: no parseable JSON array in adversary output")
-        print(result.output[-800:])
         return 1
     os.makedirs(PROPOSED, exist_ok=True)
-    # Individual validation first, then the R2 pair quota across the BATCH plus everything
-    # already known — an unpaired plant is rejected before it ever reaches human review.
-    batch, rejected = [], 0
-    for sc in scenarios:
-        problems = validate(sc) if isinstance(sc, dict) else ["not an object"]
-        if problems:
-            rejected += 1
-            print("REJECTED {}: {}".format(sc.get("id", "?") if isinstance(sc, dict) else "?",
-                                           "; ".join(problems)))
-            continue
-        batch.append(sc)
-    known = load_scenarios() + corpus_scenarios(("proposed", "approved"))
-    batch_ids = {sc["id"] for sc in batch}
-    unpaired = {p.split(":", 1)[0] for p in pairing_problems(known + batch)} & batch_ids
+    for cid, reason in res["rejected"]:
+        print("REJECTED {}: {}".format(cid, reason))
     accepted = 0
-    for sc in batch:
-        if sc["id"] in unpaired:
-            rejected += 1
-            print("REJECTED {}: unpaired — the pair quota requires a plant and its clean "
-                  "control together (R2)".format(sc["id"]))
-            continue
+    for sc in res["accepted"]:
         sc["_meta"] = {
             "authored_by_model": args.model,
             "authored_at": datetime.date.today().isoformat(),
@@ -186,7 +199,7 @@ def cmd_author(args):
         print("PROPOSED {} -> {} (review, then --approve {})".format(
             sc["id"], os.path.relpath(path, HERE), sc["id"]))
     print("author_plants: {} proposed · {} rejected (mechanical validation)".format(
-        accepted, rejected))
+        accepted, len(res["rejected"])))
     return 0 if accepted else 1
 
 

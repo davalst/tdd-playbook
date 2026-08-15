@@ -2741,6 +2741,153 @@ def _isolation_liveness_tests():
               rc.sink_liveness_probe([]) is False)
 
 
+def _holdout_authoring_tests():
+    """D1: author fresh holdout plants via the adversary model into the private vault, egress
+    LOCKED (the generated answer key never reaches stdout/logs/the public repo), approve into
+    bodies/ + register, and the tamper-check that verifies the vault before an eval."""
+    import contextlib
+    import io
+    import holdout
+    import host_runner
+    import author_plants as ap
+    import plant_forms
+
+    plant = {"id": "hauth-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+             "task": "t", "must_match": ["SENTINEL_ORACLE"], "must_not_match": ["x"]}
+    ctrl = {"id": "hauth-control", "agent": "claims-verifier", "control_for": "hauth-plant",
+            "plant": "clean", "edits": [], "task": "t", "must_match": ["calm"],
+            "must_not_match": ["SENTINEL_ALARM"]}
+    # invalid via unknown agent (NOT a bracket-bearing regex — a `[` inside a string would break
+    # extract_json_array's naive bracket matching for the whole array, a separate pre-existing
+    # fragility; the bad-oracle-regex rejection is already covered by test_author_plants).
+    bad = {"id": "hauth-bad", "agent": "nonexistent-agent", "plant": "p", "edits": [], "task": "t",
+           "must_match": ["ok"], "must_not_match": ["x"]}
+
+    def fake_inv(host, binary, prompt, model, cwd, **kw):
+        return host_runner.Result(host, "ok", json.dumps([plant, ctrl, bad]), 0, None)
+
+    keep = host_runner.invoke
+    # --- D1.a: the generation core never returns raw output; id+category reject reasons ---
+    host_runner.invoke = fake_inv
+    try:
+        res = ap.generate_accepted_pairs("prompt", "claude", "claude", "m", [])
+        # The accepted scenarios legitimately carry their oracles (the caller persists them
+        # PRIVATELY to the vault). The egress guarantee is: no raw model-output blob, and reject
+        # reasons are id+category — never the oracle regexes. The caller then prints ids only.
+        check("D1.a: the return is structured {accepted,rejected,parse_failed} — no raw-text key",
+              set(res) == {"accepted", "rejected", "parse_failed"}, list(res))
+        check("D1.a: reject reasons are id+CATEGORY, never an oracle echo",
+              all(isinstance(r, tuple) and len(r) == 2 and "SENTINEL" not in r[1]
+                  for r in res["rejected"]), res["rejected"])
+        check("D1.a: the valid pair is accepted",
+              {s["id"] for s in res["accepted"]} == {"hauth-plant", "hauth-control"},
+              [s["id"] for s in res["accepted"]])
+        check("D1.a: the bad-regex plant is rejected by id+CATEGORY (no oracle echo)",
+              ("hauth-bad", "invalid-schema") in res["rejected"], res["rejected"])
+
+        def fake_noarray(host, binary, prompt, model, cwd, **kw):
+            return host_runner.Result(host, "ok", "SENTINEL_NOARRAY not json at all", 0, None)
+        host_runner.invoke = fake_noarray
+        res2 = ap.generate_accepted_pairs("p", "claude", "claude", "m", [])
+        check("D1.a: parse failure -> parse_failed and NO raw text",
+              res2["parse_failed"] and "SENTINEL_NOARRAY" not in repr(res2), res2)
+    finally:
+        host_runner.invoke = keep
+
+    # --- D1.b: cmd_author_holdout routes to vault proposed/, prints ids only, refuses in-tree ---
+    with tempfile.TemporaryDirectory() as vault:
+        os.makedirs(os.path.join(vault, "bodies"))
+        host_runner.invoke = fake_inv
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                holdout.cmd_author_holdout(vault, "adversary-m", None, "claude")
+            out = buf.getvalue()
+        finally:
+            host_runner.invoke = keep
+        check("D1.b: author stages accepted pairs in the vault proposed/",
+              os.path.isfile(os.path.join(vault, "proposed", "hauth-plant.json"))
+              and os.path.isfile(os.path.join(vault, "proposed", "hauth-control.json")))
+        check("D1.b: author prints ids but NEVER the oracle (egress locked)",
+              "hauth-plant" in out and "SENTINEL_ORACLE" not in out
+              and "SENTINEL_ALARM" not in out, out)
+    raised = False
+    try:
+        holdout.cmd_author_holdout(os.path.join(REPO, "calibration"), "m", None, "claude")
+    except ValueError as e:
+        raised = "public working tree" in str(e)
+    check("D1.b: author REFUSES a vault-dir inside the public tree (PLANTED)", raised)
+
+    # --- D1.c: approve moves proposed -> bodies + a holdout register row (parses back) ---
+    with tempfile.TemporaryDirectory() as vault:
+        prop = os.path.join(vault, "proposed")
+        os.makedirs(prop)
+        with open(os.path.join(prop, "hauth-plant.json"), "w") as fh:
+            json.dump(plant, fh)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_approve_holdout(vault, "hauth-plant", "seed the first holdout")
+        body = os.path.join(vault, "bodies", "hauth-plant.json")
+        check("D1.c: approve moves the body to bodies/ and removes proposed/",
+              code == 0 and os.path.isfile(body)
+              and not os.path.isfile(os.path.join(prop, "hauth-plant.json")), code)
+        entries = plant_forms.parse_register(open(os.path.join(vault, holdout.REGISTER_NAME)).read())
+        check("D1.c: register row is holdout-form with the real sha (parses back)",
+              len(entries) == 1 and entries[0]["form"] == "holdout"
+              and entries[0]["content_sha256"] == plant_forms.plant_sha(body)
+              and entries[0]["plant_id"] == "hauth-plant", entries)
+
+        # --- D1.d: vault_integrity_problems — clean, drift, unregistered ---
+        check("D1.d: a clean vault (body matches register) has NO integrity problems",
+              holdout.vault_integrity_problems(vault) == [],
+              holdout.vault_integrity_problems(vault))
+        with open(body, "w") as fh:
+            json.dump(dict(plant, plant="TAMPERED"), fh)
+        check("D1.d: a DRIFTED body (sha != register) is caught (PLANTED)",
+              any("does not match" in p for p in holdout.vault_integrity_problems(vault)),
+              holdout.vault_integrity_problems(vault))
+        with open(os.path.join(vault, "bodies", "hauth-unreg.json"), "w") as fh:
+            json.dump(dict(plant, id="hauth-unreg"), fh)
+        check("D1.d: an UNREGISTERED body is caught (PLANTED)",
+              any("not in the register" in p for p in holdout.vault_integrity_problems(vault)),
+              holdout.vault_integrity_problems(vault))
+
+    # --- D1.d: run_holdout ABORTS on a drifted vault before running (offline git vault) ---
+    git_id = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    with tempfile.TemporaryDirectory() as vsrc:
+        b = os.path.join(vsrc, "bodies")
+        os.makedirs(b)
+        with open(os.path.join(b, "hauth-plant.json"), "w") as fh:
+            json.dump(plant, fh)
+            fh.write("\n")
+        sha = plant_forms.plant_sha(os.path.join(b, "hauth-plant.json"))
+        with open(os.path.join(vsrc, holdout.REGISTER_NAME), "w") as fh:
+            fh.write("# Holdout register\n\n## Entries\n\n"
+                     "| date | plant_id | form | content_sha256 | reason |\n"
+                     "| --- | --- | --- | --- | --- |\n"
+                     "| 2026-08-15 | hauth-plant | holdout | {} | r |\n".format(sha))
+        with open(os.path.join(b, "hauth-plant.json"), "w") as fh:   # DRIFT after recording sha
+            json.dump(dict(plant, plant="DRIFTED"), fh)
+            fh.write("\n")
+        for c in (["git", "-C", vsrc, "init", "-q"],
+                  ["git", "-C", vsrc, *git_id, "add", "-A"],
+                  ["git", "-C", vsrc, *git_id, "commit", "-q", "-m", "seed"]):
+            subprocess.run(c, check=True, capture_output=True, text=True)
+        called = {"ran": False}
+
+        def runner(argv, env, bodies):
+            called["ran"] = True
+            return 0
+
+        raised2 = False
+        try:
+            holdout.run_holdout(vsrc, ["--dry-run"], runner=runner)
+        except ValueError as e:
+            raised2 = "integrity" in str(e).lower()
+        check("D1.d: run_holdout ABORTS on a drifted vault, before running (PLANTED)",
+              raised2 and not called["ran"], (raised2, called))
+
+
 def main():
     print("Calibration-harness calibration")
     _confinement_tests()
@@ -2749,6 +2896,7 @@ def main():
     _holdout_egress_tests()
     _holdout_run_tests()
     _isolation_liveness_tests()
+    _holdout_authoring_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()

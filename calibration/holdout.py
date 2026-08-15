@@ -42,6 +42,7 @@ credential-custody bureaucracy this lean design set out to avoid. Revisit only i
 needs to defend against the owner's own tooling.
 """
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -117,24 +118,55 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "run_calibration.py")
 
 
+REGISTER_NAME = "holdout-register.md"
+
+
 def stage_vault(vault_url, workdir):
     """Clone the private vault into `workdir` (an ephemeral OUT-OF-TREE temp dir the caller
-    deletes) and return its bodies dir. clone_vault refuses an in-tree dest."""
+    deletes) and return the CLONE ROOT — which contains bodies/, the register, AND the .git
+    object store (why the child is denied the whole root, F1). clone_vault refuses an in-tree
+    dest."""
     dest = os.path.join(workdir, "vault")
     clone_vault(vault_url, dest, public_tree=repo_toplevel(HERE))
-    return os.path.join(dest, "bodies")
+    return dest
+
+
+def vault_integrity_problems(vault_root):
+    """Integrity of a vault BEFORE it feeds an eval: (1) HASH-DRIFT via verify_bodies (a body
+    whose content no longer matches its recorded content_sha256), and (2) an UNREGISTERED body —
+    a bodies/*.json id with no register row (verify_bodies checks rows->shas, so an extra body
+    would otherwise run untracked/unauthorized). Returns the problem list ([] == clean). No
+    register present -> None (a fresh vault with only bodies has nothing recorded to drift from;
+    the caller decides)."""
+    reg = os.path.join(vault_root, REGISTER_NAME)
+    bodies = os.path.join(vault_root, "bodies")
+    if not os.path.isfile(reg):
+        return None
+    entries = plant_forms.parse_register(open(reg).read())
+    problems = list(verify_bodies(entries, bodies))
+    reg_ids = {e["plant_id"] for e in entries}
+    for bid in holdout_shas(bodies):
+        if bid not in reg_ids:
+            problems.append("body '{}' is not in the register — an unregistered holdout body is "
+                            "not authorized/verifiable".format(bid))
+    return problems
 
 
 def run_holdout(vault_url, extra_argv=(), *, runner=None):
     """The whole opt-in run, lightweight and manual (no schedule, no automation — the v1.32
-    opt-in-and-reactive doctrine): clone the vault to an ephemeral out-of-tree dir, point the
-    loader at its bodies, run the eval with the agent BOXED-IN (run_agent auto-confines while
-    the bodies are on disk, and fails closed if confinement is unavailable), then delete the
-    clone so no answer key outlives the run. Returns the eval's exit code. `runner` is injectable
-    for tests; by default a real `run_calibration --form holdout` subprocess inherits the env."""
+    opt-in-and-reactive doctrine): clone the vault to an ephemeral out-of-tree dir, VERIFY its
+    integrity (drift + unregistered bodies), point the loader at its bodies, run the eval with the
+    agent BOXED-IN (run_agent auto-confines while the bodies are on disk, fails closed if
+    confinement is unavailable), then delete the clone so no answer key outlives the run. Returns
+    the eval's exit code. `runner` is injectable for tests."""
     workdir = tempfile.mkdtemp(prefix="tdd-holdout-")
     try:
-        bodies = stage_vault(vault_url, workdir)
+        dest = stage_vault(vault_url, workdir)
+        bodies = os.path.join(dest, "bodies")
+        probs = vault_integrity_problems(dest)
+        if probs:
+            raise ValueError("holdout vault FAILED its integrity check — refusing to run "
+                             "(drift or unregistered body):\n  " + "\n  ".join(probs))
         env = dict(os.environ)
         env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies       # loader (trusted parent) reads bodies
         env["TDD_PLAYBOOK_HOLDOUT_DENY"] = workdir      # child is denied the WHOLE clone tree
@@ -148,19 +180,145 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None):
         shutil.rmtree(workdir, ignore_errors=True)
 
 
+# --- authoring into the private vault (adversary model -> proposed/ -> approved bodies/) --------
+def _refuse_in_tree(vault_dir):
+    """A local vault checkout must live OUTSIDE the public working tree — a holdout body committed
+    into the public repo would defeat the whole boundary. Fail-closed (also when the tree can't
+    be resolved)."""
+    tree = repo_toplevel(HERE)
+    if tree is None:
+        raise ValueError("cannot resolve the public working tree to prove the vault-dir is "
+                         "outside it — refusing (fail closed)")
+    if dest_is_inside_tree(vault_dir, tree):
+        raise ValueError("refusing a vault-dir inside the public working tree ({}): a holdout "
+                         "body there could be committed to the public repo".format(tree))
+
+
+def _vault_universe(vault_dir):
+    """Existing scenarios for id-uniqueness + pairing: public shipped + public corpus + this
+    vault's proposed/ + bodies/. ONE loader (rc.load_corpus) with extended paths — never a second
+    membership check (arch-F1)."""
+    import run_calibration as rc
+    import author_plants as ap
+    return (rc.load_scenarios() + ap.corpus_scenarios(("proposed", "approved"))
+            + rc.load_corpus([os.path.join(vault_dir, "proposed"),
+                              os.path.join(vault_dir, "bodies")]))
+
+
+def cmd_author_holdout(vault_dir, model, category, claude_bin):
+    """Generate FRESH holdout plant+control pairs with the adversary model and stage them in the
+    vault's proposed/ for human review. The generated plants ARE the answer key, so nothing but
+    ids reaches stdout (generate_accepted_pairs returns no raw output; rejections are id+category)
+    and nothing holdout enters the public repo (proposed/ lives in the out-of-tree vault clone)."""
+    import datetime as _dt
+    import author_plants as ap
+    _refuse_in_tree(vault_dir)
+    proposed = os.path.join(vault_dir, "proposed")
+    os.makedirs(proposed, exist_ok=True)
+    prompt = ap.adversary_prompt(category)
+    known = _vault_universe(vault_dir)
+    try:
+        res = ap.generate_accepted_pairs(prompt, "claude", claude_bin, model, known,
+                                         deny_read=None)
+    except FileNotFoundError:
+        print("FATAL: claude binary not found ({})".format(claude_bin))
+        return 2
+    if res["parse_failed"]:
+        print("REJECTED: no parseable JSON array in adversary output")   # NO raw output printed
+        return 1
+    for cid, reason in res["rejected"]:
+        print("REJECTED {}: {}".format(cid, reason))   # id + category only, never an oracle echo
+    accepted = 0
+    for sc in res["accepted"]:
+        sc["_meta"] = {"authored_by_model": model, "authored_at": _dt.date.today().isoformat(),
+                       "status": "proposed", "form": "holdout"}
+        with open(os.path.join(proposed, sc["id"] + ".json"), "w") as fh:
+            json.dump(sc, fh, indent=2)
+            fh.write("\n")
+        accepted += 1
+        print("PROPOSED {} (review the file, then: holdout approve --vault-dir {} {} --reason "
+              "...)".format(sc["id"], vault_dir, sc["id"]))
+    print("holdout author: {} proposed to {} · {} rejected".format(
+        accepted, proposed, len(res["rejected"])))
+    return 0 if accepted else 1
+
+
+def cmd_approve_holdout(vault_dir, plant_id, reason):
+    """Move a reviewed proposed body into bodies/ and record it in the register (form=holdout,
+    real content_sha256). Re-validates (minus dup-id, the proposed file IS the id) and echoes
+    pairing, mirroring author_plants.cmd_approve. Only a COUNT of validation problems is printed
+    (never the problem strings, which can echo oracle regexes)."""
+    import datetime as _dt
+    import run_calibration as rc
+    _refuse_in_tree(vault_dir)
+    if not reason:
+        print("refusing: an assignment with no reason is not auditable (--reason required)")
+        return 1
+    src = os.path.join(vault_dir, "proposed", plant_id + ".json")
+    if not os.path.isfile(src):
+        print("no proposed holdout body: {}".format(plant_id))
+        return 1
+    with open(src) as fh:
+        sc = json.load(fh)
+    universe = _vault_universe(vault_dir)
+    existing = {s["id"] for s in universe if s["id"] != plant_id}
+    probs = rc.validate_scenario({k: v for k, v in sc.items() if k != "_meta"}, existing)
+    if probs:
+        print("REFUSING approval — the body no longer validates ({} problem(s))".format(len(probs)))
+        return 1
+    for p in rc.pairing_problems(universe):
+        if p.startswith(plant_id + ":"):
+            print("pairing note: " + p)   # echo (ids only); its control may still be in proposed/
+    bodies = os.path.join(vault_dir, "bodies")
+    os.makedirs(bodies, exist_ok=True)
+    dst = os.path.join(bodies, plant_id + ".json")
+    with open(dst, "w") as fh:
+        json.dump(sc, fh, indent=2)
+        fh.write("\n")
+    os.remove(src)
+    sha = plant_forms.plant_sha(dst)
+    reg = os.path.join(vault_dir, REGISTER_NAME)
+    new = not os.path.isfile(reg)
+    with open(reg, "a") as fh:
+        if new:
+            fh.write("# Holdout register\n\n## Entries\n\n"
+                     "| date | plant_id | form | content_sha256 | reason |\n"
+                     "| --- | --- | --- | --- | --- |\n")
+        fh.write("| {} | {} | holdout | {} | {} |\n".format(
+            _dt.date.today().isoformat(), plant_id, sha, reason.replace("|", "\\|")))
+    print("APPROVED {} -> bodies/ + register (sha {}...). Commit + push the vault privately."
+          .format(plant_id, sha[:12]))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Holdout controller — fetch the private vault and run the eval with the "
-                    "agent boxed-in. Opt-in and manual; reach for it when you want a holdout "
-                    "reading, like calibration itself.")
+        description="Holdout controller — author fresh answers into the private vault, and run "
+                    "the eval with the agent boxed-in. Opt-in and manual.")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="clone the vault, run a confined holdout eval, delete the clone")
+    r = sub.add_parser("run", help="clone the vault, verify it, run a confined holdout eval, "
+                                    "delete the clone")
     r.add_argument("--vault", required=True, help="git URL of the private holdout vault")
     r.add_argument("rest", nargs=argparse.REMAINDER,
                    help="extra args forwarded to run_calibration (e.g. --model opus --repeat 3)")
+    a = sub.add_parser("author", help="generate fresh holdout plants (adversary model) into the "
+                                      "vault's proposed/ for review")
+    a.add_argument("--vault-dir", required=True,
+                   help="a PERSISTENT local clone of the private vault (outside the public tree)")
+    a.add_argument("--model", required=True, help="adversary model (>= the doer's tier)")
+    a.add_argument("--category", help="focus category for this cycle")
+    a.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
+    v = sub.add_parser("approve", help="move a reviewed proposed body into bodies/ + register")
+    v.add_argument("--vault-dir", required=True)
+    v.add_argument("id", help="the proposed plant id to approve")
+    v.add_argument("--reason", required=True, help="why this assignment (audit trail)")
     args = ap.parse_args(argv)
     if args.cmd == "run":
         return run_holdout(args.vault, args.rest)
+    if args.cmd == "author":
+        return cmd_author_holdout(args.vault_dir, args.model, args.category, args.claude_bin)
+    if args.cmd == "approve":
+        return cmd_approve_holdout(args.vault_dir, args.id, args.reason)
     return 2
 
 
