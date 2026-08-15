@@ -2208,8 +2208,59 @@ def _ledger_tests():
               and "check" in ledger_stages[0].argv, ledger_stages)
 
 
+def _confinement_tests():
+    """Part 2 (2026-08-15): the holdout confinement primitive. Profile-shape units run
+    everywhere; the OS boundary is calibrated TWO-DIRECTIONALLY on macOS (clean blocks the
+    answer key AND removing the read-deny makes it readable — the rule is load-bearing), and
+    skips cleanly where sandbox-exec is absent (Linux CI). A holdout must NEVER run unconfined,
+    so confined_argv also refuses an empty deny_read."""
+    import confine as cf
+    prof = cf.seatbelt_profile("/ws", deny_read=["/secret"], deny_network=True)
+    check("confine: allow-default base", "(allow default)" in prof)
+    check("confine: denies ALL writes", "(deny file-write*)" in prof)
+    check("confine: re-allows workspace writes", '(subpath "/ws")' in prof)
+    check("confine: denies READS of the answer dir", "file-read*" in prof and '"/secret"' in prof)
+    check("confine: denies network when asked", "(deny network*)" in prof)
+    try:
+        cf.confined_argv(["true"], "/ws", deny_read=[]); refused = False
+    except ValueError:
+        refused = True
+    check("confine: confined_argv REFUSES empty deny_read (would expose the key)", refused)
+
+    if not cf.sandbox_exec_available():
+        check("confine: OS calibration SKIPPED (no sandbox-exec on this host)", True)
+        return
+    with tempfile.TemporaryDirectory() as d:
+        ctrl = os.path.realpath(os.path.join(d, "controller"))
+        ws = os.path.realpath(os.path.join(d, "ws"))
+        os.makedirs(ctrl); os.makedirs(ws)
+        with open(os.path.join(ctrl, "answer.json"), "w") as fh:
+            fh.write("DECOY-KEY-must-never-be-read")
+        with open(os.path.join(ws, "task.txt"), "w") as fh:
+            fh.write("hi")
+        probe = os.path.join(ws, "probe.sh")
+        with open(probe, "w") as fh:
+            fh.write('#!/bin/sh\n'
+                     'cat "%s/answer.json" >/dev/null 2>&1 && echo AK_READ || echo AK_BLOCK\n'
+                     'cat "%s/task.txt" >/dev/null 2>&1 && echo TASK_OK || echo TASK_DENY\n'
+                     'touch "%s/out" 2>/dev/null && echo WS_OK || echo WS_DENY\n'
+                     % (ctrl, ws, ws))
+        os.chmod(probe, 0o755)
+        clean = subprocess.run(cf.confined_argv(["/bin/sh", probe], ws, deny_read=[ctrl]),
+                               capture_output=True, text=True, timeout=30).stdout
+        check("confine CLEAN: the answer key is BLOCKED", "AK_BLOCK" in clean, clean)
+        check("confine CLEAN: task readable + workspace writable (usable box)",
+              "TASK_OK" in clean and "WS_OK" in clean, clean)
+        leaky = cf.seatbelt_profile(ws, deny_read=[])
+        must = subprocess.run(["sandbox-exec", "-p", leaky, "/bin/sh", probe],
+                              capture_output=True, text=True, timeout=30).stdout
+        check("confine MUST-FAIL: without the read-deny the key IS readable (rule load-bearing)",
+              "AK_READ" in must, must)
+
+
 def main():
     print("Calibration-harness calibration")
+    _confinement_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()
