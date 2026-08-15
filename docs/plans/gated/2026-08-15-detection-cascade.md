@@ -23,6 +23,10 @@ never had: **a per-session base rate of suspicious runs.** The judge (D4) is wor
 if that number turns out to be neither zero nor everything, and we cannot know which until the
 screen has run for a few cycles.
 
+**Read R6 before anything else in this document.** The judge is a cheaper way to investigate what
+the screen already caught; it is not a way to catch what the screen missed, and it cannot become
+one. Anyone evaluating this plan as a coverage improvement is evaluating the wrong thing.
+
 Building both at once is the failure mode this repo's own plan history documents: the v1 draft of
 the 2026-08-14 review-as-judgment plan proposed five deliverables and shipped one, because four
 were refuted by machinery that already existed. `readable_surface.py:9-10` states the rule that
@@ -581,6 +585,42 @@ defence is that D4's output has *no exit-code consumer at all* — same as `/rea
 turning a judge finding into teeth requires the `review_ledger recurrence` path, which produces a
 *deterministic* guard, not a model in the gate.
 
+**R6 — The cascade's coverage is capped by its first stage, permanently. It buys cost, not
+recall.** This is the most important limitation in the design and the v1 draft did not state it;
+it was surfaced by David reading the plan (*"like an investigator it would need to know patterns to
+look for"*), which is the §13 human-caught signal — a defect found in output already presented as
+complete.
+
+Two halves, and the second is the one that bites.
+
+**(a) The screen is a checklist, not an investigator.** It performs no inference. It buckets log
+rows by session window, applies nine hardcoded rules, and counts. Anything not on the roster is
+invisible, and an invisible shape produces output byte-identical to a clean session. The rules come
+from three human-driven sources — `docs/HACK_CATALOG.md` (fifteen entries with a quarterly refresh
+ritual), this repo's own incidents (the 2026-07-28 guard-dark outage, the break-glass clamp bug),
+and `review_ledger recurrence`'s UNBUILT GUARD line. **The catalog is the pattern library and the
+recurrence report is the acquisition pipeline; the screen is only their execution engine.** Nothing
+in this plan acquires a pattern, and no deliverable should be read as if it did.
+
+**(b) The judge cannot compensate, because it only ever sees flagged runs.** A cascade routes; the
+first stage decides what the second stage is allowed to look at. So a shape the screen misses is
+never presented to the judge — the expensive stage's recall is bounded above by the cheap stage's.
+**The paper's architecture is therefore a cost optimisation over known-suspicious runs, not a
+coverage improvement over unknown ones**, and any framing of D4 as "the part that catches what the
+rules miss" is wrong by construction.
+
+What actually covers unknown shapes is the machinery that runs on EVERYTHING regardless of a flag:
+the unconditional adversary dispatches in `/edge`, `/mutate`, `/probe`, `/tdd-plan`, and the
+calibration corpus that only grows. Those are expensive-on-everything by design. **This plan must
+never be used to justify making any of them conditional** — trading unconditional coverage for
+routed coverage would be a strict loss disguised as an efficiency, and it is the most plausible way
+this design does net harm.
+
+The honest consequence for the screen's value claim: it earns its place on the aggregate shapes no
+single-action guard can perceive (a block followed by three individually-legal commands;
+assertions net-down while source is net-up; three tolerable events co-occurring in one session) —
+not on breadth. Any review that finds it claiming breadth should cut it.
+
 ---
 
 ## Loop closed: **NO**
@@ -622,8 +662,17 @@ record is the model for how that verification gets written down.
 
 ## Claims
 
-Claims made in this document that rest on the tree: 23 of 23 cite a `file:line` or a named
-artifact. Claims that rest on judgment rather than the tree, listed so they are not mistaken for
-findings: the D4 build trigger thresholds (`0 < rate < 0.5`), the "≥2 Tier-2 signals" flag rule,
-the three-cycle windows, and R3's likelihood assessment. None of those four is measured; all four
-are proposals for David to set.
+Claims made in this document that rest on the tree: 27 of 27 cite a `file:line` or a named
+artifact (23 in v1; R6 adds four). Claims that rest on judgment rather than the tree, listed so
+they are not mistaken for findings: the D4 build trigger thresholds (`0 < rate < 0.5`), the "≥2
+Tier-2 signals" flag rule, the three-cycle windows, and R3's likelihood assessment. None of those
+four is measured; all four are proposals for David to set — the flag rule in particular is a
+placeholder, not a design, and this repo's session volume will not support tuning it against data
+for a long time.
+
+**Revision note (v1.1):** R6 was added after David read the v1 draft. It is recorded there rather
+than folded in silently because the §13 who-caught-it split treats a human-caught defect in output
+already declared complete as the loudest signal available, and this one was structural — the draft
+argued a staging order for the judge without ever stating that the judge cannot extend the screen's
+coverage. Nothing else in the document was changed; the deliverables and sequencing stand as
+reviewed.
