@@ -877,6 +877,54 @@ def test_red_lock():
               (read_json(d, "tdd-lock.json"), read_json(d, "tdd-pending-red.json")))
 
 
+def test_basename_roster_parity():
+    """U1 (2026-08-15): the lock-state / verifier / guard basename rosters have ONE owner
+    (host_contract). Before this, test_lock_guard.py carried its own copies and they had
+    DIVERGED live: host_contract had `lock-transaction.lock` but not `pending-red.json`;
+    the test_lock_guard copy was the mirror image — so a `sed -i …/lock-transaction.lock`
+    slipped the Bash leg (its needles) and an Edit of `pending-red.json` slipped the Edit
+    leg (host_contract._surface). Both are the lock's own state; editing either self-unlocks.
+    This test pins the two modules identical AND pins each roster complete against the
+    filename constants / real guard roster it claims to cover."""
+    import importlib.util as _il
+
+    def _load(name, path):
+        spec = _il.spec_from_file_location(name, path)
+        mod = _il.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    hc = _load("host_contract", os.path.join(PLUGIN, "bin", "host_contract.py"))
+    tlg = _load("test_lock_guard", os.path.join(HOOKS, "test_lock_guard.py"))
+
+    # parity — the two modules can never diverge again (same objects)
+    check("lock-state roster: one owner (test_lock_guard uses host_contract's)",
+          tlg._LOCK_STATE_BASENAMES == hc.LOCK_STATE_BASENAMES, "diverged")
+    check("verifier roster: one owner", tlg._VERIFIER_BASENAMES == hc.VERIFIER_BASENAMES)
+    check("guard roster: one owner", tlg._GUARD_BASENAMES == hc.GUARD_BASENAMES)
+
+    # completeness — every lock-state FILENAME constant is in the roster (catches the
+    # missing `pending-red.json`, the live gap this deliverable fixes)
+    for const in (hc.LOCK_FILENAME, hc.EVENTS_FILENAME, hc.PENDING_FILENAME,
+                  hc.TRANSACTION_FILENAME):
+        check("lock-state roster contains the {} constant".format(const),
+              const in hc.LOCK_STATE_BASENAMES, sorted(hc.LOCK_STATE_BASENAMES))
+
+    # the Edit-leg seam directly: pending-red.json must classify as lockstate (RED before
+    # the fix — host_contract._surface's set omitted it)
+    check("canonical _surface classifies pending-red.json as lockstate",
+          hc._surface("pending-red.json", {"files": {}}) == "lockstate",
+          hc._surface("pending-red.json", {"files": {}}))
+    check("canonical _surface classifies lock-transaction.lock as lockstate",
+          hc._surface("lock-transaction.lock", {"files": {}}) == "lockstate")
+
+    # guard roster completeness — every BLOCKING/registered guard is self-protected
+    # (tag_guard.py was in NEITHER copy: a blocking guard editable while a lock holds)
+    for guard in ("tag_guard.py", "exitcode_guard.py", "exhaustive_claim_guard.py"):
+        check("guard roster self-protects {}".format(guard),
+              guard in hc.GUARD_BASENAMES, sorted(hc.GUARD_BASENAMES))
+
+
 def test_lock_shell():
     """F1 (shell channel) + F2 (lock self-protection) for test_lock_guard.py.
 
@@ -941,6 +989,10 @@ def test_lock_shell():
         block("lock/sh: rm tdd-lock.json blocks (F2)", d, bash_ev("rm .claude/tdd-lock.json"))
         block("lock/sh: overwrite tdd-lock.json blocks (F2)", d, bash_ev("echo '{}' > .claude/tdd-lock.json"))
         block("lock/sh: truncate the journal blocks (F2)", d, bash_ev("truncate -s0 .claude/tdd-lock-journal.jsonl"))
+        # U1 — the transaction lock is lock state too; editing it self-unlocks (RED before
+        # the roster unification: the Bash-leg needle set omitted lock-transaction.lock)
+        block("lock/sh: sed -i on lock-transaction.lock blocks (U1)", d, bash_ev("sed -i 's/a/b/' .claude/tdd-playbook/lock-transaction.lock"))
+        block("lock/sh: rm pending-red.json blocks (U1)", d, bash_ev("rm .claude/tdd-playbook/pending-red.json"))
         block("lock/edit: editing tdd-lock.json blocks (F2)", d, edit(os.path.join(d, ".claude", "tdd-lock.json"), "a", "b"))
         block("lock/edit: editing hooks.json blocks", d, edit(os.path.join(d, ".claude", "hooks", "hooks.json"), "a", "b"))
         # the SANCTIONED unlock must pass (references tdd_lock.py, not the state file literal)
@@ -1351,6 +1403,7 @@ def main():
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
                test_exitcode, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
+               test_basename_roster_parity,
                test_lock_shell, test_yield_logging, test_guards_heartbeat,
                test_break_glass, test_retired_advisory_defaults,
                test_guard_roster_derived_and_pinned):

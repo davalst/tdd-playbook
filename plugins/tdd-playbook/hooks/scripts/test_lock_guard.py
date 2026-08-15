@@ -28,30 +28,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_event, emit, file_path_of  # noqa: E402
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                 "..", "..", "bin")))
-from host_contract import (ContractError, import_legacy_lock, policy_decision,
-                           read_lock, record_capability_observation,
-                           resolve_repository)  # noqa: E402
+from host_contract import (ContractError, GUARD_BASENAMES, import_legacy_lock,
+                           LOCK_STATE_BASENAMES, policy_decision, read_lock,
+                           record_capability_observation, resolve_repository,
+                           VERIFIER_BASENAMES)  # noqa: E402
 
 NAME = "testlock"
 
-_VERIFIER_BASENAMES = {
-    "conftest.py", "pytest.ini", "tox.ini", "setup.cfg",
-    "jest.config.js", "jest.config.ts", "jest.config.mjs", "jest.config.cjs",
-    "vitest.config.js", "vitest.config.ts", "vitest.config.mts",
-    "playwright.config.js", "playwright.config.ts",
-    ".mocharc.yml", ".mocharc.json", "karma.conf.js",
-}
-# F2 — the lock's own state; never legitimately hand-edited (tdd_lock.py owns them).
-_LOCK_STATE_BASENAMES = {
-    "active-lock.json", "events.jsonl", "pending-red.json",
-    "tdd-lock.json", "tdd-lock-journal.jsonl", "tdd-pending-red.json",
-}
-# F1-extension — disabling the enforcement is editing the test by another name.
-_GUARD_BASENAMES = {
-    "test_lock_guard.py", "snapshot_guard.py", "test_weakening_guard.py",
-    "flaky_guard.py", "overmock_guard.py", "red_lock.py", "_common.py",
-    "hooks.json", "settings.json", "settings.local.json",
-}
+# U1 (2026-08-15): these rosters have ONE owner — host_contract. They used to be re-typed
+# here and diverged live (the local copy omitted TRANSACTION_FILENAME, the canonical copy
+# omitted PENDING_FILENAME), so each channel slipped a different lock-state file. Aliased
+# to the internal names so the classifier/needle call sites are unchanged; parity is pinned
+# by test_hooks.test_basename_roster_parity.
+_VERIFIER_BASENAMES = VERIFIER_BASENAMES
+_LOCK_STATE_BASENAMES = LOCK_STATE_BASENAMES
+_GUARD_BASENAMES = GUARD_BASENAMES
 
 # write-shaped shell signals (reads are intentionally excluded).
 #

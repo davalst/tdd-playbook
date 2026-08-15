@@ -49,12 +49,19 @@ VERIFIER_BASENAMES = frozenset({
     "playwright.config.js", "playwright.config.ts", ".mocharc.yml",
     ".mocharc.json", "karma.conf.js",
 })
+# The SOLE owner of these rosters (U1, 2026-08-15). test_lock_guard.py imports them; a
+# second copy diverged live (this set omitted its own PENDING_FILENAME while the mirror
+# omitted TRANSACTION_FILENAME), so each set is built from the filename CONSTANTS above
+# where they exist, never re-typed. Editing any of these self-unlocks the lock.
 LOCK_STATE_BASENAMES = frozenset({
-    "active-lock.json", "events.jsonl", "tdd-lock.json",
-    "tdd-lock-journal.jsonl", "tdd-pending-red.json", TRANSACTION_FILENAME,
+    LOCK_FILENAME, EVENTS_FILENAME, PENDING_FILENAME, TRANSACTION_FILENAME,
+    "tdd-lock.json", "tdd-lock-journal.jsonl", "tdd-pending-red.json",
 })
+# Every enforcement script: disabling the guard is editing the test by another name. The
+# roster is the real hooks.json guard set + the shared library + enforcement config.
 GUARD_BASENAMES = frozenset({
     "test_lock_guard.py", "snapshot_guard.py", "test_weakening_guard.py",
+    "tag_guard.py", "exitcode_guard.py", "exhaustive_claim_guard.py",
     "flaky_guard.py", "overmock_guard.py", "red_lock.py", "_common.py",
     "hooks.json", "settings.json", "settings.local.json",
 })
