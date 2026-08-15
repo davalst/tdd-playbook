@@ -311,8 +311,9 @@ def main(argv=None):
     r = sub.add_parser("run", help="clone the vault, verify it, run a confined holdout eval, "
                                     "delete the clone")
     r.add_argument("--vault", required=True, help="git URL of the private holdout vault")
-    r.add_argument("rest", nargs=argparse.REMAINDER,
-                   help="extra args forwarded to run_calibration (e.g. --model opus --repeat 3)")
+    # Extra run_calibration args (e.g. --model sonnet --repeat 3) are captured by parse_known_args
+    # below and forwarded — argparse.REMAINDER does not collect LEADING options like --model, which
+    # is why `run --vault URL --model sonnet` used to error.
     a = sub.add_parser("author", help="generate fresh holdout plants (adversary model) into the "
                                       "vault's proposed/ for review")
     a.add_argument("--vault-dir", required=True,
@@ -324,9 +325,12 @@ def main(argv=None):
     v.add_argument("--vault-dir", required=True)
     v.add_argument("id", help="the proposed plant id to approve")
     v.add_argument("--reason", required=True, help="why this assignment (audit trail)")
-    args = ap.parse_args(argv)
+    args, extra = ap.parse_known_args(argv)
     if args.cmd == "run":
-        return run_holdout(args.vault, args.rest)
+        return run_holdout(args.vault, extra)   # forward --model/--repeat/etc. to run_calibration
+    # author/approve take no forwarded args — reject unknowns strictly.
+    if extra:
+        ap.error("unrecognized arguments: " + " ".join(extra))
     if args.cmd == "author":
         return cmd_author_holdout(args.vault_dir, args.model, args.category, args.claude_bin)
     if args.cmd == "approve":

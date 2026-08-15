@@ -2917,6 +2917,26 @@ def _holdout_authoring_tests():
         check("D1.d: run_holdout ABORTS on a drifted vault, before running (PLANTED)",
               raised2 and not called["ran"], (raised2, called))
 
+    # `run` forwards run_calibration args (--model/--repeat) — argparse.REMAINDER did NOT capture
+    # leading options, so `run --vault URL --model sonnet` errored (live UX bug 2026-08-15). Now
+    # via parse_known_args. author/approve still reject unknowns strictly.
+    keep_rh = holdout.run_holdout
+    seen = {}
+    holdout.run_holdout = lambda vault, extra, **k: seen.update(vault=vault, extra=list(extra)) or 0
+    try:
+        holdout.main(["run", "--vault", "URL", "--model", "sonnet", "--repeat", "3"])
+    finally:
+        holdout.run_holdout = keep_rh
+    check("D1: `run` forwards --model/--repeat to run_calibration (leading-option forwarding)",
+          seen.get("vault") == "URL"
+          and seen.get("extra") == ["--model", "sonnet", "--repeat", "3"], seen)
+    raised_strict = False
+    try:
+        holdout.main(["approve", "--vault-dir", "/tmp/x", "id", "--reason", "r", "--bogus"])
+    except SystemExit:
+        raised_strict = True
+    check("D1: author/approve still REJECT unknown args (strict, not forwarded)", raised_strict)
+
 
 def main():
     print("Calibration-harness calibration")
