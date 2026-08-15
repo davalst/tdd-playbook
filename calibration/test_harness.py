@@ -2542,6 +2542,35 @@ def _holdout_run_tests():
         else:
             os.environ[rc.HOLDOUT_DIR_ENV] = keep_env
 
+    # F4 (tripwire EXERCISED gap): the AUTHORING spawn — the second seam child_env.py names —
+    # must forward the deny too. Without this test, deleting confine_deny_read at
+    # author_plants.cmd_author would fail nothing (the fix protected by nothing). Drives the real
+    # cmd_author with a holdout deny root set; the mocked invoke rejects the (absent) JSON, but
+    # the deny was already forwarded at the spawn.
+    import author_plants as _ap
+    import types as _types
+    cap2 = {}
+
+    def fake_invoke2(host, binary, prompt, model, cwd, **kw):
+        cap2["deny"] = kw.get("confine_deny_read")
+        return host_runner.Result(host, "ok", "no json array here", 0, None)
+
+    keep_inv2 = host_runner.invoke
+    host_runner.invoke = fake_invoke2
+    keep_deny2 = os.environ.get(rc.HOLDOUT_DENY_ENV)
+    try:
+        os.environ[rc.HOLDOUT_DENY_ENV] = "/clone-root"
+        _ap.cmd_author(_types.SimpleNamespace(
+            category=None, host="claude", host_bin=None, claude_bin="claude", model="haiku"))
+        check("run: author_plants ALSO forwards the deny under holdout bodies (F4, second seam)",
+              cap2.get("deny") == ["/clone-root"], cap2)
+    finally:
+        host_runner.invoke = keep_inv2
+        if keep_deny2 is None:
+            os.environ.pop(rc.HOLDOUT_DENY_ENV, None)
+        else:
+            os.environ[rc.HOLDOUT_DENY_ENV] = keep_deny2
+
     # --- run_holdout: clone -> point loader at bodies -> run -> DELETE the clone (offline) ---
     import holdout
     git_id = ["-c", "user.email=t@t", "-c", "user.name=t"]
