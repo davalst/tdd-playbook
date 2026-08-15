@@ -877,6 +877,110 @@ def test_red_lock():
               (read_json(d, "tdd-lock.json"), read_json(d, "tdd-pending-red.json")))
 
 
+def test_fixture_guard():
+    """A (2026-08-15): warn when an EXPECTED ANSWER in a test-data file is rewritten or
+    removed — the gap test_weakening_guard (test CODE) is blind to. Scoped to answer-value
+    changes (David): adding cases / editing non-answer fields is SILENT, or the guard is
+    noise. Bypass-oriented, both directions, INCLUDING the unparseable case (GLM residual-2:
+    the size-shrink fallback is where a malformed edit can false-positive or slip)."""
+    s = "fixture_guard.py"
+
+    def drive(d, event):
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["CLAUDE_PROJECT_DIR"] = d
+        return subprocess.run([sys.executable, os.path.join(HOOKS, s)],
+                              input=json.dumps(event), capture_output=True, text=True,
+                              cwd=d, env=env, timeout=20)
+
+    def warn(name, d, ev):
+        p = drive(d, ev)
+        check(name, p.returncode == 1 and "fixtureguard" in p.stderr, (p.returncode, p.stderr[:90]))
+
+    def silent(name, d, ev):
+        p = drive(d, ev)
+        check(name, p.returncode == 0 and p.stderr == "", (p.returncode, p.stderr[:90]))
+
+    def edit(fp, old, new):
+        return {"tool_name": "Edit", "tool_input": {"file_path": fp, "old_string": old,
+                                                    "new_string": new}}
+    def write(fp, content):
+        return {"tool_name": "Write", "tool_input": {"file_path": fp, "content": content}}
+    def bash(cmd):
+        return {"tool_name": "Bash", "tool_input": {"command": cmd}}
+
+    with tempfile.TemporaryDirectory() as d:
+        d = os.path.realpath(d)
+        fx = os.path.join(d, "tests", "fixtures")
+        os.makedirs(fx)
+        tc = os.path.join(fx, "test_cases.json")
+        CASES = '[{"input": "a", "output": "5"}, {"input": "b", "output": "6"}]'
+        def reset():
+            with open(tc, "w") as fh:
+                fh.write(CASES)
+
+        # --- WARN direction (answer changed / case removed) ---
+        reset(); warn("fixture: output value rewritten warns", d,
+                      edit(tc, '"output": "5"', '"output": "31337"'))
+        reset(); warn("fixture: a case deleted warns", d,
+                      edit(tc, ', {"input": "b", "output": "6"}', ''))
+        reset(); warn("fixture: Write with a case removed warns", d,
+                      write(tc, '[{"input": "a", "output": "5"}]'))
+        reset(); warn("fixture: Write rewriting an answer warns", d,
+                      write(tc, '[{"input": "a", "output": "999"}, {"input": "b", "output": "6"}]'))
+        # golden bare-list (answer by PATH, no key to signal on)
+        gold = os.path.join(fx, "golden.json")
+        with open(gold, "w") as fh:
+            fh.write('[1, 2, 3]')
+        warn("golden: bare-list value change warns (answer by path)", d,
+             edit(gold, "2, 3", "2, 99"))
+        # Bash structural shapes
+        reset(); warn("fixture/sh: rm warns", d, bash("rm tests/fixtures/test_cases.json"))
+        reset(); warn("fixture/sh: redirect-overwrite warns", d,
+                      bash('echo "[]" > tests/fixtures/test_cases.json'))
+        reset(); warn("fixture/sh: git rm warns", d, bash("git rm tests/fixtures/test_cases.json"))
+        reset(); warn("fixture/sh: git mv warns", d,
+                      bash("git mv tests/fixtures/test_cases.json tests/fixtures/renamed.json"))
+        reset(); warn("fixture/sh: mv-over an existing fixture warns", d,
+                      bash("mv /tmp/x tests/fixtures/test_cases.json"))
+        reset(); warn("fixture/sh: sed -i warns", d,
+                      bash("sed -i 's/5/9/' tests/fixtures/test_cases.json"))
+        # unparseable value-removal (malformed) that SHRINKS -> warn (size fallback)
+        mal = os.path.join(fx, "broken.json")
+        with open(mal, "w") as fh:
+            fh.write('{"output": "5", broken not json at all, "extra": "padding here to be long"}')
+        warn("fixture: unparseable edit that SHRINKS warns (size fallback)", d,
+             edit(mal, ', "extra": "padding here to be long"', ''))
+
+        # --- SILENT direction (authoring: additions, non-answer edits, reads) ---
+        reset(); silent("fixture: appending a new case is silent", d,
+                        edit(tc, ']', ', {"input": "c", "output": "9"}]'))
+        reset(); silent("fixture: prepending a new case is silent", d,
+                        edit(tc, '[{"input": "a"', '[{"input": "c", "output": "9"}, {"input": "a"'))
+        reset(); silent("fixture: editing a non-answer (input) field is silent", d,
+                        edit(tc, '"input": "a"', '"input": "z"'))
+        reset(); silent("fixture: reordering cases is silent", d,
+                        write(tc, '[{"input": "b", "output": "6"}, {"input": "a", "output": "5"}]'))
+        silent("fixture: creating a NEW fixture file is silent", d,
+               write(os.path.join(fx, "brand_new.json"), '[{"input": "x", "output": "1"}]'))
+        silent("fixture: a .snap file is snapshot territory, not ours", d,
+               edit(os.path.join(fx, "x.snap"), "a", "b"))
+        # a data file OUTSIDE any test path is not a fixture
+        cfg = os.path.join(d, "config", "settings.json")
+        os.makedirs(os.path.dirname(cfg)); open(cfg, "w").write('{"port": 8080}')
+        silent("fixture: a non-test-path data file is not a fixture", d,
+               edit(cfg, '8080', '9090'))
+        reset(); silent("fixture/sh: reading a fixture (cat) is silent", d,
+                        bash("cat tests/fixtures/test_cases.json"))
+        # unparseable, SAME-ish length (a malformed-legit reformat) -> silent, NOT a FP
+        with open(mal, "w") as fh:
+            fh.write('{"output": "5", broken not json, "k": "v"}')
+        silent("fixture: unparseable reformat that does NOT shrink is silent (no FP)", d,
+               edit(mal, 'broken not json', 'broken  not  json'))
+
+
 def test_basename_roster_parity():
     """U1 (2026-08-15): the lock-state / verifier / guard basename rosters have ONE owner
     (host_contract). Before this, test_lock_guard.py carried its own copies and they had
@@ -1403,7 +1507,7 @@ def main():
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
                test_exitcode, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
-               test_basename_roster_parity,
+               test_fixture_guard, test_basename_roster_parity,
                test_lock_shell, test_yield_logging, test_guards_heartbeat,
                test_break_glass, test_retired_advisory_defaults,
                test_guard_roster_derived_and_pinned):
