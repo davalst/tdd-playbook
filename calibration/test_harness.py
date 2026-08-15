@@ -2258,9 +2258,44 @@ def _confinement_tests():
               "AK_READ" in must, must)
 
 
+def _holdout_loader_tests():
+    """arch-F1 (holdout review): ONE parameterized loader, so holdout bodies enter the
+    existing universe (id-uniqueness/pairing/quarantine) rather than a third loader that
+    blinds them. load_corpus(dirs) reads arbitrary dirs; the TDD_PLAYBOOK_HOLDOUT_DIR env
+    appends the vault bodies dir; author_plants.corpus_scenarios delegates to the same loader."""
+    import run_calibration as rc
+    import author_plants as ap
+    with tempfile.TemporaryDirectory() as hd:
+        body = {"id": "holdout-decoy-loader-test", "agent": "claims-verifier",
+                "plant": "x", "edits": [], "task": "t",
+                "must_match": ["a"], "must_not_match": ["b"]}
+        with open(os.path.join(hd, "holdout-decoy-loader-test.json"), "w") as fh:
+            json.dump(body, fh)
+        check("load_corpus(dirs=[extra]) reads an arbitrary source dir",
+              any(s["id"] == "holdout-decoy-loader-test" for s in rc.load_corpus([hd])))
+        keep = os.environ.get(rc.HOLDOUT_DIR_ENV)
+        os.environ[rc.HOLDOUT_DIR_ENV] = hd
+        try:
+            check("load_corpus() appends the TDD_PLAYBOOK_HOLDOUT_DIR bodies (one loader, "
+                  "universe sees them)",
+                  any(s["id"] == "holdout-decoy-loader-test" for s in rc.load_corpus()))
+            check("author_plants.corpus_scenarios delegates to load_corpus (holdout ids "
+                  "visible to authoring id-uniqueness)",
+                  any(s["id"] == "holdout-decoy-loader-test" for s in ap.corpus_scenarios()))
+        finally:
+            if keep is None:
+                os.environ.pop(rc.HOLDOUT_DIR_ENV, None)
+            else:
+                os.environ[rc.HOLDOUT_DIR_ENV] = keep
+        # env UNSET -> normal runs do not load holdout bodies (no accidental dev contamination)
+        check("without the env, load_corpus() does NOT include holdout bodies",
+              not any(s["id"] == "holdout-decoy-loader-test" for s in rc.load_corpus()))
+
+
 def main():
     print("Calibration-harness calibration")
     _confinement_tests()
+    _holdout_loader_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()

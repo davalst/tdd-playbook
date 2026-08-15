@@ -43,17 +43,16 @@ import host_runner  # noqa: E402
 
 
 def corpus_scenarios(which=("approved",)):
-    out = []
-    dirs = {"proposed": PROPOSED, "approved": APPROVED}
-    for state in which:
-        d = dirs[state]
-        if not os.path.isdir(d):
-            continue
-        for fn in sorted(os.listdir(d)):
-            if fn.endswith(".json"):
-                with open(os.path.join(d, fn)) as fh:
-                    out.append(json.load(fh))
-    return out
+    # arch-F1: delegate to run_calibration.load_corpus — ONE loader, so the authoring
+    # universe (id-uniqueness across the whole corpus) sees holdout bodies too when the
+    # controller has set TDD_PLAYBOOK_HOLDOUT_DIR. Function-level import avoids any load cycle.
+    import run_calibration as rc
+    state_dirs = {"proposed": PROPOSED, "approved": APPROVED}
+    paths = [state_dirs[s] for s in which]
+    holdout = os.environ.get(rc.HOLDOUT_DIR_ENV)
+    if holdout:
+        paths.append(holdout)
+    return rc.load_corpus(paths)
 
 
 def validate(sc):

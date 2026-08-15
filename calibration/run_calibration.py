@@ -115,15 +115,29 @@ def load_scenarios():
         return json.load(fh)["scenarios"]
 
 
-def load_corpus():
-    """Approved adversary-authored plants (calibration/corpus/approved/). Only grows."""
-    d = os.path.join(HERE, "corpus", "approved")
+HOLDOUT_DIR_ENV = "TDD_PLAYBOOK_HOLDOUT_DIR"
+
+
+def load_corpus(dirs=None):
+    """Approved adversary-authored plants, plus any extra source directories. arch-F1
+    (holdout review): ONE parameterized loader, never a second `holdout_source` — so the
+    universe-composition sites (id-uniqueness, R2 pairing, quarantine) all see holdout bodies
+    too, instead of a third loader that blinds them. Default = corpus/approved/ PLUS the
+    private-vault bodies dir when TDD_PLAYBOOK_HOLDOUT_DIR is set (the controller sets it to
+    the ephemeral clone after resolving bodies by content hash). Holdout bodies read here live
+    only in this host-side controller process; the evaluated agent's sandbox never sees them."""
+    if dirs is None:
+        dirs = [os.path.join(HERE, "corpus", "approved")]
+        holdout = os.environ.get(HOLDOUT_DIR_ENV)
+        if holdout:
+            dirs.append(holdout)
     out = []
-    if os.path.isdir(d):
-        for fn in sorted(os.listdir(d)):
-            if fn.endswith(".json"):
-                with open(os.path.join(d, fn)) as fh:
-                    out.append(json.load(fh))
+    for d in dirs:
+        if d and os.path.isdir(d):
+            for fn in sorted(os.listdir(d)):
+                if fn.endswith(".json"):
+                    with open(os.path.join(d, fn)) as fh:
+                        out.append(json.load(fh))
     return out
 
 
