@@ -515,6 +515,23 @@
           "status": "unavailable"
         }
       },
+      "fixture_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:fixture_guard.py",
+          "installed_target": ".claude/hooks/scripts/fixture_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/fixture_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/fixture_guard.py",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
       "flaky_guard": {
         "claude": {
           "activation_prerequisite": "Claude project trust and enabled hook configuration",
@@ -656,6 +673,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "51fde71ab1373fc2654724acb6461afeb86750489a650dc7a4b6759dea00c880",
+  "inventory_sha256": "66b4fec8b40a730b62a46362f9228d5a661297ed3cdfe6e46f17be7d94f8d9f8",
   "schema_version": 2
 }

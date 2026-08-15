@@ -15,7 +15,8 @@ unavailable or unmeasured, never rounded up. It ships:
   (mutation score), not a ritual — scoped honestly: the score grades tests WITHIN a seam;
   §1's "test at the seam you don't own" covers what it structurally cannot (SKILL §4).
 - **Enforcement hooks** — four block by default (test weakening, the TEST-LOCK, snapshot
-  re-approval, release tags); five more are opt-in. See **Hook controls** below.
+  re-approval, release tags); five more are opt-in; and `fixture_guard` warns by default
+  when an expected answer in a test-data file is rewritten. See **Hook controls** below.
 - **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade` `/readable`.
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
@@ -72,7 +73,7 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
 four blocking guards (`test_weakening_guard`, `test_lock_guard`, `snapshot_guard`,
 `tag_guard`) plus the opt-in ones (`exitcode_guard`, `exhaustive_claim_guard`, `overmock_guard`,
-`flaky_guard`, `red_lock`) — so a refresh
+`flaky_guard`, `red_lock`) plus the warn-by-default `fixture_guard` — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are
 preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
 marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
@@ -154,15 +155,21 @@ your own files live in those namespaces — and prunes only Playbook hook groups
 added cannot be told apart from lines you already had.
 
 ## Hook controls
-Three tiers, and the tiers are set by **measured yield**, not by how important a guard sounds
-(`docs/calibration/gate_yield.md`; §13's decay principle runs in both directions — a gate can
-become more expensive than the risk it retires).
+Three tiers — BLOCKING, WARN, and OPT-IN — set by **measured yield**, not by how important a
+guard sounds (`docs/calibration/gate_yield.md`; §13's decay principle runs in both directions
+— a gate can become more expensive than the risk it retires).
 
 **BLOCKING by default** — `TDD_PLAYBOOK_HOOK_TESTWEAKEN`, `_TESTLOCK`, `_SNAPSHOTGUARD`,
 `_TAGGUARD`. These defend the documented agent attack vectors (`docs/HACK_CATALOG.md`; the
 research is unambiguous that warnings don't stop test-gaming) and the release tag. `testweaken`
 has 4 blocks and 0 adjudicated false positives; `testlock` has 16 blocks and **zero** unlocks
 classed `gate-wrong`.
+
+**WARN by default** — `_FIXTUREGUARD` (`fixture_guard`). Warns when an expected answer in a
+test-data file (`test_cases.json`, fixtures, golden) is rewritten or a case removed — the gap
+`test_weakening_guard` (test code) is blind to. Scoped to answer-value changes: adding a case
+or editing a non-answer field is silent, so the signal stays rare. Set `_FIXTUREGUARD=block`
+to enforce or `=off` to silence.
 
 **OPT-IN since v1.32.0** — `_EXITCODE`, `_OVERMOCK`, `_EXHAUSTIVE`, `_FLAKY`, `_REDLOCK`.
 31 warnings and zero blocks across all recorded history, so they ship off. Nothing was deleted:

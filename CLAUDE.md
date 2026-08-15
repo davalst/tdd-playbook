@@ -73,8 +73,9 @@ mechanisms.
    The installer is reconciling: it prunes stale playbook hooks from .claude/settings.json
    and adds current ones (the four BLOCKING guards: test_weakening_guard, test_lock_guard,
    snapshot_guard, tag_guard; plus the opt-in exitcode/overmock/exhaustive/flaky/red_lock,
-   which ship OFF since v1.32.0 on 31 warns / 0 blocks). My own
-   non-playbook hooks must survive — verify that before committing.
+   which ship OFF since v1.32.0 on 31 warns / 0 blocks; plus the warn-by-default
+   fixture_guard, which warns when an expected answer in a test-data file is rewritten or a
+   case removed). My own non-playbook hooks must survive — verify that before committing.
 
 2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
    capability_registry.py, and dataflow_sweeps.py (with its _debt.py sibling); confirm

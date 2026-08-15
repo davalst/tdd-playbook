@@ -1335,10 +1335,17 @@ def test_guards_heartbeat():
 # purpose (§12: a derived check compared against the filter it describes cannot reveal
 # drift; these sets are the roster the machinery cannot drift with). Everything else —
 # which scripts exist, their short names, their modes, the prose copies — is DERIVED.
-EXPECTED_BLOCKING = {"test_weakening_guard", "test_lock_guard",
-                     "snapshot_guard", "tag_guard"}
-EXPECTED_OPTIN = {"exitcode_guard", "overmock_guard", "exhaustive_claim_guard",
-                  "flaky_guard", "red_lock"}
+# ONE literal home for the guard roster (arch-F9): script -> mode, compared against the
+# machinery-derived {script: resolve_mode(NAME)}. Three live modes now (block/off/warn), so
+# a per-mode literal set would grow one set per mode and the advisory/warn ambiguity would
+# be spelled, not derived — a single dict keyed on the FACT (the mode) is the fix.
+EXPECTED_MODES = {
+    "test_weakening_guard": "block", "test_lock_guard": "block",
+    "snapshot_guard": "block", "tag_guard": "block",
+    "exitcode_guard": "off", "overmock_guard": "off", "exhaustive_claim_guard": "off",
+    "flaky_guard": "off", "red_lock": "off",
+    "fixture_guard": "warn",
+}
 EXPECTED_ADVISORY = {"build_completion_reminder", "capture", "intent_nudge"}
 
 
@@ -1371,17 +1378,17 @@ def _roster_chunk(text):
     return None if m is None else text[max(0, m.start() - 30):m.start() + 500]
 
 
-def _roster_problems(chunk, blocking, optin, shorts, machinery_tokens):
+def _roster_problems(chunk, blocking, optin, warn, shorts, machinery_tokens):
     """Pin one prose roster chunk against the derived partition. Pure function so the
     planted fixtures exercise it directly (release discipline: planted inputs, always).
 
     An opt-in guard may appear by script name OR by its NAME short form (CLAUDE.md
     writes `exitcode/overmock/...`, README writes `exitcode_guard, ...`). Directions:
-    missing (a real guard absent from prose), phantom (a guard-shaped token machinery
-    does not have — BOTH dialects: `*_guard` names and short-name slash-runs, arch F6b),
-    and a stale COUNT word (arch F6a: five guards behind a sentence still saying
-    "four" is green under a names-only pin — the number is asserted against
-    len(blocking), the one fact the anchor itself cannot see)."""
+    missing (a real guard absent from prose — blocking, opt-in, OR warn), phantom (a
+    guard-shaped token machinery does not have — BOTH dialects: `*_guard` names and
+    short-name slash-runs, arch F6b), and a stale COUNT word (arch F6a: five guards behind
+    a sentence still saying "four" is green under a names-only pin — the number is asserted
+    against len(blocking), the one fact the anchor itself cannot see)."""
     if chunk is None:
         return ["roster anchor 'blocking guards' not found — refusing a vacuous pass"]
     problems = []
@@ -1398,6 +1405,10 @@ def _roster_problems(chunk, blocking, optin, shorts, machinery_tokens):
     for script in sorted(optin):
         if script not in chunk and shorts[script] not in chunk:
             problems.append("missing opt-in guard in prose: {} (or '{}')".format(
+                script, shorts[script]))
+    for script in sorted(warn):
+        if script not in chunk and shorts[script] not in chunk:
+            problems.append("missing warn guard in prose: {} (or '{}')".format(
                 script, shorts[script]))
     for token in _GUARD_TOKEN.findall(chunk):
         if token not in machinery_tokens:
@@ -1438,68 +1449,67 @@ def test_guard_roster_derived_and_pinned():
             advisory.add(script)
     blocking = {s for s, m in partition.items() if m == "block"}
     optin = {s for s, m in partition.items() if m == "off"}
+    warn = {s for s, m in partition.items() if m == "warn"}
 
-    # machinery vs the policy pin — exact, not floors (§1: exact values beat orderings)
-    check("derived BLOCKING partition equals the v1.32.0 policy pin",
-          blocking == EXPECTED_BLOCKING, sorted(blocking))
-    check("derived OPT-IN partition equals the v1.32.0 policy pin",
-          optin == EXPECTED_OPTIN, sorted(optin))
+    # machinery vs the ONE policy pin — dict equality on the FACT (arch-F9), not per-mode
+    # floors. A guard whose mode drifts, or whose tier is mis-spelled, fails here.
+    check("derived partition equals the policy pin (script -> mode)",
+          partition == EXPECTED_MODES, sorted(partition.items()))
     check("advisory remainder is exactly the known non-guard set",
           advisory == EXPECTED_ADVISORY, sorted(advisory))
     check("every _DEFAULT_MODES key is claimed by exactly one registered script",
           sorted(shorts.values()) == sorted(common._DEFAULT_MODES), sorted(shorts.values()))
-    print("  roster: scanned {} hooks.json scripts · classified {} guards · advisory {}"
-          .format(len(scanned), len(partition), len(advisory)))
+    print("  roster: scanned {} hooks.json scripts · {} block · {} opt-in · {} warn · "
+          "advisory {}".format(len(scanned), len(blocking), len(optin), len(warn),
+                               len(advisory)))
 
     # prose pins, both files, derived — never a hardcoded list here
     machinery_tokens = set(partition) | set(shorts.values())
     for name in ("CLAUDE.md", "README.md"):
         text = open(os.path.join(REPO, name), encoding="utf-8").read()
-        problems = _roster_problems(_roster_chunk(text), blocking, optin, shorts,
+        problems = _roster_problems(_roster_chunk(text), blocking, optin, warn, shorts,
                                     machinery_tokens)
         check("{} guard roster matches machinery".format(name), problems == [], problems)
 
     # PLANTED fixtures — the red-first proof, frozen (a pin that cannot fail is décor)
     good = ("...the four blocking guards (test_weakening_guard, test_lock_guard, "
             "snapshot_guard, tag_guard) plus the opt-in ones (exitcode_guard, "
-            "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock)...")
-    check("PLANTED: clean roster prose passes",
-          _roster_problems(good, blocking, optin, shorts, machinery_tokens) == [],
-          _roster_problems(good, blocking, optin, shorts, machinery_tokens))
-    dropped = good.replace(", tag_guard)", ")")
+            "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock) and the "
+            "warn-by-default fixture_guard...")
+    def rp(chunk, bl=None, op=None, wn=None, sh=None, mt=None):
+        return _roster_problems(chunk, bl if bl is not None else blocking,
+                                op if op is not None else optin,
+                                wn if wn is not None else warn,
+                                sh if sh is not None else shorts,
+                                mt if mt is not None else machinery_tokens)
+    check("PLANTED: clean roster prose passes", rp(good) == [], rp(good))
     check("PLANTED: missing blocking guard is caught",
           any("missing blocking guard" in p and "tag_guard" in p
-              for p in _roster_problems(dropped, blocking, optin, shorts, machinery_tokens)))
-    phantom = good.replace("red_lock)", "red_lock, quantum_guard)")
+              for p in rp(good.replace(", tag_guard)", ")"))))
+    check("PLANTED: missing WARN guard is caught",
+          any("missing warn guard" in p and "fixture_guard" in p
+              for p in rp(good.replace(" and the warn-by-default fixture_guard", ""))))
     check("PLANTED: phantom guard in prose is caught",
           any("phantom" in p and "quantum_guard" in p
-              for p in _roster_problems(phantom, blocking, optin, shorts, machinery_tokens)))
+              for p in rp(good.replace("red_lock)", "red_lock, quantum_guard)"))))
     grown = dict(shorts, new_guard="newguard")
     check("PLANTED: newly-registered guard absent from prose is caught",
           any("missing opt-in guard" in p and "new_guard" in p
-              for p in _roster_problems(good, blocking, optin | {"new_guard"}, grown,
-                                        machinery_tokens | {"new_guard"})))
-    # arch F6a: five real blocking guards behind prose still saying "four" — all five
-    # names present, no phantom, anchor intact — must fail on the COUNT
+              for p in rp(good, op=optin | {"new_guard"}, sh=grown,
+                          mt=machinery_tokens | {"new_guard"})))
     five_named = good.replace("tag_guard)", "tag_guard, fifth_guard)")
     check("PLANTED: stale count word ('four' over five guards) is caught",
           any("stale roster count" in p
-              for p in _roster_problems(five_named, blocking | {"fifth_guard"}, optin,
-                                        grown, machinery_tokens | {"fifth_guard"})),
-          _roster_problems(five_named, blocking | {"fifth_guard"}, optin, grown,
-                           machinery_tokens | {"fifth_guard"}))
-    # arch F6b: CLAUDE.md's short-name dialect — a phantom inside the slash-run
+              for p in rp(five_named, bl=blocking | {"fifth_guard"}, sh=grown,
+                          mt=machinery_tokens | {"fifth_guard"})))
     claude_dialect = ("...the four blocking guards: test_weakening_guard, "
                       "test_lock_guard, snapshot_guard, tag_guard; plus the opt-in "
-                      "exitcode/overmock/quantum/flaky/red_lock, which ship OFF...")
+                      "exitcode/overmock/quantum/flaky/red_lock, which ship OFF; plus "
+                      "fixture_guard...")
     check("PLANTED: phantom short name inside the slash-run is caught",
-          any("short-name run" in p and "quantum" in p
-              for p in _roster_problems(claude_dialect, blocking, optin, shorts,
-                                        machinery_tokens)),
-          _roster_problems(claude_dialect, blocking, optin, shorts, machinery_tokens))
+          any("short-name run" in p and "quantum" in p for p in rp(claude_dialect)))
     check("PLANTED: anchor removal refuses a vacuous pass",
-          "refusing a vacuous pass" in _roster_problems(
-              None, blocking, optin, shorts, machinery_tokens)[0])
+          "refusing a vacuous pass" in rp(None)[0])
 
 
 def main():

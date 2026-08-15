@@ -51,6 +51,11 @@ _DEFAULT_MODES = {
     "exhaustive": "off",
     "flaky": "off",
     "redlock": "off",
+    # WARN by default (A, 2026-08-15) — a real, rare signal, not a block. Fires only when an
+    # EXPECTED ANSWER in a test-data file is rewritten or a case removed (fixture_guard);
+    # adding cases / editing non-answer fields is silent. Promote to block, or retire, on
+    # committed yield evidence (the dated trigger on the fixture-data-guard capability).
+    "fixtureguard": "warn",
 }
 
 

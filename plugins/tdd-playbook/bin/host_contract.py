@@ -62,8 +62,8 @@ LOCK_STATE_BASENAMES = frozenset({
 GUARD_BASENAMES = frozenset({
     "test_lock_guard.py", "snapshot_guard.py", "test_weakening_guard.py",
     "tag_guard.py", "exitcode_guard.py", "exhaustive_claim_guard.py",
-    "flaky_guard.py", "overmock_guard.py", "red_lock.py", "_common.py",
-    "hooks.json", "settings.json", "settings.local.json",
+    "flaky_guard.py", "overmock_guard.py", "red_lock.py", "fixture_guard.py",
+    "_common.py", "hooks.json", "settings.json", "settings.local.json",
 })
 
 

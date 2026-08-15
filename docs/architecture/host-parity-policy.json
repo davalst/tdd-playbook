@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "acknowledged_inventory_sha256": "51fde71ab1373fc2654724acb6461afeb86750489a650dc7a4b6759dea00c880",
+  "acknowledged_inventory_sha256": "66b4fec8b40a730b62a46362f9228d5a661297ed3cdfe6e46f17be7d94f8d9f8",
   "defaults": {
     "claude": {
       "commands": {

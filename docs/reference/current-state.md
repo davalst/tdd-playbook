@@ -6,8 +6,8 @@
 
 - `gate-manifest.json` — `8d200f4ca47bc5308b0e462652bae3fba7361077d69ae34cef973bc1022cd226`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
-- `docs/architecture/host-parity-policy.json` — `1aaae6fd3864decec07ecd647b68df16f749155e79ff78d80bbd8f0b6c7c35e9`
-- `docs/architecture/host-parity.json` — `0bb523fc68579362ea51a149dff5abf5eb7bb0cbeede11369bd1b0958e7e02c3`
+- `docs/architecture/host-parity-policy.json` — `37c62ad37f395681635807c1a0f3e3d9370ff20a9d3431d16b4cfaab9b42b01e`
+- `docs/architecture/host-parity.json` — `ac5a9b1c6d649c862677bbed993d0dfb6dd05d0a1a0732d0d044b6a523615fd3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
 - `capabilities.json` — `ec89d6ebf3a1084e7abe43907e8315398aac61540b478ea717533bc88c8ade5e`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -40,10 +40,10 @@
 
 ## Host parity
 
-- Canonical assets: 38. Exact host dispositions: 76.
-- Claude: 38 supported, 0 unavailable, 0 debt.
-- Codex: 1 supported, 37 unavailable, 0 debt.
-- Acknowledged inventory digest: `51fde71ab1373fc2654724acb6461afeb86750489a650dc7a4b6759dea00c880`
+- Canonical assets: 39. Exact host dispositions: 78.
+- Claude: 39 supported, 0 unavailable, 0 debt.
+- Codex: 1 supported, 38 unavailable, 0 debt.
+- Acknowledged inventory digest: `66b4fec8b40a730b62a46362f9228d5a661297ed3cdfe6e46f17be7d94f8d9f8`
 
 ## Capability registry
 
