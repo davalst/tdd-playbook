@@ -2292,10 +2292,97 @@ def _holdout_loader_tests():
               not any(s["id"] == "holdout-decoy-loader-test" for s in rc.load_corpus()))
 
 
+def _holdout_controller_tests():
+    """The FETCH + VERIFY half of the holdout controller (calibration/holdout.py). Two
+    load-bearing refusals, each proven both directions:
+      - CONTAINMENT: clone_vault refuses a dest inside the public tree (a body there is
+        committable / Bash-readable); it clones fine to an ephemeral dir outside the tree.
+      - HASH-DRIFT: verify_bodies runs the fetched bodies through plant_forms.form_problems
+        (arch-F3, the existing checker), so a body that drifts from its recorded content_sha256
+        REDs exactly as a tampered corpus plant would — and a matching body is clean."""
+    import holdout
+    import plant_forms as pf
+
+    # --- containment predicate (unit; no clone, no network) ---
+    with tempfile.TemporaryDirectory() as tree:
+        inside = os.path.join(tree, "sub", "vault")
+        check("holdout: dest_is_inside_tree flags a path within the tree",
+              holdout.dest_is_inside_tree(inside, tree))
+        check("holdout: dest_is_inside_tree flags the tree root itself",
+              holdout.dest_is_inside_tree(tree, tree))
+    with tempfile.TemporaryDirectory() as tree, tempfile.TemporaryDirectory() as elsewhere:
+        check("holdout: dest_is_inside_tree clears a sibling dir outside the tree",
+              not holdout.dest_is_inside_tree(os.path.join(elsewhere, "vault"), tree))
+        # a sibling whose name PREFIXES the tree path must not false-match (the os.sep guard)
+        check("holdout: dest_is_inside_tree is not fooled by a shared path prefix",
+              not holdout.dest_is_inside_tree(tree + "-decoy", tree))
+
+    # --- clone refusal: an in-tree dest RAISES before any clone (PLANTED containment breach) ---
+    raised = False
+    try:
+        holdout.clone_vault("unused://repo", os.path.join(REPO, "calibration", "would-leak"),
+                            public_tree=REPO)
+    except ValueError as e:
+        raised = "inside the public working tree" in str(e)
+    check("holdout: clone_vault REFUSES an in-tree dest (containment, PLANTED)", raised)
+
+    # --- clone happy path (real git clone, OFFLINE from a local vault) ---
+    git_id = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    with tempfile.TemporaryDirectory() as vault, tempfile.TemporaryDirectory() as work:
+        bodies = os.path.join(vault, "bodies")
+        os.makedirs(bodies)
+        body = {"id": "holdout-ctl-body", "agent": "claims-verifier", "plant": "p",
+                "edits": [], "task": "t", "must_match": ["a"], "must_not_match": ["b"]}
+        with open(os.path.join(bodies, "holdout-ctl-body.json"), "w") as fh:
+            json.dump(body, fh)
+        for cmd in (["git", "-C", vault, "init", "-q"],
+                    ["git", "-C", vault, *git_id, "add", "-A"],
+                    ["git", "-C", vault, *git_id, "commit", "-q", "-m", "seed"]):
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        dest = os.path.join(work, "cloned")  # outside REPO, so clone is permitted
+        try:
+            holdout.clone_vault(vault, dest, public_tree=REPO)
+            cloned_ok = os.path.isfile(os.path.join(dest, "bodies", "holdout-ctl-body.json"))
+        except subprocess.CalledProcessError as e:
+            cloned_ok = False
+            check("holdout: clone_vault OFFLINE clone diagnostic", False, e.stderr)
+        check("holdout: clone_vault clones a local vault to an out-of-tree dest", cloned_ok)
+
+    # --- holdout_shas matches plant_forms.plant_sha (one hashing definition) ---
+    with tempfile.TemporaryDirectory() as bd:
+        p = os.path.join(bd, "holdout-ctl-body.json")
+        with open(p, "w") as fh:
+            json.dump({"id": "holdout-ctl-body", "agent": "claims-verifier", "plant": "p",
+                       "edits": [], "task": "t", "must_match": ["a"], "must_not_match": ["b"]},
+                      fh)
+        shas = holdout.holdout_shas(bd)
+        check("holdout: holdout_shas keys by the id inside the json and matches plant_sha",
+              shas.get("holdout-ctl-body") == pf.plant_sha(p))
+        check("holdout: holdout_shas over a missing dir yields {} (unarmed resolves nothing)",
+              holdout.holdout_shas(os.path.join(bd, "nope")) == {})
+
+        # --- verify_bodies: clean when the recorded sha matches (private register entry) ---
+        real = pf.plant_sha(p)
+        entries = [{"date": "2026-08-15", "plant_id": "holdout-ctl-body", "form": "holdout",
+                    "content_sha256": real, "reason": "held privately in the vault"}]
+        check("holdout: verify_bodies is CLEAN when the body matches its recorded sha",
+              holdout.verify_bodies(entries, bd) == [], holdout.verify_bodies(entries, bd))
+
+        # --- PLANTED drift: mutate the body; the SAME register entry now REDs via form_problems ---
+        with open(p, "w") as fh:
+            json.dump({"id": "holdout-ctl-body", "agent": "claims-verifier", "plant": "TAMPERED",
+                       "edits": [], "task": "t", "must_match": ["a"], "must_not_match": ["b"]},
+                      fh)
+        probs = holdout.verify_bodies(entries, bd)
+        check("holdout: verify_bodies REDs on hash drift (PLANTED tamper, existing checker)",
+              any("does not match" in x for x in probs), probs)
+
+
 def main():
     print("Calibration-harness calibration")
     _confinement_tests()
     _holdout_loader_tests()
+    _holdout_controller_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()
