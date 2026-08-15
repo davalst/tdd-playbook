@@ -80,9 +80,25 @@ def _codex_output(stdout):
     return ("\n".join(messages) if messages else (stdout or "")), transcript_id
 
 
+def _maybe_confine(command, cwd, deny_read):
+    """Wrap the agent command in OS confinement when `deny_read` is set (a holdout run — the
+    answer-key dir must be unreadable to the untrusted agent). FAIL-CLOSED: if confinement is
+    unavailable we RAISE rather than run the agent unconfined with the answer key on disk.
+    `deny_read` empty/None → the command is unchanged (normal dev run)."""
+    if not deny_read:
+        return command
+    import confine
+    if not confine.sandbox_exec_available():
+        raise RunnerError(
+            "holdout run requires OS confinement (sandbox-exec) but it is unavailable on this "
+            "host — refusing to run the agent unconfined with holdout bodies on disk")
+    return confine.confined_argv(command, cwd, deny_read=deny_read)
+
+
 def invoke(host, binary, prompt, model, cwd, max_turns=None, timeout=600, env=None,
-           extra_args=None):
-    command = command_for(host, binary, prompt, model, max_turns, extra_args)
+           extra_args=None, confine_deny_read=None):
+    command = _maybe_confine(
+        command_for(host, binary, prompt, model, max_turns, extra_args), cwd, confine_deny_read)
     try:
         process = subprocess.run(command, cwd=cwd, capture_output=True, text=True,
                                  timeout=timeout, env=env)

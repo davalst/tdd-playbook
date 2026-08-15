@@ -118,6 +118,16 @@ def load_scenarios():
 HOLDOUT_DIR_ENV = "TDD_PLAYBOOK_HOLDOUT_DIR"
 
 
+def holdout_deny_read():
+    """The dir the evaluated agent must NOT read this run, or None. When the holdout bodies dir
+    is on disk (TDD_PLAYBOOK_HOLDOUT_DIR set), the answer key is present — so the agent is boxed
+    in with that dir read-denied (host_runner fails closed if confinement is unavailable). Set
+    means confined, automatically: you cannot run with the answer key present and an unconfined
+    agent, whether or not you remembered --form holdout."""
+    holdout = os.environ.get(HOLDOUT_DIR_ENV)
+    return [holdout] if holdout else None
+
+
 def load_corpus(dirs=None):
     """Approved adversary-authored plants, plus any extra source directories. arch-F1
     (holdout review): ONE parameterized loader, never a second `holdout_source` — so the
@@ -350,7 +360,8 @@ def run_agent(scenario, root, host_bin, model, host="claude"):
         from child_env import child_env
         result = host_runner.invoke(
             host, host_bin, prompt, model, root, max_turns=turns_for(scenario),
-            timeout=TIMEOUT_S, env=child_env(), extra_args=extra)
+            timeout=TIMEOUT_S, env=child_env(), extra_args=extra,
+            confine_deny_read=holdout_deny_read())
     except host_runner.RunnerError:
         raise
     if result.status != "ok":

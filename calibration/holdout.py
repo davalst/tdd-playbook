@@ -26,9 +26,13 @@ Two load-bearing refusals, each reusing an existing mechanism rather than adding
 the `id` inside the json) — one hashing definition, reused, so the drift check compares like
 with like.
 """
+import argparse
 import json
 import os
+import shutil
 import subprocess
+import sys
+import tempfile
 
 import plant_forms
 
@@ -101,3 +105,56 @@ def verify_bodies(entries, bodies_dir):
     exactly as a tampered corpus plant would. `entries` come from the PRIVATE vault's register
     (parse_register), not the public plant-forms.md. Returns the problem list ([] == clean)."""
     return plant_forms.form_problems(entries, holdout_shas(bodies_dir))
+
+
+# --- the opt-in run command (the one entrypoint that ties it together) ----------------------
+HERE = os.path.dirname(os.path.abspath(__file__))
+RUNNER = os.path.join(HERE, "run_calibration.py")
+
+
+def stage_vault(vault_url, workdir):
+    """Clone the private vault into `workdir` (an ephemeral OUT-OF-TREE temp dir the caller
+    deletes) and return its bodies dir. clone_vault refuses an in-tree dest."""
+    dest = os.path.join(workdir, "vault")
+    clone_vault(vault_url, dest, public_tree=repo_toplevel(HERE))
+    return os.path.join(dest, "bodies")
+
+
+def run_holdout(vault_url, extra_argv=(), *, runner=None):
+    """The whole opt-in run, lightweight and manual (no schedule, no automation — the v1.32
+    opt-in-and-reactive doctrine): clone the vault to an ephemeral out-of-tree dir, point the
+    loader at its bodies, run the eval with the agent BOXED-IN (run_agent auto-confines while
+    the bodies are on disk, and fails closed if confinement is unavailable), then delete the
+    clone so no answer key outlives the run. Returns the eval's exit code. `runner` is injectable
+    for tests; by default a real `run_calibration --form holdout` subprocess inherits the env."""
+    workdir = tempfile.mkdtemp(prefix="tdd-holdout-")
+    try:
+        bodies = stage_vault(vault_url, workdir)
+        env = dict(os.environ)
+        env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies
+        argv = [sys.executable, RUNNER, "--form", "holdout", *extra_argv]
+        if runner is not None:
+            return runner(argv, env, bodies)
+        return subprocess.run(argv, env=env).returncode
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Holdout controller — fetch the private vault and run the eval with the "
+                    "agent boxed-in. Opt-in and manual; reach for it when you want a holdout "
+                    "reading, like calibration itself.")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("run", help="clone the vault, run a confined holdout eval, delete the clone")
+    r.add_argument("--vault", required=True, help="git URL of the private holdout vault")
+    r.add_argument("rest", nargs=argparse.REMAINDER,
+                   help="extra args forwarded to run_calibration (e.g. --model opus --repeat 3)")
+    args = ap.parse_args(argv)
+    if args.cmd == "run":
+        return run_holdout(args.vault, args.rest)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

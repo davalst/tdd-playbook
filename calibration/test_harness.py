@@ -2414,12 +2414,104 @@ def _holdout_egress_tests():
               ("SECRET-PLANT", "SECRET-ORACLE-REGEX", "SECRET-DOER-OUTPUT")), dev_blob)
 
 
+def _holdout_run_tests():
+    """The opt-in run wiring: the agent is BOXED-IN automatically whenever holdout bodies are on
+    disk, fail-closed if confinement is unavailable, and the whole run cleans up after itself.
+    Proven without a live agent (host_runner.invoke is injected/monkeypatched)."""
+    import host_runner
+    import confine
+    import run_calibration as rc
+
+    cmd = ["claude", "-p", "hi"]
+    # --- _maybe_confine: dev unchanged; holdout wrapped; unavailable -> fail-closed ---
+    check("run: _maybe_confine leaves a dev command (no deny_read) unchanged",
+          host_runner._maybe_confine(cmd, "/tmp", None) == cmd)
+    with tempfile.TemporaryDirectory() as ws, tempfile.TemporaryDirectory() as ans:
+        wrapped = host_runner._maybe_confine(cmd, ws, [ans])
+        check("run: _maybe_confine wraps a holdout command in sandbox-exec",
+              wrapped[0] == "sandbox-exec" and cmd[-1] == wrapped[-1], wrapped[:2])
+        keep = confine.sandbox_exec_available
+        confine.sandbox_exec_available = lambda: False
+        try:
+            raised = False
+            try:
+                host_runner._maybe_confine(cmd, ws, [ans])
+            except host_runner.RunnerError as e:
+                raised = "unconfined" in str(e)
+            check("run: _maybe_confine FAILS CLOSED when confinement is unavailable (PLANTED)",
+                  raised)
+        finally:
+            confine.sandbox_exec_available = keep
+
+    # --- run_agent forwards the deny-read exactly when holdout bodies are on disk ---
+    check("run: holdout_deny_read is None without the env (dev runs are never confined)",
+          rc.holdout_deny_read() is None)
+    captured = {}
+
+    def fake_invoke(host, binary, prompt, model, cwd, **kw):
+        captured["deny"] = kw.get("confine_deny_read")
+        return host_runner.Result(host, "ok", "a benign verdict line", 0, None)
+
+    keep_invoke = host_runner.invoke
+    host_runner.invoke = fake_invoke
+    keep_env = os.environ.get(rc.HOLDOUT_DIR_ENV)
+    sc = {"agent": "claims-verifier", "task": "do the thing"}
+    try:
+        os.environ[rc.HOLDOUT_DIR_ENV] = "/some/holdout/bodies"
+        rc.run_agent(sc, "/tmp", "claude", "haiku")
+        check("run: run_agent boxes in the agent (forwards deny_read) under holdout bodies",
+              captured.get("deny") == ["/some/holdout/bodies"], captured)
+        os.environ.pop(rc.HOLDOUT_DIR_ENV, None)
+        rc.run_agent(sc, "/tmp", "claude", "haiku")
+        check("run: run_agent does NOT confine a normal dev run (deny_read None)",
+              captured.get("deny") is None, captured)
+    finally:
+        host_runner.invoke = keep_invoke
+        if keep_env is None:
+            os.environ.pop(rc.HOLDOUT_DIR_ENV, None)
+        else:
+            os.environ[rc.HOLDOUT_DIR_ENV] = keep_env
+
+    # --- run_holdout: clone -> point loader at bodies -> run -> DELETE the clone (offline) ---
+    import holdout
+    git_id = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    with tempfile.TemporaryDirectory() as vault:
+        bodies = os.path.join(vault, "bodies")
+        os.makedirs(bodies)
+        with open(os.path.join(bodies, "holdout-run-body.json"), "w") as fh:
+            json.dump({"id": "holdout-run-body", "agent": "claims-verifier", "plant": "p",
+                       "edits": [], "task": "t", "must_match": ["a"], "must_not_match": ["b"]}, fh)
+        for c in (["git", "-C", vault, "init", "-q"],
+                  ["git", "-C", vault, *git_id, "add", "-A"],
+                  ["git", "-C", vault, *git_id, "commit", "-q", "-m", "seed"]):
+            subprocess.run(c, check=True, capture_output=True, text=True)
+
+        seen = {}
+
+        def fake_runner(argv, env, bodies_dir):
+            seen["form_holdout"] = "--form" in argv and "holdout" in argv
+            seen["env_points_at_bodies"] = (
+                env.get("TDD_PLAYBOOK_HOLDOUT_DIR") == bodies_dir
+                and os.path.isfile(os.path.join(bodies_dir, "holdout-run-body.json")))
+            seen["workdir"] = os.path.dirname(os.path.dirname(bodies_dir))
+            return 0
+
+        rc_code = holdout.run_holdout(vault, ["--dry-run"], runner=fake_runner)
+        check("run: run_holdout invokes run_calibration --form holdout", seen.get("form_holdout"))
+        check("run: run_holdout points the loader env at the freshly-cloned bodies",
+              seen.get("env_points_at_bodies"))
+        check("run: run_holdout returns the eval exit code", rc_code == 0)
+        check("run: run_holdout DELETES the ephemeral clone (no answer key outlives the run)",
+              not os.path.exists(seen.get("workdir", "/nonexistent-sentinel")))
+
+
 def main():
     print("Calibration-harness calibration")
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()
     _holdout_egress_tests()
+    _holdout_run_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()
