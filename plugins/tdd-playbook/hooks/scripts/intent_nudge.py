@@ -114,8 +114,12 @@ def main():
     # heartbeat is the one signal dark-detection has). write_heartbeat never raises.
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from _common import write_heartbeat
+        from _common import write_heartbeat, note_hook_fired
         write_heartbeat()
+        # B1 isolation liveness: this is the one guaranteed once-per-run hook and it does NOT go
+        # through read_event, so mark the sink here too (the union with read_event = "any playbook
+        # hook of any kind fired"). Empty sink on a no-playbook run == genuinely isolated.
+        note_hook_fired("intent_nudge")
     except Exception:
         pass
     if os.environ.get("TDD_PLAYBOOK_NUDGE", "").strip().lower() == "off":

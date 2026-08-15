@@ -358,23 +358,119 @@ def nonexecution_reason(text):
     return None
 
 
-def run_agent(scenario, root, host_bin, model, host="claude"):
+# _common.py is the WRITER of this sink (note_hook_fired); the name is the contract between the
+# hook layer and this run-side reader. B1 isolation liveness.
+HOOK_EVENT_SINK_ENV = "TDD_PLAYBOOK_HOOK_EVENT_SINK"
+
+
+def _plugin_identity():
+    """(name, marketplace) for the tdd-playbook plugin, DERIVED from the identity files (never
+    hardcoded — arch-L1). The enablement key a disabling --settings file targets is
+    `<name>@<marketplace>`."""
+    import json as _json
+    name, mkt = "tdd-playbook", "david-tools"
+    try:
+        with open(os.path.join(REPO, "plugins", "tdd-playbook", ".claude-plugin",
+                               "plugin.json")) as fh:
+            name = _json.load(fh).get("name", name)
+    except Exception:
+        pass
+    try:
+        with open(os.path.join(REPO, ".claude-plugin", "marketplace.json")) as fh:
+            mkt = _json.load(fh).get("name", mkt)
+    except Exception:
+        pass
+    return name, mkt
+
+
+def _isolation_env(tmp):
+    """For a no-playbook run: write a settings file DISABLING the tdd-playbook plugin, and an
+    empty hook-event sink. Returns (settings_file, sink). The nested claude gets the settings
+    (plugin off) AND the sink env — so if a playbook hook fires anyway, it marks the sink, and a
+    non-empty sink proves the plugin was NOT actually off (recorded INVALID). Effect, not proxy."""
+    import json as _json
+    name, mkt = _plugin_identity()
+    settings = os.path.join(tmp, "no-playbook-settings.json")
+    with open(settings, "w") as fh:
+        _json.dump({"enabledPlugins": {"{}@{}".format(name, mkt): False}}, fh)
+    sink = os.path.join(tmp, "hook-events")
+    open(sink, "w").close()
+    return settings, sink
+
+
+def sink_liveness_probe(hook_paths=None):
+    """Confirm the DEPLOYED plugin actually WRITES the hook-event sink in THIS environment — the
+    isolation effect-proof is inert unless the RUNNING plugin carries note_hook_fired (§12:
+    committed != deployed != running). Runs the deployed UserPromptSubmit hook directly with the
+    sink env + a dummy event; True iff it wrote. Tests the DEPLOYED hook (the user-scope plugin
+    cache the nested calibration claude actually loads), NOT the repo copy — a repo that has the
+    writer while the installed plugin does not is exactly the false-isolated trap this guards.
+    `hook_paths` injectable for tests."""
+    import glob as _glob
+    if hook_paths is None:
+        hook_paths = sorted(_glob.glob(os.path.expanduser(
+            "~/.claude/plugins/cache/*/tdd-playbook/*/hooks/scripts/intent_nudge.py")))
+    with tempfile.TemporaryDirectory() as d:
+        sink = os.path.join(d, "probe")
+        for hook in hook_paths:
+            if not os.path.isfile(hook):
+                continue
+            env = dict(os.environ)
+            env[HOOK_EVENT_SINK_ENV] = sink
+            try:
+                subprocess.run([sys.executable, hook], input="{}", text=True,
+                               capture_output=True, timeout=20, env=env)
+            except Exception:
+                continue
+            if os.path.isfile(sink) and os.path.getsize(sink) > 0:
+                return True
+    return False
+
+
+def run_agent(scenario, root, host_bin, model, host="claude", isolation="with-playbook"):
     """One rep. Returns (status, output), status in {ok, timeout, env_failure} — typed at the
     seam that HOLDS the returncode/exception (arch-F4). env_failure = the doer never ran; it
-    is not an agent failure and is excluded from n. FileNotFoundError propagates (fatal)."""
+    is not an agent failure and is excluded from n. FileNotFoundError propagates (fatal).
+
+    isolation="no-playbook" runs the agent with the tdd-playbook plugin disabled (the control
+    group). It is proven live by a hook-event SINK: if any playbook hook fires, the plugin was
+    NOT off, so the rep is env_failure/INVALID — never a clean isolated number (effect-proof,
+    fail-closed). The `no-playbook` case needs the claude host's --settings; other hosts record
+    not-applicable rather than fabricate an isolated number."""
     prompt = (agent_body(scenario["agent"])
               + "\n\n# TASK (work in the current directory; it is a git repo)\n"
               + scenario["task"])
     extra = os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split()
+    if isolation == "no-playbook" and host != "claude":
+        return "env_failure", ("[isolation not-applicable on host {}: no-playbook needs the "
+                               "claude --settings plugin-disable; no analog here]".format(host))
+    # child_env: capture OFF for the nested host — its turns ARE the answer key
+    from child_env import child_env
+    env = child_env()
+    settings_file, sink, iso_tmp = None, None, None
+    if isolation == "no-playbook":
+        iso_tmp = tempfile.mkdtemp(prefix="tdd-iso-")
+        settings_file, sink = _isolation_env(iso_tmp)
+        env[HOOK_EVENT_SINK_ENV] = sink  # parent-added AFTER child_env; the nested hooks need it
     try:
-        # child_env: capture OFF for the nested host — its turns ARE the answer key
-        from child_env import child_env
-        result = host_runner.invoke(
-            host, host_bin, prompt, model, root, max_turns=turns_for(scenario),
-            timeout=TIMEOUT_S, env=child_env(), extra_args=extra,
-            confine_deny_read=holdout_deny_read())
-    except host_runner.RunnerError:
-        raise
+        try:
+            result = host_runner.invoke(
+                host, host_bin, prompt, model, root, max_turns=turns_for(scenario),
+                timeout=TIMEOUT_S, env=env, extra_args=extra,
+                confine_deny_read=holdout_deny_read(), settings=settings_file)
+        except host_runner.RunnerError:
+            raise
+        # ISOLATION EFFECT-PROOF (before interpreting the result): a no-playbook run whose hooks
+        # fired means the plugin was still active — INVALID, never a clean isolated number.
+        if isolation == "no-playbook" and sink and os.path.isfile(sink) \
+                and os.path.getsize(sink) > 0:
+            n = sum(1 for _ in open(sink))
+            return "env_failure", ("[isolation FAILED: {} playbook hook event(s) fired during a "
+                                   "no-playbook run — the plugin was NOT disabled; recorded "
+                                   "INVALID, not a clean isolated number]".format(n))
+    finally:
+        if iso_tmp:
+            shutil.rmtree(iso_tmp, ignore_errors=True)
     if result.status != "ok":
         return result.status, result.output
     # The doer was REFUSED, not wrong. These arrive on stdout with exit 0, so they must be
@@ -642,6 +738,13 @@ def main(argv=None):
     ap.add_argument("--form", choices=("dev", "holdout", "all"), default="dev",
                     help="which plant form to run: dev (default, the tuning set) · holdout "
                          "(the quarterly reporting set, never tuned against) · all")
+    ap.add_argument("--isolation", choices=("with-playbook", "no-playbook"),
+                    default="with-playbook",
+                    help="RUN axis (not a plant property): with-playbook (default) runs the "
+                         "agents normally; no-playbook runs them with the tdd-playbook plugin "
+                         "DISABLED (the control group that measures the Playbook's lift). A "
+                         "no-playbook run whose hooks still fire is recorded INVALID, never a "
+                         "clean number (B1 liveness effect-proof).")
     ap.add_argument("--repeat", type=int, default=DEFAULT_REPEAT, metavar="K",
                     help="reps per scenario (default {}; one roll is a coin flip, not a "
                          "measurement — §5a)".format(DEFAULT_REPEAT))
@@ -667,6 +770,19 @@ def main(argv=None):
     if args.repeat < 1:
         print("--repeat must be >= 1")
         return 2
+
+    # B1 — no-playbook isolation is only trustworthy if the DEPLOYED plugin writes the hook-event
+    # sink (else an isolation FAILURE could not be detected and a no-playbook run would be FALSELY
+    # reported as isolated). Refuse fast rather than emit a lie. Not a dry-run concern (no run).
+    if args.isolation == "no-playbook" and not args.dry_run and args.host == "claude":
+        if not sink_liveness_probe():
+            print("REFUSING no-playbook isolation: the DEPLOYED tdd-playbook plugin does not "
+                  "write the hook-event sink in this environment, so an isolation FAILURE could "
+                  "not be detected (a no-playbook run would be FALSELY reported as isolated). "
+                  "Release a plugin version carrying note_hook_fired, run `claude plugin update "
+                  "tdd-playbook@david-tools`, and re-run. (§12: committed != deployed != "
+                  "running — the sink writer must be EXECUTING, not merely pushed.)")
+            return 2
 
     # H8 — guards-liveness check on the surface David actually runs: work committed after
     # the last guard heartbeat means the hook layer was DARK (plugin disabled user-wide is
@@ -729,7 +845,7 @@ def main(argv=None):
     # no-playbook AMBER can never promote a normal AMBER to BLOCKING FAIL. Pre-run-block
     # legacy rows (2026-07-09) are outside any block and carry no AMBER, so excluding them
     # cannot change a promotion.
-    run_population = {"form": args.form, "isolation": "with-playbook"}
+    run_population = {"form": args.form, "isolation": args.isolation}
     prior_rows = []
     if args.history and os.path.isfile(args.history):
         with open(args.history) as fh:
@@ -754,7 +870,8 @@ def main(argv=None):
         for _rep in range(args.repeat):
             root = stage(sc)
             try:
-                status, out = run_agent(sc, root, selected_bin, args.model, args.host)
+                status, out = run_agent(sc, root, selected_bin, args.model, args.host,
+                                        isolation=args.isolation)
             except FileNotFoundError:
                 print("FATAL: {} binary not found ({}) — set --host-bin or the host env "
                       "override, or use --dry-run".format(args.host, selected_bin))
@@ -811,7 +928,7 @@ def main(argv=None):
           len(measured(controls)))
     meta = {"selected": len(scenarios), "total": len(all_scenarios),
             "shipped": len(shipped), "corpus": len(corpus), "controls": controls_total,
-            "recall": recall, "fp": fp, "form": args.form}
+            "recall": recall, "fp": fp, "form": args.form, "isolation": args.isolation}
     # A mostly-INVALID run is RECORDED, not suppressed — the row is honest non-data, and
     # "we tried and the environment refused" is worth knowing. INVALID is already excluded
     # from recall/FP, from the staleness clock, and from vitality. What it must NOT do is

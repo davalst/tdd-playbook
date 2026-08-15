@@ -47,17 +47,24 @@ def default_history(host):
     return os.path.join(REPO, "docs", "calibration", name)
 
 
-def command_for(host, binary, prompt, model, max_turns=None, extra_args=None):
+def command_for(host, binary, prompt, model, max_turns=None, extra_args=None, settings=None):
     extra = list(extra_args or [])
     if host == "claude":
         command = [binary, "-p", prompt, "--model", model]
         if max_turns is not None:
             command += ["--max-turns", str(max_turns)]
+        if settings:  # B1: a settings file that disables the tdd-playbook plugin (no-playbook run)
+            command += ["--settings", settings]
         return command + extra
     if host == "codex":
         # JSONL is a stable machine-facing stream; `--ephemeral` prevents calibration turns
         # entering the operator's history.  Host-specific sandbox/trust flags may be supplied
         # through the existing TDD_PLAYBOOK_CALIBRATION_ARGS escape hatch.
+        if settings:
+            raise RunnerError(
+                "no-playbook isolation is not applicable on the codex host — there is no "
+                "--settings plugin-disable analog; record not-applicable, never a fabricated "
+                "isolated number")
         return ([binary, "exec", "--json", "--ephemeral", "--ignore-rules",
                  "-m", model] + extra + [prompt])
     raise RunnerError("unknown host: {}".format(host))
@@ -96,9 +103,10 @@ def _maybe_confine(command, cwd, deny_read):
 
 
 def invoke(host, binary, prompt, model, cwd, max_turns=None, timeout=600, env=None,
-           extra_args=None, confine_deny_read=None):
+           extra_args=None, confine_deny_read=None, settings=None):
     command = _maybe_confine(
-        command_for(host, binary, prompt, model, max_turns, extra_args), cwd, confine_deny_read)
+        command_for(host, binary, prompt, model, max_turns, extra_args, settings=settings),
+        cwd, confine_deny_read)
     try:
         process = subprocess.run(command, cwd=cwd, capture_output=True, text=True,
                                  timeout=timeout, env=env)

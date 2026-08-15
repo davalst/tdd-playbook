@@ -59,8 +59,35 @@ _DEFAULT_MODES = {
 }
 
 
+HOOK_EVENT_SINK_ENV = "TDD_PLAYBOOK_HOOK_EVENT_SINK"
+
+
+def note_hook_fired(marker="hook"):
+    """B1 isolation liveness (EFFECT-proof). When TDD_PLAYBOOK_HOOK_EVENT_SINK names a file, append
+    a marker line — proof that a PLAYBOOK HOOK PROCESS ACTUALLY RAN. The baseline-isolation runner
+    sets this per calibration run: a no-playbook run's sink MUST stay empty (plugin disabled → this
+    module never loads → nothing appended); a non-empty sink means the plugin was still active, so
+    that run is recorded INVALID, never a clean isolated number. This is an effect (a hook that
+    cannot run cannot write), not a config-read proxy. Best-effort, MUST never raise (same contract
+    as write_heartbeat). Honest limit: forgeable like the heartbeat — it catches ACCIDENTAL
+    non-isolation (the real failure), not an owner-vs-owner adversary (out of scope, holdout custody
+    note). Called from read_event (every PreToolUse/PostToolUse/Stop guard — structurally
+    unavoidable, so any future guard auto-registers) plus the UserPromptSubmit heartbeat path (the
+    once-per-run hook). NOT from emit(), which sys.exit(0)s before logging, so a clean guard would
+    never mark and a no-playbook run would look falsely isolated."""
+    sink = os.environ.get(HOOK_EVENT_SINK_ENV)
+    if not sink:
+        return
+    try:
+        with open(sink, "a") as fh:
+            fh.write(marker + "\n")
+    except Exception:
+        pass
+
+
 def read_event():
     """Read and parse the hook's stdin JSON. Returns {} on any problem."""
+    note_hook_fired("read_event")
     try:
         raw = sys.stdin.read()
         return json.loads(raw) if raw.strip() else {}

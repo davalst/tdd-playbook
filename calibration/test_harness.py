@@ -125,7 +125,7 @@ def _history_format_tests():
         hp = os.path.join(d, "history.md")
         meta = {"date": "2026-08-10", "model": "haiku", "repo_sha": "abc1234",
                 "selected": 1, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
-                "recall": (0, 1), "fp": (0, 0), "form": "dev"}
+                "recall": (0, 1), "fp": (0, 0), "form": "dev", "isolation": "no-playbook"}
         hfmt.append_run_block(hp, meta, [
             {"date": "2026-08-10", "model_cell": "haiku", "scenario": "s9", "agent": "a9",
              "runs": "1/3", "mode": "found-but-hedged", "verdict": "AMBER"},
@@ -134,6 +134,13 @@ def _history_format_tests():
         check("append_run_block: run header carries sha + selected-of-total + recall/FP",
               "### Run 2026-08-10" in txt and "abc1234" in txt and "selected 1 of 14" in txt
               and "recall 0/1" in txt and "FP 0/0" in txt, txt)
+        # B1 round-trip: a no-playbook run WRITES the isolation clause and READS it back (not
+        # the baseline default) — the format-string↔_RUN_HEADER agreement the module demands.
+        check("append_run_block: writes `· isolation no-playbook`", "· isolation no-playbook" in txt,
+              txt)
+        _iso_blocks, _ = hfmt.parse_run_blocks(txt)
+        check("round-trip: isolation clause parses back as no-playbook",
+              _iso_blocks and _iso_blocks[0]["isolation"] == "no-playbook", _iso_blocks)
         check("append_run_block: 7-col table with its own separator row",
               "| date | model | scenario | agent | runs | mode | verdict |" in txt
               and "|---|---|---|---|---|---|---|" in txt, txt)
@@ -156,16 +163,31 @@ def _history_format_tests():
         row = [{"date": "2026-08-15", "model_cell": "haiku", "scenario": "s", "agent": "a",
                 "runs": "1/3", "mode": None, "verdict": "AMBER"}]
         try:
-            hfmt.append_run_block(hp, dict(base), row)
+            hfmt.append_run_block(hp, dict(base, isolation="with-playbook"), row)
             raised = False
         except KeyError:
             raised = True
         check("append_run_block REFUSES meta without form (no silent dev default)", raised)
+        # B1: isolation is ALSO a required write key (the same U2 trap — a no-playbook run
+        # written without it reads back as the with-playbook baseline, masking the control).
+        try:
+            hfmt.append_run_block(os.path.join(d, "h_iso.md"), dict(base, form="dev"), row)
+            raised_iso = False
+        except KeyError:
+            raised_iso = True
+        check("append_run_block REFUSES meta without isolation (no silent baseline default)",
+              raised_iso)
         hp2 = os.path.join(d, "h2.md")
-        hfmt.append_run_block(hp2, dict(base, form="holdout"), row)
+        hfmt.append_run_block(hp2, dict(base, form="holdout", isolation="with-playbook"), row)
         txt = open(hp2).read()
-        check("a holdout run writes `form holdout`, not `form dev`", "· form holdout\n" in txt,
-              txt)
+        check("a holdout run writes `form holdout`, not `form dev`",
+              "· form holdout · isolation with-playbook\n" in txt, txt)
+        # READ stays optional: a legacy header with no isolation clause defaults to the baseline.
+        legacy = ("### Run 2026-07-01 — model h · repo 0000000 · selected 1 of 1 "
+                  "(1 shipped + 0 corpus · 0 controls) · recall 0/1 [—] · FP 0/0 [—] · form dev\n")
+        lb, _ = hfmt.parse_run_blocks(legacy)
+        check("read: a pre-B1 block with no isolation clause defaults to with-playbook",
+              lb and lb[0]["isolation"] == "with-playbook", lb)
 
 
 def _staleness_invalid_tests():
@@ -267,7 +289,8 @@ def _d1_repeat_tests(d):
     hp = os.path.join(d, "h-promote.md")
     hfmt.append_run_block(hp, {"date": "2026-07-27", "model": "haiku", "repo_sha": "0000000",
                                "selected": 1, "total": 14, "shipped": 10, "corpus": 4,
-                               "controls": 1, "recall": (0, 1), "fp": (0, 0), "form": "dev"},
+                               "controls": 1, "recall": (0, 1), "fp": (0, 0), "form": "dev",
+                               "isolation": "with-playbook"},
                           [{"date": "2026-07-27", "model_cell": "haiku",
                             "scenario": "false-negative-claim", "agent": "claims-verifier",
                             "runs": "1/3", "mode": "found-but-hedged", "verdict": "AMBER"}])
@@ -281,7 +304,8 @@ def _d1_repeat_tests(d):
     hp = os.path.join(d, "h-nopromote.md")
     hfmt.append_run_block(hp, {"date": "2026-07-27", "model": "haiku", "repo_sha": "0000000",
                                "selected": 1, "total": 14, "shipped": 10, "corpus": 4,
-                               "controls": 1, "recall": (0, 1), "fp": (0, 0), "form": "dev"},
+                               "controls": 1, "recall": (0, 1), "fp": (0, 0), "form": "dev",
+                               "isolation": "with-playbook"},
                           [{"date": "2026-07-27", "model_cell": "haiku",
                             "scenario": "false-negative-claim", "agent": "claims-verifier",
                             "runs": "0/0", "mode": "env-failure", "verdict": "INVALID"}])
@@ -863,7 +887,8 @@ def _wilson_tests():
         hfmt.append_run_block(hp, {"date": "2026-08-10", "model": "haiku",
                                    "repo_sha": "abc1234", "selected": 1, "total": 30,
                                    "shipped": 26, "corpus": 4, "controls": 13,
-                                   "recall": (3, 3), "fp": (0, 0), "form": "dev"},
+                                   "recall": (3, 3), "fp": (0, 0), "form": "dev",
+                                   "isolation": "with-playbook"},
                               [{"date": "2026-08-10", "model_cell": "haiku",
                                 "scenario": "s", "agent": "a", "runs": "3/3",
                                 "mode": None, "verdict": "PASS"}])
@@ -927,7 +952,7 @@ def _weak_plant_flag_tests(d):
             hfmt.append_run_block(hp, {"date": date, "model": "haiku", "repo_sha": "0000000",
                                        "selected": 1, "total": 24, "shipped": 20,
                                        "corpus": 4, "controls": 10, "recall": (1, 1),
-                                       "fp": (0, 0), "form": "dev"},
+                                       "fp": (0, 0), "form": "dev", "isolation": "with-playbook"},
                                   [{"date": date, "model_cell": "haiku",
                                     "scenario": "false-negative-claim",
                                     "agent": "claims-verifier",
@@ -2615,6 +2640,107 @@ def _holdout_run_tests():
               not os.path.exists(seen.get("workdir", "/nonexistent-sentinel")))
 
 
+def _isolation_liveness_tests():
+    """B1 write side — the hook-event SINK effect-proof. note_hook_fired marks the sink when the
+    env is set (from read_event — every guard, even a CLEAN one, unlike emit()); run_agent boxes
+    a no-playbook run and records INVALID if any hook fired (the plugin was still active — the
+    motivating defect, §13); codex no-playbook is not-applicable, never a fabricated number."""
+    import io
+    import run_calibration as rc
+    import host_runner
+    sys.path.insert(0, os.path.join(REPO, "plugins", "tdd-playbook", "hooks", "scripts"))
+    import _common
+
+    keep = os.environ.get(_common.HOOK_EVENT_SINK_ENV)
+    with tempfile.TemporaryDirectory() as d:
+        sink = os.path.join(d, "sink")
+        os.environ[_common.HOOK_EVENT_SINK_ENV] = sink
+        try:
+            _common.note_hook_fired("t1")
+            check("iso: note_hook_fired appends when the sink env is set",
+                  os.path.isfile(sink) and os.path.getsize(sink) > 0)
+            os.remove(sink)
+            keep_stdin = sys.stdin
+            sys.stdin = io.StringIO("{}")  # a CLEAN event (no findings) must still mark the sink
+            try:
+                _common.read_event()
+            finally:
+                sys.stdin = keep_stdin
+            check("iso: read_event marks the sink even for a CLEAN guard (not emit(), §D2.c)",
+                  os.path.isfile(sink) and os.path.getsize(sink) > 0)
+        finally:
+            if keep is None:
+                os.environ.pop(_common.HOOK_EVENT_SINK_ENV, None)
+            else:
+                os.environ[_common.HOOK_EVENT_SINK_ENV] = keep
+    os.environ.pop(_common.HOOK_EVENT_SINK_ENV, None)
+    try:
+        _common.note_hook_fired("t")
+        noop_ok = True
+    except Exception:
+        noop_ok = False
+    check("iso: note_hook_fired is a silent no-op when the sink env is unset", noop_ok)
+
+    # --- run_agent effect-replay (no live model; invoke injected) ---
+    sc = {"agent": "claims-verifier", "task": "t"}
+    cap = {}
+
+    def fake_fires(host, binary, prompt, model, cwd, **kw):
+        cap["settings"] = kw.get("settings")
+        s = (kw.get("env") or {}).get(rc.HOOK_EVENT_SINK_ENV)
+        if s:
+            with open(s, "a") as fh:
+                fh.write("read_event\n")   # simulate the plugin STILL active (hooks fired)
+        return host_runner.Result(host, "ok", "a verdict line", 0, None)
+
+    def fake_silent(host, binary, prompt, model, cwd, **kw):
+        cap["settings"] = kw.get("settings")
+        return host_runner.Result(host, "ok", "a verdict line", 0, None)
+
+    keep_inv = host_runner.invoke
+    with tempfile.TemporaryDirectory() as root:
+        try:
+            host_runner.invoke = fake_fires
+            st, out = rc.run_agent(sc, root, "claude", "haiku", host="claude",
+                                   isolation="no-playbook")
+            check("iso: PLANTED a no-playbook run whose hooks FIRED -> env_failure (INVALID)",
+                  st == "env_failure" and "isolation FAILED" in out, (st, out))
+            check("iso: run_agent passes a --settings disable file for no-playbook",
+                  bool(cap.get("settings")), cap)
+            host_runner.invoke = fake_silent
+            st2, out2 = rc.run_agent(sc, root, "claude", "haiku", host="claude",
+                                     isolation="no-playbook")
+            check("iso: no-playbook with an EMPTY sink -> ok (genuinely isolated)",
+                  st2 == "ok", (st2, out2))
+            st3, _o3 = rc.run_agent(sc, root, "claude", "haiku", host="claude",
+                                    isolation="with-playbook")
+            check("iso: with-playbook passes NO settings (default run path unchanged)",
+                  cap.get("settings") is None and st3 == "ok", cap)
+            st4, out4 = rc.run_agent(sc, root, "codex", "haiku", host="codex",
+                                     isolation="no-playbook")
+            check("iso: codex + no-playbook -> not-applicable (never a fabricated number)",
+                  st4 == "env_failure" and "not-applicable" in out4, (st4, out4))
+        finally:
+            host_runner.invoke = keep_inv
+
+    # --- sink_liveness_probe: the DEPLOYED-hook effect-gate (§12 committed != deployed) ---
+    with tempfile.TemporaryDirectory() as d:
+        writer = os.path.join(d, "writer.py")
+        with open(writer, "w") as fh:
+            fh.write("import os\n"
+                     "s=os.environ.get('TDD_PLAYBOOK_HOOK_EVENT_SINK')\n"
+                     "open(s,'a').write('x\\n') if s else None\n")
+        nonwriter = os.path.join(d, "nonwriter.py")
+        with open(nonwriter, "w") as fh:
+            fh.write("pass\n")  # an OLD deployed hook: no sink write
+        check("iso-probe: a deployed hook that WRITES the sink -> live (True)",
+              rc.sink_liveness_probe([writer]) is True)
+        check("iso-probe: PLANTED an OLD deployed hook that does NOT write -> False (fail-closed)",
+              rc.sink_liveness_probe([nonwriter]) is False)
+        check("iso-probe: no deployed hook found -> False (fail-closed on the deploy dependency)",
+              rc.sink_liveness_probe([]) is False)
+
+
 def main():
     print("Calibration-harness calibration")
     _confinement_tests()
@@ -2622,6 +2748,7 @@ def main():
     _holdout_controller_tests()
     _holdout_egress_tests()
     _holdout_run_tests()
+    _isolation_liveness_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()
@@ -2910,7 +3037,7 @@ def test_author_plants():
                 {"sc": {"id": "bx", "agent": "claims-verifier"},
                  "runs": "0/3", "mode": "missed-entirely", "verdict": "**BLOCKING FAIL**"},
             ], {"selected": 2, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
-                "recall": (1, 2), "fp": (0, 0), "form": "dev"})
+                "recall": (1, 2), "fp": (0, 0), "form": "dev", "isolation": "with-playbook"})
         except TypeError as e:
             check("append_history accepts structured results + run meta", False, e)
         txt = open(hp).read() if os.path.isfile(hp) else ""

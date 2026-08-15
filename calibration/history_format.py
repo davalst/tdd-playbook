@@ -217,18 +217,20 @@ def append_run_block(path, meta, rows):
         fh.write(
             "\n### Run {date} — model {model} · repo {repo_sha} · selected {selected} of "
             "{total} ({shipped} shipped + {corpus} corpus · {controls} controls) · "
-            "recall {r0}/{r1} {rci} · FP {f0}/{f1} {fci} · form {form}\n".format(
+            "recall {r0}/{r1} {rci} · FP {f0}/{f1} {fci} · form {form} · "
+            "isolation {isolation}\n".format(
                 r0=meta["recall"][0], r1=meta["recall"][1],
                 rci=interval_cell(*meta["recall"]),
                 f0=meta["fp"][0], f1=meta["fp"][1],
                 fci=interval_cell(*meta["fp"]),
-                # U2 (2026-08-15): `form` is a REQUIRED write key (in the meta[k] splat), not
-                # a silent default. The producer omitted it and `.get(form, dev)` wrote `form
-                # dev` under --form holdout for months. READING stays optional (old blocks
-                # lack the clause, _RUN_HEADER defaults them); WRITING must never guess, or a
-                # holdout run is indistinguishable from a dev run in the append-only record.
+                # U2/B1 (2026-08-15): `form` AND `isolation` are REQUIRED write keys (in the
+                # meta[k] splat), not silent defaults. The `form` default once wrote `form dev`
+                # under --form holdout for months; the same trap applies to isolation — a
+                # no-playbook run written without the clause reads back as the with-playbook
+                # baseline, masking the control group. READING stays optional (old blocks lack
+                # the clause, _RUN_HEADER defaults them); WRITING must never guess.
                 **{k: meta[k] for k in ("date", "model", "repo_sha", "selected", "total",
-                                        "shipped", "corpus", "controls", "form")}))
+                                        "shipped", "corpus", "controls", "form", "isolation")}))
         fh.write(HEADER_7 + "\n" + SEP_7 + "\n")
         for r in rows:
             fh.write("| {date} | {model_cell} | {scenario} | {agent} | {runs} | {mode} | "
