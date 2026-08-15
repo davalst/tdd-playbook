@@ -4,7 +4,7 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `8d200f4ca47bc5308b0e462652bae3fba7361077d69ae34cef973bc1022cd226`
+- `gate-manifest.json` — `c2882586e27a5ab32ce6444452baab83a2a28dc406de88e1e61361e16e43eb73`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `37c62ad37f395681635807c1a0f3e3d9370ff20a9d3431d16b4cfaab9b42b01e`
 - `docs/architecture/host-parity.json` — `ac5a9b1c6d649c862677bbed993d0dfb6dd05d0a1a0732d0d044b6a523615fd3`
@@ -27,16 +27,17 @@
 - `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
 - `docs/reviews/2026-08-14-review-as-judgment-surface.json` — `013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f`
 - `docs/reviews/2026-08-15-two-tier-calibration-part1.json` — `e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5`
-- `docs/reviews/index.json` — `1676685de96da85bbde33e479cae044b7be7898f56d2d75ba661bbfcfe468efa`
+- `docs/reviews/2026-08-15-two-tier-calibration-part2-controller.json` — `00a6cd35d141f2ed86612db918efd97cdb99f7184ee78e13ba1d1f0028c222dc`
+- `docs/reviews/index.json` — `19e0835a641637ed7c96af181da43c95c7746d541d7bbe5f725765d4231a5171`
 
 ## Gate surface
 
 - `sh scripts/civerd_gate.sh` — **AUTHORIZING** complete local gate and CIVerd suite command.
 - `sh scripts/civerd_gate.sh affected --base <revision>` — **NON-AUTHORIZING** diagnostic subset; ambiguous scope falls back to full.
-- Discovered suites: 26. Fixed stages: 4. Total stages: 30.
-- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
+- Discovered suites: 27. Fixed stages: 4. Total stages: 31.
+- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_holdout_confinement`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
-- Acknowledged roster digest: `3e5d6a58e0f0ef45c0355ef33ff49392a23448fe500ba6384bd99287f74eb03c`
+- Acknowledged roster digest: `6239dbea0fcb7fb6e01227fd5d0b1e74999deef8b1b24d9dbce0a5d7f1be79bb`
 - Acknowledged execution-manifest digest: `4bfd3e672c92d0f32eead8d39bcadb2a68f71065d5a4903f47454eff439d634e`
 
 ## Host parity
@@ -124,8 +125,8 @@
 
 ## Adversarial review records
 
-- Review records: 17. Findings: 108.
-- `incorporated`: 27
-- `open`: 5
+- Review records: 18. Findings: 115.
+- `incorporated`: 31
+- `open`: 6
 - `rejected`: 3
-- `verified_closed`: 73
+- `verified_closed`: 75

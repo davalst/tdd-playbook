@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-15-two-tier-calibration-part2-controller",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "93094523e60b207e879518fc39aa0e2bfab54a47",
+    "head": "aa987e184c4c92fa9047480f0a0d11ade14d5473"
+  },
+  "reviewers": [
+    "security-adversary",
+    "architecture-adversary",
+    "tripwire-auditor"
+  ],
+  "findings": [
+    {
+      "id": "SEC-F1-GIT-SIBLING-READABLE-BEHIND-A-DENIED-LEAF",
+      "severity": "P1",
+      "summary": "Security-adversary (verdict EXPOSED, confirmed empirically): the sandbox read-denied the bodies/ LEAF, but `git clone` writes the .git object store as a SIBLING of bodies/, left under (allow default). `git show HEAD:bodies/*.json` reconstructs every plant, oracle regex, and edit from the object store without ever touching the denied subpath \u2014 the single load-bearing confinement property was defeated one directory over.",
+      "evidence": [
+        "calibration/confine.py:50",
+        "calibration/holdout.py:132",
+        "calibration/run_calibration.py:121"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9f325e0b05a528e9419c6c1da0f37b83aabab08b",
+      "closure_review": "security-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_holdout_confinement.py::test_run_holdout_denies_whole_clone_tree"
+      ],
+      "disposition": "run_holdout now sets TDD_PLAYBOOK_HOLDOUT_DENY to the whole clone ROOT (the temp workdir containing vault/, hence bodies/ AND .git/); holdout_deny_read prefers that root over the bodies leaf. Because F1 is a P1 blocker, the regression was added to the BLESSED suite (not only calibration/test_harness.py) so it carries closure evidence and runs first-class every gate: test_run_holdout_denies_whole_clone_tree pins the deny env covering bodies + the .git sibling, and test_confine_denies_git_sibling_under_root proves it at the OS layer BOTH directions (root-deny blocks .git; leaf-deny leaks it \u2014 the frozen pre-fix artifact, \u00a713). The calibration harness keeps the same REPRO/FIX pair.",
+      "class": "deterministic",
+      "recurrence_key": "sandbox-denies-leaf-not-tree"
+    },
+    {
+      "id": "SEC-F2-HOLDOUT-LOCATION-HANDED-TO-CHILD",
+      "severity": "P2",
+      "summary": "Security-adversary (HIGH): child_env() copied the whole environment (dict(os.environ)), so the evaluated agent AND the plant-authoring adversary were handed TDD_PLAYBOOK_HOLDOUT_DIR \u2014 a pointer straight at the ephemeral clone, turning any allow-default read into a targeted one (compounds F1).",
+      "evidence": [
+        "calibration/child_env.py:19",
+        "calibration/host_runner.py:103"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "9f325e0b05a528e9419c6c1da0f37b83aabab08b",
+      "closure_review": "security-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_holdout_confinement.py::test_child_env_strips_holdout_location"
+      ],
+      "disposition": "child_env now strips TDD_PLAYBOOK_HOLDOUT_DIR and TDD_PLAYBOOK_HOLDOUT_DENY from every nested model's env (defense in depth \u2014 the box denies the tree; this removes even the pointer). The trusted parent keeps them (it computes the deny root and loads bodies through os.environ, not the child copy). Pinned in the blessed suite by test_child_env_strips_holdout_location, and in the calibration harness.",
+      "class": "deterministic",
+      "recurrence_key": "secret-location-in-child-env"
+    },
+    {
+      "id": "ARCH-F1-SHA-ENUMERATOR-SECOND-COPY",
+      "severity": "P2",
+      "summary": "Architecture-adversary (verdict MIXED, confirmed): holdout_shas duplicated corpus_shas's enumeration loop byte-for-byte, differing only in the source dir. arch-F3's 'drift check compares like with like' guarantee rested entirely on the two loops never drifting \u2014 a copy the docstring itself called 'EXACTLY as corpus_shas does' is one edit from silently comparing unlike shas in the security-critical drift checker.",
+      "evidence": [
+        "calibration/holdout.py:80",
+        "calibration/plant_forms.py:129"
+      ],
+      "status": "incorporated",
+      "disposition": "Extracted plant_forms.shas_in_dir(d); corpus_shas AND holdout_shas both call it (corpus_shas = shas_in_dir(corpus dir); holdout_shas = shas_in_dir(bodies dir)). One enumerator, so the drift check compares like with like by CONSTRUCTION, not by matching docstrings. corpus_shas's two callers unchanged; harness holdout_shas/verify_bodies tests still green.",
+      "class": "deterministic",
+      "recurrence_key": "sha-enumerator-second-copy"
+    },
+    {
+      "id": "SEC-F4-UNCONFINED-AUTHORING-SPAWN",
+      "severity": "P3",
+      "summary": "Security-adversary (MED-LOW): author_plants.cmd_author spawned the model with NO confine_deny_read \u2014 the unguarded twin of run_agent's confined call \u2014 while corpus_scenarios now sources the holdout dir. Reachability is contrived (the controller runs run_calibration, not author_plants), but the box was on only one of the two model-spawn seams child_env.py itself documents.",
+      "evidence": [
+        "calibration/author_plants.py:137"
+      ],
+      "status": "incorporated",
+      "disposition": "cmd_author now passes confine_deny_read=holdout_deny_read() \u2014 symmetric with run_agent, fails closed without a sandbox rather than authoring unconfined beside an answer key. Import added; initially WIRED-but-not-EXERCISED (tripwire caught this \u2014 see TRIPWIRE-F4-EXERCISED-GAP), now pinned by a red-first-proven forwarding guard.",
+      "class": "deterministic",
+      "recurrence_key": "unconfined-second-spawn-seam"
+    },
+    {
+      "id": "TRIPWIRE-F4-EXERCISED-GAP",
+      "severity": "P2",
+      "summary": "Tripwire-auditor (5/6): the F4 fix (author_plants confines its model spawn) was WIRED but NOT EXERCISED \u2014 no test drove cmd_author with a holdout deny set, so deleting confine_deny_read at author_plants.py would have failed zero tests. The run_agent seam had exactly that forwarding guard; the second spawn seam child_env.py itself names did not. A security fix protected by nothing.",
+      "evidence": [
+        "calibration/author_plants.py:145",
+        "calibration/test_harness.py:2531"
+      ],
+      "status": "incorporated",
+      "disposition": "Added a forwarding guard mirroring the run_agent one: it drives the real cmd_author with TDD_PLAYBOOK_HOLDOUT_DENY set (mocked invoke) and asserts the deny reaches the spawn. Red-first PROVEN \u2014 removing confine_deny_read flips the check to FAIL ({'deny': None}); restored, harness 375/375. Recorded incorporated (the exercising test is in the calibration fixed stage, not suite_glob).",
+      "class": "deterministic",
+      "recurrence_key": "security-fix-without-a-failing-test"
+    },
+    {
+      "id": "SEC-F5-CONTAINMENT-CHECK-FAILS-OPEN",
+      "severity": "P3",
+      "summary": "Security-adversary (LOW): dest_is_inside_tree returns False (allow) when repo_toplevel yields None (git absent / not a repo), silently DISABLING the in-tree containment refusal. Mooted in run_holdout by mkdtemp being out-of-tree, but the refusal was not fail-closed on its own.",
+      "evidence": [
+        "calibration/holdout.py:55",
+        "calibration/holdout.py:69"
+      ],
+      "status": "incorporated",
+      "disposition": "clone_vault now raises when public_tree is None ('cannot prove dest is outside a working tree \u2014 fail closed'). Pinned by test_harness ('clone_vault FAILS CLOSED when the working tree can't be resolved').",
+      "class": "deterministic",
+      "recurrence_key": "containment-check-fails-open"
+    },
+    {
+      "id": "SEC-F3-CONFINED-AGENT-KEEPS-NETWORK-EGRESS",
+      "severity": "P3",
+      "summary": "Security-adversary (MEDIUM): the confined holdout agent keeps full network egress (deny_network defaults False and run_agent never sets it). By design the subscription `claude` needs network to reach the model API, so a recovered key could be exfiltrated, not merely reflected into a scored transcript.",
+      "evidence": [
+        "calibration/confine.py:58",
+        "calibration/host_runner.py:95"
+      ],
+      "status": "open",
+      "disposition": "ACCEPTED residual, not fixed: network is inherent to the subscription model API (the auth route this design chose precisely because the Keychain login runs host-side). With F1 and F2 closed there is no readable local key for egress to carry \u2014 the clone tree is unreadable and its location is stripped from the agent's env \u2014 which de-fangs F3 to 'the API connection the agent legitimately needs'. Revisit if a non-subscription (API-key) host is used, where the Docker --network none path (already proven this session) applies.",
+      "class": "judgment",
+      "recurrence_key": "confined-agent-network-egress"
+    }
+  ]
+}

@@ -68,6 +68,10 @@
     {
       "path": "2026-08-15-two-tier-calibration-part1.json",
       "sha256": "e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5"
+    },
+    {
+      "path": "2026-08-15-two-tier-calibration-part2-controller.json",
+      "sha256": "00a6cd35d141f2ed86612db918efd97cdb99f7184ee78e13ba1d1f0028c222dc"
     }
   ]
 }
