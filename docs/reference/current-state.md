@@ -26,7 +26,8 @@
 - `docs/reviews/2026-08-13-cheliped-proposals-adjudication.json` — `e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b`
 - `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
 - `docs/reviews/2026-08-14-review-as-judgment-surface.json` — `013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f`
-- `docs/reviews/index.json` — `b192732d863e61a2c0f4fe47de79546987b6b141c58db7b1ed836d16cc80f37d`
+- `docs/reviews/2026-08-15-two-tier-calibration-part1.json` — `e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5`
+- `docs/reviews/index.json` — `1676685de96da85bbde33e479cae044b7be7898f56d2d75ba661bbfcfe468efa`
 
 ## Gate surface
 
@@ -123,8 +124,8 @@
 
 ## Adversarial review records
 
-- Review records: 16. Findings: 100.
-- `incorporated`: 20
-- `open`: 4
+- Review records: 17. Findings: 108.
+- `incorporated`: 27
+- `open`: 5
 - `rejected`: 3
 - `verified_closed`: 73

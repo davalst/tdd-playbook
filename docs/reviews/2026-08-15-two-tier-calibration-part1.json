@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-15-two-tier-calibration-part1",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "775387b4585556b43ccddc08791fe5f5283646f1",
+    "head": "1b980acf8db9f585ad4b764cc685d3d93684bad8"
+  },
+  "reviewers": [
+    "tripwire-auditor",
+    "architecture-adversary"
+  ],
+  "findings": [
+    {
+      "id": "ARCH-F1-CROSS-POPULATION-NOISE-FLOOR",
+      "severity": "P2",
+      "summary": "Architecture-adversary MIXED(1): P made comparable_blocks population-aware, but its caller _floor_from passed no population, so a holdout entry's INCONCLUSIVE(below-noise-floor) threshold was computed from the baseline/dev population and applied to a holdout delta \u2014 the cross-population-number-as-effect P exists to kill, and internally inconsistent (P filters the PAIR to baseline yet applied that floor to non-baseline entries).",
+      "evidence": [
+        "calibration/ledger.py:553",
+        "calibration/power.py:108",
+        "calibration/ledger.py:704"
+      ],
+      "status": "incorporated",
+      "disposition": "cmd_score now computes a per-population floor (cached per form) and threads each entry's population through _floor_from -> comparable_blocks; the report diagnostic stays baseline-default (a dev-population read). Verified against the tree before accepting. Pinned by test_harness (a holdout want with one holdout block reads UNMEASURED, not a dev floor) \u2014 the fix's test is in the calibration fixed stage, not suite_glob, so recorded incorporated per the known RS-P2 closure-evidence constraint.",
+      "class": "judgment",
+      "recurrence_key": "cross-population-number-as-effect"
+    },
+    {
+      "id": "ARCH-LEAD-LEGIBILITY-SCAN-NARROWER-THAN-STAGED",
+      "severity": "P3",
+      "summary": "Architecture-adversary lead: fixture_legibility_problems scanned only .py/.sh/.md while stage() copies every fixture file except __pycache__/*.pyc \u2014 a tell in a .txt/.toml/.cfg fixture would be staged to the doer yet unscanned (sweep surface != staging surface).",
+      "evidence": [
+        "calibration/run_calibration.py:371",
+        "calibration/run_calibration.py:177"
+      ],
+      "status": "incorporated",
+      "disposition": "The sweep now scans the SAME surface stage() copies (every file except .pyc, __pycache__ pruned), errors='replace' so a stray binary is harmless. Incorporated in 1b980ace.",
+      "class": "deterministic",
+      "recurrence_key": "sweep-surface-narrower-than-staged"
+    },
+    {
+      "id": "ARCH-LEAD-IS-FIXTURE-PRIVATE-CROSS-MODULE",
+      "severity": "P3",
+      "summary": "Architecture-adversary lead: _is_fixture gained a second cross-module consumer (build_completion_reminder) while keeping its underscore-private name.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/fixture_guard.py:49",
+        "plugins/tdd-playbook/hooks/scripts/build_completion_reminder.py:23"
+      ],
+      "status": "incorporated",
+      "disposition": "Promoted to public is_fixture_data; both consumers updated. The _seg_writes import from test_lock_guard deliberately stays underscore (renaming a symbol inside a BLOCKING guard for cosmetics is riskier than tolerating it \u2014 the reviewer's own counsel).",
+      "class": "judgment",
+      "recurrence_key": "private-symbol-cross-module-consumer"
+    },
+    {
+      "id": "ARCH-LEAD-RESET-PLAN-RETYPES-LOCKSTATE-FILENAMES",
+      "severity": "P3",
+      "summary": "Architecture-adversary lead: reset_plan.py:163 re-types the four lock-state filenames as literals instead of importing host_contract's constants \u2014 the one place the 'lock state files' set is still hand-typed after U1 gave it an owner.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/reset_plan.py:163",
+        "plugins/tdd-playbook/bin/host_contract.py:26"
+      ],
+      "status": "open",
+      "class": "deterministic",
+      "recurrence_key": "parallel-basename-rosters"
+    },
+    {
+      "id": "P1-SELF-1-APPEND-ONLY-HEADER-EDIT",
+      "severity": "P2",
+      "summary": "Self-caught (U2): the dated form-correction note was PREPENDED to history.md, violating the append-only byte-prefix invariant; check_scoreboard_integrity REDed it immediately. Re-appended at the file end; parser tolerance verified (275 rows still parse).",
+      "evidence": [
+        "docs/calibration/history.md",
+        "calibration/check_scoreboard_integrity.py:9"
+      ],
+      "status": "incorporated",
+      "disposition": "Correction appended at the end with a note it applies to all blocks above; the integrity check is what caught the wrong placement. Self-caught by a mechanical oracle.",
+      "class": "deterministic",
+      "recurrence_key": "append-only-header-edit"
+    },
+    {
+      "id": "P1-SELF-2-INSERT-SPLITS-A-BLOCK",
+      "severity": "P3",
+      "summary": "Self-caught (A.3): a regression assertion was inserted into the MIDDLE of a with-block, orphaning the block tail (IndentationError). Moved to the function end.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py"
+      ],
+      "status": "incorporated",
+      "disposition": "Caught by running the suite (parse error) before commit; re-placed at function-body indent after the with-block.",
+      "class": "deterministic",
+      "recurrence_key": "insert-splits-a-block"
+    },
+    {
+      "id": "P1-SELF-3-SCRUB-BREAKS-SCENARIO-ANCHOR",
+      "severity": "P2",
+      "summary": "Self-caught (U3a): de-legibilizing verify_install.sh changed its FAIL echo line, which is the edit-anchor for the script-unsafe-probe scenario \u2014 --dry-run flagged 'edits do not apply'. Restored the anchor ('control' there is a legitimate security access-control phrase, not a calibration tell).",
+      "evidence": [
+        "calibration/fixture/verify_install.sh",
+        "calibration/scenarios.json"
+      ],
+      "status": "incorporated",
+      "disposition": "Anchor restored; --dry-run confirms all 48 scenarios apply. The real tells (header comments naming the harness) were removed and stay removed.",
+      "class": "deterministic",
+      "recurrence_key": "scrub-breaks-scenario-anchor"
+    },
+    {
+      "id": "P1-SELF-4-POSITIONAL-LIST-DIFF-FALSE-POSITIVE",
+      "severity": "P2",
+      "summary": "Self-caught (A.1 smoke test): fixture_guard's first list-diff was positional, so PREPENDING a case read as 'every element changed' and false-warned \u2014 the exact warning-fatigue failure David scoped the guard to avoid.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/fixture_guard.py:89"
+      ],
+      "status": "incorporated",
+      "disposition": "Switched to multiset matching (an old element is preserved if some new element differs only in non-answer ways); pinned by test_fixture_guard (prepend/append/reorder silent; delete/answer-change warn).",
+      "class": "deterministic",
+      "recurrence_key": "positional-list-diff-fp"
+    }
+  ]
+}

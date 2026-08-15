@@ -64,6 +64,10 @@
     {
       "path": "2026-08-14-review-as-judgment-surface.json",
       "sha256": "013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f"
+    },
+    {
+      "path": "2026-08-15-two-tier-calibration-part1.json",
+      "sha256": "e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5"
     }
   ]
 }
