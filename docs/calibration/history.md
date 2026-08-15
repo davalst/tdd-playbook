@@ -373,3 +373,11 @@
 |---|---|---|---|---|---|---|
 | 2026-08-13 | opus vs claude-opus-5 | control-export-failure-surfaces | observability-adversary | 3/3 | — | PASS |
 | 2026-08-13 | opus vs claude-opus-5 | swallowed-export-failure | observability-adversary | 3/3 | — | PASS |
+
+> **DATED CORRECTION (2026-08-15, U2) — appended per the append-only rule; applies to
+> every block ABOVE this line.** Run blocks written before 2026-08-15 carry `form dev` by
+> DEFAULT, not by measurement: the producer's meta dict omitted `form` and the writer
+> silently defaulted it, so any run made under `--form holdout` before now is recorded as
+> `dev` and is UNRECOVERABLE. Treat the `form` cell on pre-2026-08-15 blocks as
+> **UNMEASURED, not `dev`**. From this date the writer REQUIRES `form` (KeyError otherwise),
+> so the cell is a real measurement going forward. Old rows are never reinterpreted.

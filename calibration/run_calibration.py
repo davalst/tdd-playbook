@@ -708,7 +708,7 @@ def main(argv=None):
           len(measured(controls)))
     meta = {"selected": len(scenarios), "total": len(all_scenarios),
             "shipped": len(shipped), "corpus": len(corpus), "controls": controls_total,
-            "recall": recall, "fp": fp}
+            "recall": recall, "fp": fp, "form": args.form}
     # A mostly-INVALID run is RECORDED, not suppressed — the row is honest non-data, and
     # "we tried and the environment refused" is worth knowing. INVALID is already excluded
     # from recall/FP, from the staleness clock, and from vitality. What it must NOT do is

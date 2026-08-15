@@ -180,12 +180,13 @@ def append_run_block(path, meta, rows):
                 rci=interval_cell(*meta["recall"]),
                 f0=meta["fp"][0], f1=meta["fp"][1],
                 fci=interval_cell(*meta["fp"]),
-                # `form` is written ALWAYS from here on, defaulted for callers that predate
-                # the split. Reading is optional (old blocks lack it); writing is not, or a
-                # holdout run would be indistinguishable from a dev run in the record.
-                form=meta.get("form", _FORM_DEFAULT), **{
-                    k: meta[k] for k in ("date", "model", "repo_sha", "selected", "total",
-                                         "shipped", "corpus", "controls")}))
+                # U2 (2026-08-15): `form` is a REQUIRED write key (in the meta[k] splat), not
+                # a silent default. The producer omitted it and `.get(form, dev)` wrote `form
+                # dev` under --form holdout for months. READING stays optional (old blocks
+                # lack the clause, _RUN_HEADER defaults them); WRITING must never guess, or a
+                # holdout run is indistinguishable from a dev run in the append-only record.
+                **{k: meta[k] for k in ("date", "model", "repo_sha", "selected", "total",
+                                        "shipped", "corpus", "controls", "form")}))
         fh.write(HEADER_7 + "\n" + SEP_7 + "\n")
         for r in rows:
             fh.write("| {date} | {model_cell} | {scenario} | {agent} | {runs} | {mode} | "

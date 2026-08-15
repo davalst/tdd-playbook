@@ -125,7 +125,7 @@ def _history_format_tests():
         hp = os.path.join(d, "history.md")
         meta = {"date": "2026-08-10", "model": "haiku", "repo_sha": "abc1234",
                 "selected": 1, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
-                "recall": (0, 1), "fp": (0, 0)}
+                "recall": (0, 1), "fp": (0, 0), "form": "dev"}
         hfmt.append_run_block(hp, meta, [
             {"date": "2026-08-10", "model_cell": "haiku", "scenario": "s9", "agent": "a9",
              "runs": "1/3", "mode": "found-but-hedged", "verdict": "AMBER"},
@@ -143,6 +143,29 @@ def _history_format_tests():
         check("round-trip: new row parsed with runs/mode/kind",
               len(parsed) == 1 and parsed[0]["runs"] == "1/3"
               and parsed[0]["mode"] == "found-but-hedged" and parsed[0]["kind"] == "AMBER", parsed)
+
+    # U2 (2026-08-15): `form` is a REQUIRED writer-contract key, not a silent default. The
+    # producer (run_calibration meta dict) omitted it, so `.get(form, "dev")` wrote `form
+    # dev` even under --form holdout — a holdout run indistinguishable from dev in the
+    # append-only record. A caller that forgets `form` must now KeyError, not lie.
+    with tempfile.TemporaryDirectory() as d:
+        hp = os.path.join(d, "history.md")
+        base = {"date": "2026-08-15", "model": "haiku", "repo_sha": "abc1234",
+                "selected": 1, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
+                "recall": (0, 1), "fp": (0, 0)}
+        row = [{"date": "2026-08-15", "model_cell": "haiku", "scenario": "s", "agent": "a",
+                "runs": "1/3", "mode": None, "verdict": "AMBER"}]
+        try:
+            hfmt.append_run_block(hp, dict(base), row)
+            raised = False
+        except KeyError:
+            raised = True
+        check("append_run_block REFUSES meta without form (no silent dev default)", raised)
+        hp2 = os.path.join(d, "h2.md")
+        hfmt.append_run_block(hp2, dict(base, form="holdout"), row)
+        txt = open(hp2).read()
+        check("a holdout run writes `form holdout`, not `form dev`", "· form holdout\n" in txt,
+              txt)
 
 
 def _staleness_invalid_tests():
@@ -244,7 +267,7 @@ def _d1_repeat_tests(d):
     hp = os.path.join(d, "h-promote.md")
     hfmt.append_run_block(hp, {"date": "2026-07-27", "model": "haiku", "repo_sha": "0000000",
                                "selected": 1, "total": 14, "shipped": 10, "corpus": 4,
-                               "controls": 1, "recall": (0, 1), "fp": (0, 0)},
+                               "controls": 1, "recall": (0, 1), "fp": (0, 0), "form": "dev"},
                           [{"date": "2026-07-27", "model_cell": "haiku",
                             "scenario": "false-negative-claim", "agent": "claims-verifier",
                             "runs": "1/3", "mode": "found-but-hedged", "verdict": "AMBER"}])
@@ -258,7 +281,7 @@ def _d1_repeat_tests(d):
     hp = os.path.join(d, "h-nopromote.md")
     hfmt.append_run_block(hp, {"date": "2026-07-27", "model": "haiku", "repo_sha": "0000000",
                                "selected": 1, "total": 14, "shipped": 10, "corpus": 4,
-                               "controls": 1, "recall": (0, 1), "fp": (0, 0)},
+                               "controls": 1, "recall": (0, 1), "fp": (0, 0), "form": "dev"},
                           [{"date": "2026-07-27", "model_cell": "haiku",
                             "scenario": "false-negative-claim", "agent": "claims-verifier",
                             "runs": "0/0", "mode": "env-failure", "verdict": "INVALID"}])
@@ -840,7 +863,7 @@ def _wilson_tests():
         hfmt.append_run_block(hp, {"date": "2026-08-10", "model": "haiku",
                                    "repo_sha": "abc1234", "selected": 1, "total": 30,
                                    "shipped": 26, "corpus": 4, "controls": 13,
-                                   "recall": (3, 3), "fp": (0, 0)},
+                                   "recall": (3, 3), "fp": (0, 0), "form": "dev"},
                               [{"date": "2026-08-10", "model_cell": "haiku",
                                 "scenario": "s", "agent": "a", "runs": "3/3",
                                 "mode": None, "verdict": "PASS"}])
@@ -904,7 +927,7 @@ def _weak_plant_flag_tests(d):
             hfmt.append_run_block(hp, {"date": date, "model": "haiku", "repo_sha": "0000000",
                                        "selected": 1, "total": 24, "shipped": 20,
                                        "corpus": 4, "controls": 10, "recall": (1, 1),
-                                       "fp": (0, 0)},
+                                       "fp": (0, 0), "form": "dev"},
                                   [{"date": date, "model_cell": "haiku",
                                     "scenario": "false-negative-claim",
                                     "agent": "claims-verifier",
@@ -2392,7 +2415,7 @@ def test_author_plants():
                 {"sc": {"id": "bx", "agent": "claims-verifier"},
                  "runs": "0/3", "mode": "missed-entirely", "verdict": "**BLOCKING FAIL**"},
             ], {"selected": 2, "total": 14, "shipped": 10, "corpus": 4, "controls": 1,
-                "recall": (1, 2), "fp": (0, 0)})
+                "recall": (1, 2), "fp": (0, 0), "form": "dev"})
         except TypeError as e:
             check("append_history accepts structured results + run meta", False, e)
         txt = open(hp).read() if os.path.isfile(hp) else ""
