@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `37c62ad37f395681635807c1a0f3e3d9370ff20a9d3431d16b4cfaab9b42b01e`
 - `docs/architecture/host-parity.json` — `ac5a9b1c6d649c862677bbed993d0dfb6dd05d0a1a0732d0d044b6a523615fd3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
-- `capabilities.json` — `c8b44207ddc9d03b499d9dee4ab32fad7f1d57868cc741ea12bf82c9056ecb23`
+- `capabilities.json` — `2fa8d95041ac04924d3250c7c7d86885b0cb196be07fb4890c35d5c3e5beb3e6`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -26,9 +26,10 @@
 - `docs/reviews/2026-08-13-cheliped-proposals-adjudication.json` — `e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b`
 - `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
 - `docs/reviews/2026-08-14-review-as-judgment-surface.json` — `013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f`
+- `docs/reviews/2026-08-15-holdout-authoring-baseline-isolation.json` — `4d4ef49f6483df09c5bf23784d5701884793c4be23aea90c31a8cc6ded3d4a93`
 - `docs/reviews/2026-08-15-two-tier-calibration-part1.json` — `e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5`
 - `docs/reviews/2026-08-15-two-tier-calibration-part2-controller.json` — `2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c`
-- `docs/reviews/index.json` — `625abf5d382a78c34fd1b39e0393f3a676c7df1bdf26888647b1e9428598e628`
+- `docs/reviews/index.json` — `00145562b649761a27d6e61675e4adcfe7d33a0e131a432fca1e5d7879229f5c`
 
 ## Gate surface
 
@@ -49,7 +50,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 30. Owned dated integration-debt entries: 72.
+- Registered capabilities: 30. Owned dated integration-debt entries: 73.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -71,6 +72,7 @@
 - `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F — the one substantive ite… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point)… (owner `david`, expires `2026-09-15`)
+- `calibration-loop` — BASELINE ISOLATION EFFECT-PROOF IS DEPLOY-GATED (B1, 2026-08-15)… (owner `david`, expires `2026-11-15`)
 - `scoreboard-integrity` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `scoreboard-integrity` — SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 — DEFERRED, stated not dropped)… (owner `david`, expires `2026-11-15`)
 - `gate-yield` — PAID 2026-08-09 — VERIFIED, not assumed… (owner `david`, expires `2026-12-31`)
@@ -125,8 +127,8 @@
 
 ## Adversarial review records
 
-- Review records: 18. Findings: 116.
-- `incorporated`: 32
+- Review records: 19. Findings: 121.
+- `incorporated`: 37
 - `open`: 6
 - `rejected`: 3
 - `verified_closed`: 75

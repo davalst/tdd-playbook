@@ -72,6 +72,10 @@
     {
       "path": "2026-08-15-two-tier-calibration-part2-controller.json",
       "sha256": "2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c"
+    },
+    {
+      "path": "2026-08-15-holdout-authoring-baseline-isolation.json",
+      "sha256": "4d4ef49f6483df09c5bf23784d5701884793c4be23aea90c31a8cc6ded3d4a93"
     }
   ]
 }

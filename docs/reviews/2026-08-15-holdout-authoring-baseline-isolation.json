@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-15-holdout-authoring-baseline-isolation",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "1577c3153ae4735f1567f4488cd72fdfc3b0c106",
+    "head": "0fc025c067c8f0357614f03a7f9a4e1fff165b72"
+  },
+  "reviewers": [
+    "security-adversary",
+    "architecture-adversary",
+    "test-quality-adversary",
+    "integration-adversary"
+  ],
+  "findings": [
+    {
+      "id": "ARCH-F1-PLUGIN-CACHE-THIRD-COPY",
+      "severity": "P2",
+      "summary": "Architecture-adversary (MIXED): sink_liveness_probe hardcoded the plugin-cache glob and dropped the TDD_PLAYBOOK_PLUGIN_CACHE override that install_into_repo._cache_versions and reset_plan both honor — a THIRD, disagreeing copy of the cache root. In an env with the cache relocated via that supported knob, the glob matches nothing -> the probe returns False -> a valid no-playbook run is REFUSED with a message blaming the deployed plugin, when the real cause is the probe looking in the wrong directory.",
+      "evidence": [
+        "calibration/run_calibration.py:411",
+        "scripts/install_into_repo.py:219",
+        "plugins/tdd-playbook/bin/reset_plan.py:181"
+      ],
+      "status": "incorporated",
+      "disposition": "sink_liveness_probe now reads TDD_PLAYBOOK_PLUGIN_CACHE (falling back to ~/.claude/plugins/cache) for the glob base, so all three copies AGREE. Fails closed as before (a relocated-but-unset cache still REFUSES rather than false-pass). Full de-dup into one shared plugin_cache_root() across calibration/ and plugins/bin/ left as a possible future (the three now agree).",
+      "class": "deterministic",
+      "recurrence_key": "plugin-cache-root-nth-copy"
+    },
+    {
+      "id": "ARCH-F2-REGISTER-SERIALIZER-DUPLICATION",
+      "severity": "P2",
+      "summary": "Architecture-adversary (MIXED): the holdout register SERIALIZER (the 5-column header, the row format, and the pipe-escape reason.replace('|','\\\\|')) was inlined in cmd_approve_holdout, away from its parser plant_forms.parse_register (whose _cells un-escapes). This diff made holdout.py the first programmatic WRITER of the register schema, and the same header was re-inlined a third time in a test fixture — the column contract and escaping now lived in two/three modules and could drift silently.",
+      "evidence": [
+        "calibration/holdout.py:284",
+        "calibration/plant_forms.py:87"
+      ],
+      "status": "incorporated",
+      "disposition": "Moved the serializer into plant_forms beside parse_register: ENTRIES_TABLE + format_register_row (pipe-escaped to round-trip through _cells). cmd_approve_holdout and the test fixture both call it — one contract, one module. parse_register still RAISES on a cell-count mismatch and run_holdout's vault_integrity_problems runs before every eval, so any residual drift fails loud at read time. Pinned by the D1.c approve->register->parse_register round-trip test.",
+      "class": "deterministic",
+      "recurrence_key": "register-writer-format-duplication"
+    },
+    {
+      "id": "SEC-DENY-READ-AUTHORING-SPAWN",
+      "severity": "P3",
+      "summary": "Security-adversary (verdict CONTAINED — every egress attack stopped): cmd_author_holdout spawned the authoring adversary with deny_read=None (unconfined) under an inaccurate 'no answer key on disk' comment — false on any cycle after the first, when the vault's bodies/ holds previously-approved holdout answers on disk. Not a reachable exposure (the adversary runs in HERE and is never handed the vault path — grep-confirmed it reaches neither child_env, host_runner, nor the prompt; owner-level crawling is out of scope per the custody note), but the comment was wrong and the confinement was cheap where a sandbox exists.",
+      "evidence": [
+        "calibration/holdout.py:221"
+      ],
+      "status": "incorporated",
+      "disposition": "When bodies/ already holds answers AND a sandbox exists, the authoring spawn is now boxed away from the vault (deny_read=[vault_dir]); never fails authoring for lack of a sandbox (host-portable, generates not reads the key). The misleading comment is corrected to state the real control (the vault path is never disclosed to the child) and that this is belt-and-suspenders.",
+      "class": "deterministic",
+      "recurrence_key": "unconfined-authoring-spawn-beside-answers"
+    },
+    {
+      "id": "TQ-OUTERMOST-WIRE-UNTESTED",
+      "severity": "P3",
+      "summary": "Test-quality-adversary (verdict LOAD-BEARING — all vacuity traps checked and avoided): the B1 effect-proof rests on the DEPLOYED hook writing the sink, but no test ran the REAL intent_nudge.py — only synthetic writer/nonwriter scripts fed sink_liveness_probe. Deleting note_hook_fired('intent_nudge') from intent_nudge.py would leave all tests green (production fails closed and refuses the run, so safe-not-silent-green, but the outermost wire was source-verified only).",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/intent_nudge.py:121",
+        "calibration/test_harness.py"
+      ],
+      "status": "incorporated",
+      "disposition": "Added a test that runs the real plugins/tdd-playbook/hooks/scripts/intent_nudge.py as a subprocess with TDD_PLAYBOOK_HOOK_EVENT_SINK set and asserts it writes the sink — so removing the note_hook_fired call now fails a test. (The DEPLOYED cache copy remains the deploy-gate's job via sink_liveness_probe; this pins the repo copy that will be deployed.)",
+      "class": "deterministic",
+      "recurrence_key": "outermost-wire-untested"
+    },
+    {
+      "id": "INT-STALENESS-AXIS-BLIND",
+      "severity": "P3",
+      "summary": "Integration-adversary (verdict CONNECTED — every emitter reaches a live field-granular consumer): reverse-sweep NOTE — the isolation partition reached the four scoreboard COMPARATORS (ledger/plant_vitality/power/run_population) but not latest_run_date, a fifth, row-level reader that check_staleness consumes; a no-playbook run's non-INVALID rows would refresh the staleness freshness clock. Disposition was unstated.",
+      "evidence": [
+        "calibration/history_format.py:180",
+        "calibration/check_staleness.py:37"
+      ],
+      "status": "incorporated",
+      "disposition": "Declared axis-blind BY DESIGN in a docstring: staleness answers 'did calibration happen recently', a no-playbook control run IS recent calibration activity, and it is not a cross-population comparison (nor gating). The four comparators partition because they compare NUMBERS across populations; staleness does not, so it reads rows on purpose.",
+      "class": "judgment",
+      "recurrence_key": "reverse-sweep-reader-disposition"
+    }
+  ]
+}
