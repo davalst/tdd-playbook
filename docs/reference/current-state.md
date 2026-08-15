@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `37c62ad37f395681635807c1a0f3e3d9370ff20a9d3431d16b4cfaab9b42b01e`
 - `docs/architecture/host-parity.json` — `ac5a9b1c6d649c862677bbed993d0dfb6dd05d0a1a0732d0d044b6a523615fd3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
-- `capabilities.json` — `ec89d6ebf3a1084e7abe43907e8315398aac61540b478ea717533bc88c8ade5e`
+- `capabilities.json` — `c8b44207ddc9d03b499d9dee4ab32fad7f1d57868cc741ea12bf82c9056ecb23`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -47,10 +47,12 @@
 
 ## Capability registry
 
-- Registered capabilities: 29. Owned dated integration-debt entries: 70.
+- Registered capabilities: 30. Owned dated integration-debt entries: 72.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
+- `fixture-data-guard/fixtureguard-warn-tier-decision` — WARN-TIER PROMOTE/KILL (A, 2026-08-15)… (owner `david`, expires `2026-11-15`)
+- `fixture-data-guard/lock-surface-fixturedata-kind` — RESIDUAL HOLE, stated not assumed (arch-F8)… (owner `david`, expires `2026-10-31`)
 - `test-lock/claude-test-lock-refresh` — RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep… (owner `david`, expires `2026-09-30`)
 - `test-lock/codex-guard-family-parity` — CODEX GUARD-FAMILY PARITY… (owner `david`, expires `2026-09-30`)
 - `test-lock/shell-classifier-adapter-boundary` — SHELL CLASSIFIER ADAPTER BOUNDARY… (owner `david`, expires `2026-09-30`)

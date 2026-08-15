@@ -766,6 +766,19 @@ def test_tripwire_reminder():
         check("tripwire: missing transcript falls back to whole tree", p.returncode == 0,
               (p.returncode, p.stderr))
 
+    # integ-#7: a fixture-DATA edit is not a test change — it must NOT silence the nudge.
+    import importlib.util as _il
+    spec = _il.spec_from_file_location(
+        "build_completion_reminder", os.path.join(HOOKS, "build_completion_reminder.py"))
+    bcr = _il.module_from_spec(spec)
+    spec.loader.exec_module(bcr)
+    src, tests = bcr.classify(["src/pay.py", "tests/test_pay.py",
+                               "tests/fixtures/test_cases.json"])
+    check("tripwire: a fixture-data edit is neither a test change nor source (integ-#7)",
+          "tests/fixtures/test_cases.json" not in tests
+          and "tests/fixtures/test_cases.json" not in src
+          and "tests/test_pay.py" in tests and "src/pay.py" in src, (src, tests))
+
 
 # ---------------------------------------------------------------- red_lock (auto-lock)
 def test_red_lock():

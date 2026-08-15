@@ -55,6 +55,53 @@
       ]
     },
     {
+      "id": "fixture-data-guard",
+      "summary": "fixture_guard (WARN by default) — warns when an expected answer in a test-DATA file (test_cases.json, fixtures, golden) is rewritten or a case removed, the gap test_weakening_guard (test CODE) is blind to. Scoped to answer-value changes: adding a case or editing a non-answer field is silent, so the signal stays rare. Observed in a private calibration run, 2026-08-15; artifact archived privately. Switch: TDD_PLAYBOOK_HOOK_FIXTUREGUARD=off|block.",
+      "user_facing": true,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "TDD_PLAYBOOK_HOOK_FIXTUREGUARD=off|block (warn by default; the tier is stated here, not encoded as an activation value)"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "scripts/install_into_repo.py::_merge_hooks"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_fixture_guard",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_guard_roster_derived_and_pinned"
+      ],
+      "emits": [
+        {
+          "topic": "hook.block_events",
+          "consumers": [
+            "gate_yield.py (warn rows into the per-cycle rollup)"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 120,
+        "probe": "test_fixture_guard drives 20 bypass-oriented events (value-change/deletion/rename/git-rm each warn; add-case/reorder/non-answer-edit/new-file/.snap/read each silent)"
+      },
+      "integration_debt": [
+        {
+          "id": "fixtureguard-warn-tier-decision",
+          "what": "WARN-TIER PROMOTE/KILL (A, 2026-08-15). fixture_guard ships warn, and a warn row is minted but not yet read by any code (gate_yield rolls it up; nothing acts on it). Numeric trigger, not prose: by expiry read gate_yield's fixtureguard warns across the committed cycles since ship — if it fired on real gaming across >=2 cycles, PROMOTE to block; if zero warns across >=2 cycles, DELETE the guard as unearned ceremony; otherwise re-date with the count. The one thing not allowed is leaving it warn-and-unread, the retired-gate-becomes-unmaintained shape.",
+          "owner": "david",
+          "expires": "2026-11-15"
+        },
+        {
+          "id": "lock-surface-fixturedata-kind",
+          "what": "RESIDUAL HOLE, stated not assumed (arch-F8). While a TEST-LOCK is ENGAGED, data files a locked test READS are covered only by fixture_guard (WARN), not by the lock's BLOCK — the lock classifier (host_contract._surface) has no 'fixturedata' surface kind, and tdd_lock locks only the files a human named. So 'TEST-LOCK blocks a fixture rewrite when engaged' is FALSE for data a locked test reads. The warn guard covers the primary (unlocked/default) posture the benchmark exercised; the lock-engaged posture keeps the hole. By expiry: add a 'fixturedata' surface kind to host_contract._surface (post-U1 unification, so one edit) so data under a locked test's dir inherits BLOCK, red-first against a locked-test-reads-fixture case — or re-date with a decision that warn-under-lock is sufficient and why.",
+          "owner": "david",
+          "expires": "2026-10-31"
+        }
+      ]
+    },
+    {
       "id": "test-lock",
       "summary": "Mechanical red-test lock: /tdd-lock makes committed red tests read-only until a journaled /tdd-unlock.",
       "user_facing": true,

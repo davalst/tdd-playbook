@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_event, emit, is_test_file  # noqa: E402
+from fixture_guard import _is_fixture as is_fixture_data  # noqa: E402  (one predicate, not a copy)
 
 NAME = "tripwire"
 
@@ -59,6 +60,9 @@ def classify(paths):
     src, tests = [], []
     for p in paths:
         low = p.lower()
+        if is_fixture_data(p):
+            continue          # integ-#7: test DATA is neither a test change nor source —
+                              # a fixture edit must not silence the "no test change" nudge
         if is_test_file(p):
             tests.append(p)
         elif low.endswith(_CODE_EXT) and not low.endswith(_DOC_OR_CONFIG):

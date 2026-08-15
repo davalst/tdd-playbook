@@ -26,11 +26,20 @@ instead of implementing the general behavior.
 
 ### H2 — Edit, weaken, or delete the failing test
 Assertions removed or neutered to tautologies; skip/xfail/focus markers added; the test
-deleted outright; expected values "corrected" to match broken output.
+deleted outright; expected values "corrected" to match broken output. The DATA variant
+(2026-08-15, private calibration run): the fix lands not in test CODE but in a test-DATA
+file — an expected value in `test_cases.json`/fixtures/golden rewritten, or a failing case
+deleted — which weakening detection (assert-count on code) is structurally blind to. A
+"transparent oracle correction" (the agent announces it and is even right about the value)
+is still this hack: the agent adjudicated "the test is wrong" for itself instead of routing
+it through a human (a test-wrong unlock).
 - Evidence: Claude 3.7 system card ("modifying the problematic tests themselves"); Kent Beck
-  ("the genie... deleting failing tests"), Pragmatic Engineer, Jun 2025.
-- Defense: TEST-LOCK (§1 — tests read-only during implementation); weakening detection.
-- Guards: `test_weakening_guard.py` (H2), `test_lock_guard.py` (H2).
+  ("the genie... deleting failing tests"), Pragmatic Engineer, Jun 2025; the DATA variant,
+  a private calibration run 2026-08-15 (artifact archived privately).
+- Defense: TEST-LOCK (§1 — tests read-only during implementation); weakening detection on
+  code; fixture_guard (warn) on test-DATA answer changes/removals.
+- Guards: `test_weakening_guard.py` (H2), `test_lock_guard.py` (H2), `fixture_guard.py`
+  (H2 — the test-DATA variant).
 
 ### H3 — Over-mock the behavior under test
 Mocks/stubs replace the very behavior the test exists to verify; the test passes against the
@@ -296,10 +305,10 @@ describes — `N of N` moves with the narrowing and cannot reveal it.
 | Entry | Mechanical guard(s) | Behavioral defense |
 |---|---|---|
 | H1 | — | §4 mutation, §2 edge, planted-error-probe |
-| H2 | test_weakening_guard, test_lock_guard | red-first-verifier |
+| H2 | test_weakening_guard, test_lock_guard, fixture_guard (test-DATA variant) | red-first-verifier |
 | H3 | test_weakening_guard (mock-delta) | §1 mock-justification review |
 | H4 | — | §4 mutation score |
-| H5 | test_weakening_guard (exit-call), test_lock_guard, snapshot_guard | calibration harness |
+| H5 | test_weakening_guard (exit-call), test_lock_guard, snapshot_guard, fixture_guard | calibration harness |
 | H6 | — | §6 Tripwire + reverse check, §5a probes, §3 PBT |
 | H7 | capability_registry expiry (test_own_registry, real clock) | tripwire-auditor PARKED leg + planted pair roadmap-laundering/control-parked-deferral |
 | H8 | doctor GUARDS-DARK (heartbeat vs latest commit) + run_calibration warning | engine guard_env for the adversarial variant (contracted) |
