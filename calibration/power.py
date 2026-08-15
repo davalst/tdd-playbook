@@ -81,8 +81,15 @@ def min_entries_for_signal(alpha=ALPHA):
     return None
 
 
-def comparable_blocks(blocks):
+def comparable_blocks(blocks, want=None):
     """The most recent PAIR of run blocks that actually share scenarios, or None.
+
+    P (2026-08-15): `want` is a population descriptor (default baseline). The noise floor is
+    a within-population measurement — pairing a no-playbook block against a normal one is
+    the cross-population delta this repo bans, so blocks outside `want` are filtered out
+    before pairing. Default None → baseline (form=dev, isolation=with-playbook), which is
+    the whole corpus before any axis was tagged, so behaviour is unchanged until B1 tags
+    runs. GLM residual-1: this parameter is ADDED here (comparable_blocks had none).
 
     v1.34.0, found live. The floor used `blocks[-2:]` unconditionally. The calibration
     README's own advice for long runs — "chunk by agent (`--agent X`, then the next) so each
@@ -96,6 +103,9 @@ def comparable_blocks(blocks):
     honest under both usage patterns; when no pair shares anything the caller must report
     UNMEASURED rather than a number.
     """
+    import history_format as _hf
+    want = want or {}
+    blocks = [b for b in blocks if _hf.population_matches(b, want)]
     for i in range(len(blocks) - 1, 0, -1):
         b = {r["scenario"] for r in blocks[i].get("rows") or []}
         for j in range(i - 1, -1, -1):

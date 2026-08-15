@@ -1300,6 +1300,55 @@ def _nonexecution_tests():
           L.bind_entry({**entry, "scenarios": ["ran"]}, pb, res,
                        lambda a, c: True)[0] is not None)
 
+    # ---- P (2026-08-15): POPULATION PARTITIONING -----------------------------------------
+    # A run block belongs to a plant population (form + isolation). A no-playbook /
+    # holdout / different-model block must NEVER become the comparator for a normal run —
+    # a cross-population number presented as an effect. Five readers assume one population;
+    # this pins each. The isolation clause is READ here (write path is B1), so a no-playbook
+    # block is synthesised via the header clause the parser now understands.
+    npdr = ("### Run 2026-09-02 — model m · repo bbb2222 · selected 1 of 1 (1 shipped + 0 "
+            "corpus · 0 controls) · recall 1/1 [—] · FP 0/0 [—] · form dev · isolation "
+            "no-playbook\n" + hf.HEADER_7 + "\n" + hf.SEP_7 + "\n"
+            "| 2026-09-02 | m | s1 | a1 | 3/3 | — | PASS |\n")
+    np_blocks, _ = hf.parse_run_blocks(npdr)
+    check("parse: isolation clause read (no-playbook)",
+          np_blocks[0]["isolation"] == "no-playbook", np_blocks[0].get("isolation"))
+    check("parse: a block with no isolation clause defaults to baseline",
+          hf.parse_run_blocks(live)[0][0]["isolation"] == "with-playbook")
+
+    check("population_matches: no-playbook block is NOT a comparator for a normal run",
+          hf.population_matches(np_blocks[0], {"form": "dev"}) is False)
+    check("population_matches: no-playbook block IS a comparator for a no-playbook run",
+          hf.population_matches(np_blocks[0], {"form": "dev", "isolation": "no-playbook"}))
+    check("population_matches: a normal block serves a normal run",
+          hf.population_matches(hf.parse_run_blocks(live)[0][0], {"form": "dev"}))
+    check("population_matches: form `all` spans dev and holdout (symmetric)",
+          hf.population_matches({"form": "dev"}, {"form": "all"})
+          and hf.population_matches({"form": "all"}, {"form": "holdout"}))
+
+    # bind_entry inherits the exclusion via form_matches — a no-playbook block measuring s1
+    # must NOT bind a normal (dev) entry, even though it MEASURED s1 on a descendant tree.
+    b_np, why_np = L.bind_entry(entry, np_blocks, res, lambda a, c: True)
+    check("bind_entry: a no-playbook block does NOT bind a normal entry (pending-other-form)",
+          b_np is None and why_np == "pending-other-form", (b_np, why_np))
+
+    # comparable_blocks (GLM residual-1: param ADDED): the noise floor excludes the
+    # no-playbook block, so a normal block cannot be paired against it.
+    import power as pw
+    mixed = hf.parse_run_blocks(live)[0] + np_blocks
+    check("comparable_blocks: a no-playbook block is excluded from the baseline noise floor",
+          pw.comparable_blocks(mixed) is None, pw.comparable_blocks(mixed))
+    check("comparable_blocks: two same-population blocks still pair",
+          pw.comparable_blocks(hf.parse_run_blocks(live + "\n" + live)[0]) is not None)
+
+    # scenario_streaks: a no-playbook verdict is not part of the normal streak.
+    import plant_vitality as _pv
+    streaks_norm = _pv.scenario_streaks(mixed, "dev")
+    check("scenario_streaks: no-playbook rows excluded from the dev streak",
+          streaks_norm.get("s1") == ["PASS"], streaks_norm)  # only the baseline PASS, not two
+    check("scenario_streaks: form=None still drops non-baseline isolation",
+          _pv.scenario_streaks(np_blocks).get("s1") is None)
+
     # CONTROL: a normal run still records. Without this the guard could 'work' by never
     # recording anything, which is the same failure with the sign flipped.
     with tempfile.TemporaryDirectory() as d:

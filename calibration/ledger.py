@@ -232,16 +232,19 @@ def load_forms(repo):
 
 
 def form_matches(block, form):
-    """Is this run block a legitimate comparator for a `form` entry? (v1.29)
+    """Is this run block a legitimate comparator for a `form` entry? (v1.29; P 2026-08-15)
 
     dev and holdout are DIFFERENT PLANT POPULATIONS. Comparing a dev number against a
     holdout number is a cross-population delta presented as an effect — the very thing the
     split exists to stop. An `all` run contains both, so it can serve either. Blocks written
-    before the split carry no clause and default to `dev` (they WERE the whole corpus with
-    nothing held out).
+    before the split carry no clause and default to `dev`.
+
+    P generalizes this to the full population (form + isolation): a comparator must match
+    the entry's form AND its isolation. bind_entry/baseline_row call this with just `form`,
+    so `want` defaults isolation to baseline — which means a `no-playbook` block is excluded
+    from a normal entry's binding automatically, with no change to those readers.
     """
-    b = block.get("form", "dev")
-    return b == form or b == "all"
+    return hfmt.population_matches(block, {"form": form})
 
 
 def block_measured(block, scenarios=None):

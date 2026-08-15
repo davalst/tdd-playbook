@@ -629,11 +629,19 @@ def main(argv=None):
         return dry_run(scenarios)
 
     # Prior verdicts for the mechanical AMBER×2 promotion — matched per SCENARIO ID, never
-    # "the previous run block" (blocks are filter-scoped; arch-F5).
+    # "the previous run block" (blocks are filter-scoped; arch-F5). P (2026-08-15): drawn
+    # only from run blocks in THIS run's population (same form + isolation), so a
+    # no-playbook AMBER can never promote a normal AMBER to BLOCKING FAIL. Pre-run-block
+    # legacy rows (2026-07-09) are outside any block and carry no AMBER, so excluding them
+    # cannot change a promotion.
+    run_population = {"form": args.form, "isolation": "with-playbook"}
     prior_rows = []
     if args.history and os.path.isfile(args.history):
         with open(args.history) as fh:
-            prior_rows = history_format.parse_rows(fh.read())
+            _blocks, _ = history_format.parse_run_blocks(fh.read())
+        prior_rows = [r for b in _blocks
+                      if history_format.population_matches(b, run_population)
+                      for r in b["rows"]]
 
     def last_kind(sid):
         for r in reversed(prior_rows):

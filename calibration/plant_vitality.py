@@ -46,11 +46,18 @@ def scenario_streaks(blocks, form=None):
     """{scenario: [verdict kinds, oldest first]} across run blocks.
 
     `form` filters to one plant population — a dev streak and a holdout streak are different
-    measurements of different sets and must not be concatenated into one history.
+    measurements of different sets and must not be concatenated into one history. P
+    (2026-08-15): the population is form + isolation; when a `form` is given, blocks whose
+    isolation differs from baseline are also excluded (a no-playbook streak is a different
+    measurement). `form=None` keeps the legacy "all forms" behaviour but STILL drops
+    non-baseline-isolation blocks — a no-playbook run is never part of the normal streak.
     """
     out = {}
     for b in blocks:
-        if form is not None and b.get("form", "dev") not in (form, "all"):
+        if form is not None:
+            if not hfmt.population_matches(b, {"form": form}):
+                continue
+        elif hfmt.population_of(b)["isolation"] != hfmt.POPULATION_BASELINE["isolation"]:
             continue
         for r in b["rows"]:
             if r["kind"] == "INVALID":

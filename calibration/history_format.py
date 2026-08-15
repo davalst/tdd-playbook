@@ -29,7 +29,8 @@ _RUN_HEADER = re.compile(
     r"^### Run (\d{4})-(\d{2})-(\d{2}) — model (.+?) · repo (\S+) · "
     r"selected (\d+) of (\d+) \((\d+) shipped \+ (\d+) corpus · (\d+) controls\) · "
     r"recall (\d+)/(\d+) \S+ · FP (\d+)/(\d+) \S+"
-    r"(?: · form (dev|holdout|all))?\s*$")
+    r"(?: · form (dev|holdout|all))?"
+    r"(?: · isolation (with-playbook|no-playbook))?\s*$")
 _RUN_MARKER = "### Run "
 # v1.29: `form` is an OPTIONAL trailing clause, and that is load-bearing. Every block written
 # before the dev/holdout split lacks it, and a required group would make all 12 of them stop
@@ -38,6 +39,45 @@ _RUN_MARKER = "### Run "
 # empty history and report every entry as PENDING. A header field added without a default is
 # how a reader goes quietly blind to its own past.
 _FORM_DEFAULT = "dev"
+
+# P (2026-08-15): population axes. A run block belongs to a plant POPULATION, and comparing
+# a number from one population against another is a cross-population delta presented as an
+# effect — the class the `form` split first fixed. `form` and `isolation` are the two axes
+# with a settled baseline; `network` joins here when B3 lands (add the key + baseline + the
+# read clause, one line each). READING is optional/defaulted exactly like `form` — a block
+# with no isolation clause IS the baseline (a normal, playbook-loaded run). WRITING the
+# isolation clause is B1's job; P makes the scoreboard partition-AWARE so a no-playbook block
+# can never become the comparator for a normal run once B1 starts tagging them.
+POPULATION_AXES = ("form", "isolation")
+POPULATION_BASELINE = {"form": "dev", "isolation": "with-playbook"}
+
+
+def population_of(block):
+    """The population signature of a run block, absent axes defaulted to baseline."""
+    return {ax: block.get(ax) or POPULATION_BASELINE[ax] for ax in POPULATION_AXES}
+
+
+def population_matches(block, want):
+    """Is `block` a legitimate comparator for a run in population `want`?
+
+    `want` is a dict of axis->value; omitted axes default to baseline. `form` keeps its
+    `all` special case (an all-form run measured both dev and holdout, so it serves either).
+    Every other axis is exact. A block tagged with a NON-baseline axis the caller did not
+    ask for is excluded — which is exactly how form_matches(block, "dev") stops binding a
+    no-playbook block to a normal entry with no change to bind_entry itself.
+    """
+    bpop = population_of(block)
+    for ax in POPULATION_AXES:
+        w = want.get(ax) or POPULATION_BASELINE[ax]
+        b = bpop[ax]
+        if ax == "form":
+            # `all` on EITHER side is the union population — an all-run measured both, and a
+            # want of `all` spans both — so it is comparable with dev or holdout.
+            if not (b == w or b == "all" or w == "all"):
+                return False
+        elif b != w:
+            return False
+    return True
 
 
 def _kind(verdict):
@@ -127,6 +167,8 @@ def parse_run_blocks(text):
             # A pre-v1.29 block has no form clause. It was, by definition, the whole corpus
             # with nothing held out — which is exactly `dev`.
             "form": g[14] or _FORM_DEFAULT,
+            # P: isolation read-clause (optional; absent == baseline with-playbook run).
+            "isolation": g[15] or POPULATION_BASELINE["isolation"],
             "line_no": i + 1, "_start": i,
         })
     for j, b in enumerate(blocks):
