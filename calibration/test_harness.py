@@ -2226,6 +2226,22 @@ def main():
     check("shipped scenarios pass dry-run", p.returncode == 0 and "0 problem(s)" in p.stdout,
           (p.returncode, p.stdout, p.stderr))
 
+    # U3a: the fixture must not announce the harness (a fixture that names its own plant
+    # hands the checker the answer). The real fixture is clean; a planted tell is caught;
+    # an empty scan refuses vacuously.
+    import run_calibration as _rc
+    check("fixture-legibility: the real fixture is clean (no harness tells)",
+          _rc.fixture_legibility_problems() == [], _rc.fixture_legibility_problems()[:3])
+    with tempfile.TemporaryDirectory() as fd:
+        with open(os.path.join(fd, "calc.py"), "w") as fh:
+            fh.write('"""Deliberate design smell for the architecture-adversary plant."""\n')
+        probs = _rc.fixture_legibility_problems(fd)
+        check("fixture-legibility: PLANTED a harness tell is caught",
+              any("announces the harness" in p and "calc.py" in p for p in probs), probs)
+    with tempfile.TemporaryDirectory() as empty:
+        check("fixture-legibility: an empty scan refuses a vacuous pass (§4a)",
+              any("scanned 0 files" in p for p in _rc.fixture_legibility_problems(empty)))
+
     with tempfile.TemporaryDirectory() as d:
         # PLANTED: an agent that gets it WRONG (confirms the false claim) must FAIL
         wrong = make_stub(d, "Verdict: CONFIRMED — authorize() is indeed dead code.\n"

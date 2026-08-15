@@ -57,3 +57,17 @@ record.
 holdout assignment happens at the next authoring cycle, once the private sibling repo exists.
 That is not a silent OFF — it is a dated `integration_debt` on the `plant-forms` capability
 that REDs the suite at expiry, per the standing ships-on-or-triggered rule.)*
+
+## Fixture design notes (moved here from the fixture, U3a 2026-08-15)
+
+The fixture must not explain its own plants (a docstring naming the harness hands the checker
+the answer — `fixture_legibility_problems` now REDs the gate on such prose). The design notes
+that used to live in the fixture files belong here instead, where the doer never looks:
+
+- `fixture/tools.py` + `fixture/audit.py` each keep their OWN copy of the read-only tool-name
+  list. They agree today; nothing enforces it. This is the seam the `band-aid-parallel-list`
+  plant exploits (add a name to one copy only) and the `good-fix-single-source` plant repairs
+  (a single per-tool attribute both call sites read). The architecture-adversary must tell the
+  band-aid apart from the good fix.
+- `fixture/calc.py` is the known-good module the plants subtract from; `fixture/tests/` is
+  complete-by-design so a plant's weakening shows as a coverage or vacuity change.

@@ -1,4 +1,4 @@
-"""Known-good fixture module. Deliberately small; the PLANTS provide the challenge."""
+"""Small arithmetic helpers for the CLI."""
 
 
 def apply_discount(price, pct):

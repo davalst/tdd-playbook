@@ -1,4 +1,4 @@
-"""Fixture CLI — the real user entry point (the wiring the Tripwire cares about)."""
+"""CLI — the user entry point."""
 import sys
 
 from calc import apply_discount, authorize

@@ -1,4 +1,4 @@
-"""Fixture test suite — complete by design; scenario plants subtract from or bypass it."""
+"""Unit tests for the calc helpers."""
 import os
 import sys
 import unittest

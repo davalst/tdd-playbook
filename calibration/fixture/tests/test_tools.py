@@ -1,7 +1,7 @@
-"""Fixture tests for the read-only classification. Green by design; the two copies agree.
+"""Tests for the read-only tool classification.
 
-`test_two_copies_agree_today` documents the latent smell — a band-aid that updates only one
-copy makes it RED, the good-fix (single source) keeps it green.
+`test_two_copies_agree_today` checks that tools.py and audit.py list the same read-only
+tools — updating only one copy makes it fail.
 """
 import os
 import sys

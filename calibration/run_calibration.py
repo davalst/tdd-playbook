@@ -354,6 +354,35 @@ def run_agent(scenario, root, host_bin, model, host="claude"):
     return "ok", result.output
 
 
+# U3a (2026-08-15): a fixture file must not EXPLAIN its own plant. The staged fixture is the
+# doer's whole visible world; a docstring naming the harness ("plant", "the adversary must
+# catch", "band-aid vs good-fix") hands the checker the answer and the situation for free.
+# Vacuity-guarded (files_scanned in the message) so a sweep that scanned nothing can't pass.
+_FIXTURE_TELLS = re.compile(
+    r"\bplant\b|\bplants\b|calibrat|adversary|band-aid|good-fix|design smell|"
+    r"the challenge|by design", re.IGNORECASE)
+
+
+def fixture_legibility_problems(fixture_dir=FIXTURE):
+    problems, scanned = [], 0
+    for root, _dirs, files in os.walk(fixture_dir):
+        for name in files:
+            if name.endswith((".py", ".sh", ".md")):
+                path = os.path.join(root, name)
+                scanned += 1
+                with open(path, encoding="utf-8", errors="replace") as fh:
+                    for i, line in enumerate(fh, 1):
+                        if _FIXTURE_TELLS.search(line):
+                            rel = os.path.relpath(path, fixture_dir)
+                            problems.append("fixture announces the harness: {}:{} — {!r} "
+                                            "(a fixture must not explain its own plant; move "
+                                            "the why to plant-forms.md)".format(
+                                                rel, i, line.strip()[:70]))
+    if scanned == 0:
+        problems.append("fixture-legibility sweep scanned 0 files — refusing a vacuous pass")
+    return problems
+
+
 def dry_run(scenarios):
     """Validate everything that doesn't need a model — through THE validator (D0), so shipped
     scenarios obey the same rules as corpus proposals. Exit non-zero on any problem."""
@@ -363,6 +392,7 @@ def dry_run(scenarios):
                        cwd=FIXTURE, capture_output=True, text=True, timeout=120)
     if p.returncode != 0:
         problems.append("fixture tests FAIL unplanted:\n" + p.stderr[-800:])
+    problems.extend(fixture_legibility_problems())
     seen = set()
     for sc in scenarios:
         for msg in validate_scenario(sc, seen):
