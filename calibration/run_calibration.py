@@ -116,14 +116,25 @@ def load_scenarios():
 
 
 HOLDOUT_DIR_ENV = "TDD_PLAYBOOK_HOLDOUT_DIR"
+# The dir the agent is read-DENIED. It must be the whole clone TREE, not the bodies leaf: a
+# `git clone` writes `.git/` beside `bodies/`, and `git show HEAD:bodies/x.json` reconstructs
+# every answer from the object store without ever touching `bodies/` (security F1, confirmed
+# empirically 2026-08-15). The controller sets this to the clone root; the loader still reads
+# bodies via HOLDOUT_DIR_ENV in the trusted PARENT, which is never sandboxed.
+HOLDOUT_DENY_ENV = "TDD_PLAYBOOK_HOLDOUT_DENY"
 
 
 def holdout_deny_read():
-    """The dir the evaluated agent must NOT read this run, or None. When the holdout bodies dir
-    is on disk (TDD_PLAYBOOK_HOLDOUT_DIR set), the answer key is present — so the agent is boxed
-    in with that dir read-denied (host_runner fails closed if confinement is unavailable). Set
-    means confined, automatically: you cannot run with the answer key present and an unconfined
-    agent, whether or not you remembered --form holdout."""
+    """The path(s) the evaluated agent must NOT read this run, or None. Prefers the explicit
+    deny root (HOLDOUT_DENY_ENV — the whole clone tree, .git included). Falls back to the bodies
+    dir if only that is set, so a manually-pointed non-git bodies dir is still denied; the
+    controller always sets the deny root, so the F1 `.git` sibling is covered on the real path.
+    Set means confined AUTOMATICALLY — you cannot run with the answer key on disk and an
+    unconfined agent, whether or not you remembered --form holdout (host_runner fails closed if
+    confinement is unavailable)."""
+    deny = os.environ.get(HOLDOUT_DENY_ENV)
+    if deny:
+        return [deny]
     holdout = os.environ.get(HOLDOUT_DIR_ENV)
     return [holdout] if holdout else None
 

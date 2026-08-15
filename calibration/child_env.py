@@ -16,4 +16,11 @@ import os
 def child_env():
     env = dict(os.environ)
     env["TDD_PLAYBOOK_HOOK_CAPTURE"] = "off"
+    # The answer-key LOCATION must never reach a nested model (the doer OR the plant-authoring
+    # adversary): knowing where the ephemeral clone sits turns any allow-default read into a
+    # targeted one (security F2). The sandbox denies the clone tree; stripping these removes even
+    # the pointer — defense in depth. The trusted PARENT keeps them (it computes the deny root
+    # and loads bodies through os.environ, not this child copy).
+    for k in ("TDD_PLAYBOOK_HOLDOUT_DIR", "TDD_PLAYBOOK_HOLDOUT_DENY"):
+        env.pop(k, None)
     return env

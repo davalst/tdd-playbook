@@ -22,12 +22,10 @@ Two load-bearing refusals, each reusing an existing mechanism rather than adding
      holdout id (arch-F4 body containment), so the public gate's own form_problems run stays
      clean without any holdout entry to resolve.
 
-`holdout_shas` hashes EXACTLY as `plant_forms.corpus_shas` does (bytes of the file, keyed by
-the `id` inside the json) — one hashing definition, reused, so the drift check compares like
-with like.
+`holdout_shas` delegates to `plant_forms.shas_in_dir` — the SAME enumerator `corpus_shas` uses —
+so the drift check compares like with like by construction (arch-F3), not by two copied loops.
 """
 import argparse
-import json
 import os
 import shutil
 import subprocess
@@ -66,6 +64,11 @@ def clone_vault(repo_url, dest, *, public_tree):
     `dest` is inside `public_tree` — a holdout body there could be committed, staged, or read by
     any Bash session. Callers pass an ephemeral temp dir (tempfile.mkdtemp resolves outside the
     tree on macOS/Linux) and delete it after staging. Returns `dest`."""
+    if public_tree is None:
+        raise ValueError(
+            "clone_vault cannot prove `dest` is outside a working tree (no git toplevel "
+            "resolved) — refusing rather than risk an in-tree clone (security F5: the "
+            "containment check must fail closed, not silently pass when it cannot decide).")
     if dest_is_inside_tree(dest, public_tree):
         raise ValueError(
             "clone_vault refuses a dest inside the public working tree ({}): a holdout body "
@@ -77,25 +80,11 @@ def clone_vault(repo_url, dest, *, public_tree):
 
 
 def holdout_shas(bodies_dir):
-    """{plant id: sha256 of its file} over the fetched bodies, hashed EXACTLY as
-    plant_forms.corpus_shas does (bytes of the file, keyed by the `id` inside the json) so the
-    map feeds plant_forms.form_problems as a drop-in for corpus_shas. A dir that does not exist
-    yields {} (an unfetched / unarmed holdout resolves nothing)."""
-    out = {}
-    if not os.path.isdir(bodies_dir):
-        return out
-    for name in sorted(os.listdir(bodies_dir)):
-        if not name.endswith(".json"):
-            continue
-        p = os.path.join(bodies_dir, name)
-        try:
-            with open(p) as fh:
-                pid = json.load(fh).get("id")
-        except (OSError, ValueError):
-            continue
-        if pid:
-            out[pid] = plant_forms.plant_sha(p)
-    return out
+    """{plant id: sha256} over the fetched bodies — plant_forms.shas_in_dir, the SAME enumerator
+    corpus_shas uses, so verify_bodies -> form_problems compares like with like by construction
+    (arch-F3), not by two loops kept identical by hand. A missing dir yields {} (an unfetched /
+    unarmed holdout resolves nothing)."""
+    return plant_forms.shas_in_dir(bodies_dir)
 
 
 def verify_bodies(entries, bodies_dir):
@@ -131,7 +120,10 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None):
     try:
         bodies = stage_vault(vault_url, workdir)
         env = dict(os.environ)
-        env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies
+        env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies       # loader (trusted parent) reads bodies
+        env["TDD_PLAYBOOK_HOLDOUT_DENY"] = workdir      # child is denied the WHOLE clone tree
+        # (F1) — workdir contains vault/, which contains BOTH bodies/ and the .git object store
+        # that `git show HEAD:bodies/*.json` would otherwise reconstruct the answer key from.
         argv = [sys.executable, RUNNER, "--form", "holdout", *extra_argv]
         if runner is not None:
             return runner(argv, env, bodies)

@@ -2257,6 +2257,34 @@ def _confinement_tests():
         check("confine MUST-FAIL: without the read-deny the key IS readable (rule load-bearing)",
               "AK_READ" in must, must)
 
+    # F1 (confirmed empirically 2026-08-15): denying the bodies LEAF leaves the sibling `.git`
+    # of the same clone readable, and `git show HEAD:bodies/*.json` reconstructs the key from the
+    # object store without touching bodies/. The fix denies the whole clone ROOT. Reproduce BOTH
+    # directions at the OS layer: root-deny blocks the .git sibling; leaf-deny leaves it readable.
+    with tempfile.TemporaryDirectory() as d:
+        root = os.path.realpath(os.path.join(d, "vault"))
+        bodies = os.path.join(root, "bodies")
+        gitobj = os.path.join(root, ".git")
+        ws2 = os.path.realpath(os.path.join(d, "ws"))
+        for p in (bodies, gitobj, ws2):
+            os.makedirs(p)
+        with open(os.path.join(gitobj, "answer"), "w") as fh:
+            fh.write("ANSWER-KEY-in-the-git-objects")
+        gprobe = os.path.join(ws2, "gprobe.sh")
+        with open(gprobe, "w") as fh:
+            fh.write('#!/bin/sh\n'
+                     'cat "%s/answer" >/dev/null 2>&1 && echo GIT_READ || echo GIT_BLOCK\n'
+                     % gitobj)
+        os.chmod(gprobe, 0o755)
+        root_deny = subprocess.run(cf.confined_argv(["/bin/sh", gprobe], ws2, deny_read=[root]),
+                                   capture_output=True, text=True, timeout=30).stdout
+        check("confine F1 FIX: denying the clone ROOT blocks the .git sibling",
+              "GIT_BLOCK" in root_deny, root_deny)
+        leaf_deny = subprocess.run(cf.confined_argv(["/bin/sh", gprobe], ws2, deny_read=[bodies]),
+                                   capture_output=True, text=True, timeout=30).stdout
+        check("confine F1 REPRO: denying only bodies/ leaves .git readable (the original bug)",
+              "GIT_READ" in leaf_deny, leaf_deny)
+
 
 def _holdout_loader_tests():
     """arch-F1 (holdout review): ONE parameterized loader, so holdout bodies enter the
@@ -2446,6 +2474,48 @@ def _holdout_run_tests():
     # --- run_agent forwards the deny-read exactly when holdout bodies are on disk ---
     check("run: holdout_deny_read is None without the env (dev runs are never confined)",
           rc.holdout_deny_read() is None)
+    # F1: the deny ROOT (whole clone tree) is preferred over the bodies leaf when both are set.
+    keep_deny = os.environ.get(rc.HOLDOUT_DENY_ENV)
+    keep_dir0 = os.environ.get(rc.HOLDOUT_DIR_ENV)
+    try:
+        os.environ[rc.HOLDOUT_DIR_ENV] = "/clone/vault/bodies"
+        os.environ[rc.HOLDOUT_DENY_ENV] = "/clone"
+        check("run: holdout_deny_read prefers the deny ROOT over the bodies leaf (F1)",
+              rc.holdout_deny_read() == ["/clone"], rc.holdout_deny_read())
+    finally:
+        for k, v in ((rc.HOLDOUT_DENY_ENV, keep_deny), (rc.HOLDOUT_DIR_ENV, keep_dir0)):
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+
+    # F2: the answer-key location is STRIPPED from every nested model's env (doer + adversary).
+    import child_env as _ce
+    keep_a = os.environ.get(rc.HOLDOUT_DIR_ENV)
+    keep_b = os.environ.get(rc.HOLDOUT_DENY_ENV)
+    try:
+        os.environ[rc.HOLDOUT_DIR_ENV] = "/clone/vault/bodies"
+        os.environ[rc.HOLDOUT_DENY_ENV] = "/clone"
+        ce = _ce.child_env()
+        check("run: child_env STRIPS the holdout location from the nested model (F2)",
+              rc.HOLDOUT_DIR_ENV not in ce and rc.HOLDOUT_DENY_ENV not in ce,
+              [k for k in ce if "HOLDOUT" in k])
+        check("run: child_env still turns capture OFF (unchanged)",
+              ce.get("TDD_PLAYBOOK_HOOK_CAPTURE") == "off")
+    finally:
+        for k, v in ((rc.HOLDOUT_DIR_ENV, keep_a), (rc.HOLDOUT_DENY_ENV, keep_b)):
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+
+    # F5: clone_vault fails CLOSED when it cannot prove dest is out-of-tree (no git toplevel).
+    import holdout as _h
+    raised_f5 = False
+    try:
+        _h.clone_vault("unused://r", "/tmp/whatever", public_tree=None)
+    except ValueError as e:
+        raised_f5 = "fail closed" in str(e) or "cannot prove" in str(e)
+    check("run: clone_vault FAILS CLOSED when the working tree can't be resolved (F5)",
+          raised_f5)
     captured = {}
 
     def fake_invoke(host, binary, prompt, model, cwd, **kw):
@@ -2493,6 +2563,10 @@ def _holdout_run_tests():
             seen["env_points_at_bodies"] = (
                 env.get("TDD_PLAYBOOK_HOLDOUT_DIR") == bodies_dir
                 and os.path.isfile(os.path.join(bodies_dir, "holdout-run-body.json")))
+            deny = env.get("TDD_PLAYBOOK_HOLDOUT_DENY")
+            git_sibling = os.path.join(os.path.dirname(bodies_dir), ".git")  # vault/.git
+            seen["deny_covers_tree"] = bool(deny) and holdout.dest_is_inside_tree(
+                bodies_dir, deny) and holdout.dest_is_inside_tree(git_sibling, deny)
             seen["workdir"] = os.path.dirname(os.path.dirname(bodies_dir))
             return 0
 
@@ -2500,6 +2574,8 @@ def _holdout_run_tests():
         check("run: run_holdout invokes run_calibration --form holdout", seen.get("form_holdout"))
         check("run: run_holdout points the loader env at the freshly-cloned bodies",
               seen.get("env_points_at_bodies"))
+        check("run: run_holdout denies the WHOLE clone tree — bodies AND .git sibling (F1)",
+              seen.get("deny_covers_tree"))
         check("run: run_holdout returns the eval exit code", rc_code == 0)
         check("run: run_holdout DELETES the ephemeral clone (no answer key outlives the run)",
               not os.path.exists(seen.get("workdir", "/nonexistent-sentinel")))

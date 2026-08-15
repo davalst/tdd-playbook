@@ -37,8 +37,9 @@ sys.path.insert(0, HERE)
 # (planted-error-probe, ux-probe-calibrator — their scenarios need revert-safety discipline
 # and stay hand-written). The previous hardcoded set here froze at the original four while
 # the roster grew to nine (§6a old-blind-to-new); a derived roster cannot re-freeze.
-from run_calibration import (agent_coverage_problems, known_agents,  # noqa: E402
-                             load_scenarios, pairing_problems, validate_scenario)
+from run_calibration import (agent_coverage_problems, holdout_deny_read,  # noqa: E402
+                             known_agents, load_scenarios, pairing_problems,
+                             validate_scenario)
 import host_runner  # noqa: E402
 
 
@@ -137,7 +138,11 @@ def cmd_author(args):
         result = host_runner.invoke(
             args.host, selected_bin, prompt, args.model, HERE, timeout=600,
             env=child_env(),
-            extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split())
+            extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split(),
+            # F4: the authoring model is the second spawn seam (child_env.py names both). If a
+            # holdout clone is on disk, box this one in too — symmetric with run_agent, fails
+            # closed without a sandbox rather than authoring unconfined beside the answer key.
+            confine_deny_read=holdout_deny_read())
     except FileNotFoundError:
         print("FATAL: {} binary not found ({})".format(args.host, selected_bin))
         return 2

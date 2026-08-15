@@ -126,11 +126,13 @@ def plant_sha(path):
         return hashlib.sha256(fh.read()).hexdigest()
 
 
-def corpus_shas(repo):
-    """{plant id: sha256 of its approved file}. Keyed by the id INSIDE the json, not the
-    filename — the filename is not what anything else keys on."""
+def shas_in_dir(d):
+    """{plant id: sha256 of its file} for every .json in `d`, keyed by the id INSIDE the json
+    (not the filename — nothing else keys on the filename). A dir that does not exist yields {}.
+    ONE enumerator: corpus_shas AND the holdout controller's drift check both call it, so the
+    drift check (holdout.verify_bodies -> form_problems) compares like with like by CONSTRUCTION
+    (arch-F3), not by two copied loops agreeing to stay byte-identical."""
     out = {}
-    d = os.path.join(repo, CORPUS_DIR)
     if not os.path.isdir(d):
         return out
     for name in sorted(os.listdir(d)):
@@ -145,6 +147,11 @@ def corpus_shas(repo):
         if pid:
             out[pid] = plant_sha(p)
     return out
+
+
+def corpus_shas(repo):
+    """{plant id: sha256 of its approved file}."""
+    return shas_in_dir(os.path.join(repo, CORPUS_DIR))
 
 
 def form_problems(entries, shas):
