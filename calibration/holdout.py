@@ -217,9 +217,22 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
     os.makedirs(proposed, exist_ok=True)
     prompt = ap.adversary_prompt(category)
     known = _vault_universe(vault_dir)
+    # Defense in depth (security review, 2026-08-15): on any cycle after the first, the vault's
+    # bodies/ holds already-approved holdout answers ON DISK. The adversary runs in HERE (the
+    # public repo) and is NEVER handed the vault path (it reaches neither child_env, host_runner,
+    # nor the prompt — grep-confirmed), so it cannot reach those bodies; owner-level crawling is
+    # out of scope (custody note). Still, where a sandbox exists, box the adversary away from the
+    # vault — belt-and-suspenders. NEVER fail authoring for lack of a sandbox (it is host-portable
+    # and generates, not reads, the key).
+    deny = None
+    bodies_dir = os.path.join(vault_dir, "bodies")
+    if os.path.isdir(bodies_dir) and any(f.endswith(".json") for f in os.listdir(bodies_dir)):
+        import confine
+        if confine.sandbox_exec_available():
+            deny = [vault_dir]
     try:
         res = ap.generate_accepted_pairs(prompt, "claude", claude_bin, model, known,
-                                         deny_read=None)
+                                         deny_read=deny)
     except FileNotFoundError:
         print("FATAL: claude binary not found ({})".format(claude_bin))
         return 2
@@ -281,11 +294,10 @@ def cmd_approve_holdout(vault_dir, plant_id, reason):
     new = not os.path.isfile(reg)
     with open(reg, "a") as fh:
         if new:
-            fh.write("# Holdout register\n\n## Entries\n\n"
-                     "| date | plant_id | form | content_sha256 | reason |\n"
-                     "| --- | --- | --- | --- | --- |\n")
-        fh.write("| {} | {} | holdout | {} | {} |\n".format(
-            _dt.date.today().isoformat(), plant_id, sha, reason.replace("|", "\\|")))
+            fh.write("# Holdout register\n\n" + plant_forms.ENTRIES_SECTION + "\n\n"
+                     + plant_forms.ENTRIES_TABLE)
+        fh.write(plant_forms.format_register_row(
+            _dt.date.today().isoformat(), plant_id, "holdout", sha, reason))
     print("APPROVED {} -> bodies/ + register (sha {}...). Commit + push the vault privately."
           .format(plant_id, sha[:12]))
     return 0

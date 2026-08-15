@@ -178,7 +178,14 @@ def parse_run_blocks(text):
 
 
 def latest_run_date(text):
-    """Most recent date across rows that represent an actual calibration (INVALID skipped)."""
+    """Most recent date across rows that represent an actual calibration (INVALID skipped).
+
+    Deliberately isolation-axis-BLIND (B1 reverse-sweep disposition): this answers 'did
+    calibration happen recently', and a no-playbook control run IS recent calibration activity, so
+    it legitimately refreshes the staleness clock. Unlike the four scoreboard COMPARATORS (which
+    must partition by population so a control number never becomes a normal comparator), staleness
+    is not a cross-population comparison and no longer gates anything — so it reads rows, not
+    populated blocks, on purpose."""
     dates = [r["date"] for r in parse_rows(text) if r["kind"] != "INVALID"]
     return max(dates) if dates else None
 

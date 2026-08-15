@@ -106,6 +106,20 @@ def parse_register(text):
     return out
 
 
+# The register SERIALIZER lives beside its parser so the column contract and the pipe-escaping
+# cannot drift between writer and reader (holdout.cmd_approve_holdout is the first programmatic
+# writer of this schema). `_cells` un-escapes `\|`; this escapes it. Keep the two in lockstep.
+ENTRIES_SECTION = "## Entries"
+ENTRIES_TABLE = ("| date | plant_id | form | content_sha256 | reason |\n"
+                 "| --- | --- | --- | --- | --- |\n")
+
+
+def format_register_row(date, plant_id, form, content_sha256, reason):
+    """One register row that parse_register reads back exactly (pipe-escaped)."""
+    return "| " + " | ".join(str(c).replace("|", "\\|") for c in
+                             (date, plant_id, form, content_sha256, reason)) + " |\n"
+
+
 def resolve_forms(entries):
     """{plant_id: form} from the LATEST entry per id. Absent ids are not present here —
     callers use form_of(), whose default is the safe direction."""

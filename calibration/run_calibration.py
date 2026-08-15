@@ -408,8 +408,13 @@ def sink_liveness_probe(hook_paths=None):
     `hook_paths` injectable for tests."""
     import glob as _glob
     if hook_paths is None:
-        hook_paths = sorted(_glob.glob(os.path.expanduser(
-            "~/.claude/plugins/cache/*/tdd-playbook/*/hooks/scripts/intent_nudge.py")))
+        # Honor TDD_PLAYBOOK_PLUGIN_CACHE — the same override install_into_repo._cache_versions and
+        # reset_plan already read. Without it this probe was a THIRD, disagreeing copy of the cache
+        # root: a relocated cache would glob nothing -> spurious REFUSE blaming the deployed plugin.
+        base = (os.environ.get("TDD_PLAYBOOK_PLUGIN_CACHE")
+                or os.path.expanduser("~/.claude/plugins/cache"))
+        hook_paths = sorted(_glob.glob(os.path.join(
+            base, "*/tdd-playbook/*/hooks/scripts/intent_nudge.py")))
     with tempfile.TemporaryDirectory() as d:
         sink = os.path.join(d, "probe")
         for hook in hook_paths:

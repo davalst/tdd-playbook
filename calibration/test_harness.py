@@ -2740,6 +2740,20 @@ def _isolation_liveness_tests():
         check("iso-probe: no deployed hook found -> False (fail-closed on the deploy dependency)",
               rc.sink_liveness_probe([]) is False)
 
+    # Outermost wire: the REAL intent_nudge hook must mark the sink when run — so deleting
+    # note_hook_fired("intent_nudge") from it cannot pass silently (test-quality NOTE, 2026-08-15).
+    with tempfile.TemporaryDirectory() as d:
+        sink = os.path.join(d, "s")
+        hook = os.path.join(REPO, "plugins", "tdd-playbook", "hooks", "scripts",
+                            "intent_nudge.py")
+        env = dict(os.environ)
+        env["TDD_PLAYBOOK_HOOK_EVENT_SINK"] = sink
+        subprocess.run([sys.executable, hook], input="{}", text=True, capture_output=True,
+                       timeout=20, env=env)
+        check("iso: the REAL intent_nudge hook marks the sink (outermost wire, not a stub)",
+              os.path.isfile(sink) and os.path.getsize(sink) > 0,
+              open(sink).read() if os.path.isfile(sink) else "no sink written")
+
 
 def _holdout_authoring_tests():
     """D1: author fresh holdout plants via the adversary model into the private vault, egress
@@ -2862,10 +2876,10 @@ def _holdout_authoring_tests():
             fh.write("\n")
         sha = plant_forms.plant_sha(os.path.join(b, "hauth-plant.json"))
         with open(os.path.join(vsrc, holdout.REGISTER_NAME), "w") as fh:
-            fh.write("# Holdout register\n\n## Entries\n\n"
-                     "| date | plant_id | form | content_sha256 | reason |\n"
-                     "| --- | --- | --- | --- | --- |\n"
-                     "| 2026-08-15 | hauth-plant | holdout | {} | r |\n".format(sha))
+            fh.write("# Holdout register\n\n" + plant_forms.ENTRIES_SECTION + "\n\n"
+                     + plant_forms.ENTRIES_TABLE
+                     + plant_forms.format_register_row("2026-08-15", "hauth-plant", "holdout",
+                                                       sha, "r"))
         with open(os.path.join(b, "hauth-plant.json"), "w") as fh:   # DRIFT after recording sha
             json.dump(dict(plant, plant="DRIFTED"), fh)
             fh.write("\n")
