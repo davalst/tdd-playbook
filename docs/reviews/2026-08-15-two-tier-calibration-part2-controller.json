@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
   "review_range": {
     "base": "93094523e60b207e879518fc39aa0e2bfab54a47",
-    "head": "aa987e184c4c92fa9047480f0a0d11ade14d5473"
+    "head": "2ee742e5265fda75add4a89cfa600d028d6c8f6e"
   },
   "reviewers": [
     "security-adversary",
@@ -113,6 +113,19 @@
       "disposition": "ACCEPTED residual, not fixed: network is inherent to the subscription model API (the auth route this design chose precisely because the Keychain login runs host-side). With F1 and F2 closed there is no readable local key for egress to carry \u2014 the clone tree is unreadable and its location is stripped from the agent's env \u2014 which de-fangs F3 to 'the API connection the agent legitimately needs'. Revisit if a non-subscription (API-key) host is used, where the Docker --network none path (already proven this session) applies.",
       "class": "judgment",
       "recurrence_key": "confined-agent-network-egress"
+    },
+    {
+      "id": "SELF-CI-LINUX-CONFINE-WRAP-CRASH",
+      "severity": "P2",
+      "summary": "Self-caught by the independent CI re-execution: the local gate was GREEN on macOS, but the pushed Linux CI gate crashed the calibration stage (test_harness) in 0.12s. A new check called host_runner._maybe_confine with a non-empty deny_read UNGUARDED, expecting a sandbox-exec-wrapped command; on a host without sandbox-exec _maybe_confine fails closed (RunnerError) — correct behavior, uncaught in the test. macOS has sandbox-exec (passed locally); Linux CI does not. A local-green/CI-red divergence — the exact 'committed on my machine != runs there' class the release flow keeps CI for.",
+      "evidence": [
+        "calibration/test_harness.py:2458",
+        "calibration/host_runner.py:91"
+      ],
+      "status": "incorporated",
+      "disposition": "Gated the wrap check on confine.sandbox_exec_available() (SKIP where absent), mirroring the OS-block gating; the fail-closed check right after already proves the raise. Reproduced by forcing sandbox_exec_available()=False (crash at that check), fixed, re-verified simulated-Linux 371/0 and macOS 375/0, and the full local gate GREEN 31/31. All other confined_argv/sandbox-exec calls in the harness were already behind the early-return guard (audited). Fixed in the head commit 2ee742e.",
+      "class": "deterministic",
+      "recurrence_key": "harness-not-linux-safe"
     }
   ]
 }

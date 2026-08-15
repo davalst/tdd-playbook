@@ -27,8 +27,8 @@
 - `docs/reviews/2026-08-13-readable-first-read-response.json` — `5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156`
 - `docs/reviews/2026-08-14-review-as-judgment-surface.json` — `013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f`
 - `docs/reviews/2026-08-15-two-tier-calibration-part1.json` — `e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5`
-- `docs/reviews/2026-08-15-two-tier-calibration-part2-controller.json` — `00a6cd35d141f2ed86612db918efd97cdb99f7184ee78e13ba1d1f0028c222dc`
-- `docs/reviews/index.json` — `19e0835a641637ed7c96af181da43c95c7746d541d7bbe5f725765d4231a5171`
+- `docs/reviews/2026-08-15-two-tier-calibration-part2-controller.json` — `2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c`
+- `docs/reviews/index.json` — `625abf5d382a78c34fd1b39e0393f3a676c7df1bdf26888647b1e9428598e628`
 
 ## Gate surface
 
@@ -125,8 +125,8 @@
 
 ## Adversarial review records
 
-- Review records: 18. Findings: 115.
-- `incorporated`: 31
+- Review records: 18. Findings: 116.
+- `incorporated`: 32
 - `open`: 6
 - `rejected`: 3
 - `verified_closed`: 75
