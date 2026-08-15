@@ -2378,11 +2378,48 @@ def _holdout_controller_tests():
               any("does not match" in x for x in probs), probs)
 
 
+def _holdout_egress_tests():
+    """The egress ALLOW-LIST (criterion #5, security-E1/E2): in holdout mode the per-scenario
+    output emits ONLY {id, agent, runs, verdict, mode} and WITHHOLDS the three secret channels —
+    the plant text, the oracle-regex problems, and the doer-output tail. Proven both directions:
+    holdout withholds each secret; dev still emits all three (so the withholding is real, not a
+    printer that lost its output)."""
+    import run_calibration as rc
+    sc = {"id": "holdout-egress-body", "agent": "claims-verifier",
+          "plant": "SECRET-PLANT-a-weak-verifier-would-miss"}
+    worst = {"passed": False,
+             "problems": ["expected /SECRET-ORACLE-REGEX/ — NOT found (plant survived?)"],
+             "out": "SECRET-DOER-OUTPUT " * 200, "env": False}
+
+    hdr_h = rc.scenario_header(sc, holdout=True)
+    hdr_d = rc.scenario_header(sc, holdout=False)
+    det_h = rc.scenario_detail_lines(worst, holdout=True)
+    det_d = rc.scenario_detail_lines(worst, holdout=False)
+    holdout_blob = "\n".join([hdr_h, *det_h])
+    dev_blob = "\n".join([hdr_d, *det_d])
+
+    check("egress: holdout header withholds the plant text",
+          "SECRET-PLANT" not in hdr_h, hdr_h)
+    check("egress: holdout header is the allow-list shape (id + agent only)",
+          hdr_h.strip() == "=== holdout-egress-body [claims-verifier]", hdr_h)
+    check("egress: holdout detail block is empty (no oracle regexes, no doer output)",
+          det_h == [], det_h)
+    check("egress: the WHOLE holdout emission leaks none of the three secret channels",
+          not any(s in holdout_blob for s in
+                  ("SECRET-PLANT", "SECRET-ORACLE-REGEX", "SECRET-DOER-OUTPUT")), holdout_blob)
+    # both directions: a DEV run still prints all three — the withholding is holdout-scoped,
+    # not a printer that simply stopped emitting.
+    check("egress: CONTROL a dev run still emits plant + oracle problems + doer output",
+          all(s in dev_blob for s in
+              ("SECRET-PLANT", "SECRET-ORACLE-REGEX", "SECRET-DOER-OUTPUT")), dev_blob)
+
+
 def main():
     print("Calibration-harness calibration")
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()
+    _holdout_egress_tests()
     _check_staleness()
     _child_env_capture_exclusion_tests()
     _history_format_tests()

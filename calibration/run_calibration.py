@@ -588,6 +588,31 @@ def append_history(history_path, model, results, meta):
     history_format.append_run_block(history_path, hf_meta, rows)
 
 
+# --- Egress allow-list for holdout runs (Part 2, criterion #5; security-E1/E2) --------------
+# In holdout mode the per-scenario output is INVERTED from a deny-list to an ALLOW-LIST: it
+# emits ONLY a closed, public field set (id, agent, runs, verdict, mode) and WITHHOLDS the
+# three secret channels a dev run prints — the plant text (the header's `— plant: …`), the
+# oracle problems (they quote the must_match/must_not_match regexes), and the doer-output tail.
+# A paraphrase of the answer key can't be caught by scrubbing known strings, so nothing secret
+# is ever formatted into a holdout line in the first place. Pure so the property is unit-checked
+# without a live run; the loop below is the only caller.
+def scenario_header(sc, *, holdout):
+    if holdout:
+        return "\n=== {} [{}]".format(sc["id"], sc["agent"])
+    return "\n=== {} [{}] — plant: {}".format(sc["id"], sc["agent"], sc["plant"])
+
+
+def scenario_detail_lines(worst, *, holdout):
+    """The failure-detail block: oracle problems + the doer-output tail. Both are holdout
+    secrets (problems quote the oracle regexes; the tail is raw doer output), so holdout mode
+    returns [] — the verdict line's runs+mode is the entire holdout signal."""
+    if holdout:
+        return []
+    lines = ["  - " + pr for pr in worst["problems"]]
+    lines.append("--- agent output (tail) ---\n" + worst["out"][-1500:])
+    return lines
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Run planted-defect calibration of the agents.")
     ap.add_argument("--agent", help="only scenarios for this agent")
@@ -699,9 +724,10 @@ def main(argv=None):
 
     mode_precedence = ("timeout", "env-failure", "wrong-verdict-line",
                        "found-but-hedged", "missed-entirely")
+    holdout_mode = (args.form == "holdout")  # egress allow-list: withhold plant/oracle/output
     results, failed = [], 0
     for sc in scenarios:
-        print("\n=== {} [{}] — plant: {}".format(sc["id"], sc["agent"], sc["plant"]))
+        print(scenario_header(sc, holdout=holdout_mode))
         reps = []
         for _rep in range(args.repeat):
             root = stage(sc)
@@ -748,9 +774,8 @@ def main(argv=None):
         else:
             print("BLOCKING FAIL — the plant survived ({}/{}, mode: {}):".format(k, n, mode))
         worst = next((r for r in reps if not r["passed"]), reps[-1])
-        for pr in worst["problems"]:
-            print("  - " + pr)
-        print("--- agent output (tail) ---\n" + worst["out"][-1500:])
+        for line in scenario_detail_lines(worst, holdout=holdout_mode):
+            print(line)
 
     plants = [r for r in results if not r["sc"].get("control_for")]
     controls = [r for r in results if r["sc"].get("control_for")]
