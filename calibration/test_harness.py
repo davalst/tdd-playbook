@@ -2806,6 +2806,14 @@ def _holdout_authoring_tests():
         check("D1.a: reject_category is actionable — unknown-agent / edits-do-not-apply named",
               "unknown-agent" in ap.reject_category(["unknown agent: xyz"])
               and "edits-do-not-apply" in ap.reject_category(["edits do not apply to fixture: e"]))
+        # The agent field must stay HARD-constrained to the exact roster (the live unknown-agent
+        # authoring failure, 2026-08-15 — the model invented verifier names). Pin it so a future
+        # prompt edit can't quietly loosen it back.
+        _prompt = ap.adversary_prompt(None)
+        check("D1: adversary_prompt hard-constrains the agent field to the EXACT roster",
+              "MUST be EXACTLY one of" in _prompt
+              and all(a in _prompt for a in ap.known_agents()),
+              "constraint missing")
 
         def fake_noarray(host, binary, prompt, model, cwd, **kw):
             return host_runner.Result(host, "ok", "SENTINEL_NOARRAY not json at all", 0, None)
