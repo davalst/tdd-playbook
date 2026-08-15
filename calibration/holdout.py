@@ -24,6 +24,22 @@ Two load-bearing refusals, each reusing an existing mechanism rather than adding
 
 `holdout_shas` delegates to `plant_forms.shas_in_dir` — the SAME enumerator `corpus_shas` uses —
 so the drift check compares like with like by construction (arch-F3), not by two copied loops.
+
+CUSTODY LIMIT (decided 2026-08-15, stated rather than assumed). What the private vault DOES
+protect: the answer key stays out of model TRAINING data (private repos are not crawled, so no
+future model "knows" the plants from training), out of the EVALUATED agent's reach during a run
+(the whole clone tree is read-denied and its location is stripped from the agent's env), and out
+of the public repo/CI/downstream installs (the vault URL is a runtime argument, never baked in;
+no body or holdout id ships publicly). What it does NOT protect: an everyday agent session
+running with the OWNER's own GitHub credentials could `gh repo clone` the vault and read the
+answers. No repo setting can prevent that — grading requires the key to be readable by something
+the owner controls, and an actor holding that credential holds the key. The accepted position:
+for a self-run measurement instrument, an agent acting as the owner cheating the owner's own
+benchmark is self-defeating; the realistic failure is leakage into training or into an agent's
+context, which the above DOES cover. Defense-in-depth against the owner's own agents (a separate
+account/org, or a run-time-only token) was considered and deliberately not built — it is the
+credential-custody bureaucracy this lean design set out to avoid. Revisit only if the vault ever
+needs to defend against the owner's own tooling.
 """
 import argparse
 import os
