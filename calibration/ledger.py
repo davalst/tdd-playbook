@@ -550,13 +550,19 @@ def _fresh_ids(repo, rev, ledger_rel, registered):
     return {e["id"] for e in registered if e["id"] in added}
 
 
-def _floor_from(blocks, covered):
+def _floor_from(blocks, covered, want=None):
     """Noise floor in reps from the most recent COMPARABLE pair of run blocks, or (0, None)
     when unknowable. v1.34.0: `blocks[-2:]` was wrong under the README's own chunk-by-agent
     advice — adjacent chunks share no scenarios, so the floor was computed from an empty
     intersection and reported 0, which reads as "any movement is evidence". None means
-    UNMEASURED and the caller says so; it is never a floor of zero by another name."""
-    pair = pw.comparable_blocks(blocks or [])
+    UNMEASURED and the caller says so; it is never a floor of zero by another name.
+
+    P follow-up (arch-adversary Part 1): `want` is the population the floor is measured in.
+    A floor is a within-population jitter number, so applying a dev/baseline floor as the
+    threshold on a holdout entry is the cross-population-number-as-effect P exists to kill —
+    the scoring caller passes each entry's own population. Default baseline for the report
+    diagnostic, which is a dev-population read."""
+    pair = pw.comparable_blocks(blocks or [], want)
     if pair is None:
         return 0, None
     a, b = pair
@@ -686,13 +692,21 @@ def cmd_score(args):
     # path. A tested core behind an unexercised entrypoint is the §6a wiring gap in one file.
     forms = load_forms(repo)
     covered = {s for e in registered for s in e["scenarios"]}
-    floor, _stats = _floor_from(blocks, covered)
+    # Per-population noise floor (arch-adversary Part 1): a holdout entry is scored against a
+    # holdout floor, not the baseline one — same within-population rule bind_entry already
+    # follows. Cached per population so it is computed at most once per form.
+    _floors = {}
+    def floor_for(ef):
+        if ef not in _floors:
+            _floors[ef] = _floor_from(blocks, covered, {"form": ef})[0]
+        return _floors[ef]
     done = {s["id"] for s in scored}
     out = []
     for e in registered:
         if e["id"] in done:
             continue
         ef = entry_form(e, forms)
+        floor = floor_for(ef)
         b, why = bind_entry(e, blocks, resolve, is_ancestor, ef)
         if b is None:
             continue

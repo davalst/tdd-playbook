@@ -46,7 +46,7 @@ _ANSWER_KEY = re.compile(r"output|expected|answer|result|oracle", re.I)
 _ANSWER_PATH = re.compile(r"/golden/|golden|expected|oracle", re.I)
 
 
-def _is_fixture(path):
+def is_fixture_data(path):
     """A test-DATA file: a data-extension file under a test path or a fixtures/golden dir,
     excluding snapshot territory (snapshot_guard owns .snap/.ambr/__snapshots__)."""
     p = (path or "").replace("\\", "/")
@@ -120,7 +120,7 @@ def _read(path):
 def _bash_findings(cmd, root):
     hits = []
     for seg, _cwd in segments(cmd, root):
-        fixtures = [t for t in set(_FIXTURE_TOKEN.findall(seg)) if _is_fixture(t)]
+        fixtures = [t for t in set(_FIXTURE_TOKEN.findall(seg)) if is_fixture_data(t)]
         if not fixtures:
             continue
         git_rmmv = bool(_GIT_RM_MV.search(seg))
@@ -145,7 +145,7 @@ def main():
         emit(NAME, _bash_findings(cmd, os.getcwd()))
         return
     path = file_path_of(event)
-    if not _is_fixture(path):
+    if not is_fixture_data(path):
         emit(NAME, [])
         return
     old_text = _read(path)

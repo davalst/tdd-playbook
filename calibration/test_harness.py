@@ -1349,6 +1349,24 @@ def _nonexecution_tests():
     check("scenario_streaks: form=None still drops non-baseline isolation",
           _pv.scenario_streaks(np_blocks).get("s1") is None)
 
+    # arch-adversary Part-1: the noise FLOOR is per-population too. A holdout entry must be
+    # scored against a holdout floor, not the baseline pair — comparable_blocks was made
+    # population-aware but _floor_from fed it no population until this fix.
+    def _hdr(date, form):
+        return ("### Run {} — model m · repo r{} · selected 1 of 1 (1 shipped + 0 corpus · "
+                "0 controls) · recall 1/1 [—] · FP 0/0 [—] · form {}\n".format(date, date[-2:], form)
+                + hf.HEADER_7 + "\n" + hf.SEP_7 + "\n"
+                + "| {} | m | s1 | a1 | 3/3 | — | PASS |\n".format(date))
+    mix = (hf.parse_run_blocks(_hdr("2026-09-03", "dev"))[0]
+           + hf.parse_run_blocks(_hdr("2026-09-04", "dev"))[0]
+           + hf.parse_run_blocks(_hdr("2026-09-05", "holdout"))[0])
+    dev_floor = L._floor_from(mix, {"s1"}, {"form": "dev"})
+    hold_floor = L._floor_from(mix, {"s1"}, {"form": "holdout"})
+    check("floor: a dev want pairs the two dev blocks (measured)", dev_floor[1] is not None,
+          dev_floor)
+    check("floor: a holdout want has only ONE holdout block -> UNMEASURED, not a dev floor",
+          hold_floor[1] is None, hold_floor)
+
     # CONTROL: a normal run still records. Without this the guard could 'work' by never
     # recording anything, which is the same failure with the sign flipped.
     with tempfile.TemporaryDirectory() as d:

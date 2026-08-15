@@ -365,9 +365,13 @@ _FIXTURE_TELLS = re.compile(
 
 def fixture_legibility_problems(fixture_dir=FIXTURE):
     problems, scanned = [], 0
-    for root, _dirs, files in os.walk(fixture_dir):
+    for root, dirs, files in os.walk(fixture_dir):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]   # match stage()'s copy filter
         for name in files:
-            if name.endswith((".py", ".sh", ".md")):
+            # scan the SAME surface stage() copies to the doer — every file except compiled
+            # bytecode — not a narrow extension list (arch-adversary lead: a .txt/.toml tell
+            # would be staged yet unscanned). errors='replace' makes a stray binary harmless.
+            if not name.endswith(".pyc"):
                 path = os.path.join(root, name)
                 scanned += 1
                 with open(path, encoding="utf-8", errors="replace") as fh:

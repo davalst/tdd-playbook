@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_event, emit, is_test_file  # noqa: E402
-from fixture_guard import _is_fixture as is_fixture_data  # noqa: E402  (one predicate, not a copy)
+from fixture_guard import is_fixture_data  # noqa: E402  (one predicate, not a copy)
 
 NAME = "tripwire"
 
