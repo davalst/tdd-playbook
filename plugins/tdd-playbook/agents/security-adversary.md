@@ -29,7 +29,15 @@ cite `file:line`; never invent an abstract "should be hardened."
 5. **Over-wide permissions (S21)** — token scopes, DB users, container caps wider than the
    job needs. **PII in exhaust (S22).** **Unmetered expensive paths (S23)** — anything
    costly a caller can hit in a loop with no cap; this includes agent/model dispatch.
-6. NEGATIVES need the exhaustive sweep, cited (§12): "no other caller" means you enumerated
+6. **The inert control (§1 ambient-input rule).** For any authorization/gate that reads
+   AMBIENT state (a contextvar, request/process-scoped object, global registry), trace the
+   PRODUCTION path: does the caller that should trigger the gate actually PUBLISH the input
+   the gate reads (`current_run_context.set(...)`, populate the registry), or does it build
+   the right object and forget to publish it — so the gate reads an empty/default context and
+   authorizes nothing? A green test suite is no evidence here if the tests seed that ambient
+   state by hand (test-quality-adversary hunt #6): drive the real entry and observe what the
+   gate ACTUALLY read. A control that never runs is worse than none.
+7. NEGATIVES need the exhaustive sweep, cited (§12): "no other caller" means you enumerated
    the callers and say how.
 
 **What you DE-prioritise (so four adversaries do not return the same findings in different

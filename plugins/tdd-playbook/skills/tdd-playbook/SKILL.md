@@ -208,6 +208,28 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   which VALUES can fail; THIS rule governs which SIDE of the seam the assertion observes. §6's
   composition-root rule is the assembly-level twin, §6c the flow-level home, and the durable
   mechanical guard for a whole pluggable family at once is §6c's family parity sweep.
+- **Drive a guard through the entry that POPULATES its input — never seed the input by hand.** A
+  sharper cousin of the seam rule, for guards/gates/authorization checks that read AMBIENT state (a
+  contextvar, a process/request-scoped object, a global registry) rather than an argument. If a test
+  establishes the guard's input by SETTING that ambient state itself — `current_run_context.set(...)`,
+  monkeypatching the store, synthesizing the authorization object — then asserts the guard's verdict,
+  it is self-consistency: it proves the guard agrees with an input the TEST planted, never that the
+  PRODUCTION path publishes that input. The gate can be inert — a new caller builds the right
+  authorization object but forgets to publish it to the context the gate reads — and every such test
+  stays green (origin: Cheliped 2026-08-15 — a write gate authorizing off `current_run_context` that a
+  new `run_agent_once` path never `set`; 9 green tests over a DEAD control; a fresh-context
+  security-adversary caught it by driving the real entry and observing what the gate ACTUALLY read).
+  The review-checkable tell (grep-able): a `<ambient>.set(...)` / monkeypatch of the guard's input
+  store, followed by an assertion on the guard's decision, with NO call to the production entry
+  (`begin_run`, the request handler, the middleware) that sets it. The durable form: a guard test
+  drives the guard through the SAME entry that populates its inputs and asserts the decision — it
+  never seeds the guard's ambient input in the test body. This is the "which SIDE of the seam" rule
+  applied to ambient authorization INPUTS: the code under test IS the input's consumer, and seeding
+  the input by hand tests the wrong side. Distinct from seam-fabrication (what a double SUPPLIES) and
+  the return-reading H11 (a value LEAVING your code): here the test fabricates the guard's ambient
+  INPUT STATE rather than the path that establishes it. Mutation is BLIND to it (§4) — the mutants
+  live in the guard, the test seeds the guard's input, and neither touches the production path that
+  should publish it, so 100% is reachable over inert code.
 - Red-first is a helpful habit but it is an HONOR SYSTEM and easy to fake; do not lean on it as the
   guarantee of test quality. The guarantee is §3–§4 (+ the TEST-LOCK above).
 - **Tests that cannot fail — the fixture-VALUE trap.** Red-first proves a test fails without the
@@ -295,6 +317,11 @@ returns and the return-reading test kills it — score 100%, user still sees not
 origin case, Cheliped 2026-08). Mutation testing is the anti-performative check WITHIN a seam;
 §1's "test at the seam you don't own" is the check ACROSS one. Neither substitutes for the other —
 a high score is a claim about the code's interior, never global assurance of production behavior.
+The AMBIENT-INPUT variant (§1's "drive a guard through the entry that populates its input") is the
+same blindness turned inward: when a guard reads ambient state and the test SEEDS that state by
+hand, the mutants live in the guard and the test's planted input still satisfies them — a 100%
+score over a control that never runs in production, because the production path that should publish
+the input is on neither side of what mutation touches (Cheliped 2026-08-15).
 
 **Scope — what goes on the roster.**
 - Run a mutation pass on CRITICAL modules only (auth, money, permissions, lifecycle, core algorithms) —
