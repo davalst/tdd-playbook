@@ -152,13 +152,57 @@ def vault_integrity_problems(vault_root):
     return problems
 
 
-def run_holdout(vault_url, extra_argv=(), *, runner=None):
+HISTORY = os.path.join(os.path.dirname(HERE), "docs", "calibration", "history.md")
+
+
+def _filtered_run_lines(stdout):
+    """The glance-able lines from a run: per-scenario headers + verdicts + the Calibration reading.
+    Drops the rollup wall (gate_yield / ledger / suppressed-findings noise) so a --summary run is
+    readable instead of a scroll."""
+    keep = ("=== ", "PASS", "AMBER", "**BLOCKING", "BLOCKING FAIL", "INVALID", "Calibration:")
+    return [ln for ln in (stdout or "").splitlines() if ln.startswith(keep)]
+
+
+def holdout_summary_lines(history_text):
+    """An HONEST one-glance reading from the calibration history: the latest holdout recall/FP with
+    its Wilson interval, the latest dev recall for comparison, and a conservative verdict. With few
+    plants the interval is wide and the comparison is explicitly withheld — a small-n gap is not a
+    signal. Pure (takes the history text) so it is testable without a run."""
+    import history_format as hf
+    blocks, _ = hf.parse_run_blocks(history_text)
+    lh = next((b for b in reversed(blocks) if b.get("form") == "holdout"), None)
+    if not lh:
+        return ["holdout: no holdout run recorded yet"]
+    hk, hn = lh["recall"]
+    fk, fn = lh["fp"]
+    lines = ["Holdout reading: recall {}/{} {} · FP {}/{} {}".format(
+        hk, hn, hf.interval_cell(hk, hn), fk, fn, hf.interval_cell(fk, fn))]
+    ld = next((b for b in reversed(blocks) if b.get("form") == "dev"), None)
+    if ld:
+        dk, dn = ld["recall"]
+        lines.append("Dev (latest):    recall {}/{} {}".format(dk, dn, hf.interval_cell(dk, dn)))
+        if hn < 8:
+            lines.append("-> n={} is too small to compare to dev; author more holdout plants to "
+                         "tighten the interval before reading into any gap.".format(hn))
+        else:
+            hr = hk / hn if hn else 0.0
+            dr = dk / dn if dn else 0.0
+            if hr + 0.15 < dr:
+                lines.append("-> WATCH: holdout recall ({:.0%}) is well below dev ({:.0%}) — the "
+                             "verifiers may be overfitting the public corpus.".format(hr, dr))
+            else:
+                lines.append("-> OK: holdout recall is in line with dev.")
+    return lines
+
+
+def run_holdout(vault_url, extra_argv=(), *, runner=None, summary=False):
     """The whole opt-in run, lightweight and manual (no schedule, no automation — the v1.32
     opt-in-and-reactive doctrine): clone the vault to an ephemeral out-of-tree dir, VERIFY its
     integrity (drift + unregistered bodies), point the loader at its bodies, run the eval with the
     agent BOXED-IN (run_agent auto-confines while the bodies are on disk, fails closed if
     confinement is unavailable), then delete the clone so no answer key outlives the run. Returns
-    the eval's exit code. `runner` is injectable for tests."""
+    the eval's exit code. `summary` collapses the rollup wall to the verdicts + reading + a
+    dev-vs-holdout comparison. `runner` is injectable for tests."""
     workdir = tempfile.mkdtemp(prefix="tdd-holdout-")
     try:
         dest = stage_vault(vault_url, workdir)
@@ -175,6 +219,17 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None):
         argv = [sys.executable, RUNNER, "--form", "holdout", *extra_argv]
         if runner is not None:
             return runner(argv, env, bodies)
+        if summary:
+            proc = subprocess.run(argv, env=env, capture_output=True, text=True)
+            for ln in _filtered_run_lines(proc.stdout):
+                print(ln)
+            try:
+                print("")
+                for ln in holdout_summary_lines(open(HISTORY).read()):
+                    print(ln)
+            except OSError:
+                pass
+            return proc.returncode
         return subprocess.run(argv, env=env).returncode
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
@@ -311,6 +366,9 @@ def main(argv=None):
     r = sub.add_parser("run", help="clone the vault, verify it, run a confined holdout eval, "
                                     "delete the clone")
     r.add_argument("--vault", required=True, help="git URL of the private holdout vault")
+    r.add_argument("--summary", action="store_true",
+                   help="collapse the rollup wall to just the verdicts + reading + a dev-vs-holdout "
+                        "comparison (glance-able)")
     # Extra run_calibration args (e.g. --model sonnet --repeat 3) are captured by parse_known_args
     # below and forwarded — argparse.REMAINDER does not collect LEADING options like --model, which
     # is why `run --vault URL --model sonnet` used to error.
@@ -327,7 +385,8 @@ def main(argv=None):
     v.add_argument("--reason", required=True, help="why this assignment (audit trail)")
     args, extra = ap.parse_known_args(argv)
     if args.cmd == "run":
-        return run_holdout(args.vault, extra)   # forward --model/--repeat/etc. to run_calibration
+        # forward --model/--repeat/etc. to run_calibration
+        return run_holdout(args.vault, extra, summary=args.summary)
     # author/approve take no forwarded args — reject unknowns strictly.
     if extra:
         ap.error("unrecognized arguments: " + " ".join(extra))

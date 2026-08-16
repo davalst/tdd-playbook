@@ -2963,6 +2963,37 @@ def _holdout_authoring_tests():
     else:
         check("D1: holdout-form selection test SKIPPED (no sandbox-exec on this host)", True)
 
+    # --- --summary: glance-able reading + HONEST dev comparison ---
+    import history_format as hf
+    with tempfile.TemporaryDirectory() as hd:
+        base = {"date": "2026-08-15", "model": "sonnet", "repo_sha": "0", "selected": 1,
+                "total": 1, "shipped": 1, "corpus": 0, "controls": 1, "isolation": "with-playbook"}
+        hp = os.path.join(hd, "h.md")
+        hf.append_run_block(hp, dict(base, recall=(9, 10), fp=(0, 10), form="dev"), [])
+        hf.append_run_block(hp, dict(base, recall=(2, 2), fp=(2, 2), form="holdout"), [])
+        blob = "\n".join(holdout.holdout_summary_lines(open(hp).read()))
+        check("summary: reading shows the latest holdout recall + FP",
+              "Holdout reading:" in blob and "recall 2/2" in blob and "FP 2/2" in blob, blob)
+        check("summary: small-n WITHHOLDS the dev comparison (honest, not a signal)",
+              "too small to compare" in blob, blob)
+        hp2 = os.path.join(hd, "h2.md")
+        hf.append_run_block(hp2, dict(base, recall=(9, 10), fp=(0, 10), form="dev"), [])
+        hf.append_run_block(hp2, dict(base, recall=(3, 10), fp=(0, 10), form="holdout"), [])
+        check("summary: with enough plants, holdout materially below dev -> WATCH",
+              "WATCH" in "\n".join(holdout.holdout_summary_lines(open(hp2).read())))
+    check("summary: _filtered_run_lines keeps verdicts + reading, drops rollup noise",
+          holdout._filtered_run_lines("=== s [a]\nPASS caught\nrollup: noise\n"
+                                      "Calibration: recall 1/1\nyield: noise")
+          == ["=== s [a]", "PASS caught", "Calibration: recall 1/1"])
+    keep_rh2 = holdout.run_holdout
+    seen2 = {}
+    holdout.run_holdout = lambda vault, extra, **k: seen2.update(summary=k.get("summary")) or 0
+    try:
+        holdout.main(["run", "--vault", "URL", "--summary", "--model", "sonnet"])
+    finally:
+        holdout.run_holdout = keep_rh2
+    check("summary: --summary flag reaches run_holdout", seen2.get("summary") is True, seen2)
+
 
 def main():
     print("Calibration-harness calibration")
