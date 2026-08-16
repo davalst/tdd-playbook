@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-holdout-control-validation-d0-schema",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "5b6e39a32114b0fe59731833836c04e7273ef445",
+    "head": "55f77561e9bcaaa24a323c244c6cca232772cc15"
+  },
+  "reviewers": [
+    "self-review"
+  ],
+  "findings": [
+    {
+      "id": "D0-REGISTER-SUPERSESSION-SCHEMA",
+      "severity": "P3",
+      "summary": "The holdout diagnosis proved bad controls land silently because approve never runs a verifier against them, and reading three confirmed they are broken controls (not verifier over-flags) — so the FP number measures control-authoring quality. The fix requires SUPERSEDING bad bodies rather than editing them (the corpus is hash-pinned immutable — a Codex-review P0). This increment lands the register-schema foundation that supersession needs.",
+      "evidence": [
+        "calibration/plant_forms.py:87",
+        "calibration/plant_forms.py:117"
+      ],
+      "status": "incorporated",
+      "disposition": "The plant register migrated from 5 to 7 cells, adding `status` (current/legacy-invalid/known-overflag/asymmetric) + `supersedes`. parse_register accepts legacy 5-cell rows (-> status=current) AND 7-cell rows; a 6-cell half-migrated row still REFUSES (the silently-dropped-column guarantee holds); format_register_row's defaults keep existing 5-arg callers emitting valid `current` rows; form_problems validates the status vocabulary and rejects dangling/self supersede links. Nine red-first tests plus a regression that the REAL public register still parses + validates (back-compat). This is D0 part 1 of the twice-Codex-reviewed holdout control-validation plan (~/.claude/plans/polymorphic-gathering-rainbow.md); the status->scorer partition, reporting split, per-run population snapshot, the D1 validation gate, the D2 control-quality judge, the D3 authoring-prompt fix, and the D4 supersession remediation remain — carried in a detailed handoff for a fresh session. The commit also lands session calibration telemetry.",
+      "class": "deterministic",
+      "recurrence_key": "immutable-corpus-supersede-not-edit"
+    }
+  ]
+}

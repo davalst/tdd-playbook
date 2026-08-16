@@ -112,6 +112,10 @@
   {
    "path": "2026-08-16-v1.38.0-release.json",
    "sha256": "b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e"
+  },
+  {
+   "path": "2026-08-16-holdout-control-validation-d0-schema.json",
+   "sha256": "3bc86e39f965c9198a1e3fca5da916d5361ebddb722b77a24e01f03b8bd941bd"
   }
  ]
 }
