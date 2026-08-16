@@ -631,3 +631,15 @@ the same-day re-run (plant 3/3 caught · control 0/3 → 3/3 · FP 1/1 → 0/1).
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260816-01 | 2026-08-16 | d817482 | plugins/tdd-playbook/agents/test-quality-adversary.md; calibration/corpus/approved/ambient-input-seeded-gate-test.json; calibration/corpus/approved/control-ambient-input-driven-gate-test.json | hunt #6 restraint clause (flag HOLLOW ONLY when the TEST hand-seeds the ambient state; do NOT flag when the test drives a production entry that publishes it — trace the entry's body before flagging) PLUS the §13 anchor authored (the plant+control this entry names as scenarios) — fulfils L-20260815-01's promise to register the anchor's prediction when authored | ambient-input-seeded-gate-test; control-ambient-input-driven-gate-test | up | 3 | first §13 replay of the anchor caught the plant (3/3 HOLLOW) but false-positived the clean control (0/3 — the adversary called the correctly-wired driven test HOLLOW). The restraint clause removes the false green on the driven-entry case; the same-day re-run confirmed BOTH directions (plant holds 3/3, control 0/3 → 3/3, FP 1/1 → 0/1), proving the clause did not blind the plant. Baseline d817482 carries the pre-restraint brief AND predates both corpus fixtures (so each named surface genuinely MOVED after it). The plant+control are new scenarios (no baseline → INCONCLUSIVE on first score); the measurable claim is the control's 3-rep flip to clean |
+
+### Registered 2026-08-16 — baseline 068ab7b: TEST-LOCK deadlock-fix command-doc updates (inert)
+
+The TEST-LOCK cross-session deadlock fix touched two COMMAND docs — `/grade` gains the forced +
+session_downgrade unlock-journal readers, `/tdd-unlock` documents the `unlock --force` recovery.
+Command text is deliberately OUT of EFFECTFUL (2026-08-14 decision): no calibration scenario
+measures `/grade` or `/tdd-unlock` behaviour, so this is an INERT gate-surface change registered
+purely for coverage — `expect=none`, no scenario, claimed 0.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260816-02 | 2026-08-16 | 068ab7b | plugins/tdd-playbook/commands/grade.md; plugins/tdd-playbook/commands/tdd-unlock.md | /grade reads the forced + session_downgrade unlock-journal flags; /tdd-unlock documents `unlock --force` recovery (TEST-LOCK cross-session deadlock fix) |  | none | 0 | command DOCS, not adversary briefs — commands/ is in SURFACE_PATTERNS (coverage) but OUT of EFFECTFUL, so no calibration scenario measures these; an inert doc change registered for coverage per the 2026-08-14 decision |

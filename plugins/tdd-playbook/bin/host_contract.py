@@ -27,6 +27,20 @@ LOCK_FILENAME = "active-lock.json"
 EVENTS_FILENAME = "events.jsonl"
 PENDING_FILENAME = "pending-red.json"
 TRANSACTION_FILENAME = "lock-transaction.lock"
+
+
+def session_id(root):
+    """The ONE owner-identity every lock creator/importer stamps and every unlock checks: the
+    host's env session id if it exports one, else a STABLE per-worktree fallback so sequential
+    CLI calls AND the guard's legacy-import AGREE on the owner. Unifying this closed a
+    cross-session DEADLOCK (cheliped 2026-08-16): the guard stamped an imported lock 'claude-hook'
+    while the unlock CLI computed 'local-worktree-<hash>', so the lock could be released by no one
+    and the only escape was `rm .git/tdd-playbook/active-lock.json`. realpath-normalized so the
+    guard's identity['root'] and the CLI's project_root() hash IDENTICALLY for the same repo."""
+    return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
+            or os.environ.get("CLAUDE_SESSION_ID")
+            or "local-worktree-{}".format(
+                hashlib.sha256(os.path.realpath(str(root)).encode("utf-8")).hexdigest()[:16]))
 ASSURANCE_LEVELS = (
     "unmeasured",
     "local_claim",
@@ -313,8 +327,11 @@ def merge_lock(identity, fresh):
 
 
 def clear_lock(identity, expected_generation=None, expected_lock_id=None,
-               expected_session_id=None, expected_worktree_id=None):
-    """Remove the authority only if the caller did not race a newer lock mutation."""
+               expected_session_id=None, expected_worktree_id=None, force=False):
+    """Remove the authority only if the caller did not race a newer lock mutation.  `force`
+    (journaled recovery, `unlock --force`) SKIPS the ownership checks (session_id / worktree_id) so
+    a lock owned by a dead or foreign session can be released — but KEEPS the generation/lock_id
+    CAS, so a concurrent replacement is never silently clobbered even under --force."""
     with _state_transaction(identity):
         existing = _read_lock_unlocked(identity)
         if existing is None:
@@ -327,13 +344,32 @@ def clear_lock(identity, expected_generation=None, expected_lock_id=None,
             raise ContractError("active lock changed while unlock was in progress")
         if expected_lock_id is not None and existing["lock_id"] != expected_lock_id:
             raise ContractError("active lock was replaced while unlock was in progress")
-        if expected_session_id is not None and existing["session_id"] != expected_session_id:
-            raise ContractError("active lock is owned by another session")
-        if expected_worktree_id is not None \
-                and existing["source_worktree_id"] != expected_worktree_id:
-            raise ContractError("active lock is owned by another worktree")
+        if not force:
+            if expected_session_id is not None and existing["session_id"] != expected_session_id:
+                raise ContractError("active lock is owned by another session")
+            if expected_worktree_id is not None \
+                    and existing["source_worktree_id"] != expected_worktree_id:
+                raise ContractError("active lock is owned by another worktree")
         os.remove(lock_path(identity))
         return True
+
+
+def force_unlink_lock(identity):
+    """Recovery-only RAW removal for a lock that _validate_lock (hence clear_lock) cannot read — a
+    corrupt or schema/repo-mismatched lock whose only other escape is `rm`.  Best-effort reads the
+    raw record for the audit journal, then unlinks under the state transaction.  Only `unlock
+    --force` reaches this; it never runs on a readable lock (that path keeps the generation CAS)."""
+    with _state_transaction(identity):
+        path = lock_path(identity)
+        raw = {}
+        try:
+            with open(path) as fh:
+                raw = json.load(fh)
+        except (OSError, ValueError):
+            raw = {}
+        if os.path.isfile(path):
+            os.remove(path)
+        return raw if isinstance(raw, dict) else {}
 
 
 def _read_lock_unlocked(identity):

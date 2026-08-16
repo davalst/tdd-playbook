@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `37c62ad37f395681635807c1a0f3e3d9370ff20a9d3431d16b4cfaab9b42b01e`
 - `docs/architecture/host-parity.json` — `ac5a9b1c6d649c862677bbed993d0dfb6dd05d0a1a0732d0d044b6a523615fd3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
-- `capabilities.json` — `c93d76f0dd2aa213506ce3053ecd9211e635ec13acab8bbbef36911632ddc845`
+- `capabilities.json` — `4f0061f63420c5ea1a7e51858465e7e824feb7d680f83e29d439ae96fe686854`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -35,8 +35,9 @@
 - `docs/reviews/2026-08-16-holdout-diagnose.json` — `323683b1d6af3d7219f7fa478474137550400e00096bb605b6c0af7cfb2ee7dd`
 - `docs/reviews/2026-08-16-holdout-process-documented.json` — `59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213`
 - `docs/reviews/2026-08-16-isolation-probe-validated.json` — `d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509`
+- `docs/reviews/2026-08-16-test-lock-deadlock-recovery.json` — `2b6abbe252b2df79ab21fcfd602af4f151a08405f36bfbbea6c49cd94c3edbc0`
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
-- `docs/reviews/index.json` — `07e000d37afbfd7fbf5721b3ec67f92e66db6e37d4fd6240544ed00c93cb1264`
+- `docs/reviews/index.json` — `d47d1b6aae9da0bb731eddd083a85ebbc8b7dfb18484c8065efea59facf594a9`
 
 ## Gate surface
 
@@ -57,12 +58,13 @@
 
 ## Capability registry
 
-- Registered capabilities: 30. Owned dated integration-debt entries: 74.
+- Registered capabilities: 30. Owned dated integration-debt entries: 75.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
 - `fixture-data-guard/fixtureguard-warn-tier-decision` — WARN-TIER PROMOTE/KILL (A, 2026-08-15)… (owner `david`, expires `2026-11-15`)
 - `fixture-data-guard/lock-surface-fixturedata-kind` — RESIDUAL HOLE, stated not assumed (arch-F8)… (owner `david`, expires `2026-10-31`)
+- `test-lock/test-lock-deadlock-fix-version-echo` — DOWNSTREAM VERSION-ECHO for the TEST-LOCK cross-session deadlock fix (cheliped 2026-08-16, integration-adversary Finding… (owner `david`, expires `2026-11-15`)
 - `test-lock/claude-test-lock-refresh` — RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep… (owner `david`, expires `2026-09-30`)
 - `test-lock/codex-guard-family-parity` — CODEX GUARD-FAMILY PARITY… (owner `david`, expires `2026-09-30`)
 - `test-lock/shell-classifier-adapter-boundary` — SHELL CLASSIFIER ADAPTER BOUNDARY… (owner `david`, expires `2026-09-30`)
@@ -135,8 +137,8 @@
 
 ## Adversarial review records
 
-- Review records: 26. Findings: 138.
-- `incorporated`: 53
+- Review records: 27. Findings: 142.
+- `incorporated`: 56
 - `open`: 6
 - `rejected`: 3
-- `verified_closed`: 76
+- `verified_closed`: 77

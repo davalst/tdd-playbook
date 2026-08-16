@@ -118,8 +118,12 @@ def test_adapter_parity():
               status.returncode == 0 and "ACTIVE" in status.stdout, status.stdout)
         unlocked = _lock(side, "unlock", "--class", "phase", "--reason",
                          "linked worktree parity phase is complete and green")
+        # A linked worktree is refused via the WORKTREE_ID check now (the env-less session check is
+        # skipped so a SAME-worktree lock can be released — the cross-session deadlock fix); the
+        # refusal reason is therefore the more accurate "another worktree". Behavioral invariant
+        # unchanged: refused (exit 1) AND the shared authority survives.
         check("claude adapter: non-owner worktree cannot clear shared authority",
-              unlocked.returncode == 1 and "another session" in unlocked.stderr
+              unlocked.returncode == 1 and "another worktree" in unlocked.stderr
               and core.read_lock(identity) is not None,
               (unlocked.returncode, unlocked.stderr))
         owner_unlock = _lock(main, "unlock", "--class", "phase", "--reason",

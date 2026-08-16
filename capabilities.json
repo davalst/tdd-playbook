@@ -137,6 +137,12 @@
       ],
       "integration_debt": [
         {
+          "id": "test-lock-deadlock-fix-version-echo",
+          "what": "DOWNSTREAM VERSION-ECHO for the TEST-LOCK cross-session deadlock fix (cheliped 2026-08-16, integration-adversary Finding 5). D1 (unified owner + env-less unlock rides the worktree check), D2 (unlock --force for dead/foreign/corrupt locks) and D4 (version-skew out-of-root DoS + actionable message) fix the deadlock at SOURCE and reach downstream via install_into_repo vendoring. BUT a wedged downstream repo running an OLD vendored guard (e.g. 1.30.0) cannot tell whether its copy HAS the fix or IS the wedging version: there is no per-file/semantic version marker in tdd_lock.py/test_lock_guard.py and no doctor line echoing it (install_into_repo --doctor checks commit-date liveness, not this fix's presence). By expiry: add a version stamp the vendored guard exposes and --doctor prints (running-vs-intended, the H8/version-echo shape) so a downstream operator can answer 'does my guard have the deadlock fix?', OR re-date with a decision that the refresh-prompt + commit-date heartbeat suffice.",
+          "owner": "david",
+          "expires": "2026-11-15"
+        },
+        {
           "id": "claude-test-lock-refresh",
           "what": "RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep. BLOCKED ON DAVID: this needs a live `claude` binary and budget, which no session can supply; it is not work an agent can pay down. Nine debts on this capability shared that one blocker and one shape - gate-surface text shipped in vN.N and never live-calibrated - so they are re-dated together rather than individually, and the accumulation is itself the finding: the calibration cadence has not kept pace with the release cadence. Nothing is deleted; the original text follows. | CLAUDE TEST-LOCK REAL-HOST REFRESH: the migrated Claude transport is covered by subprocess parity fixtures, but was not freshly exercised through an authenticated Claude Code host in the 2026-08-07 portability build. Done = structured-edit and Bash planted blocks plus paired clean controls recorded by the production observation seam for the release SHA; until then doctor reports Claude UNMEASURED.",
           "owner": "david",

@@ -6,6 +6,7 @@ attack here is the documented one: while a lock is active, an edit to the locked
 to conftest.py) must be BLOCKED (exit 2). Self-contained, no pytest. Run:
     python3 tests/test_tdd_lock.py
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -127,6 +128,9 @@ def main():
     test_reason_class()
     test_reason_class_reaches_the_rollup()
     test_out_of_root_jurisdiction()
+    test_cross_session_recovery()
+    test_force_unlock()
+    test_version_skew_guard()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
@@ -163,6 +167,185 @@ def test_out_of_root_jurisdiction():
         p = guard_bash(d, "python3 -c \"open(vv, 'w')\"")
         check("cheliped: undecidable write while locked blocks with an HONEST message (not the test)",
               p.returncode == 2 and "cannot resolve" in p.stderr and "test_x.py" not in p.stderr,
+              (p.returncode, p.stderr))
+
+
+def test_cross_session_recovery():
+    """cheliped field report (2026-08-16, SECOND live repro): an auto-lock the GUARD imported was
+    stamped with the fallback owner 'claude-hook' (test_lock_guard.py), which the unlock CLI's
+    ownership check can NEVER match — its fallback is 'local-worktree-<hash>' — so clear_lock
+    REFUSED for every session and the only escape was `rm .git/tdd-playbook/active-lock.json`.
+    §13 replay of the exact wedged-lock shape (guard-imported legacy lock, foreign owner).
+    D1: the guard's import now routes through the SAME shared host_contract.session_id() the CLI
+    uses, so an imported lock is releasable by any same-worktree session."""
+    print("\n[TEST-LOCK cross-session recovery — cheliped deadlock]")
+    gid = ["-c", "user.email=t@t", "-c", "user.name=t"]
+
+    # D1: a guard-IMPORTED legacy lock must be releasable by a plain (same-worktree) unlock.
+    with tempfile.TemporaryDirectory() as d:
+        os.makedirs(os.path.join(d, "tests"))
+        tf = os.path.join(d, "tests", "test_x.py")
+        open(tf, "w").write("def test_x():\n    assert x() == 1\n")
+        for args in (["init", "-q"], [*gid, "add", "-A"], [*gid, "commit", "-qm", "seed"]):
+            subprocess.run(["git", "-C", d, *args], check=True, capture_output=True)
+        digest = hashlib.sha256(open(tf, "rb").read()).hexdigest()
+        os.makedirs(os.path.join(d, ".claude"))
+        with open(os.path.join(d, ".claude", "tdd-lock.json"), "w") as fh:
+            json.dump({"files": {"tests/test_x.py": digest},
+                       "session_id": "whatever", "locked_at": "2026-08-16T11:02:46Z"}, fh)
+        # a write touches the guard -> it imports the legacy lock into the canonical authority
+        guard(d, tf)
+        active = os.path.join(d, ".git", "tdd-playbook", "active-lock.json")
+        check("D1: guard imported the legacy lock into the canonical authority",
+              os.path.isfile(active), active)
+        owner = json.load(open(active))["session_id"]
+        check("D1: the imported lock is NOT owned by the unreleasable 'claude-hook'",
+              owner != "claude-hook", owner)
+        p = lock_cli(d, "unlock", "--reason", "green — recovered the imported lock",
+                     "--class", "feature-end")
+        check("D1: a same-worktree plain unlock RELEASES the imported lock (deadlock gone)",
+              p.returncode == 0, (p.returncode, p.stdout, p.stderr))
+
+    # ALREADY-WEDGED (the live incident): a lock left on disk owned by 'claude-hook' by the old
+    # 1.30.0 guard must be releasable by a plain env-less unlock — ownership falls to worktree_id,
+    # which still matches. This is the root fix reaching BACK, not just forward (integ. Finding 4).
+    with tempfile.TemporaryDirectory() as d:
+        os.makedirs(os.path.join(d, "tests"))
+        tf = os.path.join(d, "tests", "test_w.py")
+        open(tf, "w").write("def test_w():\n    assert w() == 1\n")
+        for args in (["init", "-q"], [*gid, "add", "-A"], [*gid, "commit", "-qm", "seed"]):
+            subprocess.run(["git", "-C", d, *args], check=True, capture_output=True)
+        lock_cli(d, "lock", "tests/test_w.py")           # a valid lock (correct worktree_id)
+        active = os.path.join(d, ".git", "tdd-playbook", "active-lock.json")
+        rec = json.load(open(active))
+        rec["session_id"] = "claude-hook"                 # simulate the old wedging guard's stamp
+        with open(active, "w") as fh:
+            json.dump(rec, fh)
+        p = lock_cli(d, "unlock", "--reason", "recovering a claude-hook-wedged lock in place",
+                     "--class", "feature-end")
+        check("root-fix reaches BACK: an on-disk 'claude-hook' lock is released by a plain unlock",
+              p.returncode == 0 and not os.path.isfile(active), (p.returncode, p.stderr))
+
+
+def test_force_unlock():
+    """The LEGAL recovery that retires `rm .git/tdd-playbook/active-lock.json`: a lock owned by a
+    DIFFERENT real session (env-present cross-session) or a CORRUPT/schema-mismatched lock that
+    clear_lock cannot even read is releasable by `unlock --force --reason`, journaled forced:true
+    and surfaced to the yield instrument. BOTH families covered so no `rm` escape survives; --force
+    still COMPOSES with the reason/class gate (recovery is audited, not a bypass), and the
+    cross-session refusal POINTS at --force so nobody reaches into .git."""
+    print("\n[TEST-LOCK --force recovery]")
+    gid = ["-c", "user.email=t@t", "-c", "user.name=t"]
+
+    def mkrepo(d, name):
+        os.makedirs(os.path.join(d, "tests"))
+        p = os.path.join(d, "tests", name)
+        open(p, "w").write("def t():\n    assert f() == 1\n")
+        for a in (["init", "-q"], [*gid, "add", "-A"], [*gid, "commit", "-qm", "seed"]):
+            subprocess.run(["git", "-C", d, *a], check=True, capture_output=True)
+        return p
+
+    def cli(d, sess, *args):
+        env = clean_env(d)
+        if sess:
+            env["TDD_PLAYBOOK_SESSION_ID"] = sess
+        return subprocess.run([sys.executable, LOCK_BIN, *args], cwd=d, env=env,
+                              capture_output=True, text=True, timeout=30)
+
+    active_of = lambda d: os.path.join(d, ".git", "tdd-playbook", "active-lock.json")
+
+    # (a) env-present cross-session: A locks with a real token; B needs --force
+    with tempfile.TemporaryDirectory() as d:
+        mkrepo(d, "test_a.py")
+        cli(d, "sess-A", "lock", "tests/test_a.py")
+        p = cli(d, "sess-B", "unlock", "--reason", "recover A's lock please", "--class", "feature-end")
+        check("--force NEEDED: session B's plain unlock of A's real-session lock is REFUSED",
+              p.returncode == 1 and "another session" in p.stderr, (p.returncode, p.stderr))
+        check("discoverable: the cross-session refusal NAMES --force (not rm)", "--force" in p.stderr,
+              p.stderr)
+        p = cli(d, "sess-B", "unlock", "--force", "--reason",
+                "recovering an orphaned lock from a dead session A", "--class", "feature-end")
+        check("--force RELEASES a foreign real-session lock", p.returncode == 0 and
+              not os.path.isfile(active_of(d)), (p.returncode, p.stderr))
+
+    # (b) a CORRUPT/schema-mismatched lock clear_lock cannot even read
+    with tempfile.TemporaryDirectory() as d:
+        mkrepo(d, "test_b.py")
+        cli(d, None, "lock", "tests/test_b.py")
+        rec = json.load(open(active_of(d))); rec["schema_version"] = 999
+        with open(active_of(d), "w") as fh:
+            json.dump(rec, fh)
+        p = cli(d, None, "unlock", "--reason", "cannot read this lock", "--class", "feature-end")
+        check("validation-fail: a plain unlock of a schema-mismatched lock is REFUSED",
+              p.returncode == 1, (p.returncode, p.stderr))
+        p = cli(d, None, "unlock", "--force", "--reason",
+                "force-clearing a schema-mismatched lock from a version skew", "--class", "feature-end")
+        check("--force clears a schema-mismatched lock too (rm retired for this family)",
+              p.returncode == 0 and not os.path.isfile(active_of(d)), (p.returncode, p.stderr))
+
+    # (c) --force COMPOSES with the reason gate (auditability not bypassed)
+    with tempfile.TemporaryDirectory() as d:
+        mkrepo(d, "test_c.py")
+        cli(d, "sess-A", "lock", "tests/test_c.py")
+        p = cli(d, "sess-B", "unlock", "--force", "--reason", "short", "--class", "feature-end")
+        check("--force still needs a real reason (>=10 chars) — recovery is audited, not a bypass",
+              p.returncode == 1 and "REFUSED" in p.stderr, (p.returncode, p.stderr))
+
+    # (d) forced:true reaches a CONSUMER — the journal /grade reads carries it (not write-only)
+    with tempfile.TemporaryDirectory() as d:
+        mkrepo(d, "test_d.py")
+        cli(d, "sess-A", "lock", "tests/test_d.py")
+        cli(d, "sess-B", "unlock", "--force", "--reason", "recovering the orphaned lock now",
+            "--class", "feature-end")
+        events = os.path.join(d, ".git", "tdd-playbook", "events.jsonl")
+        rows = [json.loads(ln) for ln in open(events)] if os.path.isfile(events) else []
+        unlocks = [r for r in rows if r.get("event") == "unlock"]
+        check("consumer: the forced unlock's journal entry (what /grade reads) carries forced=true",
+              any(r.get("forced") is True for r in unlocks), unlocks)
+
+    # (e) HARDENING (security-adversary): the ONE new release path — an env-less same-worktree
+    # unlock clearing a REAL-token owner's lock — journals session_downgrade:true for /grade.
+    with tempfile.TemporaryDirectory() as d:
+        mkrepo(d, "test_e.py")
+        cli(d, "sess-A", "lock", "tests/test_e.py")            # real env-token owner
+        p = cli(d, None, "unlock", "--reason", "same-worktree env-less release of A's lock",
+                "--class", "feature-end")                       # env-less -> worktree governs
+        check("hardening: env-less same-worktree unlock of a real-token lock SUCCEEDS", p.returncode == 0,
+              (p.returncode, p.stderr))
+        events = os.path.join(d, ".git", "tdd-playbook", "events.jsonl")
+        rows = [json.loads(ln) for ln in open(events)] if os.path.isfile(events) else []
+        check("hardening: it journals session_downgrade=true (the one new path, visible to /grade)",
+              any(r.get("event") == "unlock" and r.get("session_downgrade") is True for r in rows),
+              rows)
+
+
+def test_version_skew_guard():
+    """cheliped Defect C residual: under version skew (an older vendored guard reading a lock a
+    newer CLI wrote), active_lock sets _contract_error and main() fails closed on EVERY write —
+    including OUT-OF-ROOT ones, the same cross-session DoS the v1.37.0 edit_findings fix closed but
+    which this earlier main() branch re-opened. D4: out-of-root passes even in the repair state, and
+    the in-root block names the actual remedy (update + reload), not an opaque 'authority repaired'."""
+    print("\n[TEST-LOCK version-skew guard — Defect C residual]")
+    gid = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as outside:
+        os.makedirs(os.path.join(d, "tests"))
+        tf = os.path.join(d, "tests", "test_v.py")
+        open(tf, "w").write("def test_v():\n    assert v() == 1\n")
+        for a in (["init", "-q"], [*gid, "add", "-A"], [*gid, "commit", "-qm", "seed"]):
+            subprocess.run(["git", "-C", d, *a], check=True, capture_output=True)
+        lock_cli(d, "lock", "tests/test_v.py")
+        active = os.path.join(d, ".git", "tdd-playbook", "active-lock.json")
+        rec = json.load(open(active)); rec["schema_version"] = 999   # a newer CLI wrote it
+        with open(active, "w") as fh:
+            json.dump(rec, fh)
+        # OUT-OF-ROOT write during the version-skew repair state must PASS (not the DoS)
+        p = guard(d, os.path.join(outside, "memory.md"))
+        check("D4: out-of-root write PASSES under a version-skew _contract_error (no residual DoS)",
+              p.returncode == 0, (p.returncode, p.stderr))
+        # IN-ROOT write fails closed, but names the ACTIONABLE remedy (update + reload)
+        p = guard(d, tf)
+        check("D4: in-root write under version skew names the remedy (update + reload)",
+              p.returncode == 2 and "version mismatch" in p.stderr and "reload" in p.stderr,
               (p.returncode, p.stderr))
 
 

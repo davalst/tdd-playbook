@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath
                                                 "..", "..", "bin")))
 from host_contract import (ContractError, GUARD_BASENAMES, import_legacy_lock,
                            LOCK_STATE_BASENAMES, policy_decision, read_lock,
-                           record_capability_observation, resolve_repository,
+                           record_capability_observation, resolve_repository, session_id,
                            VERIFIER_BASENAMES)  # noqa: E402
 
 NAME = "testlock"
@@ -83,10 +83,9 @@ def active_lock(root):
         identity = None
     if identity:
         try:
-            import_legacy_lock(
-                identity,
-                os.environ.get("TDD_PLAYBOOK_SESSION_ID")
-                or os.environ.get("CLAUDE_SESSION_ID") or "claude-hook")
+            # The SAME shared owner-identity the unlock CLI checks — never a divergent
+            # "claude-hook" the CLI can't match (that divergence was the cross-session deadlock).
+            import_legacy_lock(identity, session_id(identity["root"]))
             return read_lock(identity)
         except ContractError as exc:
             # A malformed authority must not turn the strongest guard off.  The main path
@@ -335,8 +334,21 @@ def main():
     if not lock:
         sys.exit(0)
     if lock.get("_contract_error"):
+        exc = str(lock["_contract_error"])
+        # An out-of-root target is NEVER this guard's jurisdiction — do not fail closed on it even
+        # while the authority is unreadable. The v1.37.0 edit_findings fix scoped the normal path;
+        # this repair branch runs BEFORE it and re-opened the same cross-session DoS for memory/
+        # plan/scratchpad writes whenever a version skew set _contract_error (cheliped Defect C).
+        if event.get("tool_name") != "Bash" and not _inside(root, file_path_of(event)):
+            emit(NAME, [])          # clean allow: out-of-root is out of jurisdiction (exits 0)
+        # A schema_version mismatch means an older vendored guard is reading a lock a newer CLI
+        # wrote — name the actual remedy (update + reload) instead of an opaque "authority invalid".
+        if "schema_version" in exc:
+            emit(NAME, ["TEST-LOCK: hook/CLI version mismatch — the lock authority was written by a "
+                        "different tdd-playbook version. Update the plugin (or refresh the vendored "
+                        ".claude/) and reload, then retry. ({})".format(exc)])
         emit(NAME, ["TEST-LOCK canonical state is invalid — failing closed instead of "
-                    "silently disabling protection: {}".format(lock["_contract_error"])])
+                    "silently disabling protection: {}".format(exc)])
     if event.get("tool_name") == "Bash":
         cmd = (event.get("tool_input", {}) or {}).get("command", "")
         findings = bash_findings(cmd, lock, root)

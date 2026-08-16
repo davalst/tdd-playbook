@@ -33,8 +33,8 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath
                                                 "..", "..", "bin")))
 from host_contract import (ContractError, PENDING_FILENAME, append_event,
                            lock_path as core_lock_path, merge_lock, new_lock_record, read_lock,
-                           read_state_json, resolve_repository, state_path,
-                           write_state_json)  # noqa: E402
+                           read_state_json, resolve_repository, session_id as _core_session_id,
+                           state_path, write_state_json)  # noqa: E402
 
 NAME = "redlock"
 
@@ -63,10 +63,9 @@ def _identity(root):
 
 
 def _session_id():
-    return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
-            or os.environ.get("CLAUDE_SESSION_ID")
-            or "local-worktree-{}".format(
-                hashlib.sha256(project_root().encode("utf-8")).hexdigest()[:16]))
+    # ONE shared owner-identity (host_contract.session_id) — the same string the CLI and the
+    # guard's import produce, so no auto-lock is ever owned by a name a real session can't match.
+    return _core_session_id(project_root())
 
 
 def _now():

@@ -39,8 +39,9 @@ import re
 import sys
 
 from host_contract import (ContractError, append_event, clear_lock, events_path,
-                           import_legacy_lock, lock_path as core_lock_path,
-                           merge_lock, new_lock_record, read_lock, resolve_repository)
+                           force_unlink_lock, import_legacy_lock, lock_path as core_lock_path,
+                           merge_lock, new_lock_record, read_lock, resolve_repository,
+                           session_id as _core_session_id)
 
 # Closed vocabulary. No `other`/`misc` bucket — an open bucket becomes the dumping ground and
 # re-creates the ambiguity. Absent --class records `unclassified`, which is UNMEASURED (never
@@ -76,13 +77,21 @@ def _identity(root):
 
 
 def _session_id():
-    return (os.environ.get("TDD_PLAYBOOK_SESSION_ID")
-            or os.environ.get("CLAUDE_SESSION_ID")
-            # Some hosts do not export their turn id into Bash subprocesses.  A stable
-            # worktree fallback lets sequential CLI calls extend/unlock safely, while linked
-            # worktrees remain competing owners.  Same-worktree agents serialize+merge.
-            or "local-worktree-{}".format(
-                hashlib.sha256(project_root().encode("utf-8")).hexdigest()[:16]))
+    # ONE shared owner-identity (host_contract.session_id) so the CLI, the guard's legacy-import
+    # and red_lock all agree — the divergence they once had (guard: "claude-hook") deadlocked
+    # cross-session unlock. realpath(project_root()) == project_root() here, so no owner change.
+    return _core_session_id(project_root())
+
+
+def _env_session():
+    """The REAL host session token, or None when the host exports none. Passed as unlock's
+    expected_session_id so an ENV-LESS unlock skips the session check (clear_lock treats None as
+    'skip') and ownership falls to the worktree_id check that clear_lock ALREADY performs — the
+    root fix for the cross-session deadlock: a fallback-owned lock (incl. an already-wedged
+    'claude-hook' one whose source_worktree_id still matches) is releasable by any same-worktree
+    session, WITHOUT minting a synthetic owner both sides must reproduce identically. A real
+    env token still gates a genuine cross-session handoff (that case is what --force recovers)."""
+    return os.environ.get("TDD_PLAYBOOK_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID") or None
 
 
 def lock_path(root):
@@ -172,12 +181,17 @@ def cmd_lock(args):
 def cmd_unlock(args):
     root = project_root()
     identity = _identity(root)
+    forced = bool(getattr(args, "force", False))
     if identity:
         try:
             import_legacy_lock(identity, _session_id())
         except ContractError as exc:
-            sys.stderr.write("tdd_lock: {}\n".format(exc))
-            return 1
+            # A corrupt/version-skewed CANONICAL lock makes the legacy-import preamble's read
+            # raise — which is exactly the state --force exists to recover, so under --force we
+            # skip the preamble and fall through to the raw clear rather than dead-ending here.
+            if not forced:
+                sys.stderr.write("tdd_lock: {}\n".format(exc))
+                return 1
     path = lock_path(root)
     if not os.path.isfile(path):
         sys.stderr.write("tdd_lock: nothing is locked\n")
@@ -223,13 +237,28 @@ def cmd_unlock(args):
         try:
             locked = read_lock(identity)
         except ContractError as exc:
-            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
-            return 1
+            if not forced:
+                sys.stderr.write(
+                    "tdd_lock: REFUSED — {}. If the lock is corrupt or was written by a different "
+                    "tdd-playbook version, recover it with: unlock --force --reason \"...\" "
+                    "--class ... (never `rm` the state file — that is the deadlock, not the fix).\n"
+                    .format(exc))
+                return 1
+            locked = None      # a validation-failed lock; --force raw-clears it below
     else:
         with open(path) as fh:
             locked = json.load(fh)
     entry = {"ts": _now(), "event": "unlock", "reason": reason, "reason_class": klass,
-             "files": sorted(locked.get("files", {}))}
+             "files": sorted((locked or {}).get("files", {}))}
+    if forced:
+        entry["forced"] = True   # the one unlock that bypassed the ownership CAS — /grade + yield read it
+    if not forced and _env_session() is None and locked \
+            and not str(locked.get("session_id", "")).startswith("local-worktree-"):
+        # The ONE release this deadlock fix newly permits: an env-less same-worktree unlock
+        # clearing a lock a REAL-env-token session created (ownership fell to the worktree check).
+        # It already journals as a normal unlock; flag the ownership DOWNGRADE so /grade sees the
+        # one new path explicitly (security-adversary hardening, cheliped 2026-08-16).
+        entry["session_downgrade"] = True
     if mismatch:
         # Recorded, never corrected: the stated class stands and the contradiction rides
         # beside it. A silent rewrite would fabricate into the record /grade reads.
@@ -240,12 +269,19 @@ def cmd_unlock(args):
 
     if identity:
         try:
-            clear_lock(identity, expected_generation=locked["generation"],
-                       expected_lock_id=locked["lock_id"],
-                       expected_session_id=_session_id(),
-                       expected_worktree_id=identity["worktree_id"])
+            if forced and locked is None:
+                force_unlink_lock(identity)   # corrupt/schema lock: raw journaled recovery
+            else:
+                clear_lock(identity, expected_generation=locked["generation"],
+                           expected_lock_id=locked["lock_id"],
+                           expected_session_id=_env_session(),  # None env-less -> worktree governs
+                           expected_worktree_id=identity["worktree_id"],
+                           force=forced)         # skips ownership; KEEPS the generation/lock_id CAS
         except ContractError as exc:
-            sys.stderr.write("tdd_lock: REFUSED — {}\n".format(exc))
+            hint = "" if forced else (" If this is a cross-session deadlock — the owner is a dead "
+                                      "or foreign session — recover with: unlock --force --reason "
+                                      "\"...\" --class ... (not `rm`).")
+            sys.stderr.write("tdd_lock: REFUSED — {}.{}\n".format(exc, hint))
             return 1
     else:
         os.remove(path)
@@ -257,11 +293,12 @@ def cmd_unlock(args):
                                         "..", "hooks", "scripts"))
         from _common import log_yield_event
         log_yield_event("testlock", "override",
-                        {"reason": reason, "reason_class": klass}, source="testlock")
+                        {"reason": reason, "reason_class": klass, "forced": forced},
+                        source="testlock")
     except Exception:
         pass
-    print("tdd_lock: unlocked {} file(s). Reason journaled for /grade.".format(
-        len(locked.get("files", {}))))
+    print("tdd_lock: {}unlocked {} file(s). Reason journaled for /grade.".format(
+        "FORCE-" if forced else "", len(entry["files"])))
     return 0
 
 
@@ -305,6 +342,12 @@ def main(argv=None):
     p_unlock.add_argument("--class", dest="reason_class", choices=REASON_CLASSES, default=None,
                           help="why the lock is being released; only gate-wrong counts a "
                                "block as a false positive (see module header)")
+    p_unlock.add_argument("--force", action="store_true",
+                          help="RECOVERY: release a lock owned by a dead/foreign session, or a "
+                               "corrupt/version-skewed lock that cannot be read — the LEGAL "
+                               "replacement for `rm .git/tdd-playbook/active-lock.json`. Skips the "
+                               "ownership check (keeps the race CAS); still requires --reason and "
+                               "--class, and journals forced:true so /grade sees the bypass.")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     return {"lock": cmd_lock, "unlock": cmd_unlock, "status": cmd_status}[args.cmd](args)

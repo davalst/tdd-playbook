@@ -30,6 +30,16 @@ Release the **TEST-LOCK** (Playbook §1) — reason: $ARGUMENTS
 3. If the reason was "the test is wrong": fix the test, re-verify RED for the right reason
    (`red-first-verifier` on any doubt), re-lock, continue.
 
+**Wedged lock? Recover with `--force`, NEVER `rm`.** If a plain unlock is REFUSED with "owned by
+another session" (a lock held by a dead or foreign real session) or the lock is corrupt / written
+by a different tdd-playbook version, add `--force`:
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/tdd_lock.py" unlock --force --reason "recovering an orphaned
+lock from <which session/why>" --class feature-end`. It skips the ownership check (keeps the
+race CAS), still requires a real `--reason` + `--class`, and journals `forced: true` so `/grade`
+reviews the bypass. Deleting `.git/tdd-playbook/active-lock.json` by hand is the deadlock, not the
+fix — `--force` is the legal, audited replacement. (Most env-less wedges don't even need it: a
+plain unlock now falls back to the worktree owner, so a same-worktree lock releases normally.)
+
 The journal (`<git-common-dir>/tdd-playbook/events.jsonl`; legacy non-Git scratch projects
 use `.claude/tdd-lock-journal.jsonl`) is read by `/grade`: frequent unlocks, unlock
 reasons that pattern-match "adjusted test to match output", and any entry carrying
