@@ -89,3 +89,24 @@ python3 calibration/holdout.py run --vault https://github.com/davalst/tdd-playbo
 A dozen-ish approved pairs is where the recall/FP numbers start to mean something. Authoring
 misses that report `edits-do-not-apply` (the model's edit `old` string didn't match the
 fixture) are harmless — just re-run that category.
+
+**Diagnose a run** — when a run shows misses (a plant that survived, or a control the agent
+false-flagged), `diagnose` says WHICH kind each is, so a run's number becomes actionable
+WITHOUT anyone reading the private answer key:
+```bash
+python3 calibration/holdout.py diagnose --vault https://github.com/davalst/tdd-playbook-holdout --model sonnet
+```
+It runs the eval (one pass, in-place — never persists the doer output) and for every miss emits
+a safe `DIAGNOSE <id> | <agent> | <label>` line, where the label is one of:
+- **would-pass-normalized** — the agent's verdict was RIGHT but a brittle regex missed it
+  (e.g. the agent wrote `Verdict: **LOAD-BEARING**` and the oracle wanted `Verdict: LOAD-BEARING`).
+  A scorer artifact, not a verifier fault — the fix is the general oracle-normalisation pass, no
+  answer-key contact.
+- **wrong-verdict-line / found-but-hedged / missed-entirely** — a GENUINE miss: the agent really
+  gave the wrong (or no) verdict. These are the real verifier gaps to fix.
+- **inconclusive** — only an environment/timeout failure was seen; nothing was measured.
+
+The labels are the ENTIRE diagnose signal — the same closed, safe vocabulary as the verdict/mode
+a normal run already prints. The plant body, the oracle regex, and the raw agent output are never
+emitted (the holdout egress allow-list). `--diagnose` also works on the public dev calibration
+(`run_calibration.py --diagnose`), where the raw output is not withheld.

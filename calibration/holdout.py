@@ -159,7 +159,8 @@ def _filtered_run_lines(stdout):
     """The glance-able lines from a run: per-scenario headers + verdicts + the Calibration reading.
     Drops the rollup wall (gate_yield / ledger / suppressed-findings noise) so a --summary run is
     readable instead of a scroll."""
-    keep = ("=== ", "PASS", "AMBER", "**BLOCKING", "BLOCKING FAIL", "INVALID", "Calibration:")
+    keep = ("=== ", "PASS", "AMBER", "**BLOCKING", "BLOCKING FAIL", "INVALID", "Calibration:",
+            "DIAGNOSE")  # DIAGNOSE + DIAGNOSE-SUMMARY: the read-only miss-triage (safe labels only)
     return [ln for ln in (stdout or "").splitlines() if ln.startswith(keep)]
 
 
@@ -253,6 +254,10 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None, summary=False):
                     print(ln)
             except OSError:
                 pass
+            if "--diagnose" not in extra_argv:  # GAP3: point a user who sees a miss at the triage
+                print("\nTip: `holdout diagnose --vault <url>` classifies each miss "
+                      "(would-pass-normalized — a brittle-scorer artifact — vs a genuine wrong "
+                      "verdict), emitting safe labels only.")
             return proc.returncode
         return subprocess.run(argv, env=env).returncode
     finally:
@@ -407,10 +412,19 @@ def main(argv=None):
     v.add_argument("--vault-dir", required=True)
     v.add_argument("id", help="the proposed plant id to approve")
     v.add_argument("--reason", required=True, help="why this assignment (audit trail)")
+    d = sub.add_parser("diagnose", help="run the holdout eval AND classify each miss "
+                                        "(would-pass-normalized vs a genuine wrong verdict vs "
+                                        "inconclusive) — read-only triage that says WHAT to fix; "
+                                        "emits SAFE labels only, never the answer key")
+    d.add_argument("--vault", required=True, help="git URL of the private holdout vault")
+    # diagnose forwards --model/--repeat via extra (like run); it always runs glance-able + diagnosed.
     args, extra = ap.parse_known_args(argv)
     if args.cmd == "run":
         # forward --model/--repeat/etc. to run_calibration
         return run_holdout(args.vault, extra, summary=args.summary)
+    if args.cmd == "diagnose":
+        # a normal scored run WITH --diagnose (in-pass, no replay, no persisted output)
+        return run_holdout(args.vault, ["--diagnose", *extra], summary=True)
     # author/approve take no forwarded args — reject unknowns strictly.
     if extra:
         ap.error("unrecognized arguments: " + " ".join(extra))

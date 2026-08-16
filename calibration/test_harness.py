@@ -2466,6 +2466,21 @@ def _holdout_egress_tests():
           all(s in dev_blob for s in
               ("SECRET-PLANT", "SECRET-ORACLE-REGEX", "SECRET-DOER-OUTPUT")), dev_blob)
 
+    # diagnose (security-adversary needle-pin): classify_failure CONSUMES the raw doer output
+    # (feeds it to oracle as an in-memory boolean), yet the emitted DIAGNOSE line must carry none
+    # of the three secret channels — it is the same allow-list class as verdict/mode.
+    dsc = {**sc, "must_match": [r"NEVER-MATCHES-ZZZ"], "must_not_match": [r"ALSO-NEVER-YYY"]}
+    reps_secret = [{"passed": False, "mode": "wrong-verdict-line", "problems": worst["problems"],
+                    "out": worst["out"], "env": False}]
+    label = rc.classify_failure(dsc, reps_secret)
+    dline = rc.diagnose_line(sc, label)
+    check("egress: classify_failure returns ONLY a closed-set label, never the raw output",
+          label in ("would-pass-normalized", "wrong-verdict-line", "found-but-hedged",
+                    "missed-entirely", "inconclusive"), label)
+    check("egress: the DIAGNOSE line leaks none of the three secret channels",
+          not any(s in dline for s in
+                  ("SECRET-PLANT", "SECRET-ORACLE-REGEX", "SECRET-DOER-OUTPUT")), dline)
+
 
 def _holdout_run_tests():
     """The opt-in run wiring: the agent is BOXED-IN automatically whenever holdout bodies are on
@@ -3016,8 +3031,95 @@ def _holdout_authoring_tests():
               "STALE" in sl and "Last run:" in sl, sl)
 
 
+def _diagnose_tests():
+    """`holdout diagnose` / run_calibration --diagnose: classify a MISS as would-pass-normalized
+    (a brittle-scorer artifact) vs a genuine wrong verdict, emitting ONLY a safe label. The
+    load-bearing safety property: normalization can RESCUE a missing correct verdict (emphasis/
+    whitespace) but can NEVER erase a PRESENT wrong one — so a genuine over-flag stays genuine
+    (the §13 anchor; mutation-blind otherwise)."""
+    import run_calibration as rc
+    import holdout
+
+    n = rc.normalize_for_oracle
+    check("normalize: strips ** emphasis so a wrapped verdict becomes matchable",
+          "Verdict: LOAD-BEARING" in n("Verdict: **LOAD-BEARING**"), repr(n("Verdict: **LOAD-BEARING**")))
+    check("normalize: strips _ and ` emphasis",
+          "HOLLOW" in n("_HOLLOW_") and "HOLLOW" in n("`HOLLOW`"))
+    check("normalize: collapses whitespace runs to a single space",
+          n("Verdict:   \n  HOLLOW") == "Verdict: HOLLOW", repr(n("Verdict:   \n  HOLLOW")))
+    check("normalize: never FABRICATES an absent keyword (no false rescue)",
+          "HOLLOW" not in n("Verdict: LOAD-BEARING is my call"))
+
+    ctl = {"id": "ctl-diag", "agent": "architecture-adversary", "plant": "SENTINEL_PLANT_BODY_xyz",
+           "task": "t", "must_match": [r"Verdict:\s*LOAD-BEARING"],
+           "must_not_match": [r"Verdict:\s*HOLLOW"]}
+
+    strict_passed, _, _ = rc.oracle(ctl, "Verdict: **LOAD-BEARING**")
+    check("oracle strict: an emphasis-wrapped CORRECT verdict FAILS (the brittleness diagnosed)",
+          not strict_passed)
+    check("oracle: default normalizer=None is identical to the 2-arg call (scoring UNCHANGED)",
+          rc.oracle(ctl, "Verdict: **LOAD-BEARING**")
+          == rc.oracle(ctl, "Verdict: **LOAD-BEARING**", normalizer=None))
+    norm_passed, _, _ = rc.oracle(ctl, "Verdict: **LOAD-BEARING**", normalizer=rc.normalize_for_oracle)
+    check("oracle normalized: the same emphasis-wrapped correct verdict PASSES",
+          norm_passed)
+    anchor_passed, _, _ = rc.oracle(ctl, "Verdict: HOLLOW\nRecommendation: it is inert.",
+                                    normalizer=rc.normalize_for_oracle)
+    check("oracle SAFETY ANCHOR (§13): a PRESENT wrong verdict still FAILS normalized — "
+          "normalization rescues a missing right verdict, never erases a present wrong one",
+          not anchor_passed)
+
+    def rep(out, mode, passed=False, env=False):
+        return {"passed": passed, "mode": mode, "problems": [], "out": out, "env": env}
+
+    check("classify: emphasis-only miss -> would-pass-normalized",
+          rc.classify_failure(ctl, [rep("Verdict: **LOAD-BEARING**", "found-but-hedged")])
+          == "would-pass-normalized")
+    check("classify: genuine over-flag -> wrong-verdict-line (NOT rescued)",
+          rc.classify_failure(ctl, [rep("Verdict: HOLLOW", "wrong-verdict-line")])
+          == "wrong-verdict-line")
+    check("classify: only env failures -> inconclusive",
+          rc.classify_failure(ctl, [rep("", "env-failure", env=True)]) == "inconclusive")
+    check("classify: CONSERVATIVE — one genuine rep blocks would-pass-normalized",
+          rc.classify_failure(ctl, [rep("Verdict: **LOAD-BEARING**", "found-but-hedged"),
+                                     rep("Verdict: HOLLOW", "wrong-verdict-line")])
+          == "wrong-verdict-line")
+
+    line = rc.diagnose_line(ctl, "would-pass-normalized")
+    check("diagnose_line: carries id + agent + label",
+          "ctl-diag" in line and "architecture-adversary" in line and "would-pass-normalized" in line, line)
+    check("diagnose_line EGRESS: never formats the plant body, the oracle regex, or raw output",
+          "SENTINEL_PLANT_BODY_xyz" not in line and "must_match" not in line
+          and "Verdict:" not in line, line)
+
+    p = subprocess.run([sys.executable, RUNNER, "--dry-run", "--diagnose"],
+                       capture_output=True, text=True, timeout=300)
+    check("wiring: run_calibration accepts --diagnose (dry-run still validates)",
+          p.returncode == 0, (p.returncode, p.stdout[-200:], p.stderr[-200:]))
+    kept = holdout._filtered_run_lines(
+        "DIAGNOSE ctl-diag | architecture-adversary | would-pass-normalized\nnoise\n=== x")
+    check("wiring: _filtered_run_lines KEEPS DIAGNOSE lines (GAP1 — not swallowed)",
+          any(ln.startswith("DIAGNOSE") for ln in kept), kept)
+    hp = subprocess.run([sys.executable, os.path.join(HERE, "holdout.py"), "diagnose", "--help"],
+                        capture_output=True, text=True, timeout=30)
+    check("wiring: holdout exposes a `diagnose` subcommand taking --vault",
+          hp.returncode == 0 and "--vault" in hp.stdout, (hp.returncode, hp.stdout[-160:], hp.stderr[-160:]))
+
+    # EXERCISED (through run_calibration's real main loop, not just the pure fns): a wrong-verdict
+    # stub makes the plant survive, and --diagnose must emit a DIAGNOSE line + the summary tally.
+    with tempfile.TemporaryDirectory() as dd:
+        wrongish = make_stub(dd, "Verdict: CONFIRMED — the dead-code claim is correct.\n"
+                                 "Recommendation: publish; the sweep found nothing.")
+        pex = run(wrongish, "--diagnose", "--repeat", "1")
+        check("EXERCISED: run_calibration --diagnose emits a DIAGNOSE line for a real miss",
+              "DIAGNOSE false-negative-claim" in pex.stdout, pex.stdout[-400:])
+        check("EXERCISED: --diagnose emits the DIAGNOSE-SUMMARY tally",
+              "DIAGNOSE-SUMMARY" in pex.stdout and "genuine" in pex.stdout, pex.stdout[-400:])
+
+
 def main():
     print("Calibration-harness calibration")
+    _diagnose_tests()
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()

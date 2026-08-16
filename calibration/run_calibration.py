@@ -222,11 +222,30 @@ def stage(scenario):
     return root
 
 
-def oracle(scenario, output):
+_EMPHASIS = str.maketrans("", "", "*_`")
+
+
+def normalize_for_oracle(output):
+    """Strip markdown emphasis (* _ `) and collapse whitespace runs to a single space. The
+    standalone normalizer the ORACLE NORMALISATION PASS debt (capabilities.json) will adopt as
+    oracle()'s default — authored here ONCE so paying that debt is 'flip the default', never a
+    second copy. It only STRIPS: it can rescue a right verdict a brittle regex missed
+    (`Verdict: **LOAD-BEARING**`), and can never fabricate a keyword the text lacks."""
+    return re.sub(r"\s+", " ", (output or "").translate(_EMPHASIS)).strip()
+
+
+def oracle(scenario, output, normalizer=None):
     """Deterministic verdict: (passed, problems, mode). PURE — knows nothing about the runner
     (timeouts/env failures are classified at the run_agent seam from the returncode it holds,
     never re-derived here by string-sniffing). Mode is the closed R1.3 vocabulary's oracle
-    slice: wrong-verdict-line > found-but-hedged > missed-entirely."""
+    slice: wrong-verdict-line > found-but-hedged > missed-entirely.
+
+    `normalizer` (default None = identity → scoring UNCHANGED, preserving the deferred
+    oracle-normalisation predictions): a str→str transform applied to `output` before matching,
+    so the SAME match loop scores raw or normalized text — no second scorer. `diagnose` passes
+    `normalize_for_oracle` here to ask 'would this miss pass a less brittle scorer?'."""
+    if normalizer is not None:
+        output = normalizer(output)
     problems, matched_some = [], False
     for rx in scenario.get("must_match", []):
         if re.search(rx, output, re.IGNORECASE):
@@ -247,6 +266,40 @@ def oracle(scenario, output):
     else:
         mode = "missed-entirely"
     return False, problems, mode
+
+
+# Diagnose labels REUSE oracle()'s mode vocabulary and add ONE genuinely-new axis
+# (would-pass-normalized). No forked hedge/genuine taxonomy — the mode IS the taxonomy.
+GENUINE_MODES = ("wrong-verdict-line", "found-but-hedged", "missed-entirely")
+_MODE_PRECEDENCE = ("timeout", "env-failure") + GENUINE_MODES
+
+
+def classify_failure(scenario, reps):
+    """Classify a FAILED scenario's misses from its reps (each {passed, mode, out, env, ...}).
+    Returns one label:
+      - `would-pass-normalized` — EVERY genuinely-failing rep would PASS under
+        normalize_for_oracle → the miss is scorer brittleness, not a verifier fault. CONSERVATIVE:
+        a single rep that still fails normalized blocks this label (a real miss is never laundered).
+      - a genuine mode (`wrong-verdict-line`/`found-but-hedged`/`missed-entirely`) — the agent
+        really got it wrong; the worst such mode by precedence.
+      - `inconclusive` — only environment/timeout failures were seen (nothing measured)."""
+    failing = [r for r in reps if not r.get("passed")]
+    real = [r for r in failing if not r.get("env") and r.get("mode") in GENUINE_MODES]
+    if not real:
+        return "inconclusive"
+    unrescued = [r for r in real
+                 if not oracle(scenario, r.get("out", ""), normalizer=normalize_for_oracle)[0]]
+    if not unrescued:
+        return "would-pass-normalized"
+    modes = {r.get("mode") for r in unrescued}
+    return next(m for m in _MODE_PRECEDENCE if m in modes)
+
+
+def diagnose_line(scenario, label):
+    """The ONE safe diagnose emission: id + agent + label ONLY. Like scenario_header, it takes no
+    output/oracle/problems, so it STRUCTURALLY cannot leak the answer key — the deliberate holdout
+    egress allow-list extension (a closed-vocabulary label, the same class as verdict/mode)."""
+    return "DIAGNOSE {} | {} | {}".format(scenario["id"], scenario["agent"], label)
 
 
 def pairing_problems(scenarios):
@@ -754,6 +807,11 @@ def main(argv=None):
                     help="reps per scenario (default {}; one roll is a coin flip, not a "
                          "measurement — §5a)".format(DEFAULT_REPEAT))
     ap.add_argument("--dry-run", action="store_true", help="validate without model calls")
+    ap.add_argument("--diagnose", action="store_true",
+                    help="after each FAILED scenario, classify the miss (would-pass-normalized — a "
+                         "brittle-scorer artifact — vs a genuine wrong verdict vs inconclusive) and "
+                         "emit a safe DIAGNOSE line (id+agent+label only). Read-only triage that "
+                         "`holdout diagnose` forwards; scoring is UNCHANGED. Works for dev + holdout.")
     ap.add_argument("--host", choices=("claude", "codex"), default="claude",
                     help="host runner; histories and denominators remain host-specific")
     ap.add_argument("--host-bin", help="host binary override (preferred portable option)")
@@ -890,7 +948,7 @@ def main(argv=None):
     mode_precedence = ("timeout", "env-failure", "wrong-verdict-line",
                        "found-but-hedged", "missed-entirely")
     holdout_mode = (args.form == "holdout")  # egress allow-list: withhold plant/oracle/output
-    results, failed = [], 0
+    results, failed, diagnoses = [], 0, []
     for sc in scenarios:
         print(scenario_header(sc, holdout=holdout_mode))
         reps = []
@@ -942,6 +1000,18 @@ def main(argv=None):
         worst = next((r for r in reps if not r["passed"]), reps[-1])
         for line in scenario_detail_lines(worst, holdout=holdout_mode):
             print(line)
+        if args.diagnose:  # in-pass: reps[].out is still in memory (never persisted — E1/E2)
+            label = classify_failure(sc, reps)
+            diagnoses.append(label)
+            print(diagnose_line(sc, label))
+
+    if args.diagnose:
+        wpn = diagnoses.count("would-pass-normalized")
+        inc = diagnoses.count("inconclusive")
+        gen = len(diagnoses) - wpn - inc
+        print("DIAGNOSE-SUMMARY {} miss(es) | {} would-pass-normalized (scorer too brittle — "
+              "the general fix is the oracle-normalisation pass, no answer-key contact) | {} genuine "
+              "| {} inconclusive".format(len(diagnoses), wpn, gen, inc))
 
     plants = [r for r in results if not r["sc"].get("control_for")]
     controls = [r for r in results if r["sc"].get("control_for")]

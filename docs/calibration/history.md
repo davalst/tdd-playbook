@@ -389,3 +389,27 @@
 | 2026-08-15 | sonnet vs opus | control-twin-export-shares-authz-helper | security-adversary | 1/3 | wrong-verdict-line | AMBER |
 | 2026-08-15 | sonnet vs opus | probe-passes-on-any-nonzero-exit | script-adversary | 3/3 | — | PASS |
 | 2026-08-15 | sonnet vs opus | twin-export-command-skips-authz | security-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-16 — model sonnet · repo adc4900 · selected 20 of 70 (26 shipped + 44 corpus · 33 controls) · recall 9/10 [0.60–0.98] · FP 6/10 [0.31–0.83] · form holdout · isolation with-playbook
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-16 | sonnet vs opus | alias-branch-reimplements-authz | architecture-adversary | 0/3 | found-but-hedged | **BLOCKING FAIL** |
+| 2026-08-16 | sonnet vs opus | control-csv-escape-rfc4180-complete | edge-case-adversary | 1/3 | wrong-verdict-line | AMBER |
+| 2026-08-16 | sonnet vs opus | control-describe-added-to-single-source | architecture-adversary | 1/3 | found-but-hedged | AMBER |
+| 2026-08-16 | sonnet vs opus | control-dump-alias-shares-authorize | architecture-adversary | 0/3 | found-but-hedged | **BLOCKING FAIL** |
+| 2026-08-16 | sonnet vs opus | control-nonfinite-pct-rejected | edge-case-adversary | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-16 | sonnet vs opus | control-plan-flag-is-optout | integration-adversary | 2/3 | wrong-verdict-line | AMBER |
+| 2026-08-16 | sonnet vs opus | control-plan-parity-both-surfaces | integration-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | control-probe-canary-selftest | script-adversary | 0/3 | wrong-verdict-line | **BLOCKING FAIL** |
+| 2026-08-16 | sonnet vs opus | control-probe-greps-only-attempt-output | script-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | control-probe-reads-deployed-key-in-place | script-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | control-twin-export-shares-authz-helper | security-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | csv-quote-escape-untested | edge-case-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | nan-pct-slips-range-guard | edge-case-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | plan-parity-blind-second-surface | integration-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | plan-ships-behind-opt-in-flag | integration-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | probe-certifies-a-copy-not-the-key | script-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | probe-greps-its-own-expectation | script-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | probe-passes-on-any-nonzero-exit | script-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | twin-export-command-skips-authz | security-adversary | 3/3 | — | PASS |
+| 2026-08-16 | sonnet vs opus | write-lock-exemption-third-list | architecture-adversary | 3/3 | — | PASS |
