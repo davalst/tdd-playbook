@@ -57,6 +57,14 @@ def test_run_holdout_denies_whole_clone_tree():
         with open(os.path.join(bodies, "b.json"), "w") as fh:
             json.dump({"id": "hc-body", "agent": "claims-verifier", "plant": "p",
                        "edits": [], "task": "t", "must_match": ["a"], "must_not_match": ["b"]}, fh)
+        # post-2026-08-16 a register is REQUIRED whenever bodies exist (a register-less
+        # vault refuses: every body would run unauthorized). Dated pre-gate -> no manifest.
+        import plant_forms
+        with open(os.path.join(vault, holdout.REGISTER_NAME), "w") as fh:
+            fh.write("# H\n\n## Entries\n\n" + plant_forms.ENTRIES_TABLE
+                     + plant_forms.format_register_row(
+                         "2026-08-15", "hc-body", "holdout",
+                         plant_forms.plant_sha(os.path.join(bodies, "b.json")), "seed"))
         for c in (["git", "-C", vault, "init", "-q"],
                   ["git", "-C", vault, *git_id, "add", "-A"],
                   ["git", "-C", vault, *git_id, "commit", "-q", "-m", "seed"]):
@@ -122,9 +130,55 @@ def test_confine_denies_git_sibling_under_root():
         assert "READ" in leaked, leaked  # the original bug, proving the test can distinguish
 
 
+def test_run_holdout_refuses_form_override():
+    """SECURITY (adversary finding 1, 2026-08-16): the egress muzzle derives from
+    `--form holdout` in the child, and argparse takes the LAST --form — a forwarded
+    `--form all` would run the private bodies through the DEV printer (plant text + both
+    oracle regexes + raw doer output). run_holdout must REFUSE the override, before any
+    clone."""
+    try:
+        holdout.run_holdout("unused://never-cloned", ["--form", "all"])
+    except ValueError as e:
+        assert "--form" in str(e), e
+    else:
+        raise AssertionError("run_holdout accepted a forwarded --form override")
+
+
+def test_judge_workspace_outside_public_repo():
+    """SECURITY (adversary finding 2, 2026-08-16): the sandbox re-grants writes to its
+    WORKSPACE (the cwd). The judge is the one model holding approved bodies + oracle
+    regexes in context, so its workspace must be a throwaway temp dir — never the public
+    repo dir that gets committed and pushed. Also pins that the vault deny-read is
+    actually forwarded (a **kw double must not let the argument vanish)."""
+    import host_runner
+    seen = {}
+
+    def spy_invoke(host, binary, prompt, model, cwd, **kw):
+        seen["cwd"] = cwd
+        seen["deny"] = kw.get("confine_deny_read")
+        return host_runner.Result(host, "ok", "Control-Verdict: KEEP\nRecommendation: k",
+                                  0, None)
+    keep = host_runner.invoke
+    host_runner.invoke = spy_invoke
+    try:
+        jr = holdout.judge_control({"id": "x", "edits": [], "task": "t"}, "r", k=1,
+                                   deny_read=["/some/vault"])
+    finally:
+        host_runner.invoke = keep
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))))
+    assert seen.get("cwd") and not seen["cwd"].startswith(repo_root), seen
+    assert "tdd-judge-" in seen["cwd"], seen
+    assert seen.get("deny") == ["/some/vault"], seen
+    assert not os.path.exists(seen["cwd"]), "judge workspace not deleted"
+    assert jr["verdict"] == "KEEP", jr
+
+
 def main():
     failures = []
-    for fn in (test_holdout_deny_read_prefers_clone_root,
+    for fn in (test_run_holdout_refuses_form_override,
+               test_judge_workspace_outside_public_repo,
+               test_holdout_deny_read_prefers_clone_root,
                test_run_holdout_denies_whole_clone_tree,
                test_child_env_strips_holdout_location,
                test_confine_denies_git_sibling_under_root):

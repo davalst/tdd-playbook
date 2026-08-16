@@ -69,9 +69,16 @@ python3 calibration/holdout.py author --vault-dir ~/tdd-holdout-vault --model op
 
 # 2. REVIEW the new files in ~/tdd-holdout-vault/proposed/ yourself (never ask a Claude model to)
 
-# 3. approve the good ones — BOTH the plant AND its control, per pair
+# 3. approve the good ones — BOTH the plant AND its control, per pair. Since the
+#    trustworthy-holdout-controls work (2026-08-16) approve VALIDATES first: it runs the
+#    body's target verifier against it (same model/contract as your eval — default sonnet,
+#    3 reps) and only lands it at k/k (control HOLDS / plant CAUGHT). Anything mixed,
+#    failed, or unmeasured is refused, and an advisory judge explains WHY in plain
+#    language. `holdout validate --vault-dir ~/tdd-holdout-vault <id>` is the same check
+#    read-only (moves nothing).
 python3 calibration/holdout.py approve --vault-dir ~/tdd-holdout-vault <plant-id> --reason "..."
 python3 calibration/holdout.py approve --vault-dir ~/tdd-holdout-vault <control-id> --reason "..."
+#    (replacing a retired pair? add --supersedes <old-id> so the register links them)
 
 # 4. commit + push the PRIVATE vault (approve moved them proposed/ -> bodies/ + the register)
 git -C ~/tdd-holdout-vault add -A && git -C ~/tdd-holdout-vault commit -m "grow holdout corpus" && git -C ~/tdd-holdout-vault push
@@ -110,3 +117,19 @@ The labels are the ENTIRE diagnose signal — the same closed, safe vocabulary a
 a normal run already prints. The plant body, the oracle regex, and the raw agent output are never
 emitted (the holdout egress allow-list). `--diagnose` also works on the public dev calibration
 (`run_calibration.py --diagnose`), where the raw output is not withheld.
+
+**Clean up a bad corpus** — when diagnose shows controls failing (the 2026-08-16 finding:
+FP 10/10 was measuring control-authoring quality, not verifier quality), `remediate` walks
+every approved pair through the same validation, has the advisory judge classify each failure
+(REJECT = the control was never clean · FIX-ORACLE = clean code, unfair scoring rule ·
+KEEP = the checker genuinely cried wolf), and applies YOUR y/n per pair — it is
+interactive-only and aborts without a terminal:
+```bash
+python3 calibration/holdout.py remediate --vault-dir ~/tdd-holdout-vault --model sonnet
+```
+Bodies are never edited or deleted: a retired pair gets append-only `legacy-invalid` register
+rows (both members — pair-level, so recall and FP never split across mismatched cohorts), a
+kept-but-over-flagged control gets `known-overflag` (still counted — a real verifier weakness
+stays visible). Then author + approve a replacement pair with `--supersedes <old-id>`, push
+the vault, and re-run `diagnose`: it now prints BOTH the legacy reading and the corrected one
+(retired bodies excluded), so the number's change is auditable, never silent.

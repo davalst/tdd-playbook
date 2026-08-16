@@ -16,6 +16,8 @@ import math
 import os
 import re
 
+import plant_forms  # the ONE status-vocabulary owner (arch-F3) — no second literal here
+
 _ROW = re.compile(r"^\s*\|\s*(\d{4})-(\d{2})-(\d{2})\s*\|(.*)\|\s*$")
 
 HEADER_7 = "| date | model | scenario | agent | runs | mode | verdict |"
@@ -39,8 +41,10 @@ _RUN_MARKER = "### Run "
 # the header's full-population numbers. Both are absent on every pre-D0 block, and READING
 # defaults them to None — a fabricated snapshot would be worse than none.
 _POP_LINE = re.compile(r"^Population:\s*(.+)$")
-_POP_ITEM = re.compile(r"^(\S+)=(current|legacy-invalid|known-overflag|asymmetric)"
-                       r"@([0-9a-f]{4,64}|-)$")
+# Status alternation DERIVED from plant_forms.VALID_STATUS (the one vocabulary owner) so a
+# status rename cannot leave this reader silently dropping items (arch-F3).
+_POP_ITEM = re.compile(r"^(\S+)=(" + "|".join(re.escape(s) for s in plant_forms.VALID_STATUS)
+                       + r")@([0-9a-f]{4,64}|-)$")
 _CORRECTED_LINE = re.compile(
     r"^Corrected:\s*recall (\d+)/(\d+) \S+ · FP (\d+)/(\d+) \S+")
 # v1.29: `form` is an OPTIONAL trailing clause, and that is load-bearing. Every block written
@@ -186,21 +190,41 @@ def parse_run_blocks(text):
         end = blocks[j + 1]["_start"] if j + 1 < len(blocks) else len(lines)
         span = lines[b.pop("_start"):end]
         b["rows"] = parse_rows("\n".join(span))
-        b["population"], b["corrected"] = None, None
+        # `population_snapshot`, matching the writer's meta key — NOT `population`, which
+        # already names the {form, isolation} comparator signature (population_of) in this
+        # module (arch-F8: one word, two concepts, is how a reader grabs the wrong one).
+        b["population_snapshot"], b["corrected"] = None, None
         for ln in span:
             pm = _POP_LINE.match(ln.strip())
             if pm:
                 pop = {}
                 for item in pm.group(1).split(" · "):
-                    im = _POP_ITEM.match(item.strip())
+                    item = item.strip()
+                    im = _POP_ITEM.match(item)
                     if im:
                         pop[im.group(1)] = (im.group(2), im.group(3))
-                b["population"] = pop or None
+                    elif "=" in item:
+                        # never a silent drop (arch-F3): an item with an unknown status
+                        # stays VISIBLE as unparseable rather than vanishing from the
+                        # snapshot it exists to freeze
+                        pop[item.split("=", 1)[0]] = ("unparseable", "-")
+                b["population_snapshot"] = pop or None
             cm = _CORRECTED_LINE.match(ln.strip())
             if cm:
                 b["corrected"] = {"recall": (int(cm.group(1)), int(cm.group(2))),
                                   "fp": (int(cm.group(3)), int(cm.group(4)))}
     return blocks, skipped
+
+
+def reading_of(block):
+    """The TRUSTWORTHY recall/fp pair for a parsed run block: the corrected
+    (status-partitioned) reading when the block carries one, else the header pair. The
+    safe default accessor (arch-F7) — a reader that wants the full-population number
+    including since-retired bodies must ask for block['recall'] explicitly."""
+    corr = block.get("corrected")
+    if corr:
+        return {"recall": corr["recall"], "fp": corr["fp"]}
+    return {"recall": block["recall"], "fp": block["fp"]}
 
 
 def latest_run_date(text):

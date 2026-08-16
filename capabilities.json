@@ -1536,6 +1536,18 @@
      "what": "The PUBLIC dev corpus likely has the same disease (controls approved without a verifier run). Reuse validate_item at author_plants.cmd_approve so dev pairs get the same deterministically-scored gate \u2014 or record a decision that dev stays judge-free. Done = the approve path validates, or a recorded decision.",
      "owner": "david",
      "expires": "2026-11-15"
+    },
+    {
+     "id": "holdout-corpus-remediation-sweep",
+     "what": "THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16: parked DARK without this): David runs `holdout remediate --vault-dir ~/tdd-holdout-vault --model sonnet` interactively over the real vault (interactive-only by design \u2014 the y/n half cannot be automated), confirms each disposition, lands superseding replacement pairs via `approve --supersedes`, pushes the vault, then re-runs `holdout diagnose` so it reports BOTH the legacy and corrected readings. Until this runs the holdout FP number still measures control-authoring quality \u2014 the exact failure this plan exists to end. Done = legacy-invalid/known-overflag rows in the private register + a diagnose/history block carrying a Corrected reading.",
+     "owner": "david",
+     "expires": "2026-09-30"
+    },
+    {
+     "id": "population-snapshot-consumers",
+     "what": "integration-adversary ISLAND2 + arch-F7 (2026-08-16): the per-run population snapshot now has TWO readers (holdout_summary_lines' as-of-run counts; history_format.reading_of as the safe accessor), but plant_vitality and ledger remain snapshot-BLIND \u2014 a legacy-invalid scenario keeps accruing saturated/failing streaks and can still spend a pre-registered prediction. Done = vitality streaks and the ledger binder consult the block's population_snapshot (or reading_of) to exclude retired bodies, OR a recorded decision that historical streak continuity outweighs it. Related recorded decision: retired bodies deliberately STAY selected in runs so every run reports both readings (comment at the weak-plant nag, run_calibration.py).",
+     "owner": "david",
+     "expires": "2026-11-15"
     }
    ]
   },

@@ -41,6 +41,12 @@ MAX_TURNS = "25"
 TIMEOUT_S = 600
 DEFAULT_REPEAT = 3  # §5a applied to ourselves: one roll of a probabilistic verifier is a
                     # coin flip, not a measurement (R1 — the 2026-07-27 lucky-roll rows)
+# THE model default, hoisted (arch-F1, 2026-08-16): the D1 validation gate must run under
+# the SAME contract as the eval, and a second literal default in holdout.py meant the
+# default path validated under one model and evaluated under another — the gate certifying
+# against a model the reading never uses. One constant, both sides; a mismatch against a
+# recorded manifest is additionally WARNED at run time (holdout.contract_mismatch_warnings).
+DEFAULT_MODEL = os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "haiku")
 
 # Agents that cannot run headless calibration (their scenarios need revert-safety
 # discipline, so they stay hand-exercised via their commands). Named for the FACT it
@@ -122,11 +128,11 @@ HOLDOUT_DIR_ENV = "TDD_PLAYBOOK_HOLDOUT_DIR"
 # child_env strips it from every nested model, exactly like the DIR/DENY pair.
 HOLDOUT_REGISTER_ENV = "TDD_PLAYBOOK_HOLDOUT_REGISTER"
 
-# Statuses excluded from the CURRENT (trustworthy) recall/FP reading: a superseded body
-# (legacy-invalid) and a non-paired retire (asymmetric — it would split recall vs FP across
-# an asymmetric cohort). `known-overflag` is deliberately NOT here: a genuinely-clean
-# control a verifier over-flags is a real, tracked weakness the flag documents, never hides.
-EXCLUDED_STATUSES = ("legacy-invalid", "asymmetric")
+# Statuses excluded from the CURRENT (trustworthy) recall/FP reading — imported from the
+# ONE vocabulary owner (plant_forms, beside VALID_STATUS; arch-F3): a second literal here
+# is how a status rename silently stops excluding retired bodies.
+import plant_forms as _plant_forms  # noqa: E402  (HERE is on sys.path above)
+EXCLUDED_STATUSES = _plant_forms.EXCLUDED_STATUSES
 
 
 def holdout_status_map(register_path):
@@ -138,11 +144,50 @@ def holdout_status_map(register_path):
         return plant_forms.resolve_statuses(plant_forms.parse_register(fh.read()))
 
 
+def run_reps(sc, repeat, host_bin, model, host="claude", isolation="with-playbook",
+             runner=None):
+    """THE rep loop — stage, run, classify, score — ONE copy shared by the eval (main)
+    and the D1 validation gate (holdout.validate_item), so rep semantics (env failures
+    excluded from n, timeout vs env-failure typed at the runner seam, oracle applied only
+    to an ok rep) cannot drift between the reading and the gate that predicts it
+    (arch-F2, 2026-08-16). Returns the reps list ({passed, mode, problems, out, env});
+    `runner(sc) -> (status, out)` is injectable. FileNotFoundError propagates — the
+    caller owns the fatal-exit UX."""
+    reps = []
+    for _ in range(int(repeat)):
+        if runner is not None:
+            status, out = runner(sc)
+        else:
+            root = stage(sc)
+            try:
+                status, out = run_agent(sc, root, host_bin, model, host,
+                                        isolation=isolation)
+            finally:
+                shutil.rmtree(root, ignore_errors=True)
+        if status == "ok":
+            passed, problems, mode = oracle(sc, out)
+            reps.append({"passed": passed, "mode": mode, "problems": problems,
+                         "out": out, "env": False})
+        else:
+            mode = "timeout" if status == "timeout" else "env-failure"
+            reps.append({"passed": False, "mode": mode, "problems": ["[{}]".format(mode)],
+                         "out": out, "env": status == "env_failure"})
+    return reps
+
+
+def rep_counts(reps):
+    """(k, n) with env failures excluded from n — the one place that rule lives."""
+    counted = [r for r in reps if not r["env"]]
+    return sum(1 for r in counted if r["passed"]), len(counted)
+
+
 def partition_readings(results, statuses):
     """The D0 reporting partition. `results` are the per-scenario dicts the main loop
     builds ({sc, verdict, ...}); `statuses` maps id -> register status (absent = current).
     Returns the CURRENT population's recall/FP plus the named excluded/overflag ids —
-    a legacy-invalid or asymmetric body structurally CANNOT enter the current numbers."""
+    a legacy-invalid or asymmetric body structurally CANNOT enter the current numbers.
+    Called with statuses={} it computes the FULL-population (legacy) reading — the header
+    numbers are the SAME arithmetic, not a second copy (arch-F5)."""
     def stat(r):
         return statuses.get(r["sc"]["id"], "current")
     measured = [r for r in results if not r["verdict"].startswith("INVALID")]
@@ -884,7 +929,7 @@ def main(argv=None):
                     help="host runner; histories and denominators remain host-specific")
     ap.add_argument("--host-bin", help="host binary override (preferred portable option)")
     ap.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
-    ap.add_argument("--model", default=os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "haiku"))
+    ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--history", default=None,
                     help='history file to append (default is per-host; "" to suppress)')
     args = ap.parse_args(argv)
@@ -1031,29 +1076,14 @@ def main(argv=None):
     results, failed, diagnoses = [], 0, []
     for sc in scenarios:
         print(scenario_header(sc, holdout=holdout_mode))
-        reps = []
-        for _rep in range(args.repeat):
-            root = stage(sc)
-            try:
-                status, out = run_agent(sc, root, selected_bin, args.model, args.host,
-                                        isolation=args.isolation)
-            except FileNotFoundError:
-                print("FATAL: {} binary not found ({}) — set --host-bin or the host env "
-                      "override, or use --dry-run".format(args.host, selected_bin))
-                return 2
-            finally:
-                shutil.rmtree(root, ignore_errors=True)
-            if status == "ok":
-                passed, problems, mode = oracle(sc, out)
-                reps.append({"passed": passed, "mode": mode, "problems": problems,
-                             "out": out, "env": False})
-            else:
-                mode = "timeout" if status == "timeout" else "env-failure"
-                reps.append({"passed": False, "mode": mode, "problems": ["[{}]".format(mode)],
-                             "out": out, "env": status == "env_failure"})
-        counted = [r for r in reps if not r["env"]]  # env failures never poison n
-        k = sum(1 for r in counted if r["passed"])
-        n = len(counted)
+        try:
+            reps = run_reps(sc, args.repeat, selected_bin, args.model, args.host,
+                            isolation=args.isolation)
+        except FileNotFoundError:
+            print("FATAL: {} binary not found ({}) — set --host-bin or the host env "
+                  "override, or use --dry-run".format(args.host, selected_bin))
+            return 2
+        k, n = rep_counts(reps)
         fail_modes = [r["mode"] for r in reps if r["mode"]]
         mode = next((m for m in mode_precedence if m in fail_modes), None)
         verdict = verdict_for(sc["id"], k, n, last_kind(sc["id"]))
@@ -1093,16 +1123,11 @@ def main(argv=None):
               "the general fix is the oracle-normalisation pass, no answer-key contact) | {} genuine "
               "| {} inconclusive".format(len(diagnoses), wpn, gen, inc))
 
-    plants = [r for r in results if not r["sc"].get("control_for")]
-    controls = [r for r in results if r["sc"].get("control_for")]
-
-    def measured(rs):
-        return [r for r in rs if not r["verdict"].startswith("INVALID")]
-
-    recall = (sum(1 for r in measured(plants) if r["verdict"] == "PASS"),
-              len(measured(plants)))
-    fp = (sum(1 for r in measured(controls) if r["verdict"] != "PASS"),
-          len(measured(controls)))
+    # ONE arithmetic, two populations (arch-F5): the header (legacy) reading IS
+    # partition_readings with no statuses — never a second copy that could diverge for a
+    # reason a reader would misattribute to supersession.
+    full = partition_readings(results, {})
+    recall, fp = full["recall"], full["fp"]
     # D0 reporting partition: the header recall/FP stay the FULL-population (legacy) reading
     # for format stability; the CORRECTED reading excludes legacy-invalid/asymmetric bodies
     # and is recorded beside it whenever the two differ. The per-run population snapshot
@@ -1136,6 +1161,11 @@ def main(argv=None):
     for r in results:
         sc = r["sc"]
         if r["verdict"] != "PASS" or sc.get("control_for"):
+            continue
+        # Retired bodies deliberately STAY selected (each run reports the legacy reading
+        # beside the corrected one — the auditable-change requirement), but a superseded
+        # plant must not keep tripping the harden-it nag it can no longer act on (GAP3).
+        if statuses.get(sc["id"], "current") in EXCLUDED_STATUSES:
             continue
         prior = [row["kind"] for row in prior_rows if row["scenario"] == sc["id"]]
         if len(prior) >= 2 and all(k == "PASS" for k in prior):

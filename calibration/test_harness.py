@@ -2526,6 +2526,7 @@ def _holdout_run_tests():
     Proven without a live agent (host_runner.invoke is injected/monkeypatched)."""
     import host_runner
     import confine
+    import plant_forms
     import run_calibration as rc
 
     cmd = ["claude", "-p", "hi"]
@@ -2663,6 +2664,14 @@ def _holdout_run_tests():
         with open(os.path.join(bodies, "holdout-run-body.json"), "w") as fh:
             json.dump({"id": "holdout-run-body", "agent": "claims-verifier", "plant": "p",
                        "edits": [], "task": "t", "must_match": ["a"], "must_not_match": ["b"]}, fh)
+        # post-2026-08-16 a register is REQUIRED whenever bodies exist (a register-less
+        # vault would run every body unauthorized); dated pre-gate so no manifest is due.
+        with open(os.path.join(vault, holdout.REGISTER_NAME), "w") as fh:
+            fh.write("# H\n\n## Entries\n\n" + plant_forms.ENTRIES_TABLE
+                     + plant_forms.format_register_row(
+                         "2026-08-15", "holdout-run-body", "holdout",
+                         plant_forms.plant_sha(
+                             os.path.join(bodies, "holdout-run-body.json")), "seed"))
         for c in (["git", "-C", vault, "init", "-q"],
                   ["git", "-C", vault, *git_id, "add", "-A"],
                   ["git", "-C", vault, *git_id, "commit", "-q", "-m", "seed"]):
@@ -3307,9 +3316,9 @@ def _holdout_status_flow_tests():
               len(blocks) == 1 and skipped == 0, (len(blocks), skipped))
         b = blocks[0]
         check("D0: the population snapshot round-trips (status + content-hash as-of-then)",
-              b.get("population") == {"pl-cur": ("current", "aaaaaaaaaaaa"),
-                                      "ct-old": ("legacy-invalid", "bbbbbbbbbbbb")},
-              b.get("population"))
+              b.get("population_snapshot") == {"pl-cur": ("current", "aaaaaaaaaaaa"),
+                                               "ct-old": ("legacy-invalid", "bbbbbbbbbbbb")},
+              b.get("population_snapshot"))
         check("D0: the corrected reading round-trips",
               b.get("corrected") == {"recall": (1, 1), "fp": (0, 0)}, b.get("corrected"))
         # an OLD block (no snapshot lines) parses with both absent — never a fabricated snapshot
@@ -3318,10 +3327,22 @@ def _holdout_status_flow_tests():
         hp2 = os.path.join(d, "old.md")
         hf.append_run_block(hp2, meta_old, rows)
         b2 = hf.parse_run_blocks(open(hp2).read())[0][0]
-        check("D0: a pre-snapshot block parses with population=None, corrected=None "
+        check("D0: a pre-snapshot block parses with population_snapshot=None, corrected=None "
               "(old readings are not reinterpreted)",
-              b2.get("population") is None and b2.get("corrected") is None,
-              (b2.get("population"), b2.get("corrected")))
+              b2.get("population_snapshot") is None and b2.get("corrected") is None,
+              (b2.get("population_snapshot"), b2.get("corrected")))
+        # arch-F3: an item with an UNKNOWN status must stay visible, never silently vanish
+        bad = open(hp).read().replace("ct-old=legacy-invalid@bbbbbbbbbbbb",
+                                      "ct-old=bogus-status@bbbbbbbbbbbb")
+        b3 = hf.parse_run_blocks(bad)[0][0]
+        check("D0: an unknown status in the snapshot parses as 'unparseable', not a drop",
+              b3.get("population_snapshot", {}).get("ct-old") == ("unparseable", "-"),
+              b3.get("population_snapshot"))
+        # arch-F7: the safe accessor prefers the corrected pair, falls back to the header
+        check("D0: reading_of prefers corrected and falls back to the header pair",
+              hf.reading_of(b) == {"recall": (1, 1), "fp": (0, 0)}
+              and hf.reading_of(b2) == {"recall": (1, 1), "fp": (1, 1)},
+              (hf.reading_of(b), hf.reading_of(b2)))
         # the summary reader reports BOTH readings when the corrected one exists
         lines = holdout.holdout_summary_lines(open(hp).read())
         check("D0: holdout_summary_lines reports the corrected reading beside the legacy one",
@@ -3378,8 +3399,8 @@ def _holdout_status_flow_tests():
             btext = open(hist).read() if os.path.isfile(hist) else ""
             bl, _ = hf.parse_run_blocks(btext)
             check("D0 FLOW: the history block snapshots the population with as-of-then status",
-                  bl and bl[-1].get("population", {}).get("sfl-plant-old",
-                                                          ("", ""))[0] == "legacy-invalid",
+                  bl and bl[-1].get("population_snapshot", {}).get(
+                      "sfl-plant-old", ("", ""))[0] == "legacy-invalid",
                   btext[-400:])
             check("D0 FLOW: the history block records the corrected reading",
                   bl and bl[-1].get("corrected") == {"recall": (1, 1), "fp": (0, 1)},
@@ -3474,8 +3495,7 @@ def _holdout_validation_gate_tests():
             seen_env["deny"] = os.environ.get(rc.HOLDOUT_DENY_ENV)
             return OK
         keep_deny = os.environ.get(rc.HOLDOUT_DENY_ENV)
-        holdout.validate_item(control, vault, contract, runner=runner_seq([OK, OK, OK])
-                              if False else env_runner)
+        holdout.validate_item(control, vault, contract, runner=env_runner)
         check("VGATE: the validation spawn is confined (HOLDOUT_DENY = the vault dir)",
               seen_env.get("deny") == vault, seen_env)
         check("VGATE: the deny env is RESTORED after validation",
@@ -3665,17 +3685,40 @@ def _control_judge_tests():
         def fake_judge(sc, reasoning, **kw):
             judged["sc"] = sc["id"]
             judged["reasoning"] = reasoning
+            judged["deny"] = kw.get("deny_read")
             return {"verdict": "REJECT", "votes": ["REJECT"] * 3,
                     "rationale": "PLAIN-LANGUAGE-RATIONALE: the task is ambiguous."}
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             code = holdout.cmd_approve_holdout(vault, "vg-plant", "seed",
                                                validator=failing_validator,
-                                               judge=fake_judge)
+                                               judge=fake_judge, interactive=True)
         out = buf.getvalue()
         check("JUDGE FLOW manifest->judge: a refused approve dispatches the judge with the "
               "in-memory reasoning", code == 1 and judged.get("sc") == "vg-plant"
               and judged.get("reasoning") == REASONING, (code, judged))
+        check("JUDGE: the dispatch confines the judge away from the vault (deny_read "
+              "forwarded — a **kw double must not let this argument vanish)",
+              judged.get("deny") == [vault], judged.get("deny"))
+        # SECURITY finding 3: NON-interactive approve must never dispatch the judge — its
+        # rationale quotes the oracle and stdout may be a durable log/transcript.
+        judged2 = {"n": 0}
+
+        def counting_judge2(sc, reasoning, **kw):
+            judged2["n"] += 1
+            return {"verdict": "REJECT", "votes": ["REJECT"], "rationale": "x"}
+        with open(os.path.join(prop, "vg-plant.json"), "w") as fh:
+            json.dump(plant_body, fh)
+        buf_ni = io.StringIO()
+        with contextlib.redirect_stdout(buf_ni):
+            code_ni = holdout.cmd_approve_holdout(vault, "vg-plant", "seed",
+                                                  validator=failing_validator,
+                                                  judge=counting_judge2,
+                                                  interactive=False)
+        check("JUDGE SEC3: a NON-interactive refused approve skips the judge (no oracle "
+              "text into a log) and the deterministic refusal stands",
+              code_ni == 1 and judged2["n"] == 0
+              and "judge skipped" in buf_ni.getvalue(), (code_ni, judged2))
         check("JUDGE: the recommendation + rationale are shown TRANSIENTLY (the y/n basis)",
               "REJECT" in out and "PLAIN-LANGUAGE-RATIONALE" in out, out[-300:])
         # custody: the rationale is never durably persisted anywhere in the vault
@@ -3720,8 +3763,11 @@ def _control_judge_tests():
               sc["agent"] == "control-quality-adversary"
               and any(want in rx for rx in sc["must_match"])
               and (kind != "control" or sc.get("control_for")), sc.get("must_match"))
+    import run_calibration as _rc
+    _cov = _rc.agent_coverage_problems(_rc.load_scenarios() + _rc.load_corpus())
     check("JUDGE §13: the fixtures give the judge REAL corpus coverage (R1 invariant "
-          "consumes them)", True)
+          "consumes them — no coverage problem names the judge)",
+          not any("control-quality-adversary" in pr for pr in _cov), _cov)
 
 
 def _authoring_prompt_quality_tests():
@@ -3746,9 +3792,8 @@ def _authoring_prompt_quality_tests():
           "forbidden word)", "greedy" in p.lower() and "correct explanation" in p.lower())
     check("D3: the task must have ONE defensible reading",
           "one defensible reading" in p.lower())
-    check("D3: the old bait-only framing is gone — 'plausibly alarming but actually "
-          "right' no longer stands alone unqualified",
-          "plausibly alarming" not in p or "GENUINELY" in p)
+    check("D3: the old bait-only framing is gone from the prompt",
+          "plausibly alarming but actually right" not in p)
     # the pre-existing contract survives the revision (the agent-roster hard constraint
     # and pair schema are pinned elsewhere; cheap smoke here)
     check("D3: the roster hard-constraint survives the revision",
@@ -3841,6 +3886,8 @@ def _remediation_tests():
         def yes_confirm(action, msha, **kw):
             confirmed.append((action, msha))
             return True
+        bytes_before = {sid: open(os.path.join(vault, "bodies", sid + ".json"), "rb").read()
+                        for sid in ("rm-plant", "rm-control")}
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             code = holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
@@ -3855,8 +3902,9 @@ def _remediation_tests():
         check("D4: the confirm was BOUND to a manifest hash",
               confirmed and len(confirmed[0][1]) == 64, confirmed)
         check("D4: bodies are IMMUTABLE — both files still on disk, byte-identical",
-              os.path.isfile(os.path.join(vault, "bodies", "rm-plant.json"))
-              and os.path.isfile(os.path.join(vault, "bodies", "rm-control.json")))
+              all(open(os.path.join(vault, "bodies", sid + ".json"), "rb").read()
+                  == bytes_before[sid] for sid in ("rm-plant", "rm-control")),
+              "a body's bytes changed during remediation")
         check("D4: the register is APPEND-only (seed rows survive as the audit trail)",
               len(plant_forms.parse_register(
                   open(os.path.join(vault, holdout.REGISTER_NAME)).read())) == 4)
@@ -3947,11 +3995,250 @@ def _remediation_tests():
               plant_forms.form_problems(
                   entries, plant_forms.shas_in_dir(os.path.join(vault, "bodies"))))
 
+    # --- integration-adversary GAP 5 (2026-08-16): an UNMEASURED control must never reach
+    # the judge or a disposition — inconclusive means the environment refused, and an
+    # irreversible transition driven by zero measured reps breaks D1's own fail-closed rule.
+    with tempfile.TemporaryDirectory() as vault:
+        seed_vault(vault)
+        judged = {"n": 0}
+
+        def counting_judge(sc, reasoning, **kw):
+            judged["n"] += 1
+            return {"verdict": "REJECT", "votes": ["REJECT"] * 3, "rationale": "x"}
+        with contextlib.redirect_stdout(io.StringIO()):
+            holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
+                                          validator=mk_validator("inconclusive"),
+                                          judge=counting_judge,
+                                          confirm=lambda a, m, **k: True,
+                                          interactive=True)
+        st = statuses(vault)
+        check("D4 GAP5: an INCONCLUSIVE (unmeasured) control never reaches the judge and "
+              "never transitions — nothing was measured, nothing is retired",
+              judged["n"] == 0 and st.get("rm-control") == "current"
+              and st.get("rm-plant") == "current", (judged, st))
+
+    # --- integration-adversary NOTE 6: a typo'd --supersedes must be refused AT approve,
+    # not discovered as a vault-wide integrity failure on the next run.
+    with tempfile.TemporaryDirectory() as vault:
+        seed_vault(vault)
+        prop = os.path.join(vault, "proposed")
+        os.makedirs(prop)
+        repl = {"id": "rm-plant-v3", "agent": "claims-verifier", "plant": "p3", "edits": [],
+                "task": "t", "must_match": [r"Verdict:\s*ALARM"]}
+        with open(os.path.join(prop, "rm-plant-v3.json"), "w") as fh:
+            json.dump(repl, fh)
+
+        def ok_v(sc, vd, c, body_path=None, **kw):
+            return {"table": {"id": sc["id"], "kind": "plant", "k": 3, "n": 3, "invalid": 0,
+                              "verdict": "caught", "approvable": True},
+                    "manifest": {"schema": 1, "candidate_id": sc["id"],
+                                 "candidate_content_sha256": plant_forms.plant_sha(body_path),
+                                 "k": 3, "n": 3, "verdict": "caught", "contract": {},
+                                 "reps": []},
+                    "reasoning": None}
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_approve_holdout(vault, "rm-plant-v3", "r",
+                                               validator=ok_v, judge=False,
+                                               supersedes="no-such-id-typo")
+        check("D4 NOTE6: approve REFUSES a --supersedes id with no register entry "
+              "(refuse one keystroke, not brick the next run)",
+              code == 1 and not os.path.isfile(
+                  os.path.join(vault, "bodies", "rm-plant-v3.json")),
+              (code, buf.getvalue()[-200:]))
+
+    # --- integration-adversary ISLAND 1: the persisted manifest gains its consumer — a
+    # post-gate body with NO matching manifest is an integrity problem (the D1 gate cannot
+    # be walked around by hand-copying a body + register row), while pre-gate bodies are
+    # grandfathered by their register date (the D4 sweep owns their cleanup).
+    with tempfile.TemporaryDirectory() as vault:
+        bodies = os.path.join(vault, "bodies")
+        os.makedirs(bodies)
+        legacy = {"id": "mi-legacy", "agent": "claims-verifier", "plant": "p", "edits": [],
+                  "task": "t", "must_match": ["a"]}
+        with open(os.path.join(bodies, "mi-legacy.json"), "w") as fh:
+            json.dump(legacy, fh)
+        lsha = plant_forms.plant_sha(os.path.join(bodies, "mi-legacy.json"))
+        newer = {"id": "mi-new", "agent": "claims-verifier", "plant": "p", "edits": [],
+                 "task": "t", "must_match": ["a"]}
+        with open(os.path.join(bodies, "mi-new.json"), "w") as fh:
+            json.dump(newer, fh)
+        nsha = plant_forms.plant_sha(os.path.join(bodies, "mi-new.json"))
+        with open(os.path.join(vault, holdout.REGISTER_NAME), "w") as fh:
+            fh.write("# H\n\n## Entries\n\n" + plant_forms.ENTRIES_TABLE
+                     + plant_forms.format_register_row("2026-08-15", "mi-legacy", "holdout",
+                                                       lsha, "pre-gate")
+                     + plant_forms.format_register_row("2026-08-20", "mi-new", "holdout",
+                                                       nsha, "post-gate"))
+        probs = holdout.vault_integrity_problems(vault)
+        check("ISLAND1: a POST-gate body with no validation manifest is an integrity "
+              "problem (the approve gate cannot be bypassed by hand-copying)",
+              any("mi-new" in p and "manifest" in p.lower() for p in probs), probs)
+        check("ISLAND1: the PRE-gate body is grandfathered (its cleanup is the D4 sweep's "
+              "job, not a bricked run)",
+              not any("mi-legacy" in p for p in probs), probs)
+        os.makedirs(os.path.join(vault, "manifests"))
+        with open(os.path.join(vault, "manifests", "mi-new.json"), "w") as fh:
+            json.dump({"schema": 1, "candidate_id": "mi-new",
+                       "candidate_content_sha256": nsha, "verdict": "caught"}, fh)
+        check("ISLAND1: a matching manifest clears it (the file is now READ, not write-only)",
+              holdout.vault_integrity_problems(vault) == [],
+              holdout.vault_integrity_problems(vault))
+        with open(os.path.join(vault, "manifests", "mi-new.json"), "w") as fh:
+            json.dump({"schema": 1, "candidate_id": "mi-new",
+                       "candidate_content_sha256": "f" * 64, "verdict": "caught"}, fh)
+        check("ISLAND1: a manifest whose sha mismatches the body is a problem (a stale "
+              "manifest authorizes nothing)",
+              any("mi-new" in p for p in holdout.vault_integrity_problems(vault)),
+              holdout.vault_integrity_problems(vault))
+
     # --- the subcommand is wired ---
     hp = subprocess.run([sys.executable, os.path.join(HERE, "holdout.py"),
                          "remediate", "--help"], capture_output=True, text=True, timeout=30)
     check("D4: holdout exposes a `remediate` subcommand (--vault-dir)",
           hp.returncode == 0 and "--vault-dir" in hp.stdout, (hp.returncode, hp.stdout[-160:]))
+
+
+def _holdout_adversary_fold_tests():
+    """Fold-ins from the 2026-08-16 build-time adversary pass (security EXPOSED(3),
+    architecture MIXED(9), test-quality HOLLOW(7)): the egress muzzle is not
+    user-negotiable, the judge's sandbox workspace is never the public repo, a manifest's
+    contract mismatch is warned at run time, a register-less vault with bodies refuses,
+    and — the mutation-proven gap — the approve/validate commands are driven ONCE with
+    their REAL default validator against a stub binary, so unwiring `validate_item` from
+    the landing path can no longer survive the suite."""
+    print("\n[adversary fold-ins (2026-08-16) — egress override, judge workspace, "
+          "default-wire]")
+    import contextlib
+    import io
+    import holdout
+    import host_runner
+    import plant_forms
+    import run_calibration as rc
+
+    # --- SEC-1: a forwarded --form must be REFUSED (it would unmuzzle the dev printer) ---
+    raised = False
+    try:
+        holdout.run_holdout("unused://vault", ["--form", "all"])
+    except ValueError as e:
+        raised = "--form" in str(e)
+    check("SEC1: run_holdout REFUSES a forwarded --form (the egress muzzle is not "
+          "user-negotiable)", raised)
+
+    # --- register-less vault with bodies: refuse before running anything ---
+    git_id = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    with tempfile.TemporaryDirectory() as vsrc:
+        b = os.path.join(vsrc, "bodies")
+        os.makedirs(b)
+        with open(os.path.join(b, "nr-body.json"), "w") as fh:
+            json.dump({"id": "nr-body", "agent": "claims-verifier", "plant": "p",
+                       "edits": [], "task": "t", "must_match": ["a"]}, fh)
+        for c in (["git", "-C", vsrc, "init", "-q"],
+                  ["git", "-C", vsrc, *git_id, "add", "-A"],
+                  ["git", "-C", vsrc, *git_id, "commit", "-q", "-m", "seed"]):
+            subprocess.run(c, check=True, capture_output=True, text=True)
+        ran = {"n": 0}
+        raised2 = False
+        try:
+            holdout.run_holdout(vsrc, ["--dry-run"],
+                                runner=lambda *a: ran.update(n=1) or 0)
+        except ValueError as e:
+            raised2 = "no register" in str(e).lower()
+        check("SEC/ARCH: a vault with bodies but NO register REFUSES before any run "
+              "(no body runs unauthorized as an implicit 'current')",
+              raised2 and ran["n"] == 0, (raised2, ran))
+
+    # --- contract mismatch is WARNED (the manifest finally predicts something) ---
+    with tempfile.TemporaryDirectory() as v:
+        os.makedirs(os.path.join(v, "manifests"))
+        with open(os.path.join(v, "manifests", "cm-x.json"), "w") as fh:
+            json.dump({"candidate_id": "cm-x",
+                       "contract": {"model": "sonnet", "isolation": "with-playbook"}}, fh)
+        warns = holdout.contract_mismatch_warnings(v, "haiku")
+        check("ARCH-F1: a manifest validated under another model WARNS at run time "
+              "('holds' does not predict this reading)",
+              any("cm-x" in w and "sonnet" in w and "haiku" in w for w in warns), warns)
+        check("ARCH-F1: a matching contract stays silent",
+              holdout.contract_mismatch_warnings(v, "sonnet") == [],
+              holdout.contract_mismatch_warnings(v, "sonnet"))
+
+    # --- SEC-2: the judge's sandbox workspace is a throwaway temp dir, never the repo ---
+    seen = {}
+
+    def spy_invoke(host, binary, prompt, model, cwd, **kw):
+        seen["cwd"] = cwd
+        seen["deny"] = kw.get("confine_deny_read")
+        return host_runner.Result(host, "ok", "Control-Verdict: KEEP\nRecommendation: k",
+                                  0, None)
+    keep_invoke = host_runner.invoke
+    host_runner.invoke = spy_invoke
+    try:
+        jr = holdout.judge_control({"id": "x", "edits": [], "task": "t"}, "r", k=1,
+                                   deny_read=["/some/vault"])
+    finally:
+        host_runner.invoke = keep_invoke
+    check("SEC2: the judge runs in a throwaway workspace OUTSIDE the public repo (the "
+          "sandbox re-grants writes to its cwd)",
+          seen.get("cwd") and not seen["cwd"].startswith(REPO)
+          and "tdd-judge-" in seen["cwd"], seen)
+    check("SEC2: the judge spawn forwards the vault deny-read",
+          seen.get("deny") == ["/some/vault"], seen)
+    check("SEC2: the workspace is deleted after the judge run",
+          seen.get("cwd") and not os.path.exists(seen["cwd"]))
+    check("SEC2: the spy verdict still parses (the confinement change kept the contract)",
+          jr["verdict"] == "KEEP", jr)
+
+    # --- the mutation-proven hole: drive approve/validate with their REAL default
+    # validator against a stub binary (no injection), macOS-gated like every live-spawn
+    # test (host_runner fails closed without sandbox-exec while a deny is set).
+    import confine
+    if not confine.sandbox_exec_available():
+        check("DEFAULT-WIRE: SKIPPED (no sandbox-exec on this host)", True)
+        return
+    with tempfile.TemporaryDirectory() as work:
+        vault = os.path.join(work, "vault")
+        prop = os.path.join(vault, "proposed")
+        os.makedirs(prop)
+        plant = {"id": "dw-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+                 "task": "t", "must_match": [r"Verdict:\s*DWALARM"]}
+        with open(os.path.join(prop, "dw-plant.json"), "w") as fh:
+            json.dump(plant, fh)
+        # two DIRS: make_stub writes a fixed filename, so same-dir stubs overwrite
+        wdir = os.path.join(work, "w")
+        rdir = os.path.join(work, "r")
+        os.makedirs(wdir)
+        os.makedirs(rdir)
+        wrong = make_stub(wdir, "Everything seems fine to me.")
+        right = make_stub(rdir, "Verdict: DWALARM — the plant is caught.")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_approve_holdout(vault, "dw-plant", "r", claude_bin=wrong,
+                                               repeat=1, judge=False, interactive=False)
+        check("DEFAULT-WIRE: approve with NO injected validator runs the REAL verifier "
+              "and a missed plant REFUSES to land (unwiring validate_item cannot "
+              "survive this)",
+              code == 1 and not os.path.isfile(
+                  os.path.join(vault, "bodies", "dw-plant.json")),
+              (code, buf.getvalue()[-300:]))
+        rcode = holdout.cmd_validate_holdout(vault, "dw-plant", "haiku", wrong, 1)
+        check("DEFAULT-WIRE: `holdout validate` exercises the real path and exits 1 on a "
+              "missed plant", rcode == 1)
+        buf2 = io.StringIO()
+        with contextlib.redirect_stdout(buf2):
+            rcode2 = holdout.cmd_validate_holdout(vault, "dw-plant", "haiku", right, 1)
+        check("DEFAULT-WIRE: `holdout validate` exits 0 and prints the allow-list table "
+              "on a caught plant",
+              rcode2 == 0 and "VALIDATE dw-plant" in buf2.getvalue()
+              and "CAUGHT" in buf2.getvalue(), (rcode2, buf2.getvalue()[-200:]))
+        buf3 = io.StringIO()
+        with contextlib.redirect_stdout(buf3):
+            code3 = holdout.cmd_approve_holdout(vault, "dw-plant", "r", claude_bin=right,
+                                                repeat=1, judge=False, interactive=False)
+        check("DEFAULT-WIRE: the same body LANDS through the real gate when the verifier "
+              "catches it (both directions)",
+              code3 == 0 and os.path.isfile(
+                  os.path.join(vault, "bodies", "dw-plant.json")),
+              (code3, buf3.getvalue()[-300:]))
 
 
 def import_pf_table():
@@ -3978,6 +4265,7 @@ def main():
     _control_judge_tests()
     _authoring_prompt_quality_tests()
     _remediation_tests()
+    _holdout_adversary_fold_tests()
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()

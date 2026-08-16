@@ -127,6 +127,11 @@ ENTRIES_TABLE = ("| date | plant_id | form | content_sha256 | reason | status | 
 # real, tracked weakness the flag documents, never hides); `asymmetric` labels a rare non-paired
 # retire. Bodies are never edited: a fix lands as a NEW body that `supersedes` the old id.
 VALID_STATUS = ("current", "legacy-invalid", "known-overflag", "asymmetric")
+# The statuses EXCLUDED from the current (trustworthy) recall/FP reading. Lives HERE beside
+# VALID_STATUS — one vocabulary owner (arch-F3, 2026-08-16): two value-identical literals is
+# how a rename leaves one reader silently wrong. known-overflag is deliberately NOT excluded.
+EXCLUDED_STATUSES = ("legacy-invalid", "asymmetric")
+assert set(EXCLUDED_STATUSES) <= set(VALID_STATUS)
 
 
 def format_register_row(date, plant_id, form, content_sha256, reason,
@@ -137,13 +142,21 @@ def format_register_row(date, plant_id, form, content_sha256, reason,
                              (date, plant_id, form, content_sha256, reason, status, supersedes)) + " |\n"
 
 
+def resolve_latest(entries):
+    """{plant_id: latest entry}. THE one owner of 'the latest register row wins' (the
+    register is append-only, so a transition is a later row) — resolve_forms,
+    resolve_statuses, and holdout's CAS all derive from this fold; a fourth inline copy is
+    how remediation reads different semantics than the scorer (arch-F4, 2026-08-16)."""
+    latest = {}
+    for e in entries:
+        latest[e["plant_id"]] = e
+    return latest
+
+
 def resolve_forms(entries):
     """{plant_id: form} from the LATEST entry per id. Absent ids are not present here —
     callers use form_of(), whose default is the safe direction."""
-    resolved = {}
-    for e in entries:
-        resolved[e["plant_id"]] = e["form"]
-    return resolved
+    return {i: e["form"] for i, e in resolve_latest(entries).items()}
 
 
 def resolve_statuses(entries):
@@ -151,10 +164,8 @@ def resolve_statuses(entries):
     transition is an APPEND, so the last row wins). An id with no entry is simply absent:
     the scorer treats absence as `current`, because dropping a body from the trustworthy
     population must be a DECISION recorded in the register, never a parse gap."""
-    out = {}
-    for e in entries:
-        out[e["plant_id"]] = e.get("status") or "current"
-    return out
+    return {i: (e.get("status") or "current")
+            for i, e in resolve_latest(entries).items()}
 
 
 def form_of(plant_id, resolved):
@@ -170,7 +181,9 @@ def plant_sha(path):
 
 def shas_in_dir(d):
     """{plant id: sha256 of its file} for every .json in `d`, keyed by the id INSIDE the json
-    (not the filename — nothing else keys on the filename). A dir that does not exist yields {}.
+    (not the filename; NOTE — since the holdout authoring flow, approve/remediate write and
+    look up `bodies/<id>.json`, so filename == id by construction there, and a body whose
+    filename diverges from its id fails those paths CLOSED). A dir that does not exist yields {}.
     ONE enumerator: corpus_shas AND the holdout controller's drift check both call it, so the
     drift check (holdout.verify_bodies -> form_problems) compares like with like by CONSTRUCTION
     (arch-F3), not by two copied loops agreeing to stay byte-identical."""

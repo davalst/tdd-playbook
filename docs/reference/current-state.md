@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `b21600ff86fabfd8576f29ad42586fc9dfe9a05c2797906bc454532925e560fa`
 - `docs/architecture/host-parity.json` — `b34caa13e83f45bdee44e7595e885ef398bb27cbd3632c64885282168ef482d4`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
-- `capabilities.json` — `bf6ded45937465da83438badb1fc7007123c771672b33d233a1331b04286a719`
+- `capabilities.json` — `a12e1b88863fb1934998d370a9c145d56f6c627a4a8e2f219090537b1449a59b`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -60,7 +60,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 32. Owned dated integration-debt entries: 76.
+- Registered capabilities: 32. Owned dated integration-debt entries: 78.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -137,6 +137,8 @@
 - `readable-surface/readable-surface-keep-kill` — THE R&D DECISION… (owner `david`, expires `2026-09-30`)
 - `readable-surface/readable-surface-downstream-inert-emitter` — JOINS THE EXISTING gate-yield DOWNSTREAM WRITE-ONLY DEBT (capabilities.json gate-yield entry)… (owner `david`, expires `2026-12-31`)
 - `holdout-control-validation/dev-calibration-validate-item-reuse` — The PUBLIC dev corpus likely has the same disease (controls approved without a verifier run)… (owner `david`, expires `2026-11-15`)
+- `holdout-control-validation/holdout-corpus-remediation-sweep` — THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16… (owner `david`, expires `2026-09-30`)
+- `holdout-control-validation/population-snapshot-consumers` — integration-adversary ISLAND2 + arch-F7 (2026-08-16)… (owner `david`, expires `2026-11-15`)
 
 ## Adversarial review records
 

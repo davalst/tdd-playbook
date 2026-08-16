@@ -132,13 +132,23 @@ def stage_vault(vault_url, workdir):
     return dest
 
 
+# Bodies whose LATEST register row is dated on/after this must carry a validation manifest
+# (the D1 gate shipped 2026-08-16; strictly-after grandfathers every body approved before
+# the gate existed — their cleanup is the D4 remediation sweep's job, not a bricked run).
+# Closing integration-adversary ISLAND1: without this, the persisted manifest had no reader
+# and a hand-copied body + hand-written register row walked around the approve gate.
+MANIFEST_REQUIRED_SINCE = "2026-08-17"
+
+
 def vault_integrity_problems(vault_root):
     """Integrity of a vault BEFORE it feeds an eval: (1) HASH-DRIFT via verify_bodies (a body
-    whose content no longer matches its recorded content_sha256), and (2) an UNREGISTERED body —
+    whose content no longer matches its recorded content_sha256), (2) an UNREGISTERED body —
     a bodies/*.json id with no register row (verify_bodies checks rows->shas, so an extra body
-    would otherwise run untracked/unauthorized). Returns the problem list ([] == clean). No
+    would otherwise run untracked/unauthorized), and (3) post-gate CURRENT bodies must carry a
+    validation manifest whose candidate sha matches the body — the D1 gate's proof-of-passage,
+    so the gate cannot be bypassed by hand-copying. Returns the problem list ([] == clean). No
     register present -> None (a fresh vault with only bodies has nothing recorded to drift from;
-    the caller decides)."""
+    the caller decides — run_holdout refuses when bodies exist)."""
     reg = os.path.join(vault_root, REGISTER_NAME)
     bodies = os.path.join(vault_root, "bodies")
     if not os.path.isfile(reg):
@@ -146,11 +156,62 @@ def vault_integrity_problems(vault_root):
     entries = plant_forms.parse_register(open(reg).read())
     problems = list(verify_bodies(entries, bodies))
     reg_ids = {e["plant_id"] for e in entries}
-    for bid in holdout_shas(bodies):
+    shas = holdout_shas(bodies)
+    for bid in shas:
         if bid not in reg_ids:
             problems.append("body '{}' is not in the register — an unregistered holdout body is "
                             "not authorized/verifiable".format(bid))
+    for sid, e in plant_forms.resolve_latest(entries).items():
+        if (e["date"] >= MANIFEST_REQUIRED_SINCE
+                and (e.get("status") or "current") == "current" and sid in shas):
+            mpath = os.path.join(vault_root, "manifests", sid + ".json")
+            if not os.path.isfile(mpath):
+                problems.append(
+                    "body '{}' (registered {}) has NO validation manifest — post-gate "
+                    "bodies land only through `holdout approve`, which persists one; a "
+                    "hand-copied body is unvalidated".format(sid, e["date"]))
+                continue
+            try:
+                msha = json.load(open(mpath)).get("candidate_content_sha256")
+            except (OSError, ValueError):
+                msha = None
+            if msha != shas[sid]:
+                problems.append(
+                    "body '{}': its validation manifest does not match the body's content "
+                    "sha — a stale manifest authorizes nothing; re-validate".format(sid))
     return problems
+
+
+def contract_mismatch_warnings(vault_root, run_model, run_isolation="with-playbook"):
+    """arch-F1/F6 (2026-08-16): a manifest's 'holds' predicts a reading only under the SAME
+    contract. Compare each persisted manifest's recorded model/isolation against the run
+    being launched; mismatches WARN (ids only — never blocked: the number still computes,
+    it just doesn't carry the gate's prediction). run_model=None means the run will use
+    the eval default (rc.DEFAULT_MODEL)."""
+    import run_calibration as rc
+    out = []
+    run_model = run_model or rc.DEFAULT_MODEL
+    mdir = os.path.join(vault_root, "manifests")
+    if not os.path.isdir(mdir):
+        return out
+    for fn in sorted(os.listdir(mdir)):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            m = json.load(open(os.path.join(mdir, fn)))
+        except (OSError, ValueError):
+            out.append("CONTRACT WARNING: manifest {} is unreadable".format(fn))
+            continue
+        c = m.get("contract") or {}
+        if c.get("model") and c["model"] != run_model:
+            out.append("CONTRACT MISMATCH {}: validated under model '{}' but this run "
+                       "uses '{}' — its 'holds' does not predict this reading"
+                       .format(m.get("candidate_id", fn), c["model"], run_model))
+        if c.get("isolation") and c["isolation"] != run_isolation:
+            out.append("CONTRACT MISMATCH {}: validated under isolation '{}' but this "
+                       "run uses '{}'".format(m.get("candidate_id", fn), c["isolation"],
+                                              run_isolation))
+    return out
 
 
 HISTORY = os.path.join(os.path.dirname(HERE), "docs", "calibration", "history.md")
@@ -205,6 +266,13 @@ def holdout_summary_lines(history_text, today=None):
         lines.append("Corrected reading (superseded bodies excluded — the trustworthy "
                      "number): recall {}/{} {} · FP {}/{} {}".format(
                          ck, cn, hf.interval_cell(ck, cn), gk, gn, hf.interval_cell(gk, gn)))
+    snap = lh.get("population_snapshot")
+    if snap:
+        counts = {}
+        for st_, _sha in snap.values():
+            counts[st_] = counts.get(st_, 0) + 1
+        lines.append("Population as-of-run: " + " · ".join(
+            "{} {}".format(v, k) for k, v in sorted(counts.items())))
     stale = holdout_staleness(history_text, today)
     if stale is not None:
         days, is_stale = stale
@@ -241,14 +309,39 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None, summary=False):
     confinement is unavailable), then delete the clone so no answer key outlives the run. Returns
     the eval's exit code. `summary` collapses the rollup wall to the verdicts + reading + a
     dev-vs-holdout comparison. `runner` is injectable for tests."""
+    # SECURITY (adversary finding 1, 2026-08-16): the egress muzzle is derived from
+    # `--form holdout` in the child, and argparse takes the LAST --form — so a forwarded
+    # `--form all` would run the private bodies through the DEV printer, which emits the
+    # plant text, both oracle regexes, and the raw doer output. The muzzle is not
+    # user-negotiable on this path: refuse the override instead of silently un-muzzling.
+    if "--form" in extra_argv:
+        raise ValueError(
+            "run_holdout refuses a forwarded --form: the holdout egress allow-list is "
+            "derived from `--form holdout`, and overriding it would print the private "
+            "answer key (plant text + oracle regexes + raw output) through the dev "
+            "printer. Run the public corpus with run_calibration.py directly instead.")
     workdir = tempfile.mkdtemp(prefix="tdd-holdout-")
     try:
         dest = stage_vault(vault_url, workdir)
         bodies = os.path.join(dest, "bodies")
         probs = vault_integrity_problems(dest)
+        if probs is None and holdout_shas(bodies):
+            # fail-open one layer above a fail-closed check (arch lead, 2026-08-16): a
+            # register-less vault would run every body unauthorized and implicitly
+            # `current` — the silent re-entry the scorer's own FATAL refuses.
+            raise ValueError("holdout vault has bodies but NO register ({}) — refusing: "
+                             "every body would run unauthorized with an implicit "
+                             "'current' status.".format(REGISTER_NAME))
         if probs:
             raise ValueError("holdout vault FAILED its integrity check — refusing to run "
                              "(drift or unregistered body):\n  " + "\n  ".join(probs))
+        # arch-F1/F6: 'holds' predicts THIS reading only under the same contract — warn
+        # loudly (stderr, ids only) when a manifest was validated under a different
+        # model/isolation than the run being launched.
+        run_model = (extra_argv[extra_argv.index("--model") + 1]
+                     if "--model" in extra_argv else None)
+        for w in contract_mismatch_warnings(dest, run_model):
+            print(w, file=sys.stderr)
         env = dict(os.environ)
         env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies       # loader (trusted parent) reads bodies
         reg = os.path.join(dest, REGISTER_NAME)
@@ -295,11 +388,9 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None, summary=False):
 APPROVABLE = ("holds", "caught")
 
 
-def _sha256_file(path):
-    import hashlib
-    with open(path, "rb") as fh:
-        return hashlib.sha256(fh.read()).hexdigest()
-
+# file hashing: plant_forms.plant_sha is THE raw-file sha256 (arch-F9 — the TOCTOU check
+# compares hashes across call sites, so two implementations staying accidentally equal is
+# not a foundation; one helper is).
 
 def fixture_tree_sha():
     """Content hash of the staged fixture world (same filter stage() copies with), so the
@@ -349,10 +440,10 @@ def eval_contract(sc, model, *, host="claude", host_bin="claude",
         "repeat": int(repeat or rc.DEFAULT_REPEAT),
         "calibration_args": os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", ""),
         "fixture_sha256": fixture_tree_sha(),
-        "runner_source_sha256": _sha256_file(os.path.join(HERE, "host_runner.py")),
-        "oracle_source_sha256": _sha256_file(RUNNER),
+        "runner_source_sha256": plant_forms.plant_sha(os.path.join(HERE, "host_runner.py")),
+        "oracle_source_sha256": plant_forms.plant_sha(RUNNER),
         "oracle_normalization_version": rc.ORACLE_NORMALIZATION_VERSION,
-        "verifier_brief_sha256": _sha256_file(os.path.join(
+        "verifier_brief_sha256": plant_forms.plant_sha(os.path.join(
             os.path.dirname(HERE), "plugins", "tdd-playbook", "agents",
             sc["agent"] + ".md")),
     }
@@ -388,41 +479,29 @@ def validate_item(sc, vault_dir, contract, *, runner=None, body_path=None,
     import run_calibration as rc
     is_control = bool(sc.get("control_for"))
     clean = {kk: vv for kk, vv in sc.items() if kk != "_meta"}
-    reps, reasoning = [], None
     keep_deny = os.environ.get(rc.HOLDOUT_DENY_ENV)
     os.environ[rc.HOLDOUT_DENY_ENV] = vault_dir
     try:
-        for _ in range(int(contract["repeat"])):
-            if runner is not None:
-                status, out = runner(clean)
-            else:
-                root = rc.stage(clean)
-                try:
-                    status, out = rc.run_agent(clean, root, host_bin, contract["model"],
-                                               contract["host"],
-                                               isolation=contract["isolation"])
-                finally:
-                    shutil.rmtree(root, ignore_errors=True)
-            if status == "ok":
-                passed, _probs, mode = rc.oracle(clean, out)
-                reps.append({"passed": passed, "mode": mode, "env": False})
-                if not passed and reasoning is None:
-                    reasoning = out
-            else:
-                reps.append({"passed": False,
-                             "mode": "timeout" if status == "timeout" else "env-failure",
-                             "env": status == "env_failure"})
+        # ONE rep loop, shared with the eval (rc.run_reps, arch-F2) — the gate predicts
+        # the reading only if both run the same rep semantics.
+        full_reps = rc.run_reps(clean, contract["repeat"], host_bin, contract["model"],
+                                contract["host"], isolation=contract["isolation"],
+                                runner=runner)
     finally:
         if keep_deny is None:
             os.environ.pop(rc.HOLDOUT_DENY_ENV, None)
         else:
             os.environ[rc.HOLDOUT_DENY_ENV] = keep_deny
-    counted = [r for r in reps if not r["env"]]
-    k = sum(1 for r in counted if r["passed"])
-    n = len(counted)
+    reasoning = next((r["out"] for r in full_reps
+                      if not r["passed"] and not r["env"] and r["out"]), None)
+    # manifest reps are STRUCTURED-ONLY: strip the problems (they quote oracle regexes)
+    # and the raw output before anything leaves this function besides `reasoning`.
+    reps = [{"passed": r["passed"], "mode": r["mode"], "env": r["env"]}
+            for r in full_reps]
+    k, n = rc.rep_counts(full_reps)
     verdict = validation_verdict(k, n, is_control)
     if body_path:
-        cand_sha = _sha256_file(body_path)
+        cand_sha = plant_forms.plant_sha(body_path)
     else:
         import hashlib
         cand_sha = hashlib.sha256(
@@ -505,14 +584,21 @@ def judge_control(sc, reasoning, *, model="opus", host="claude", claude_bin="cla
         if invoke is not None:
             out = invoke(prompt)
         else:
+            # SECURITY (adversary finding 2, 2026-08-16): the sandbox re-grants writes to
+            # its WORKSPACE (the cwd). The judge is the one model holding approved bodies
+            # + oracle regexes in context, so its workspace must be a throwaway temp dir —
+            # never HERE, which is the public repo that gets committed and pushed.
+            jroot = tempfile.mkdtemp(prefix="tdd-judge-")
             try:
                 res = host_runner.invoke(
-                    host, claude_bin, prompt, model, HERE, timeout=600, env=child_env(),
+                    host, claude_bin, prompt, model, jroot, timeout=600, env=child_env(),
                     extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split(),
                     confine_deny_read=deny_read)
                 out = res.output if res.status == "ok" else ""
             except Exception:
                 out = ""
+            finally:
+                shutil.rmtree(jroot, ignore_errors=True)
         v = parse_judge_verdict(out or "")
         votes.append(v)
         if v is not None:
@@ -633,7 +719,8 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
 
 
 def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="claude",
-                        repeat=None, validator=None, judge=None, supersedes=""):
+                        repeat=None, validator=None, judge=None, supersedes="",
+                        interactive=None):
     """Move a reviewed proposed body into bodies/ and record it in the register (form=holdout,
     real content_sha256). Re-validates (minus dup-id, the proposed file IS the id), echoes
     pairing, and — D1 — runs the body's TARGET VERIFIER against it under the eval contract:
@@ -653,6 +740,13 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
     if not os.path.isfile(src):
         print("no proposed holdout body: {}".format(plant_id))
         return 1
+    if supersedes and supersedes not in _latest_register_rows(vault_dir):
+        # integration-adversary NOTE6 (2026-08-16): a typo'd link would otherwise land
+        # silently and hard-fail the NEXT `holdout run` for the whole vault (the dangling-
+        # link check lives in vault_integrity_problems) — refuse one keystroke instead.
+        print("REFUSING approval — --supersedes '{}' names no register entry (a dangling "
+              "supersession link would brick the next run).".format(supersedes))
+        return 1
     with open(src) as fh:
         sc = json.load(fh)
     universe = _vault_universe(vault_dir)
@@ -666,7 +760,9 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
             print("pairing note: " + p)   # echo (ids only); its control may still be in proposed/
     # D1 — the validation gate: the verifier must actually be run against the body before
     # it can land. Deterministically scored; fail closed on anything but k/k.
-    model = model or os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "sonnet")
+    # arch-F1: ONE model default, the eval's own (rc.DEFAULT_MODEL) — a second literal
+    # here once meant the default path validated under a model the reading never uses.
+    model = model or rc.DEFAULT_MODEL
     contract = eval_contract(sc, model, host_bin=claude_bin, repeat=repeat)
     if validator is None:
         def validator(s, vd, c, **kw):
@@ -682,7 +778,17 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
         # WHY without reading code. Transient display only; a judge failure never masks
         # the refusal (the deterministic block above needs no confirmation — nothing
         # irreversible happened, the body simply did not land).
-        if res.get("reasoning") and judge is not False:
+        # SECURITY (adversary finding 3, 2026-08-16): the rationale quotes the oracle, and
+        # "transient" is only true on a TTY — a non-interactive invocation (CI, an agent's
+        # Bash tool, `| tee`) would write it into a durable log/transcript. Same rule as
+        # remediate: no TTY, no judge; the deterministic refusal stands on its own.
+        if interactive is None:
+            interactive = sys.stdin.isatty()
+        if not interactive and judge is not False:
+            print("(judge skipped: non-interactive — its rationale quotes the oracle and "
+                  "must not land in a log. Re-run `holdout approve` in a terminal, or "
+                  "`holdout validate` for the table alone.)")
+        elif res.get("reasoning") and judge is not False:
             try:
                 jr = (judge or judge_control)(sc, res["reasoning"],
                                               deny_read=[vault_dir])
@@ -728,14 +834,17 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
 
 
 # --- D4: remediation — supersede the bad pairs, on confirm ----------------------------------
-def _latest_register_rows(vault_dir):
+def _register_entries(vault_dir):
     reg = os.path.join(vault_dir, REGISTER_NAME)
     if not os.path.isfile(reg):
-        return {}
-    latest = {}
-    for e in plant_forms.parse_register(open(reg).read()):
-        latest[e["plant_id"]] = e
-    return latest
+        return []
+    return plant_forms.parse_register(open(reg).read())
+
+
+def _latest_register_rows(vault_dir):
+    # delegates to THE latest-wins owner (plant_forms.resolve_latest, arch-F4) — a local
+    # fold here is how remediation reads different semantics than the scorer
+    return plant_forms.resolve_latest(_register_entries(vault_dir))
 
 
 def _cas_error(vault_dir, sid, latest=None):
@@ -788,17 +897,13 @@ def cmd_remediate_holdout(vault_dir, model, claude_bin, repeat, only_id=None, *,
         print("ABORT: remediation applies irreversible register transitions on a human "
               "y/n — run it in a terminal. Nothing was validated or changed (no spend).")
         return 2
+    import run_calibration as rc
     bodies_dir = os.path.join(vault_dir, "bodies")
-    scs = {}
-    if os.path.isdir(bodies_dir):
-        for fn in sorted(os.listdir(bodies_dir)):
-            if fn.endswith(".json"):
-                with open(os.path.join(bodies_dir, fn)) as fh:
-                    sc = json.load(fh)
-                if sc.get("id"):
-                    scs[sc["id"]] = sc
-    latest = _latest_register_rows(vault_dir)
-    statuses = {sid: (latest[sid].get("status") or "current") for sid in latest}
+    # ONE loader (rc.load_corpus, arch-F9/F1) — never a second bodies/*.json loop
+    scs = {s["id"]: s for s in rc.load_corpus([bodies_dir]) if s.get("id")}
+    entries = _register_entries(vault_dir)
+    latest = plant_forms.resolve_latest(entries)
+    statuses = plant_forms.resolve_statuses(entries)
     pairs = [(scs[sc["control_for"]], sc) for sc in scs.values()
              if sc.get("control_for") and sc["control_for"] in scs
              and statuses.get(sc["id"], "current") == "current"
@@ -826,6 +931,14 @@ def cmd_remediate_holdout(vault_dir, model, claude_bin, repeat, only_id=None, *,
             print("WEAK PLANT {}: the verifier no longer catches it at k/k — harden or "
                   "supersede it next authoring cycle (no judge disposition; the judge's "
                   "shapes are control shapes).".format(plant_sc["id"]))
+            continue
+        if res_c["table"]["verdict"] == "inconclusive":
+            # integration-adversary GAP5 (2026-08-16): inconclusive means the ENVIRONMENT
+            # refused — zero measured reps. An irreversible transition (or even a judge
+            # spend) on an unmeasured run would break D1's own fail-closed rule.
+            print("INCONCLUSIVE {}: every validation rep was an environment failure — "
+                  "nothing was measured, so nothing is judged or retired. Fix the "
+                  "environment and re-run.".format(ctl_sc["id"]))
             continue
         jr = (judge or judge_control)(ctl_sc, res_c.get("reasoning") or "",
                                       deny_read=[vault_dir])
@@ -911,9 +1024,10 @@ def main(argv=None):
     v.add_argument("id", help="the proposed plant id to approve")
     v.add_argument("--reason", required=True, help="why this assignment (audit trail)")
     v.add_argument("--model", default=None,
-                   help="verifier model for the validation gate (default: "
-                        "TDD_PLAYBOOK_CALIBRATION_MODEL or sonnet — MUST match the model "
-                        "your holdout evals use, or 'holds' doesn't predict the reading)")
+                   help="verifier model for the validation gate (default: the eval's "
+                        "own default, TDD_PLAYBOOK_CALIBRATION_MODEL or haiku — MUST match "
+                        "the model your holdout evals use, or 'holds' doesn't predict the "
+                        "reading; pass --model sonnet if that is what your runs use)")
     v.add_argument("--repeat", type=int, default=None, help="validation reps (default 3)")
     v.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
     v.add_argument("--supersedes", default="",
@@ -926,8 +1040,9 @@ def main(argv=None):
                    help="a PERSISTENT local clone of the private vault (outside the public "
                         "tree)")
     m.add_argument("--model", default=None,
-                   help="verifier model (default TDD_PLAYBOOK_CALIBRATION_MODEL or sonnet — "
-                        "must match your holdout eval model)")
+                   help="verifier model (default: the eval's own default — must match your "
+                        "holdout eval model; pass --model sonnet if that is what your runs "
+                        "use)")
     m.add_argument("--repeat", type=int, default=None)
     m.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
     m.add_argument("--id", default=None, help="remediate only the pair containing this id")
@@ -962,15 +1077,13 @@ def main(argv=None):
                                    claude_bin=args.claude_bin, repeat=args.repeat,
                                    supersedes=args.supersedes)
     if args.cmd == "remediate":
-        return cmd_remediate_holdout(
-            args.vault_dir,
-            args.model or os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "sonnet"),
-            args.claude_bin, args.repeat, only_id=args.id)
+        import run_calibration as rc
+        return cmd_remediate_holdout(args.vault_dir, args.model or rc.DEFAULT_MODEL,
+                                     args.claude_bin, args.repeat, only_id=args.id)
     if args.cmd == "validate":
-        return cmd_validate_holdout(
-            args.vault_dir, args.id,
-            args.model or os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "sonnet"),
-            args.claude_bin, args.repeat)
+        import run_calibration as rc
+        return cmd_validate_holdout(args.vault_dir, args.id, args.model or rc.DEFAULT_MODEL,
+                                    args.claude_bin, args.repeat)
     return 2
 
 
