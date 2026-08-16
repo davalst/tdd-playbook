@@ -381,3 +381,11 @@
 > `dev` and is UNRECOVERABLE. Treat the `form` cell on pre-2026-08-15 blocks as
 > **UNMEASURED, not `dev`**. From this date the writer REQUIRES `form` (KeyError otherwise),
 > so the cell is a real measurement going forward. Old rows are never reinterpreted.
+
+### Run 2026-08-15 — model sonnet · repo 5d74b2b · selected 4 of 52 (26 shipped + 26 corpus · 24 controls) · recall 2/2 [0.34–1.00] · FP 2/2 [0.34–1.00] · form holdout · isolation with-playbook
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-15 | sonnet vs opus | control-probe-canary-selftest | script-adversary | 1/3 | wrong-verdict-line | AMBER |
+| 2026-08-15 | sonnet vs opus | control-twin-export-shares-authz-helper | security-adversary | 1/3 | wrong-verdict-line | AMBER |
+| 2026-08-15 | sonnet vs opus | probe-passes-on-any-nonzero-exit | script-adversary | 3/3 | — | PASS |
+| 2026-08-15 | sonnet vs opus | twin-export-command-skips-authz | security-adversary | 3/3 | — | PASS |

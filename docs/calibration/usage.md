@@ -13,3 +13,5 @@ schema: 1
 
 | date | scenario | uses | dispatched | changed_a_decision |
 |---|---|---|---|---|
+| 2026-08-15 | S41 | 1 | 0 | 0 |
+| 2026-08-15 | full | 8 | 0 | 0 |
