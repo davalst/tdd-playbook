@@ -100,6 +100,10 @@
   {
    "path": "2026-08-16-holdout-process-documented.json",
    "sha256": "59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213"
+  },
+  {
+   "path": "2026-08-16-holdout-diagnose.json",
+   "sha256": "323683b1d6af3d7219f7fa478474137550400e00096bb605b6c0af7cfb2ee7dd"
   }
  ]
 }

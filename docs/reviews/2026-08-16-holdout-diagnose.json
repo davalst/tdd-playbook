@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-holdout-diagnose",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "9be45ca00fe09f823df1dc1579e9b7ae39690230",
+    "head": "068ab7b5bb384d742484d697744323a6c399e3c9"
+  },
+  "reviewers": [
+    "integration-adversary",
+    "architecture-adversary",
+    "security-adversary"
+  ],
+  "findings": [
+    {
+      "id": "DIAGNOSE-WIRING-SHIPS-DARK",
+      "severity": "P2",
+      "summary": "As first planned, `holdout diagnose` would have shipped DARK: the DIAGNOSE line was a write-only emitter (dropped by the _filtered_run_lines allow-list, no consumer), there was no --diagnose on-switch to flip, the command was undiscoverable (README + `run` never pointed to it), the dev-calibration use was a silent island, and the normalizer risked being a second copy of oracle().",
+      "evidence": [
+        "calibration/holdout.py:163",
+        "calibration/run_calibration.py:757"
+      ],
+      "status": "incorporated",
+      "disposition": "All five folded in: _filtered_run_lines keeps the DIAGNOSE prefix (holdout.py); --diagnose flag added to run_calibration and forwarded by the `diagnose` subcommand; README gained a 'Diagnose a run' section and `run --summary` prints a run->diagnose tip (suppressed when already diagnosing); --diagnose works for the public dev calibration too (the dev 'island' is resolved, not deferred); and the normalizer reuses the ONE oracle() via a parameter, not a copy. Wiring proven by tests (--diagnose accepted, filter keeps DIAGNOSE, subcommand present) and an EXERCISED test that emits a real DIAGNOSE line + DIAGNOSE-SUMMARY through run_calibration's main loop with a stub agent.",
+      "class": "judgment",
+      "recurrence_key": "cli-feature-ships-dark"
+    },
+    {
+      "id": "DIAGNOSE-NORMALIZER-SEAM",
+      "severity": "P2",
+      "summary": "The draft would have built a diagnose-only normalizer plus a forked HEDGE/GENUINE bucket taxonomy — an Nth copy next to the standing ORACLE NORMALISATION PASS debt (which names oracle() as the normalization owner) and next to oracle()'s existing wrong-verdict-line/found-but-hedged/missed-entirely mode vocabulary.",
+      "evidence": [
+        "calibration/run_calibration.py:225",
+        "capabilities.json"
+      ],
+      "status": "incorporated",
+      "disposition": "Unified on ONE parameterized scorer: oracle(scenario, output, normalizer=None), default None = identical scoring (preserves the deferred oracle-normalisation predictions). normalize_for_oracle is authored as the exact artifact that debt will later adopt as oracle()'s default — a pointer was added to the debt entry so paying it is 'flip the default + ledger + victim-sweep', not writing normalization twice. classify_failure CONSUMES the oracle's returned mode and layers only the one genuinely-new axis (would-pass-normalized), so there is no parallel taxonomy. Diagnose runs IN-PASS (reps[].out in memory, never persisted) — which is also the correct containment seam per the security review, not just a cost optimization.",
+      "class": "judgment",
+      "recurrence_key": "duplicate-scorer-instead-of-parameterize"
+    },
+    {
+      "id": "DIAGNOSE-EGRESS-CONTAINED",
+      "severity": "P2",
+      "summary": "The feature adds a new field (the classification label) to the holdout egress ALLOW-LIST — the boundary that keeps the private answer key (plant bodies, oracle regexes, raw doer output) out of any Claude-readable output. A leak here is the one catastrophe the holdout exists to prevent.",
+      "evidence": [
+        "calibration/run_calibration.py:298",
+        "calibration/holdout.py:163"
+      ],
+      "status": "incorporated",
+      "disposition": "Fresh-context security-adversary traced all five leak paths -> verdict CONTAINED: diagnose_line(scenario, label) structurally accepts only the already-public id/agent plus a closed-vocabulary label; classify_failure calls oracle(..., normalizer=...) and consumes the raw doer output as an in-memory boolean ([0]) that is never printed; the raw output is never emitted in holdout mode at all (scenario_detail_lines returns []); and _filtered_run_lines is the sole egress, an allow-list of line prefixes. Added the reviewer's suggested needle-pin: classify_failure over reps carrying all three secret channels yields only a closed-set label and a DIAGNOSE line containing none of them. No code change was required to close it; the label is the same information class as the already-public verdict/mode.",
+      "class": "judgment",
+      "recurrence_key": "egress-allowlist-extension"
+    }
+  ]
+}
