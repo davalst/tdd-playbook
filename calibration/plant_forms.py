@@ -146,6 +146,17 @@ def resolve_forms(entries):
     return resolved
 
 
+def resolve_statuses(entries):
+    """{plant_id: status} from the LATEST entry per id (resolve_forms' twin — a status
+    transition is an APPEND, so the last row wins). An id with no entry is simply absent:
+    the scorer treats absence as `current`, because dropping a body from the trustworthy
+    population must be a DECISION recorded in the register, never a parse gap."""
+    out = {}
+    for e in entries:
+        out[e["plant_id"]] = e.get("status") or "current"
+    return out
+
+
 def form_of(plant_id, resolved):
     """An id with no entry is `dev`. Absence is a decision and this is the safe one: an
     unassigned plant gets TUNED AGAINST, never quietly reported as a clean measurement."""

@@ -3155,9 +3155,245 @@ def _diagnose_tests():
               "DIAGNOSE-SUMMARY" in pex.stdout and "genuine" in pex.stdout, pex.stdout[-400:])
 
 
+def _holdout_status_flow_tests():
+    """D0 rest (trustworthy-holdout-controls plan, 2026-08-16): the register STATUS must FLOW
+    to the scorer or D0 part 1 is write-only (Codex R2#1). The trusted parent parses the
+    register ONCE (TDD_PLAYBOOK_HOLDOUT_REGISTER), passes {id -> status} into aggregation:
+    legacy-invalid/asymmetric are EXCLUDED from the current recall/FP, known-overflag is
+    COUNTED, and each run-history block SNAPSHOTS the population (status + content-hash)
+    as-of-then so an old reading is never reinterpreted with today's status (Codex R2#2)."""
+    print("\n[holdout status flow -> scorer partition + population snapshot (D0 rest)]")
+    import plant_forms as pf
+    import run_calibration as rc
+    import history_format as hf
+    import holdout
+
+    # --- resolve_statuses: latest row wins; absence is `current` (exclusion is a DECISION) ---
+    entries = [
+        {"date": "2026-08-15", "plant_id": "p1", "form": "holdout",
+         "content_sha256": "a" * 64, "reason": "initial", "status": "current", "supersedes": ""},
+        {"date": "2026-08-16", "plant_id": "p1", "form": "holdout",
+         "content_sha256": "a" * 64, "reason": "superseded by p9", "status": "legacy-invalid",
+         "supersedes": ""},
+    ]
+    st = pf.resolve_statuses(entries)
+    check("D0: resolve_statuses — the LATEST entry wins (current -> legacy-invalid)",
+          st.get("p1") == "legacy-invalid", st)
+    check("D0: resolve_statuses — an id with NO entry defaults to current (never silently "
+          "dropped from the trustworthy population)",
+          pf.resolve_statuses([]).get("nope") is None
+          and rc.partition_readings(
+              [{"sc": {"id": "nope"}, "verdict": "PASS"}], {})["recall"] == (1, 1))
+
+    # --- THE D0 test: a legacy-invalid body CANNOT enter current recall/FP ---
+    R = lambda sid, verdict, control=None: {
+        "sc": {"id": sid, **({"control_for": control} if control else {})}, "verdict": verdict}
+    results = [R("pl-cur", "PASS"), R("pl-old", "PASS"),
+               R("ct-cur", "PASS", control="pl-cur"),
+               R("ct-old", "**BLOCKING FAIL**", control="pl-old")]
+    statuses = {"pl-old": "legacy-invalid", "ct-old": "legacy-invalid"}
+    part = rc.partition_readings(results, statuses)
+    check("D0: PLANTED a legacy-invalid PLANT cannot enter current recall",
+          part["recall"] == (1, 1), part)
+    check("D0: PLANTED a legacy-invalid CONTROL cannot enter current FP",
+          part["fp"] == (0, 1), part)
+    check("D0: the excluded ids are NAMED (auditable, never silent)",
+          part["excluded"] == ["ct-old", "pl-old"], part)
+    # known-overflag is COUNTED — a real, tracked verifier weakness the flag documents
+    part2 = rc.partition_readings(
+        [R("ct-kof", "**BLOCKING FAIL**", control="pl-x"), R("pl-x", "PASS")],
+        {"ct-kof": "known-overflag"})
+    check("D0: a known-overflag control stays COUNTED in current FP (documented, not hidden)",
+          part2["fp"] == (1, 1) and part2["overflag"] == ["ct-kof"], part2)
+    # asymmetric is excluded from the paired-denominator reading, like legacy-invalid
+    part3 = rc.partition_readings([R("pl-asym", "PASS")], {"pl-asym": "asymmetric"})
+    check("D0: an asymmetric body is excluded from the paired-denominator reading",
+          part3["recall"] == (0, 0) and part3["excluded"] == ["pl-asym"], part3)
+    # INVALID reps never enter either reading
+    part4 = rc.partition_readings([R("pl-inv", "INVALID — env failure on all reps")], {})
+    check("D0: an INVALID result stays out of the corrected reading too",
+          part4["recall"] == (0, 0), part4)
+
+    # --- the trusted-parent parse: ONE seam, fail-closed ---
+    with tempfile.TemporaryDirectory() as d:
+        regp = os.path.join(d, "holdout-register.md")
+        with open(regp, "w") as fh:
+            fh.write("## Entries\n\n" + import_pf_table()
+                     + pf.format_register_row("2026-08-16", "hp1", "holdout", "a" * 64, "r")
+                     + pf.format_register_row("2026-08-16", "hp1", "holdout", "a" * 64,
+                                              "superseded", status="legacy-invalid"))
+        m = rc.holdout_status_map(regp)
+        check("D0: holdout_status_map parses the vault register once (latest status wins)",
+              m == {"hp1": "legacy-invalid"}, m)
+        raised = False
+        try:
+            rc.holdout_status_map(os.path.join(d, "missing.md"))
+        except Exception:
+            raised = True
+        check("D0: holdout_status_map RAISES on an unreadable register (fail closed, "
+              "never guess statuses)", raised)
+
+    # --- the child never sees the register (parent-only, like the sink env) ---
+    import child_env as _ce
+    keep = os.environ.get(rc.HOLDOUT_REGISTER_ENV)
+    try:
+        os.environ[rc.HOLDOUT_REGISTER_ENV] = "/vault/holdout-register.md"
+        ce = _ce.child_env()
+        check("D0: child_env STRIPS the holdout register from the nested model",
+              rc.HOLDOUT_REGISTER_ENV not in ce, [k for k in ce if "HOLDOUT" in k])
+    finally:
+        os.environ.pop(rc.HOLDOUT_REGISTER_ENV, None)
+        if keep is not None:
+            os.environ[rc.HOLDOUT_REGISTER_ENV] = keep
+
+    # --- run_holdout hands the trusted parent the register path ---
+    git_id = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    with tempfile.TemporaryDirectory() as vault:
+        bodies = os.path.join(vault, "bodies")
+        os.makedirs(bodies)
+        bpath = os.path.join(bodies, "sf-body.json")
+        with open(bpath, "w") as fh:
+            json.dump({"id": "sf-body", "agent": "claims-verifier", "plant": "p",
+                       "edits": [], "task": "t", "must_match": ["a"]}, fh)
+        with open(os.path.join(vault, "holdout-register.md"), "w") as fh:
+            fh.write("# Holdout register\n\n## Entries\n\n" + import_pf_table()
+                     + pf.format_register_row("2026-08-16", "sf-body", "holdout",
+                                              pf.plant_sha(bpath), "seed"))
+        for c in (["git", "-C", vault, "init", "-q"],
+                  ["git", "-C", vault, *git_id, "add", "-A"],
+                  ["git", "-C", vault, *git_id, "commit", "-q", "-m", "seed"]):
+            subprocess.run(c, check=True, capture_output=True, text=True)
+        seen = {}
+
+        def fake_runner(argv, env, bodies_dir):
+            seen["register_env"] = env.get("TDD_PLAYBOOK_HOLDOUT_REGISTER")
+            seen["points_at_register"] = (
+                seen["register_env"]
+                and os.path.isfile(seen["register_env"])
+                and os.path.dirname(seen["register_env"]) == os.path.dirname(bodies_dir))
+            return 0
+        holdout.run_holdout(vault, ["--dry-run"], runner=fake_runner)
+        check("D0: run_holdout points the trusted parent at the CLONED register "
+              "(TDD_PLAYBOOK_HOLDOUT_REGISTER)", bool(seen.get("points_at_register")), seen)
+
+    # --- history snapshot: Population + Corrected lines round-trip; old blocks stay None ---
+    with tempfile.TemporaryDirectory() as d:
+        hp = os.path.join(d, "history.md")
+        meta = {"date": "2026-08-16", "model": "sonnet", "repo_sha": "abc1234",
+                "selected": 2, "total": 2, "shipped": 0, "corpus": 2, "controls": 1,
+                "recall": (1, 1), "fp": (1, 1), "form": "holdout",
+                "isolation": "with-playbook",
+                "population_snapshot": {"pl-cur": ("current", "aaaaaaaaaaaa"),
+                                        "ct-old": ("legacy-invalid", "bbbbbbbbbbbb")},
+                "corrected": {"recall": (1, 1), "fp": (0, 0),
+                              "excluded": ["ct-old"], "overflag": []}}
+        rows = [{"date": "2026-08-16", "model_cell": "sonnet", "scenario": "pl-cur",
+                 "agent": "claims-verifier", "runs": "3/3", "mode": None, "verdict": "PASS"}]
+        hf.append_run_block(hp, meta, rows)
+        blocks, skipped = hf.parse_run_blocks(open(hp).read())
+        check("D0: append_run_block writes a parseable block with snapshot lines",
+              len(blocks) == 1 and skipped == 0, (len(blocks), skipped))
+        b = blocks[0]
+        check("D0: the population snapshot round-trips (status + content-hash as-of-then)",
+              b.get("population") == {"pl-cur": ("current", "aaaaaaaaaaaa"),
+                                      "ct-old": ("legacy-invalid", "bbbbbbbbbbbb")},
+              b.get("population"))
+        check("D0: the corrected reading round-trips",
+              b.get("corrected") == {"recall": (1, 1), "fp": (0, 0)}, b.get("corrected"))
+        # an OLD block (no snapshot lines) parses with both absent — never a fabricated snapshot
+        meta_old = {k: v for k, v in meta.items()
+                    if k not in ("population_snapshot", "corrected")}
+        hp2 = os.path.join(d, "old.md")
+        hf.append_run_block(hp2, meta_old, rows)
+        b2 = hf.parse_run_blocks(open(hp2).read())[0][0]
+        check("D0: a pre-snapshot block parses with population=None, corrected=None "
+              "(old readings are not reinterpreted)",
+              b2.get("population") is None and b2.get("corrected") is None,
+              (b2.get("population"), b2.get("corrected")))
+        # the summary reader reports BOTH readings when the corrected one exists
+        lines = holdout.holdout_summary_lines(open(hp).read())
+        check("D0: holdout_summary_lines reports the corrected reading beside the legacy one",
+              any("orrected" in ln for ln in lines), lines)
+    check("D0: --summary keeps the Corrected line (egress filter)",
+          any(ln.startswith("Corrected") for ln in
+              holdout._filtered_run_lines("noise\nCorrected (current population): recall 1/1")))
+
+    # --- FLOW liveness (§6c): register status -> scorer denominator, END TO END ---
+    # A real run_calibration subprocess over a fake vault: one current pair + one
+    # legacy-invalid plant. The stub emits the correct verdict for everything, so the
+    # LEGACY reading counts 2 plants while the CORRECTED one must exclude the retired body.
+    import confine
+    if not confine.sandbox_exec_available():
+        check("D0: FLOW register-status -> scorer SKIPPED (no sandbox-exec on this host)", True)
+    else:
+        with tempfile.TemporaryDirectory() as d:
+            bodies = os.path.join(d, "bodies")
+            os.makedirs(bodies)
+            def body(sid, extra=None):
+                sc = {"id": sid, "agent": "claims-verifier", "plant": "p", "edits": [],
+                      "task": "t", "must_match": ["FLOWGOOD"],
+                      "must_not_match": ["FLOWBAD"], **(extra or {})}
+                with open(os.path.join(bodies, sid + ".json"), "w") as fh:
+                    json.dump(sc, fh)
+                return os.path.join(bodies, sid + ".json")
+            pa = body("sfl-plant-cur")
+            pb = body("sfl-plant-old")
+            ca = body("sfl-ctl-cur", {"control_for": "sfl-plant-cur"})
+            regp = os.path.join(d, "holdout-register.md")
+            with open(regp, "w") as fh:
+                fh.write("## Entries\n\n" + import_pf_table())
+                for sid, path in (("sfl-plant-cur", pa), ("sfl-ctl-cur", ca)):
+                    fh.write(import_pf_row("2026-08-16", sid, import_pf_sha(path), "seed"))
+                fh.write(import_pf_row("2026-08-16", "sfl-plant-old", import_pf_sha(pb),
+                                       "superseded", status="legacy-invalid"))
+            stub = make_stub(d, "FLOWGOOD — the verdict line.")
+            hist = os.path.join(d, "hist.md")
+            env = dict(os.environ)
+            env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies
+            env["TDD_PLAYBOOK_HOLDOUT_REGISTER"] = regp
+            p = subprocess.run(
+                [sys.executable, RUNNER, "--form", "holdout", "--claude-bin", stub,
+                 "--repeat", "1", "--history", hist],
+                capture_output=True, text=True, timeout=300, env=env)
+            check("D0 FLOW: the run completes (register status flowed, nothing crashed)",
+                  p.returncode == 0, (p.returncode, p.stdout[-400:], p.stderr[-300:]))
+            check("D0 FLOW: legacy reading counts ALL measured plants (recall 2/2)",
+                  "recall 2/2" in p.stdout, p.stdout[-500:])
+            check("D0 FLOW: corrected reading EXCLUDES the legacy-invalid body (recall 1/1) "
+                  "and names it",
+                  "Corrected" in p.stdout and "recall 1/1" in p.stdout
+                  and "sfl-plant-old" in p.stdout, p.stdout[-600:])
+            btext = open(hist).read() if os.path.isfile(hist) else ""
+            bl, _ = hf.parse_run_blocks(btext)
+            check("D0 FLOW: the history block snapshots the population with as-of-then status",
+                  bl and bl[-1].get("population", {}).get("sfl-plant-old",
+                                                          ("", ""))[0] == "legacy-invalid",
+                  btext[-400:])
+            check("D0 FLOW: the history block records the corrected reading",
+                  bl and bl[-1].get("corrected") == {"recall": (1, 1), "fp": (0, 1)},
+                  bl and bl[-1].get("corrected"))
+
+
+def import_pf_table():
+    import plant_forms as pf
+    return pf.ENTRIES_TABLE
+
+
+def import_pf_row(date, sid, sha, reason, status="current", supersedes=""):
+    import plant_forms as pf
+    return pf.format_register_row(date, sid, "holdout", sha, reason,
+                                  status=status, supersedes=supersedes)
+
+
+def import_pf_sha(path):
+    import plant_forms as pf
+    return pf.plant_sha(path)
+
+
 def main():
     print("Calibration-harness calibration")
     _diagnose_tests()
+    _holdout_status_flow_tests()
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()

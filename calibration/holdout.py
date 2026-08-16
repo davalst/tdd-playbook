@@ -160,7 +160,8 @@ def _filtered_run_lines(stdout):
     Drops the rollup wall (gate_yield / ledger / suppressed-findings noise) so a --summary run is
     readable instead of a scroll."""
     keep = ("=== ", "PASS", "AMBER", "**BLOCKING", "BLOCKING FAIL", "INVALID", "Calibration:",
-            "DIAGNOSE")  # DIAGNOSE + DIAGNOSE-SUMMARY: the read-only miss-triage (safe labels only)
+            "DIAGNOSE",  # DIAGNOSE + DIAGNOSE-SUMMARY: the read-only miss-triage (safe labels)
+            "Corrected")  # D0: the status-partitioned reading, printed beside the legacy one
     return [ln for ln in (stdout or "").splitlines() if ln.startswith(keep)]
 
 
@@ -196,12 +197,23 @@ def holdout_summary_lines(history_text, today=None):
     fk, fn = lh["fp"]
     lines = ["Holdout reading: recall {}/{} {} · FP {}/{} {}".format(
         hk, hn, hf.interval_cell(hk, hn), fk, fn, hf.interval_cell(fk, fn))]
+    corr = lh.get("corrected")
+    if corr:
+        ck, cn = corr["recall"]
+        gk, gn = corr["fp"]
+        lines.append("Corrected reading (superseded bodies excluded — the trustworthy "
+                     "number): recall {}/{} {} · FP {}/{} {}".format(
+                         ck, cn, hf.interval_cell(ck, cn), gk, gn, hf.interval_cell(gk, gn)))
     stale = holdout_staleness(history_text, today)
     if stale is not None:
         days, is_stale = stale
         lines.append("Last run: {} day(s) ago{}".format(
             days, "  -> STALE (> {}d): re-run or grow the corpus".format(STALE_DAYS)
             if is_stale else ""))
+    if corr:
+        # the comparison below reads the TRUSTWORTHY number — a retired body must not
+        # depress (or inflate) the dev-vs-holdout gap it is no longer part of
+        hk, hn = corr["recall"]
     ld = next((b for b in reversed(blocks) if b.get("form") == "dev"), None)
     if ld:
         dk, dn = ld["recall"]
@@ -238,6 +250,12 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None, summary=False):
                              "(drift or unregistered body):\n  " + "\n  ".join(probs))
         env = dict(os.environ)
         env["TDD_PLAYBOOK_HOLDOUT_DIR"] = bodies       # loader (trusted parent) reads bodies
+        reg = os.path.join(dest, REGISTER_NAME)
+        if os.path.isfile(reg):
+            # D0: the register (status column) flows to the scorer through the TRUSTED
+            # PARENT only — run_calibration parses it once; child_env strips it from the
+            # nested model, like the DIR/DENY pair.
+            env["TDD_PLAYBOOK_HOLDOUT_REGISTER"] = reg
         env["TDD_PLAYBOOK_HOLDOUT_DENY"] = workdir      # child is denied the WHOLE clone tree
         # (F1) — workdir contains vault/, which contains BOTH bodies/ and the .git object store
         # that `git show HEAD:bodies/*.json` would otherwise reconstruct the answer key from.

@@ -116,6 +116,68 @@ def load_scenarios():
 
 
 HOLDOUT_DIR_ENV = "TDD_PLAYBOOK_HOLDOUT_DIR"
+# D0 rest (2026-08-16, Codex R2#1): the vault register lives ABOVE bodies/, so the scorer
+# cannot see body statuses through HOLDOUT_DIR alone — without this input the supersession
+# schema is write-only. The TRUSTED PARENT (run_holdout -> this process) parses it ONCE;
+# child_env strips it from every nested model, exactly like the DIR/DENY pair.
+HOLDOUT_REGISTER_ENV = "TDD_PLAYBOOK_HOLDOUT_REGISTER"
+
+# Statuses excluded from the CURRENT (trustworthy) recall/FP reading: a superseded body
+# (legacy-invalid) and a non-paired retire (asymmetric — it would split recall vs FP across
+# an asymmetric cohort). `known-overflag` is deliberately NOT here: a genuinely-clean
+# control a verifier over-flags is a real, tracked weakness the flag documents, never hides.
+EXCLUDED_STATUSES = ("legacy-invalid", "asymmetric")
+
+
+def holdout_status_map(register_path):
+    """{id -> latest status} from a vault register, parsed ONCE by the trusted parent.
+    Raises on an unreadable register (fail closed — guessing statuses is how a retired
+    body silently re-enters the trustworthy number)."""
+    import plant_forms
+    with open(register_path) as fh:
+        return plant_forms.resolve_statuses(plant_forms.parse_register(fh.read()))
+
+
+def partition_readings(results, statuses):
+    """The D0 reporting partition. `results` are the per-scenario dicts the main loop
+    builds ({sc, verdict, ...}); `statuses` maps id -> register status (absent = current).
+    Returns the CURRENT population's recall/FP plus the named excluded/overflag ids —
+    a legacy-invalid or asymmetric body structurally CANNOT enter the current numbers."""
+    def stat(r):
+        return statuses.get(r["sc"]["id"], "current")
+    measured = [r for r in results if not r["verdict"].startswith("INVALID")]
+    cur = [r for r in measured if stat(r) not in EXCLUDED_STATUSES]
+    plants = [r for r in cur if not r["sc"].get("control_for")]
+    controls = [r for r in cur if r["sc"].get("control_for")]
+    return {
+        "recall": (sum(1 for r in plants if r["verdict"] == "PASS"), len(plants)),
+        "fp": (sum(1 for r in controls if r["verdict"] != "PASS"), len(controls)),
+        "excluded": sorted(r["sc"]["id"] for r in results if stat(r) in EXCLUDED_STATUSES),
+        "overflag": sorted(r["sc"]["id"] for r in measured
+                           if stat(r) == "known-overflag"),
+    }
+
+
+def population_snapshot(scenarios, statuses):
+    """{id: (status-as-of-now, content-hash-12)} for the SELECTED scenarios — written into
+    the run-history block so an old reading is always interpreted with the status that was
+    true then (Codex R2#2: deriving old results from today's mutable status is forbidden).
+    File-backed bodies use their file sha (the same hash the register pins); shipped
+    scenarios hash their canonical JSON."""
+    import hashlib
+    import plant_forms
+    shas = dict(plant_forms.corpus_shas(REPO))
+    hd = os.environ.get(HOLDOUT_DIR_ENV)
+    if hd:
+        shas.update(plant_forms.shas_in_dir(hd))
+    out = {}
+    for sc in scenarios:
+        sid = sc["id"]
+        sha = shas.get(sid) or hashlib.sha256(json.dumps(
+            {k: v for k, v in sc.items() if k != "_meta"},
+            sort_keys=True).encode()).hexdigest()
+        out[sid] = (statuses.get(sid, "current"), sha[:12])
+    return out
 # The dir the agent is read-DENIED. It must be the whole clone TREE, not the bodies leaf: a
 # `git clone` writes `.git/` beside `bodies/`, and `git show HEAD:bodies/x.json` reconstructs
 # every answer from the object store without ever touching `bodies/` (security F1, confirmed
@@ -891,11 +953,12 @@ def main(argv=None):
     # quote externally is the one the tuning loop has been iterating on. Forms live in an
     # append-only register beside the corpus, NOT in the plant files (rule (b) pins those
     # byte-identical forever, and burn-on-failure has to be able to change a form).
-    resolved_forms = {}
+    resolved_forms, statuses = {}, {}
     try:
         import plant_forms as _pf
-        resolved_forms = _pf.resolve_forms(
-            _pf.parse_register(open(os.path.join(REPO, _pf.REGISTER)).read()))
+        _entries = _pf.parse_register(open(os.path.join(REPO, _pf.REGISTER)).read())
+        resolved_forms = _pf.resolve_forms(_entries)
+        statuses = _pf.resolve_statuses(_entries)
     except Exception as e:
         # An unreadable register must not silently select everything as dev — that is how a
         # holdout plant gets tuned against without anyone deciding to.
@@ -911,6 +974,17 @@ def main(argv=None):
     if _holdout_dir:
         for _s in load_corpus([_holdout_dir]):
             resolved_forms[_s["id"]] = "holdout"
+    # D0 rest: the vault register's statuses, parsed ONCE here in the trusted parent
+    # (run_holdout hands us the path; the eval verifier never sees it — child_env strips it).
+    _reg_env = os.environ.get(HOLDOUT_REGISTER_ENV)
+    if _reg_env:
+        try:
+            statuses.update(holdout_status_map(_reg_env))
+        except Exception as e:
+            print("FATAL: {} is set but the register is unreadable ({}). Refusing to guess "
+                  "statuses — a retired body must never silently re-enter the current "
+                  "recall/FP.".format(HOLDOUT_REGISTER_ENV, e), file=sys.stderr)
+            return 2
     if args.form != "all":
         scenarios = [s for s in scenarios
                      if _form_of(s["id"], resolved_forms) == args.form]
@@ -1023,9 +1097,17 @@ def main(argv=None):
               len(measured(plants)))
     fp = (sum(1 for r in measured(controls) if r["verdict"] != "PASS"),
           len(measured(controls)))
+    # D0 reporting partition: the header recall/FP stay the FULL-population (legacy) reading
+    # for format stability; the CORRECTED reading excludes legacy-invalid/asymmetric bodies
+    # and is recorded beside it whenever the two differ. The per-run population snapshot
+    # freezes each id's status+hash as-of-now, so this block is never reinterpreted later.
+    part = partition_readings(results, statuses)
     meta = {"selected": len(scenarios), "total": len(all_scenarios),
             "shipped": len(shipped), "corpus": len(corpus), "controls": controls_total,
-            "recall": recall, "fp": fp, "form": args.form, "isolation": args.isolation}
+            "recall": recall, "fp": fp, "form": args.form, "isolation": args.isolation,
+            "population_snapshot": population_snapshot(scenarios, statuses)}
+    if part["excluded"] or part["overflag"]:
+        meta["corrected"] = part
     # A mostly-INVALID run is RECORDED, not suppressed — the row is honest non-data, and
     # "we tried and the environment refused" is worth knowing. INVALID is already excluded
     # from recall/FP, from the staleness clock, and from vitality. What it must NOT do is
@@ -1061,6 +1143,17 @@ def main(argv=None):
               len(shipped), len(corpus), controls_total,
               recall[0], recall[1], history_format.interval_cell(*recall),
               fp[0], fp[1], history_format.interval_cell(*fp), len(corpus)))
+    if part["excluded"] or part["overflag"]:
+        # BOTH readings, always together: the line above is the legacy (full-population)
+        # number; this is the trustworthy one. Ids are public by design (bodies are not).
+        print("Corrected (current population): recall {}/{} {} · FP {}/{} {} · excluded "
+              "{} superseded/asymmetric ({}) · {} known-overflag counted{}".format(
+                  part["recall"][0], part["recall"][1],
+                  history_format.interval_cell(*part["recall"]),
+                  part["fp"][0], part["fp"][1], history_format.interval_cell(*part["fp"]),
+                  len(part["excluded"]), ", ".join(part["excluded"]) or "—",
+                  len(part["overflag"]),
+                  " ({})".format(", ".join(part["overflag"])) if part["overflag"] else ""))
     # R4 — the retirement-candidate mirror of the DECAY WARNING (§13's second decay
     # direction: more expensive than the risk). This run IS the cycle: roll the raw yield
     # exhaust into the committed record, then report. NEVER fails the calibration run.

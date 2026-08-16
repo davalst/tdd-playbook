@@ -21,6 +21,7 @@ def child_env():
     # targeted one (security F2). The sandbox denies the clone tree; stripping these removes even
     # the pointer — defense in depth. The trusted PARENT keeps them (it computes the deny root
     # and loads bodies through os.environ, not this child copy).
-    for k in ("TDD_PLAYBOOK_HOLDOUT_DIR", "TDD_PLAYBOOK_HOLDOUT_DENY"):
+    for k in ("TDD_PLAYBOOK_HOLDOUT_DIR", "TDD_PLAYBOOK_HOLDOUT_DENY",
+              "TDD_PLAYBOOK_HOLDOUT_REGISTER"):
         env.pop(k, None)
     return env

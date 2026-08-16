@@ -32,6 +32,17 @@ _RUN_HEADER = re.compile(
     r"(?: · form (dev|holdout|all))?"
     r"(?: · isolation (with-playbook|no-playbook))?\s*$")
 _RUN_MARKER = "### Run "
+# D0 rest (2026-08-16): two OPTIONAL per-block lines written directly under the header.
+# `Population:` freezes {id -> (status, content-hash-12)} as-of that run, so a later status
+# transition (supersession) can never retroactively reinterpret an old block. `Corrected:`
+# is the status-partitioned reading (legacy-invalid/asymmetric excluded) recorded beside
+# the header's full-population numbers. Both are absent on every pre-D0 block, and READING
+# defaults them to None — a fabricated snapshot would be worse than none.
+_POP_LINE = re.compile(r"^Population:\s*(.+)$")
+_POP_ITEM = re.compile(r"^(\S+)=(current|legacy-invalid|known-overflag|asymmetric)"
+                       r"@([0-9a-f]{4,64}|-)$")
+_CORRECTED_LINE = re.compile(
+    r"^Corrected:\s*recall (\d+)/(\d+) \S+ · FP (\d+)/(\d+) \S+")
 # v1.29: `form` is an OPTIONAL trailing clause, and that is load-bearing. Every block written
 # before the dev/holdout split lacks it, and a required group would make all 12 of them stop
 # matching — parse_run_blocks would report them as `skipped`, and ledger.py (which binds and
@@ -173,7 +184,22 @@ def parse_run_blocks(text):
         })
     for j, b in enumerate(blocks):
         end = blocks[j + 1]["_start"] if j + 1 < len(blocks) else len(lines)
-        b["rows"] = parse_rows("\n".join(lines[b.pop("_start"):end]))
+        span = lines[b.pop("_start"):end]
+        b["rows"] = parse_rows("\n".join(span))
+        b["population"], b["corrected"] = None, None
+        for ln in span:
+            pm = _POP_LINE.match(ln.strip())
+            if pm:
+                pop = {}
+                for item in pm.group(1).split(" · "):
+                    im = _POP_ITEM.match(item.strip())
+                    if im:
+                        pop[im.group(1)] = (im.group(2), im.group(3))
+                b["population"] = pop or None
+            cm = _CORRECTED_LINE.match(ln.strip())
+            if cm:
+                b["corrected"] = {"recall": (int(cm.group(1)), int(cm.group(2))),
+                                  "fp": (int(cm.group(3)), int(cm.group(4)))}
     return blocks, skipped
 
 
@@ -248,6 +274,20 @@ def append_run_block(path, meta, rows):
                 # the clause, _RUN_HEADER defaults them); WRITING must never guess.
                 **{k: meta[k] for k in ("date", "model", "repo_sha", "selected", "total",
                                         "shipped", "corpus", "controls", "form", "isolation")}))
+        # D0: the population snapshot + corrected reading (optional — only new runs carry
+        # them; the header regex is untouched so every existing reader stays valid).
+        snap = meta.get("population_snapshot")
+        if snap:
+            fh.write("Population: " + " · ".join(
+                "{}={}@{}".format(i, s, h) for i, (s, h) in sorted(snap.items())) + "\n")
+        corr = meta.get("corrected")
+        if corr:
+            fh.write("Corrected: recall {}/{} {} · FP {}/{} {} · excluded {} "
+                     "(legacy-invalid/asymmetric) · {} known-overflag counted\n".format(
+                         corr["recall"][0], corr["recall"][1],
+                         interval_cell(*corr["recall"]),
+                         corr["fp"][0], corr["fp"][1], interval_cell(*corr["fp"]),
+                         len(corr.get("excluded", [])), len(corr.get("overflag", []))))
         fh.write(HEADER_7 + "\n" + SEP_7 + "\n")
         for r in rows:
             fh.write("| {date} | {model_cell} | {scenario} | {agent} | {runs} | {mode} | "
