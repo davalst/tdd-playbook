@@ -35,9 +35,9 @@
 - `docs/reviews/2026-08-16-holdout-diagnose.json` — `323683b1d6af3d7219f7fa478474137550400e00096bb605b6c0af7cfb2ee7dd`
 - `docs/reviews/2026-08-16-holdout-process-documented.json` — `59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213`
 - `docs/reviews/2026-08-16-isolation-probe-validated.json` — `d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509`
-- `docs/reviews/2026-08-16-test-lock-deadlock-recovery.json` — `2b6abbe252b2df79ab21fcfd602af4f151a08405f36bfbbea6c49cd94c3edbc0`
+- `docs/reviews/2026-08-16-test-lock-deadlock-recovery.json` — `f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56`
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
-- `docs/reviews/index.json` — `d47d1b6aae9da0bb731eddd083a85ebbc8b7dfb18484c8065efea59facf594a9`
+- `docs/reviews/index.json` — `17c84f75e8484e2c22681c141ff54a8e651a49854e3a8962984fd1d551d17396`
 
 ## Gate surface
 

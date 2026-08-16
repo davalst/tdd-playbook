@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-test-lock-deadlock-recovery",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "068ab7b5bb384d742484d697744323a6c399e3c9",
+    "head": "1f3388a8fa82c202a42b3dcaa5e4bb79ceb0d109"
+  },
+  "reviewers": [
+    "integration-adversary",
+    "architecture-adversary",
+    "security-adversary",
+    "cheliped-field-report"
+  ],
+  "findings": [
+    {
+      "id": "TEST-LOCK-CROSS-SESSION-DEADLOCK",
+      "severity": "P1",
+      "summary": "Cheliped field report (twice-reproduced live 2026-08-16): the guard auto-imported a lock stamped with the fallback owner 'claude-hook', but the unlock CLI's ownership check computes 'local-worktree-<hash>' and can never match it, so clear_lock REFUSED for every session and the only escape was `rm .git/tdd-playbook/active-lock.json` \u2014 a hard cross-session deadlock in the strongest anti-gaming guard, F2-blocked from any in-session fix.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py:88",
+        "plugins/tdd-playbook/bin/host_contract.py:330"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "1f3388a8fa82c202a42b3dcaa5e4bb79ceb0d109",
+      "closure_review": "cheliped-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_tdd_lock.py::test_cross_session_recovery"
+      ],
+      "disposition": "Root fix (the architecture-adversary's deeper seam, not my first synthesized-string draft): cmd_unlock now passes expected_session_id=<real env token, or None>; an env-less unlock SKIPS the session check and ownership falls to the worktree_id check clear_lock ALREADY performs \u2014 so a fallback-owned lock (INCLUDING an already-wedged 'claude-hook' one whose source_worktree_id still matches) is releasable by a plain same-worktree unlock, forward AND backward. The three divergent session-id fallbacks (test_lock_guard/tdd_lock/red_lock) are unified through host_contract.session_id so no new claude-hook locks are minted. Two red-first tests in the blessed suite replay the exact wedged-lock shape (guard-imported legacy lock + on-disk claude-hook lock); both release cleanly, in-root locked-test edits still BLOCK.",
+      "class": "deterministic",
+      "recurrence_key": "divergent-fallback-owner-deadlock"
+    },
+    {
+      "id": "TEST-LOCK-FORCE-RECOVERY",
+      "severity": "P2",
+      "summary": "The report asked for a legal recovery path to replace `rm`. As first planned, `unlock --force` would have shipped with the `forced` flag as a write-only field (neither /grade nor gate_yield read it \u2014 integration Finding 1), undiscoverable (the refusal/hints/tdd-unlock.md never point to it \u2014 Finding 2), and unable to clear a corrupt/schema-mismatched lock (arch Finding 3), so `rm` would have survived for that family.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/tdd_lock.py:242",
+        "plugins/tdd-playbook/bin/host_contract.py:341"
+      ],
+      "status": "incorporated",
+      "disposition": "unlock --force skips the ownership check but KEEPS the generation/lock_id CAS; force_unlink_lock raw-clears a lock _validate_lock cannot even read (the corrupt/schema family, so `rm` is retired for it too). It composes with the reason(>=10)/class gates (recovery is audited, not a bypass) and journals forced:true \u2014 now READ by /grade (grade.md). The 'owned by another session' refusal, and tdd-unlock.md, point to --force explicitly (not `rm`). Security-adversary CONFIRMED --force is the MOST visible unlock (strictly worse for a cheater than a plain unlock) and opens no test-editing escape; added session_downgrade:true journaling for the one release the fix newly permits (env-less same-worktree clear of a real-token lock). Tested: cross-session, corrupt-lock, reason-gate composition, journal consumer, and the hardening flag.",
+      "class": "judgment",
+      "recurrence_key": "recovery-path-ships-dark"
+    },
+    {
+      "id": "TEST-LOCK-VERSION-SKEW-DOS",
+      "severity": "P2",
+      "summary": "Cheliped Defect C residual: under a version skew (an older vendored guard reading a lock a newer CLI wrote), active_lock sets _contract_error and main() failed closed on EVERY write \u2014 including OUT-OF-ROOT memory/plan/scratchpad writes, re-opening the same cross-session DoS the v1.37.0 edit_findings fix closed, but on an earlier branch; and the block message was opaque ('canonical authority repaired').",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py:336"
+      ],
+      "status": "incorporated",
+      "disposition": "main()'s _contract_error branch now bows out (emit clean-allow) for out-of-root non-Bash targets even in the repair state, and names the actionable remedy ('hook/CLI version mismatch \u2014 update tdd-playbook and reload') on a schema_version mismatch. Red-first against both directions (out-of-root PASSES; in-root names the remedy). NOT the report's 'degrade to warn on in-root writes' \u2014 that weakens the guard during the skew window; the real remedy is version alignment, which the message points at.",
+      "class": "deterministic",
+      "recurrence_key": "repair-state-blocks-out-of-jurisdiction"
+    },
+    {
+      "id": "FIELD-REPORT-DEFECT-B-MISDIAGNOSED",
+      "severity": "P3",
+      "summary": "The field report's Defect B ('stale lock never self-invalidates') proposed auto-expiring a lock when imported_from is missing or HEAD has moved, plus a TTL on lock-transaction.lock. Verified against the code, all three are NORMAL healthy states, and auto-expiring on them would be a regression.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/host_contract.py:384"
+      ],
+      "status": "incorporated",
+      "disposition": "Rejected WITH evidence (both plan adversaries independently affirmed): import RENAMES .claude/tdd-lock.json to .migrated so imported_from-missing is the normal post-import state (and native locks never set imported_from at all); a TEST-LOCK spans commits by design, so HEAD-moved is normal and expiring on it would let an agent bypass the guard by committing (gate-by-proxy on a fact the agent controls); lock-transaction.lock is a persistent flock target the OS auto-releases on process exit, so a stale file holds nothing. The one genuine deferral \u2014 a downstream version-echo so a wedged repo can tell fixed-from-wedging-1.30.0 (integration Finding 5) \u2014 is recorded as dated integration_debt (test-lock-deadlock-fix-version-echo, owner david, exp 2026-11-15), not silently dropped.",
+      "class": "judgment",
+      "recurrence_key": "field-report-normal-state-read-as-staleness"
+    }
+  ]
+}

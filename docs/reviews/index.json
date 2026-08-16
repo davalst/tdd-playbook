@@ -104,6 +104,10 @@
   {
    "path": "2026-08-16-holdout-diagnose.json",
    "sha256": "323683b1d6af3d7219f7fa478474137550400e00096bb605b6c0af7cfb2ee7dd"
+  },
+  {
+   "path": "2026-08-16-test-lock-deadlock-recovery.json",
+   "sha256": "f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56"
   }
  ]
 }
