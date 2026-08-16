@@ -137,11 +137,29 @@ def _msg(kind, name):
         return ["TEST-LOCK active: '{}' is verifier surface (conftest/runner config) — "
                 "patching the harness while tests are locked equals editing the locked "
                 "test (H5).".format(name), unlock]
+    if kind == "undecidable":
+        # cheliped secondary observation: fail-closed-on-undecidable is BY DESIGN, but the message
+        # must say so — not name a specific locked test the write may not even touch.
+        return ["TEST-LOCK active: this command has a WRITE whose target the guard cannot resolve "
+                "(a variable path such as `open($X, 'w')`, or a heredoc writer). While a lock is "
+                "held the guard fails CLOSED — it cannot prove the write misses the locked tests. "
+                "This is NOT a specific locked-file violation: use a literal path the guard can "
+                "check, or the journaled unlock below.", unlock]
     return ["TEST-LOCK active: '{}' is enforcement (a guard hook / settings) — disabling "
             "the guard is the quietest test-weakening (§10 risky path).".format(name), unlock]
 
 
 def edit_findings(event, lock, root):
+    # An out-of-root target (memory ~/.claude/projects, plan-mode ~/.claude/plans, scratchpad) is
+    # OUT OF THE LOCK'S JURISDICTION, not a policy violation — a TEST-LOCK governs THIS repo's
+    # tests, never every file the session touches. policy_decision RAISES "target escapes
+    # repository root" for such paths, and converting that ContractError into a block was a
+    # cross-session DoS: any lock held anywhere froze every session's memory/plan/scratchpad
+    # writes (and broke plan-mode, whose only permitted write is the out-of-root plan file).
+    # Field report: cheliped, plugin v1.36.0, 2026-08-15. Fixed by pre-checking containment with
+    # the same `_inside` the Bash leg already uses for cwd — only in-root targets are policy-eval'd.
+    if not _inside(root, file_path_of(event)):
+        return []
     try:
         identity = resolve_repository(root)
     except ContractError:
@@ -230,11 +248,20 @@ def _seg_writes(seg, needle):
             if after and _GIT_REVERT_SUB.match(after[0]):
                 return True
     for path, mode in _open_targets(seg):                    # python open(path, 'w')
-        if not _WRITE_MODE.search(mode):
-            continue
-        if path is None:
-            return True                                      # unresolvable -> fail closed
+        if not _WRITE_MODE.search(mode) or path is None:
+            continue                                         # undecidable handled separately
         if path == needle or os.path.basename(path) == needle or path.endswith("/" + needle):
+            return True
+    return False
+
+
+def _has_undecidable_write(seg):
+    """A write whose TARGET the guard cannot resolve (a python open() with a non-literal path).
+    While a lock is active this fails CLOSED — the guard cannot prove the write misses the locked
+    tests — but it is NOT a specific locked-file hit, so bash_findings gives it the honest
+    'undecidable' message instead of naming a locked test it may miss (cheliped 2026-08-15)."""
+    for path, mode in _open_targets(seg):
+        if _WRITE_MODE.search(mode) and path is None:
             return True
     return False
 
@@ -259,7 +286,14 @@ def bash_findings(cmd, lock, root):
     if not cmd:
         return []
     live = [(seg, cwd) for seg, cwd in segments(cmd, root) if _inside(root, cwd)]
-    for needle, kind in _needles(lock):
+    needles = _needles(lock)
+    if needles:
+        # An UNDECIDABLE write while a lock is active fails closed — but with an HONEST message,
+        # not one misnaming a locked test it may not touch (cheliped secondary observation).
+        for seg, _cwd in live:
+            if _has_undecidable_write(seg):
+                return _msg("undecidable", "")
+    for needle, kind in needles:
         for seg, _cwd in live:
             if _seg_writes(seg, needle):
                 return _msg(kind, needle)

@@ -53,6 +53,12 @@ def guard(root, file_path, env_extra=None):
                           capture_output=True, text=True, cwd=root, env=env, timeout=30)
 
 
+def guard_bash(root, command):
+    event = {"tool_name": "Bash", "tool_input": {"command": command}}
+    return subprocess.run([sys.executable, GUARD], input=json.dumps(event),
+                          capture_output=True, text=True, cwd=root, env=clean_env(root), timeout=30)
+
+
 def main():
     print("TEST-LOCK calibration")
     with tempfile.TemporaryDirectory() as d:
@@ -120,9 +126,44 @@ def main():
 
     test_reason_class()
     test_reason_class_reaches_the_rollup()
+    test_out_of_root_jurisdiction()
 
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
+
+
+def test_out_of_root_jurisdiction():
+    """cheliped field report (plugin v1.36.0, 2026-08-15): while a lock is active, a write to an
+    OUT-OF-ROOT path (memory ~/.claude/projects, plan-mode ~/.claude/plans, scratchpad) was
+    BLOCKED — edit_findings converted policy_decision's 'target escapes repository root'
+    ContractError into a block, a cross-session DoS that also broke plan-mode (whose only write is
+    the out-of-root plan file). The bug fires ONLY in a real git repo, where resolve_repository
+    succeeds and policy_decision is reached — the non-git scratch path never hits the buggy branch
+    (which is why the fixture MUST git-init, verified red-first against the pre-fix guard).
+    Two-directional §13 fixture: in-root locked test still BLOCKS, out-of-root write ALLOWS."""
+    print("\n[TEST-LOCK out-of-root jurisdiction — cheliped DoS]")
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as outside:
+        os.makedirs(os.path.join(d, "tests"))
+        with open(os.path.join(d, "tests", "test_x.py"), "w") as fh:
+            fh.write("def test_x():\n    assert x() == 1\n")
+        gid = ["-c", "user.email=t@t", "-c", "user.name=t"]
+        for args in (["init", "-q"], [*gid, "add", "-A"], [*gid, "commit", "-qm", "seed"]):
+            subprocess.run(["git", "-C", d, *args], check=True, capture_output=True)
+        lock_cli(d, "lock", "tests/test_x.py")
+        # in-root locked test still BLOCKS via the git/policy_decision path (the other direction)
+        p = guard(d, os.path.join(d, "tests", "test_x.py"))
+        check("git repo: in-root locked test still BLOCKS (exit 2)", p.returncode == 2,
+              (p.returncode, p.stderr))
+        # out-of-root write PASSES — pre-fix this BLOCKED (exit 2), the cross-session DoS
+        p = guard(d, os.path.join(outside, "memory.md"))
+        check("cheliped DoS: out-of-root write PASSES while a lock is active (jurisdiction)",
+              p.returncode == 0, (p.returncode, p.stderr))
+        # cheliped secondary: an UNDECIDABLE write (variable path) while locked still fails closed,
+        # but with the HONEST message — NOT one naming the locked test it may not even touch.
+        p = guard_bash(d, "python3 -c \"open(vv, 'w')\"")
+        check("cheliped: undecidable write while locked blocks with an HONEST message (not the test)",
+              p.returncode == 2 and "cannot resolve" in p.stderr and "test_x.py" not in p.stderr,
+              (p.returncode, p.stderr))
 
 
 def _fresh(d, name="tests/test_pay.py"):
