@@ -3,6 +3,43 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.37.0 — 2026-08-16
+
+**The private holdout goes live, and baseline isolation becomes deployable.** The two-tier
+calibration program's Part 2 shipped end to end, then got exercised for real.
+
+**Holdout answer-key eval (D1).** A private vault (`davalst/tdd-playbook-holdout`) holds
+calibration plants the models have never seen. `calibration/holdout.py` is the opt-in
+controller: `author` (adversary model → the vault's `proposed/` for review, egress-locked),
+`approve` (→ `bodies/` + a `holdout-register.md` fingerprint), and `run` (clone → verify
+integrity → run the eval with the agent BOXED-IN via `confine.py` sandbox-exec, whole clone
+tree read-denied → delete the clone). `--summary` collapses the rollup wall to the verdicts +
+recall/FP-with-Wilson-intervals + an HONEST dev-vs-holdout line that WITHHOLDS the comparison
+at small n. A staleness "date" (`holdout_staleness`) surfaces in the summary AND every
+calibration run so an opt-in eval can't rot unnoticed. Reviews: three fresh-context adversary
+passes (security CONTAINED, arch/test-quality/integration) + a live-usability pass caught six
+"built ≠ usable" gaps in real use, each fixed with a test.
+
+**Baseline isolation write side (B1/D2) — now deployable.** `--isolation no-playbook` runs the
+agents with the plugin DISABLED (the control group that measures the Playbook's lift), proven
+live by a hook-event SINK (`_common.note_hook_fired`) that fails CLOSED: a no-playbook run whose
+hooks fired is INVALID, and `sink_liveness_probe` REFUSES the run until the DEPLOYED hook writes
+the sink. This release ships `note_hook_fired`, so the effect-proof stops being inert — run the
+`d2d_isolation_probe.sh` live probe after `claude plugin update` to confirm `--settings` unloads
+a user-scope plugin (dated debt, calibration-loop).
+
+**TEST-LOCK cross-session DoS fixed (cheliped field report).** While any session held a lock,
+every session's writes to OUT-OF-ROOT paths (memory, plan-mode plan files, scratchpad) were
+blocked — `edit_findings` treated `policy_decision`'s "escapes repository root" as a violation
+rather than out-of-jurisdiction. Fixed (in-root still BLOCKS, out-of-root ALLOWS; red-first in a
+real git repo). Plus an honest message for the fail-closed undecidable-write case.
+
+**§1 doctrine — the authorization-seam self-consistency trap (cheliped).** A guard test that
+SEEDS its ambient input (a contextvar, a global) instead of driving the production entry that
+populates it is self-consistency: the gate can be inert and the test still green (mutation blind).
+New SKILL §1 rule + §4 note + hunt items on the security/test-quality adversaries; the planted
+calibration anchor is dated debt.
+
 ## 1.36.0 — 2026-08-14
 
 **The review-as-judgment-surface plan — the review ledger learns to speak
