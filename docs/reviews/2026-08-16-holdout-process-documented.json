@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-holdout-process-documented",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "2e6245a769b1dd68f3cbf5c69d73c0f696c2b870",
+    "head": "9be45ca00fe09f823df1dc1579e9b7ae39690230"
+  },
+  "reviewers": [
+    "operator-field-report"
+  ],
+  "findings": [
+    {
+      "id": "HOLDOUT-PROCESS-UNDOCUMENTED",
+      "severity": "P3",
+      "summary": "The holdout grow/run process was undocumented — calibration/README.md had no holdout section at all — so the mismatch between the private REPO name (davalst/tdd-playbook-holdout) and the conventional local clone DIR (~/tdd-holdout-vault) was a live trap: passing the dir name as the --vault URL failed `git clone` with exit 128 during a real run today. A process that only lives in one session's memory re-breaks the next session.",
+      "evidence": [
+        "calibration/README.md"
+      ],
+      "status": "incorporated",
+      "disposition": "Added a 'The private holdout' section to calibration/README.md: the two-tier rationale (public tunable corpus vs private unseen answer key), the NAME TRAP called out explicitly with the git-clone-128 failure mode and the get-url confirmation command, the security invariant (the answer key never enters the public repo/CI/a Claude verifier's context; a Claude model must NOT read proposed/ or bodies/), the grow loop (author with a DIFFERENT --category per parallel run to avoid id collisions -> human reviews proposed/ -> approve BOTH plant and control -> commit+push the vault), and the run command (run --vault <repo-url> --model sonnet --summary, with the local-path option to skip auth). Also recorded in the project memory two-tier-calibration-program (name trap + pointer to the README as canonical). No code changed; this is a documentation-durability fix.",
+      "class": "judgment",
+      "recurrence_key": "undocumented-process-caused-operator-error"
+    }
+  ]
+}

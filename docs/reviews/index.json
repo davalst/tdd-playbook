@@ -96,6 +96,10 @@
   {
    "path": "2026-08-16-ambient-input-anchor-validated.json",
    "sha256": "6bdd548e776e5ed8b87af9c286165bb57a4ca15d47b9115f4219c4622cfc3811"
+  },
+  {
+   "path": "2026-08-16-holdout-process-documented.json",
+   "sha256": "59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213"
   }
  ]
 }

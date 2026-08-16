@@ -32,9 +32,10 @@
 - `docs/reviews/2026-08-15-two-tier-calibration-part1.json` — `e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5`
 - `docs/reviews/2026-08-15-two-tier-calibration-part2-controller.json` — `2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c`
 - `docs/reviews/2026-08-16-ambient-input-anchor-validated.json` — `6bdd548e776e5ed8b87af9c286165bb57a4ca15d47b9115f4219c4622cfc3811`
+- `docs/reviews/2026-08-16-holdout-process-documented.json` — `59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213`
 - `docs/reviews/2026-08-16-isolation-probe-validated.json` — `d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509`
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
-- `docs/reviews/index.json` — `bd8bc7a3e414e6b51e18a448d75e8cf4c747e21d63bebf063996beca33240012`
+- `docs/reviews/index.json` — `70f5e2e941b41289d93ded9aee705c441055c7dca0937c9a18b9edd47922b9d9`
 
 ## Gate surface
 
@@ -133,8 +134,8 @@
 
 ## Adversarial review records
 
-- Review records: 24. Findings: 134.
-- `incorporated`: 49
+- Review records: 25. Findings: 135.
+- `incorporated`: 50
 - `open`: 6
 - `rejected`: 3
 - `verified_closed`: 76
