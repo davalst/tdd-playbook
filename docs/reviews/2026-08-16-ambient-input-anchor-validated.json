@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-ambient-input-anchor-validated",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "0191518b022e2efc4d351a1ff0bd49101f6322cf",
+    "head": "2e6245a769b1dd68f3cbf5c69d73c0f696c2b870"
+  },
+  "reviewers": [
+    "calibration-live-replay"
+  ],
+  "findings": [
+    {
+      "id": "S1-AMBIENT-ADVERSARY-OVER-TRIGGER",
+      "severity": "P2",
+      "summary": "The \u00a71 ambient-input doctrine shipped in v1.37.0 with only a dated debt for its \u00a713 calibration anchor (doctrine nobody proved catches anything). Authoring the anchor and replaying it exposed that the hardened test-quality-adversary hunt #6 OVER-TRIGGERS: it caught the seeded-input plant (HOLLOW 3/3) but false-positived the paired clean control (0/3), calling a correctly-wired test that DRIVES the production entry hollow. A guard that flags the clean case is a precision defect, not a safety hole \u2014 it never let the real defect through, but it would cry wolf on every legitimately-wired ambient gate.",
+      "evidence": [
+        "calibration/corpus/approved/ambient-input-seeded-gate-test.json",
+        "calibration/corpus/approved/control-ambient-input-driven-gate-test.json",
+        "plugins/tdd-playbook/agents/test-quality-adversary.md:31",
+        "docs/calibration/ledger.md"
+      ],
+      "status": "incorporated",
+      "disposition": "Authored the plant (a write gate authorizing off a run-scoped contextvar; run_agent_once builds the grants but never calls begin_run; the test hand-seeds _run_grants over the inert gate \u2014 correct verdict HOLLOW) and its paired clean control (run_agent_once calls begin_run; the test drives run_agent_once \u2014 correct verdict LOAD-BEARING, and it FAILS if the wiring is deleted, so it is genuinely load-bearing). First replay: plant caught 3/3, control false-positived 0/3. Root cause: hunt #6 led with 'did the test seed its input' as the tell, which the model read as 'flag any ambient-gate test'. Fix: a restraint clause \u2014 flag HOLLOW ONLY when the TEST performs the .set()/monkeypatch itself with no call to a publishing entry; do NOT flag when the test drives a production entry that publishes the state (trace the entry's body before flagging). Registered as gate-surface change ledger L-20260816-01 (baseline d817482, the pre-restraint brief). Re-run confirmed BOTH directions: plant holds 3/3 caught, control 0/3 -> 3/3 clean, FP 1/1 -> 0/1 \u2014 proving the clause removed the false positive WITHOUT blinding the plant (the over-correction risk). The security-adversary's parallel hunt #6 was left untouched: it already leads with 'trace the PRODUCTION path \u2014 does the caller publish or forget to publish', the safe framing, and was not the failing surface. Pays the calibration-loop ambient-input anchor debt (capabilities.json). Closure evidence is a live Sonnet calibration replay, not a suite_glob test \u2014 a subscription-model calibration cannot run in CI; the two fixtures now stand as the permanent \u00a713 anchor in corpus/approved/.",
+      "class": "deterministic",
+      "recurrence_key": "hardened-adversary-over-triggers-on-control"
+    }
+  ]
+}
