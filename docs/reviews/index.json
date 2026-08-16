@@ -108,6 +108,10 @@
   {
    "path": "2026-08-16-test-lock-deadlock-recovery.json",
    "sha256": "f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56"
+  },
+  {
+   "path": "2026-08-16-v1.38.0-release.json",
+   "sha256": "b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e"
   }
  ]
 }

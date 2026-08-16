@@ -37,7 +37,8 @@
 - `docs/reviews/2026-08-16-isolation-probe-validated.json` — `d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509`
 - `docs/reviews/2026-08-16-test-lock-deadlock-recovery.json` — `f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56`
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
-- `docs/reviews/index.json` — `17c84f75e8484e2c22681c141ff54a8e651a49854e3a8962984fd1d551d17396`
+- `docs/reviews/2026-08-16-v1.38.0-release.json` — `b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e`
+- `docs/reviews/index.json` — `1611e6bff04548cc1c2ee3243e5dba66b789cc9d1894b752b411a9a5ba44f5de`
 
 ## Gate surface
 
@@ -137,8 +138,8 @@
 
 ## Adversarial review records
 
-- Review records: 27. Findings: 142.
-- `incorporated`: 56
+- Review records: 28. Findings: 143.
+- `incorporated`: 57
 - `open`: 6
 - `rejected`: 3
 - `verified_closed`: 77

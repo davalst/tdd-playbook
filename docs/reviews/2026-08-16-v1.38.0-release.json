@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-v1.38.0-release",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "1f3388a8fa82c202a42b3dcaa5e4bb79ceb0d109",
+    "head": "5b6e39a32114b0fe59731833836c04e7273ef445"
+  },
+  "reviewers": [
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "V1.38.0-RELEASE-BUMP",
+      "severity": "P3",
+      "summary": "The whole session's post-1.37.0 work sat on main UNRELEASED — the plugin cache deploys the latest TAG, so a downstream `claude plugin update` reported 1.37.0 as latest and the TEST-LOCK deadlock fix never reached the wedged repo (the committed-not-deployed gap). Cutting v1.38.0 bundles it so downstream vendored copies pick it up.",
+      "evidence": [
+        "CHANGELOG.md",
+        "plugins/tdd-playbook/.claude-plugin/plugin.json"
+      ],
+      "status": "incorporated",
+      "disposition": "Version bumped 1.37.0 -> 1.38.0 across all four identity files (plugin.json, marketplace.json, claude+codex adapter.json) + CHANGELOG; test_release_version_identity pins all four EQUAL. Every shipped item is individually covered by its own closed review record (2026-08-16-holdout-diagnose, -ambient-input-anchor-validated, -isolation-probe-validated, -holdout-process-documented, -test-lock-deadlock-recovery); this record covers the identity-file + CHANGELOG bump commit. Gate GREEN on the shipping commit; David tags v1.38.0 after CI confirms on the pushed sha (the model cannot tag).",
+      "class": "judgment",
+      "recurrence_key": "unreleased-work-not-deployed"
+    }
+  ]
+}
