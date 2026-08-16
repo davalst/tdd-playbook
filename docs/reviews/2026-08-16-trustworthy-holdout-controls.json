@@ -1,0 +1,175 @@
+{
+ "schema_version": 1,
+ "id": "2026-08-16-trustworthy-holdout-controls",
+ "kind": "implementation",
+ "plan": "docs/plans/gated/2026-08-16-trustworthy-holdout-controls.md",
+ "review_range": {
+  "base": "3f2e7e0cbdc0e5c0c893d656bd89cda969b740ed",
+  "head": "e01e2b1deee185bf4905771aec5396de69b0cde6"
+ },
+ "reviewers": [
+  "architecture-adversary",
+  "security-adversary",
+  "integration-adversary",
+  "test-quality-adversary",
+  "tripwire-auditor",
+  "self-review"
+ ],
+ "findings": [
+  {
+   "id": "SEC1-FORM-OVERRIDE-UNMUZZLES-EGRESS",
+   "severity": "P1",
+   "summary": "Security-adversary (verdict EXPOSED): run_holdout forwarded user args unchecked and argparse takes the LAST --form, so `holdout run --vault <url> --form all` cloned the private vault and ran its bodies through the DEV printer \u2014 emitting the plant text, both oracle regexes, and 1500 chars of raw verifier output per body. The egress tests were green because they seeded holdout=True by hand (the inert-control shape). Pre-existing hole, inherited and widened by this span (diagnose forwards the same way).",
+   "evidence": [
+    "calibration/holdout.py:263 (pre-fix)",
+    "calibration/run_calibration.py (holdout_mode derivation)"
+   ],
+   "status": "verified_closed",
+   "disposition": "run_holdout now REFUSES any forwarded --form before cloning anything (ValueError naming the exposure). Regression pinned in the plugins suite so closure is mechanical, plus a harness twin in _holdout_adversary_fold_tests.",
+   "class": "deterministic",
+   "recurrence_key": "egress-flag-not-owner-controlled",
+   "closure_evidence": [
+    "plugins/tdd-playbook/tests/test_holdout_confinement.py::test_run_holdout_refuses_form_override"
+   ],
+   "remediation_commit": "e01e2b1deee185bf4905771aec5396de69b0cde6",
+   "closure_review": "security-adversary"
+  },
+  {
+   "id": "SEC2-JUDGE-WORKSPACE-IS-PUBLIC-REPO",
+   "severity": "P1",
+   "summary": "Security-adversary: judge_control ran the opus judge with cwd=calibration/ inside the public working tree; the sandbox profile re-grants file-write to its workspace, so the ONE model holding approved bodies + oracle regexes in context (fed adversary-authored text \u2014 the injection shape) had OS-level write access to the directory that gets committed and pushed, with network allowed.",
+   "evidence": [
+    "calibration/holdout.py (judge_control dispatch)",
+    "calibration/confine.py:44 (workspace write re-grant)"
+   ],
+   "status": "verified_closed",
+   "disposition": "The judge now runs in a throwaway tdd-judge- temp dir deleted after each rep; the vault deny-read forwarding is asserted through the dispatch (a **kw double can no longer let it vanish). Network-deny remains the standing deferred B3 item (two-tier plan), unchanged in scope by this fix.",
+   "class": "deterministic",
+   "recurrence_key": "sandbox-workspace-is-sensitive-dir",
+   "closure_evidence": [
+    "plugins/tdd-playbook/tests/test_holdout_confinement.py::test_judge_workspace_outside_public_repo"
+   ],
+   "remediation_commit": "e01e2b1deee185bf4905771aec5396de69b0cde6",
+   "closure_review": "security-adversary"
+  },
+  {
+   "id": "SEC3-APPROVE-JUDGE-NO-TTY-GUARD",
+   "severity": "P2",
+   "summary": "Security-adversary: the plan required no-TTY -> ABORT for the judge's transient rationale (it quotes the oracle), but the guard landed only on remediate \u2014 a refused `holdout approve` from CI/an agent's Bash tool/`| tee` would have written oracle regexes into a durable log or the ~/.claude transcript pile. The custody test could not see it because its denominator was the vault directory only.",
+   "evidence": [
+    "calibration/holdout.py (cmd_approve_holdout judge hand-off)"
+   ],
+   "status": "incorporated",
+   "disposition": "Approve's judge dispatch is now TTY-gated exactly like remediate (non-interactive prints 'judge skipped', the deterministic refusal stands alone); injectable `interactive` for tests. Harness: test_harness.py::_control_judge_tests 'JUDGE SEC3' (calibration/ is a fixed gate stage, so `incorporated` with the harness cite per the repo's closure-evidence constraint).",
+   "class": "deterministic",
+   "recurrence_key": "unguarded-twin-of-guarded-path"
+  },
+  {
+   "id": "INT-GAP5-UNMEASURED-CONTROL-COULD-RETIRE",
+   "severity": "P2",
+   "summary": "Integration-adversary GAP5, confirmed live by a red-first test before the fix: cmd_remediate_holdout branched only on `approvable`, so an INCONCLUSIVE control (every rep an environment failure \u2014 zero measured) fell into the judge-and-retire path with empty reasoning; an irreversible corpus transition could ride a run that measured nothing, breaking D1's own fail-closed rule. Caught in-span, never shipped.",
+   "evidence": [
+    "calibration/holdout.py (cmd_remediate_holdout)"
+   ],
+   "status": "incorporated",
+   "disposition": "inconclusive now short-circuits before any judge spend or disposition ('nothing was measured, nothing is judged or retired'). Harness: _remediation_tests 'D4 GAP5' proves the judge is never called and statuses stay untouched.",
+   "class": "deterministic",
+   "recurrence_key": "fail-closed-verdict-collapsed-downstream"
+  },
+  {
+   "id": "INT-ISLAND1-MANIFEST-WRITE-ONLY-GATE-BYPASSABLE",
+   "severity": "P2",
+   "summary": "Integration-adversary ISLAND1 (+ arch-F6): the persisted validation manifest had exactly one writer and zero readers, and vault_integrity_problems could not distinguish a D1-gated body from one hand-copied beside a hand-written register row \u2014 the approve gate was walk-aroundable and the registry's named consumer pointed back at the writer (the H11 shape).",
+   "evidence": [
+    "calibration/holdout.py (vault_integrity_problems, MANIFEST_REQUIRED_SINCE)"
+   ],
+   "status": "incorporated",
+   "disposition": "vault_integrity_problems now REQUIRES, for every CURRENT body registered on/after 2026-08-17, a manifest whose candidate_content_sha256 matches the body (missing or stale -> integrity problem; pre-gate bodies grandfathered by register date \u2014 their cleanup is the D4 sweep). contract_mismatch_warnings additionally reads each manifest's model/isolation against the launching run (the plan's risk-3 'reporting flags a mismatch', now real). Harness: _remediation_tests ISLAND1 trio + _holdout_adversary_fold_tests ARCH-F1 pair.",
+   "class": "deterministic",
+   "recurrence_key": "write-only-audit-artifact"
+  },
+  {
+   "id": "INT-ISLAND2-POPULATION-SNAPSHOT-UNREAD",
+   "severity": "P2",
+   "summary": "Integration-adversary ISLAND2 (+ arch-F7/F8): the per-run population snapshot was written and read by nothing \u2014 the 'old blocks interpreted with as-of-then status' purpose had no implementing consumer, and plant_vitality/ledger reinterpret history status-blind (a retired body keeps accruing streaks and can spend a prediction).",
+   "evidence": [
+    "calibration/history_format.py (parse_run_blocks)",
+    "calibration/holdout.py (holdout_summary_lines)"
+   ],
+   "status": "incorporated",
+   "disposition": "Two real readers now exist: holdout_summary_lines prints as-of-run population counts, and history_format.reading_of is the safe corrected-first accessor (arch-F7); the parsed key renamed population_snapshot to stop colliding with population_of (arch-F8); unknown statuses parse as visible 'unparseable', never a silent drop (arch-F3). The still-blind readers (vitality streaks, ledger binder) are OWNED DATED DEBT: capabilities.json holdout-control-validation/population-snapshot-consumers, david, expires 2026-11-15, expiry proven by validate --as-of.",
+   "class": "deterministic",
+   "recurrence_key": "write-only-audit-artifact"
+  },
+  {
+   "id": "ARCH-F1-GATE-CERTIFIES-DIFFERENT-MODEL",
+   "severity": "P2",
+   "summary": "Architecture-adversary F1 (gate-by-proxy): approve/validate defaulted to 'sonnet' while the eval defaults to 'haiku', so on the default path the gate certified a control k/k against a model the reading never uses \u2014 'the contract MUST equal the eval contract' was enforced only by help text.",
+   "evidence": [
+    "calibration/run_calibration.py (DEFAULT_MODEL)",
+    "calibration/holdout.py (eval_contract callers)"
+   ],
+   "status": "incorporated",
+   "disposition": "ONE model default (rc.DEFAULT_MODEL) used by the eval argparse and all four holdout gate sites; contract_mismatch_warnings prints a CONTRACT MISMATCH line (ids only) whenever a manifest's recorded model/isolation differs from the run being launched. Harness: _holdout_adversary_fold_tests ARCH-F1 checks both directions.",
+   "class": "deterministic",
+   "recurrence_key": "constant-second-home"
+  },
+  {
+   "id": "ARCH-DEDUPE-SWEEP",
+   "severity": "P3",
+   "summary": "Architecture-adversary F2/F3/F4/F5/F9 (verdict MIXED(9)) \u2014 five duplication/reuse misses, none yet divergent but each the documented shape that diverges later: a second rep loop in validate_item; the status vocabulary re-spelled in a regex and a second EXCLUDED literal; four copies of latest-row-wins; the legacy recall/fp arithmetic duplicated beside partition_readings; a private bodies loader + a twin file-sha helper on either side of the TOCTOU comparison.",
+   "evidence": [
+    "calibration/run_calibration.py (run_reps/rep_counts)",
+    "calibration/plant_forms.py (resolve_latest, EXCLUDED_STATUSES)",
+    "calibration/holdout.py"
+   ],
+   "status": "incorporated",
+   "disposition": "All five collapsed to single owners: rc.run_reps/rep_counts shared by eval and gate; EXCLUDED_STATUSES lives beside VALID_STATUS with a membership assert and _POP_ITEM derives from it; plant_forms.resolve_latest is the one fold (resolve_forms/resolve_statuses/holdout CAS all derive); legacy reading = partition_readings(results, {}); remediate uses rc.load_corpus and plant_forms.plant_sha replaces _sha256_file (the TOCTOU comparison now compares one implementation with itself). Harness 572/572 green across the refactor.",
+   "class": "judgment",
+   "recurrence_key": "nth-copy-of-owned-helper"
+  },
+  {
+   "id": "TQ-DEFAULT-WIRE-UNTESTED",
+   "severity": "P2",
+   "summary": "Test-quality adversary (verdict HOLLOW(7)), proven by mutation: every approve/remediate/validate test injected a validator double, so replacing the `if validator is None` default with an approve-everything stub survived all 130 holdout checks \u2014 the single sentence D1 exists to guarantee ('no body lands until its verifier actually ran') was the one thing the suite did not test. Also: a literal-True check, a tautological D3 check, an immutability check asserting only file existence, an untested cmd_validate_holdout, and judge doubles that discarded **kw (the deny_read could vanish unseen).",
+   "evidence": [
+    "calibration/test_harness.py::_holdout_adversary_fold_tests (DEFAULT-WIRE)",
+    "calibration/test_harness.py::_control_judge_tests"
+   ],
+   "status": "incorporated",
+   "disposition": "DEFAULT-WIRE tests drive cmd_approve_holdout and cmd_validate_holdout with NO injected validator against stub binaries, both directions (missed plant refuses to land; caught plant lands) \u2014 the mutation cannot survive. deny_read asserted through both judge dispatch paths; byte-identical immutability assert; the literal-True check now asserts agent_coverage_problems; the tautological D3 check now fails on the regression it names. The macOS-only gating of live-spawn tests (sandbox-exec) remains \u2014 recorded below as a limitation, not silently.",
+   "class": "deterministic",
+   "recurrence_key": "gate-default-wire-untested"
+  },
+  {
+   "id": "TRIPWIRE-D4-LIVE-SWEEP-DARK-PARKING",
+   "severity": "P1",
+   "summary": "Tripwire-auditor (6/7 + FLOWS 4/4): the plan's actual D4 outcome \u2014 the real private vault remediated, diagnose re-run, both readings reported \u2014 was deferred to David in PROSE ONLY (README + an end-of-run tip), with no dated mechanical trigger; if never run, the corpus keeps its broken controls and the holdout FP number keeps measuring authoring quality silently \u2014 the exact failure the plan exists to end (the H7 prose-deferral shape).",
+   "evidence": [
+    "capabilities.json (holdout-control-validation/holdout-corpus-remediation-sweep)"
+   ],
+   "status": "verified_closed",
+   "disposition": "Dated integration_debt holdout-corpus-remediation-sweep (owner david, expires 2026-09-30) added; `capability_registry.py validate --as-of 2026-10-01` exits 1 naming it, and test_own_registry runs validate on the REAL clock every suite run, so the lapse REDs the suite mechanically. The sweep itself is interactive-only BY DESIGN (the y/n half cannot be automated) \u2014 the parking is now LEGITIMATE, not dark.",
+   "class": "deterministic",
+   "recurrence_key": "prose-deferral-needs-mechanical-trigger",
+   "closure_evidence": [
+    "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+   ],
+   "remediation_commit": "e01e2b1deee185bf4905771aec5396de69b0cde6",
+   "closure_review": "tripwire-auditor"
+  },
+  {
+   "id": "LIMIT-MACOS-ONLY-FLOW-LIVENESS",
+   "severity": "P3",
+   "summary": "Tripwire-auditor + test-quality adversary, recorded rather than fixed: the end-to-end flow tests that spawn a (stub) binary under holdout confinement \u2014 the D0 register->scorer subprocess flow and the DEFAULT-WIRE approve tests \u2014 gate on sandbox_exec_available() and emit a visible SKIPPED-ok on Linux, so the ubuntu CI re-run never exercises them; their green is the author's macOS only. Structurally forced: holdout runs fail closed without sandbox-exec by design (the same reason the holdout eval itself is Mac-only), and the partition/gate LOGIC is covered cross-platform by pure-function tests.",
+   "evidence": [
+    "calibration/test_harness.py (sandbox_exec_available gates)",
+    ".github/workflows/gate.yml (ubuntu-24.04)"
+   ],
+   "status": "incorporated",
+   "disposition": "Accepted as a stated limitation matching the repo's existing sandbox-gating precedent (two-tier part 2's CI-RED lesson); the SKIPPED lines are explicit in output. Revisit only if a Linux confinement path (the deferred Docker/API-key lane) ever lands.",
+   "class": "judgment",
+   "recurrence_key": "macos-gated-flow-untested-in-ci"
+  }
+ ]
+}

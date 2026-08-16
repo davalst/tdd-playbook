@@ -1,121 +1,125 @@
 {
- "schema_version": 1,
- "records": [
-  {
-   "path": "2026-08-07-assurance-pipeline-plan.json",
-   "sha256": "1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd"
-  },
-  {
-   "path": "2026-08-07-assurance-pipeline-implementation.json",
-   "sha256": "5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace"
-  },
-  {
-   "path": "2026-08-07-v1.31.0-release-implementation.json",
-   "sha256": "77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa"
-  },
-  {
-   "path": "2026-08-09-owner-control-phase1-implementation.json",
-   "sha256": "39a5d273cfe18341231d740afce2201fddc051df8caf479e37b63e1dce2cdb59"
-  },
-  {
-   "path": "2026-08-09-owner-control-phase2-implementation.json",
-   "sha256": "69b66b6a969793d3bf751d4edc9ff3029c3c13dfb053bc9b44d36107dcc0cc3f"
-  },
-  {
-   "path": "2026-08-09-owner-control-phase3-implementation.json",
-   "sha256": "0f5f404e73fd6e7d14f772230d1c4ea9fde2d82ebe3797cfb65c9baaeab4b0fc"
-  },
-  {
-   "path": "2026-08-09-owner-control-phase4-implementation.json",
-   "sha256": "f632925f007e6ece0b3ee6b0fa9b990aff7df570792a12796d1d99c40381185c"
-  },
-  {
-   "path": "2026-08-09-owner-control-phase5-release.json",
-   "sha256": "2322c48835121a967742acaed15a3a01cd42445e0dff5de818e009d33455eea7"
-  },
-  {
-   "path": "2026-08-09-calibration-opt-in.json",
-   "sha256": "cfd934054dbb123172d51731b5bc835aa71515b46ca18658b6f879d487a08661"
-  },
-  {
-   "path": "2026-08-09-debt-sweep.json",
-   "sha256": "262c1c539593868bbfa3ec02bdb3244748d14cbde647dba1937fb7ad7720371b"
-  },
-  {
-   "path": "2026-08-10-v1.33.0-release.json",
-   "sha256": "f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688"
-  },
-  {
-   "path": "2026-08-12-v1.33.1-hotfix.json",
-   "sha256": "918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57"
-  },
-  {
-   "path": "2026-08-12-v1.34.0-release.json",
-   "sha256": "f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294"
-  },
-  {
-   "path": "2026-08-13-readable-first-read-response.json",
-   "sha256": "5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156"
-  },
-  {
-   "path": "2026-08-13-cheliped-proposals-adjudication.json",
-   "sha256": "e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b"
-  },
-  {
-   "path": "2026-08-14-review-as-judgment-surface.json",
-   "sha256": "013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f"
-  },
-  {
-   "path": "2026-08-15-two-tier-calibration-part1.json",
-   "sha256": "e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5"
-  },
-  {
-   "path": "2026-08-15-two-tier-calibration-part2-controller.json",
-   "sha256": "2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c"
-  },
-  {
-   "path": "2026-08-15-holdout-authoring-baseline-isolation.json",
-   "sha256": "4d4ef49f6483df09c5bf23784d5701884793c4be23aea90c31a8cc6ded3d4a93"
-  },
-  {
-   "path": "2026-08-15-holdout-authoring-live-usability.json",
-   "sha256": "9f1a3aa04e569fc40ebfc71f0c7f40465a6922330e8297c6c2215c808fbfd317"
-  },
-  {
-   "path": "2026-08-15-holdout-run-summary.json",
-   "sha256": "199507cf1866d943c99b9d90daf7646a2830ec3e025b167806508da7097a1376"
-  },
-  {
-   "path": "2026-08-16-v1.37.0-release.json",
-   "sha256": "c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165"
-  },
-  {
-   "path": "2026-08-16-isolation-probe-validated.json",
-   "sha256": "d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509"
-  },
-  {
-   "path": "2026-08-16-ambient-input-anchor-validated.json",
-   "sha256": "6bdd548e776e5ed8b87af9c286165bb57a4ca15d47b9115f4219c4622cfc3811"
-  },
-  {
-   "path": "2026-08-16-holdout-process-documented.json",
-   "sha256": "59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213"
-  },
-  {
-   "path": "2026-08-16-holdout-diagnose.json",
-   "sha256": "323683b1d6af3d7219f7fa478474137550400e00096bb605b6c0af7cfb2ee7dd"
-  },
-  {
-   "path": "2026-08-16-test-lock-deadlock-recovery.json",
-   "sha256": "f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56"
-  },
-  {
-   "path": "2026-08-16-v1.38.0-release.json",
-   "sha256": "b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e"
-  },
-  {
-   "path": "2026-08-16-holdout-control-validation-d0-schema.json",
-   "sha256": "3bc86e39f965c9198a1e3fca5da916d5361ebddb722b77a24e01f03b8bd941bd"
-  }
- ]
+    "schema_version": 1,
+    "records": [
+        {
+            "path": "2026-08-07-assurance-pipeline-plan.json",
+            "sha256": "1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd"
+        },
+        {
+            "path": "2026-08-07-assurance-pipeline-implementation.json",
+            "sha256": "5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace"
+        },
+        {
+            "path": "2026-08-07-v1.31.0-release-implementation.json",
+            "sha256": "77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa"
+        },
+        {
+            "path": "2026-08-09-owner-control-phase1-implementation.json",
+            "sha256": "39a5d273cfe18341231d740afce2201fddc051df8caf479e37b63e1dce2cdb59"
+        },
+        {
+            "path": "2026-08-09-owner-control-phase2-implementation.json",
+            "sha256": "69b66b6a969793d3bf751d4edc9ff3029c3c13dfb053bc9b44d36107dcc0cc3f"
+        },
+        {
+            "path": "2026-08-09-owner-control-phase3-implementation.json",
+            "sha256": "0f5f404e73fd6e7d14f772230d1c4ea9fde2d82ebe3797cfb65c9baaeab4b0fc"
+        },
+        {
+            "path": "2026-08-09-owner-control-phase4-implementation.json",
+            "sha256": "f632925f007e6ece0b3ee6b0fa9b990aff7df570792a12796d1d99c40381185c"
+        },
+        {
+            "path": "2026-08-09-owner-control-phase5-release.json",
+            "sha256": "2322c48835121a967742acaed15a3a01cd42445e0dff5de818e009d33455eea7"
+        },
+        {
+            "path": "2026-08-09-calibration-opt-in.json",
+            "sha256": "cfd934054dbb123172d51731b5bc835aa71515b46ca18658b6f879d487a08661"
+        },
+        {
+            "path": "2026-08-09-debt-sweep.json",
+            "sha256": "262c1c539593868bbfa3ec02bdb3244748d14cbde647dba1937fb7ad7720371b"
+        },
+        {
+            "path": "2026-08-10-v1.33.0-release.json",
+            "sha256": "f7597223da1661f5058949cdc53f683e818237b86e516ec6f20323eb74f1e688"
+        },
+        {
+            "path": "2026-08-12-v1.33.1-hotfix.json",
+            "sha256": "918b7cdb9ec9414effab66f57980c342c8183fd02a339595246c30ecd387be57"
+        },
+        {
+            "path": "2026-08-12-v1.34.0-release.json",
+            "sha256": "f4ddc2db927182b70234e08d4427f497a5805830fbc5d028127dd9ec1f56d294"
+        },
+        {
+            "path": "2026-08-13-readable-first-read-response.json",
+            "sha256": "5d2071a44635918d54d84e205294f53d16d3568180bfc5691631a0651dc77156"
+        },
+        {
+            "path": "2026-08-13-cheliped-proposals-adjudication.json",
+            "sha256": "e236a759abbaec1d48847386e8e05827f22a00f400a3ea3fd9ea97a7219b6d9b"
+        },
+        {
+            "path": "2026-08-14-review-as-judgment-surface.json",
+            "sha256": "013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f"
+        },
+        {
+            "path": "2026-08-15-two-tier-calibration-part1.json",
+            "sha256": "e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5"
+        },
+        {
+            "path": "2026-08-15-two-tier-calibration-part2-controller.json",
+            "sha256": "2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c"
+        },
+        {
+            "path": "2026-08-15-holdout-authoring-baseline-isolation.json",
+            "sha256": "4d4ef49f6483df09c5bf23784d5701884793c4be23aea90c31a8cc6ded3d4a93"
+        },
+        {
+            "path": "2026-08-15-holdout-authoring-live-usability.json",
+            "sha256": "9f1a3aa04e569fc40ebfc71f0c7f40465a6922330e8297c6c2215c808fbfd317"
+        },
+        {
+            "path": "2026-08-15-holdout-run-summary.json",
+            "sha256": "199507cf1866d943c99b9d90daf7646a2830ec3e025b167806508da7097a1376"
+        },
+        {
+            "path": "2026-08-16-v1.37.0-release.json",
+            "sha256": "c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165"
+        },
+        {
+            "path": "2026-08-16-isolation-probe-validated.json",
+            "sha256": "d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509"
+        },
+        {
+            "path": "2026-08-16-ambient-input-anchor-validated.json",
+            "sha256": "6bdd548e776e5ed8b87af9c286165bb57a4ca15d47b9115f4219c4622cfc3811"
+        },
+        {
+            "path": "2026-08-16-holdout-process-documented.json",
+            "sha256": "59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213"
+        },
+        {
+            "path": "2026-08-16-holdout-diagnose.json",
+            "sha256": "323683b1d6af3d7219f7fa478474137550400e00096bb605b6c0af7cfb2ee7dd"
+        },
+        {
+            "path": "2026-08-16-test-lock-deadlock-recovery.json",
+            "sha256": "f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56"
+        },
+        {
+            "path": "2026-08-16-v1.38.0-release.json",
+            "sha256": "b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e"
+        },
+        {
+            "path": "2026-08-16-holdout-control-validation-d0-schema.json",
+            "sha256": "3bc86e39f965c9198a1e3fca5da916d5361ebddb722b77a24e01f03b8bd941bd"
+        },
+        {
+            "path": "2026-08-16-trustworthy-holdout-controls.json",
+            "sha256": "574752d2cc1df744dc6d3d3f3a1206c671e0022f34a20d3a77684c5c79c598a3"
+        }
+    ]
 }

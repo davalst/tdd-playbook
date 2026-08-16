@@ -37,9 +37,10 @@
 - `docs/reviews/2026-08-16-holdout-process-documented.json` — `59db1cdf252fd5b9e6c91f89161ec86f1de44452101d8ecbf2cb9064fd948213`
 - `docs/reviews/2026-08-16-isolation-probe-validated.json` — `d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509`
 - `docs/reviews/2026-08-16-test-lock-deadlock-recovery.json` — `f83eb03f6e901919ab501534937177ad1c982ba7151afb308ad05f549bf02c56`
+- `docs/reviews/2026-08-16-trustworthy-holdout-controls.json` — `574752d2cc1df744dc6d3d3f3a1206c671e0022f34a20d3a77684c5c79c598a3`
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
 - `docs/reviews/2026-08-16-v1.38.0-release.json` — `b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e`
-- `docs/reviews/index.json` — `5ee64b768a896310bdbe7ec7163811f8e6592eec47ea9e44ec156039bdbbba7e`
+- `docs/reviews/index.json` — `457579d7298de2c8495f741615be3a42a33405af1278e0084232a810376caa1a`
 
 ## Gate surface
 
@@ -142,8 +143,8 @@
 
 ## Adversarial review records
 
-- Review records: 29. Findings: 144.
-- `incorporated`: 58
+- Review records: 30. Findings: 155.
+- `incorporated`: 66
 - `open`: 6
 - `rejected`: 3
-- `verified_closed`: 77
+- `verified_closed`: 80
