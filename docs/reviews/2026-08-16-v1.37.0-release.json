@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-v1.37.0-release",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "ee58b225422a927c269fdac92a3efb7257c40d20",
+    "head": "26546da3dce1a3df96211fc81685c8f35d2202f3"
+  },
+  "reviewers": [
+    "cheliped-field-report",
+    "tripwire-auditor",
+    "live-dogfooding"
+  ],
+  "findings": [
+    {
+      "id": "TEST-LOCK-OUT-OF-ROOT-DOS",
+      "severity": "P1",
+      "summary": "Cheliped field report (plugin v1.36.0): while ANY session held a TEST-LOCK, every session's writes to OUT-OF-ROOT paths (memory ~/.claude/projects, plan-mode ~/.claude/plans, scratchpad) were BLOCKED — edit_findings converted policy_decision's 'target escapes repository root' ContractError into a block, a cross-session denial-of-service that also broke plan-mode (whose only permitted write is the out-of-root plan file). An out-of-root target is out of the lock's jurisdiction, not a policy violation.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py:144"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "4dc1ff089e80f8dccb91c7b2b8ff70a2a310df5e",
+      "closure_review": "cheliped-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_tdd_lock.py::test_out_of_root_jurisdiction"
+      ],
+      "disposition": "edit_findings now pre-checks _inside(root, target) (the same helper the Bash leg uses for cwd) and returns no findings for out-of-root targets. The regression lives in the BLESSED suite (test_tdd_lock.py::test_out_of_root_jurisdiction), red-first proven in a REAL git repo — the bug fires only where resolve_repository succeeds and policy_decision is reached, so a non-git scratch fixture would be vacuous; reverting reproduces the exact reported 'escapes repository root' error. Two-directional: in-root locked test still BLOCKS, out-of-root write ALLOWS.",
+      "class": "deterministic",
+      "recurrence_key": "guard-out-of-jurisdiction-treated-as-violation"
+    },
+    {
+      "id": "TEST-LOCK-UNDECIDABLE-MESSAGE",
+      "severity": "P3",
+      "summary": "Cheliped secondary observation: an UNDECIDABLE write target (open(var,'w'), a heredoc writer) while a lock is active fails closed BY DESIGN, but _seg_writes returned True for it against the FIRST needle checked, so the block message named a locked test the write may not even touch — misdirecting the operator.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py:245"
+      ],
+      "status": "incorporated",
+      "disposition": "Split _seg_writes (needle-specific) from _has_undecidable_write; bash_findings gives the undecidable case an honest 'target the guard cannot resolve' message while keeping the fail-closed behavior. Pinned by test_tdd_lock (undecidable write blocks with the honest message, not the test name).",
+      "class": "deterministic",
+      "recurrence_key": "misdirecting-fail-closed-message"
+    },
+    {
+      "id": "S1-AMBIENT-INPUT-DOCTRINE",
+      "severity": "P2",
+      "summary": "Cheliped near-miss: a security control shipped with 9 green tests over an INERT gate — it authorized off an ambient contextvar a new caller never published, and the tests SEEDED that contextvar by hand instead of driving the production entry that sets it. Self-consistency; mutation blind (mutants in the guard, test seeds its input).",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:211"
+      ],
+      "status": "incorporated",
+      "disposition": "SKILL §1 new rule ('drive a guard through the entry that populates its input — never seed the input by hand', with the grep-able tell), §4 mutation-blindness note, and hunt #6 on the security + test-quality adversaries (registered as gate-surface change L-20260815-01, burial-check prediction). The planted calibration anchor per §13 is dated debt (calibration-loop, exp 2026-11-15) — doctrine without a planted anchor is unproven, recorded as a loan not a hope.",
+      "class": "judgment",
+      "recurrence_key": "ambient-input-self-consistency"
+    },
+    {
+      "id": "HOLDOUT-STALENESS-DATE",
+      "severity": "P3",
+      "summary": "The holdout is opt-in, so a run that never happens is a date that never advances — it could go dark silently (David: 'don't let it go dark without a date or a schedule').",
+      "evidence": [
+        "calibration/holdout.py:157",
+        "calibration/run_calibration.py:817"
+      ],
+      "status": "incorporated",
+      "disposition": "holdout_staleness (via history_format.latest_form_date) surfaces 'Last run: N days ago (STALE > 30d)' in the --summary output AND as a HOLDOUT-STALE WARNING on EVERY calibration run — the 'date' that keeps it from going dark, no budget or cron. An actual autonomous scheduler (launchd) is deferred pending David's cadence decision (Keychain / autonomous-spend / silent-failure gotchas). Tested fresh/stale/none/summary-surfaces.",
+      "class": "judgment",
+      "recurrence_key": "opt-in-feature-goes-dark"
+    }
+  ]
+}

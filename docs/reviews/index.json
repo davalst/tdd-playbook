@@ -84,6 +84,10 @@
     {
       "path": "2026-08-15-holdout-run-summary.json",
       "sha256": "199507cf1866d943c99b9d90daf7646a2830ec3e025b167806508da7097a1376"
+    },
+    {
+      "path": "2026-08-16-v1.37.0-release.json",
+      "sha256": "c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165"
     }
   ]
 }
