@@ -163,11 +163,29 @@ def _filtered_run_lines(stdout):
     return [ln for ln in (stdout or "").splitlines() if ln.startswith(keep)]
 
 
-def holdout_summary_lines(history_text):
+STALE_DAYS = 30  # the holdout is opt-in; past this with no run, surface it so it can't go dark
+
+
+def holdout_staleness(history_text, today=None):
+    """(days_since_last_holdout_run, is_stale) or None if no holdout run recorded. The 'date' that
+    keeps the holdout from going dark: a run that never happens is a date that never advances, and
+    both the summary and the regular calibration run read this to surface it."""
+    import datetime
+    import history_format as hf
+    last = hf.latest_form_date(history_text, "holdout")
+    if last is None:
+        return None
+    today = today or datetime.date.today()
+    days = (today - last).days
+    return days, days > STALE_DAYS
+
+
+def holdout_summary_lines(history_text, today=None):
     """An HONEST one-glance reading from the calibration history: the latest holdout recall/FP with
-    its Wilson interval, the latest dev recall for comparison, and a conservative verdict. With few
-    plants the interval is wide and the comparison is explicitly withheld — a small-n gap is not a
-    signal. Pure (takes the history text) so it is testable without a run."""
+    its Wilson interval, the latest dev recall for comparison, a conservative verdict, and a
+    staleness line. With few plants the interval is wide and the comparison is explicitly withheld
+    — a small-n gap is not a signal. Pure (takes the history text + optional today) so it is
+    testable without a run."""
     import history_format as hf
     blocks, _ = hf.parse_run_blocks(history_text)
     lh = next((b for b in reversed(blocks) if b.get("form") == "holdout"), None)
@@ -177,6 +195,12 @@ def holdout_summary_lines(history_text):
     fk, fn = lh["fp"]
     lines = ["Holdout reading: recall {}/{} {} · FP {}/{} {}".format(
         hk, hn, hf.interval_cell(hk, hn), fk, fn, hf.interval_cell(fk, fn))]
+    stale = holdout_staleness(history_text, today)
+    if stale is not None:
+        days, is_stale = stale
+        lines.append("Last run: {} day(s) ago{}".format(
+            days, "  -> STALE (> {}d): re-run or grow the corpus".format(STALE_DAYS)
+            if is_stale else ""))
     ld = next((b for b in reversed(blocks) if b.get("form") == "dev"), None)
     if ld:
         dk, dn = ld["recall"]

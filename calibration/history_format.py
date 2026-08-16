@@ -190,6 +190,16 @@ def latest_run_date(text):
     return max(dates) if dates else None
 
 
+def latest_form_date(text, form):
+    """The date (datetime.date) of the most recent run BLOCK of population `form` (dev/holdout),
+    or None. Block-level (the isolation/form axis lives on the header), unlike latest_run_date
+    which is row-level. The holdout-staleness signal reads this so the holdout can't go dark
+    unnoticed — a run that never happens is a date that never advances."""
+    blocks, _ = parse_run_blocks(text)
+    dates = [b["date"] for b in blocks if b.get("form") == form]
+    return max(dates) if dates else None
+
+
 def wilson(k, n, z=1.96):
     """95% Wilson score interval for k successes in n trials — a pure STATISTIC (the
     format functions below only render it; consumers like the lift report re-derive from

@@ -2994,6 +2994,27 @@ def _holdout_authoring_tests():
         holdout.run_holdout = keep_rh2
     check("summary: --summary flag reaches run_holdout", seen2.get("summary") is True, seen2)
 
+    # --- staleness: the 'date' that keeps the holdout from going dark ---
+    import datetime as _dt
+    with tempfile.TemporaryDirectory() as hd:
+        base = {"date": "2026-07-01", "model": "sonnet", "repo_sha": "0", "selected": 1,
+                "total": 1, "shipped": 1, "corpus": 0, "controls": 1, "isolation": "with-playbook"}
+        hp = os.path.join(hd, "h.md")
+        hf.append_run_block(hp, dict(base, recall=(2, 2), fp=(0, 2), form="holdout"), [])
+        txt = open(hp).read()
+        check("staleness: a recent holdout run is NOT stale",
+              holdout.holdout_staleness(txt, today=_dt.date(2026, 7, 2)) == (1, False),
+              holdout.holdout_staleness(txt, today=_dt.date(2026, 7, 2)))
+        check("staleness: a 40-day-old holdout run IS stale",
+              holdout.holdout_staleness(txt, today=_dt.date(2026, 8, 10)) == (40, True))
+        hp2 = os.path.join(hd, "h2.md")
+        hf.append_run_block(hp2, dict(base, recall=(9, 10), fp=(0, 10), form="dev"), [])
+        check("staleness: None when no holdout run is recorded",
+              holdout.holdout_staleness(open(hp2).read()) is None)
+        sl = "\n".join(holdout.holdout_summary_lines(txt, today=_dt.date(2026, 8, 10)))
+        check("staleness: the summary SURFACES a stale holdout (can't go dark)",
+              "STALE" in sl and "Last run:" in sl, sl)
+
 
 def main():
     print("Calibration-harness calibration")

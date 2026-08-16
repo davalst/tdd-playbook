@@ -814,6 +814,20 @@ def main(argv=None):
     if stale is not None and stale > 100:
         print("DECAY WARNING: docs/HACK_CATALOG.md last refreshed ~{} days ago — the "
               "quarterly ritual is due (a stale catalog is a decaying gate, §13).".format(stale))
+    # HOLDOUT-STALE warning: the holdout is opt-in, so surface its staleness on EVERY calibration
+    # run (the thing you do regularly) rather than let it rot unnoticed — the 'date' that keeps it
+    # from going dark. holdout imports run_calibration lazily, so this function-level import is safe.
+    if args.history and os.path.isfile(args.history):
+        try:
+            import holdout as _hd
+            _st = _hd.holdout_staleness(open(args.history).read())
+            if _st is not None and _st[1]:
+                print("HOLDOUT-STALE WARNING: the holdout was last run ~{} day(s) ago (> {}d) — a "
+                      "holdout number nobody refreshes stops telling you whether the dev "
+                      "scoreboard still measures detection. Run `holdout.py run --summary`, or "
+                      "author more plants.".format(_st[0], _hd.STALE_DAYS))
+        except Exception:
+            pass
     # v1.29 item 3: the dev/holdout split. dev is the tuning set (run every cycle); holdout
     # is the reporting set, read quarterly and never tuned against — otherwise the number we
     # quote externally is the one the tuning loop has been iterating on. Forms live in an
