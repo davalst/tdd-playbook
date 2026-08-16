@@ -3,6 +3,39 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.38.0 — 2026-08-16
+
+**The holdout becomes actionable, and the TEST-LOCK stops deadlocking across sessions.** This
+release bundles the session's post-1.37.0 work so the fixes reach downstream vendored copies.
+
+- **`holdout diagnose`** — a read-only triage so a holdout run's misses become actionable
+  WITHOUT reading the private answer key. Each miss is classified `would-pass-normalized` (the
+  scorer was brittle, not the verifier), a genuine mode (`wrong-verdict-line`/`found-but-hedged`/
+  `missed-entirely`), or `inconclusive`, emitting only a safe id·agent·label line. Built as ONE
+  parameterized `oracle(scenario, output, normalizer=None)` (default unchanged) + the
+  `normalize_for_oracle` helper the standing oracle-normalisation debt will adopt. Works on dev
+  calibration too. Documented in `calibration/README.md`.
+- **§1 ambient-input calibration anchor** — authored + replayed; the first replay exposed the
+  hardened `test-quality-adversary` over-triggering on a correctly-wired control (false positive),
+  fixed by a hunt #6 restraint clause (ledger `L-20260816-01`). Safety anchor: normalization can
+  rescue a missing right verdict, never erase a present wrong one.
+- **Baseline isolation validated** — the D2.d live probe confirmed `--settings` unloads a
+  user-scope plugin, so `--isolation no-playbook` numbers are trustworthy; the deploy-gated debt
+  is paid.
+- **Holdout grow/run process documented** — including the repo-vs-local-dir name trap
+  (`tdd-playbook-holdout` vs `~/tdd-holdout-vault`) that cost a failed run.
+- **TEST-LOCK cross-session deadlock recovery** (cheliped, twice-reproduced live) — a guard-
+  imported lock owned by the fallback `claude-hook` could be released by no one. Root fix: an
+  env-less `unlock` now rides the worktree-ownership check that was already there, so a
+  fallback-owned lock (incl. an already-wedged `claude-hook` one) releases with a plain unlock,
+  forward AND backward; the three divergent session-id fallbacks are unified through
+  `host_contract.session_id`. New `unlock --force` is the LEGAL replacement for
+  `rm .git/tdd-playbook/active-lock.json` for dead/foreign-session and corrupt/version-skewed
+  locks (skips ownership, keeps the CAS, journals `forced`+`session_downgrade` for `/grade`). The
+  version-skew repair state no longer blocks out-of-root writes and names the remedy. The field
+  report's auto-expiry proposal was rejected with evidence. Command-doc ledger entry
+  `L-20260816-02`.
+
 ## 1.37.0 — 2026-08-16
 
 **The private holdout goes live, and baseline isolation becomes deployable.** The two-tier
