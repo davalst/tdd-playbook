@@ -3724,6 +3724,236 @@ def _control_judge_tests():
           "consumes them)", True)
 
 
+def _authoring_prompt_quality_tests():
+    """D3 (trustworthy-holdout-controls): fix the SOURCE of bad controls. The old prompt
+    told the adversary to bait a trigger-happy verifier and said nothing about the control
+    being genuinely clean or the oracle being fair — which is exactly what the 2026-08-16
+    diagnose found (FP 10/10 = control-authoring quality). The revised contract is pinned
+    here so a future prompt edit can't quietly loosen it back."""
+    print("\n[authoring prompt quality contract (D3)]")
+    import author_plants as ap
+    p = ap.adversary_prompt(None)
+    check("D3: controls must be GENUINELY clean w.r.t. the task's OWN question",
+          "GENUINELY" in p and "task's own question" in p.lower().replace("’", "'"),
+          "clean-contract needle missing")
+    check("D3: temptable but refutable-by-tracing is the stated bar",
+          "refutable" in p and "trac" in p.lower())
+    check("D3: no unguarded sibling defect the task invites finding",
+          "sibling" in p.lower())
+    check("D3: oracles anchor on the VERDICT LINE",
+          "verdict line" in p.lower())
+    check("D3: greedy prose regexes are BANNED (a correct explanation may use the "
+          "forbidden word)", "greedy" in p.lower() and "correct explanation" in p.lower())
+    check("D3: the task must have ONE defensible reading",
+          "one defensible reading" in p.lower())
+    check("D3: the old bait-only framing is gone — 'plausibly alarming but actually "
+          "right' no longer stands alone unqualified",
+          "plausibly alarming" not in p or "GENUINELY" in p)
+    # the pre-existing contract survives the revision (the agent-roster hard constraint
+    # and pair schema are pinned elsewhere; cheap smoke here)
+    check("D3: the roster hard-constraint survives the revision",
+          "MUST be EXACTLY one of" in p)
+    check("D3: pairs + control_for schema survive the revision",
+          "control_for" in p and "must_not_match" in p)
+
+
+def _remediation_tests():
+    """D4 (trustworthy-holdout-controls): `holdout remediate` runs the D1 validation + D2
+    judge over the approved corpus and applies the CONFIRMED disposition: REJECT/FIX-ORACLE
+    -> the PAIR retires to legacy-invalid (append-only status rows, CAS on the body hash,
+    bodies never edited or deleted); KEEP -> the control becomes known-overflag. Every
+    irreversible transition needs the interactive y/n bound to the manifest hash;
+    non-interactive ABORTS before any model spend."""
+    print("\n[holdout remediation (D4) — supersede the bad pairs, on confirm]")
+    import contextlib
+    import io
+    import holdout
+    import plant_forms
+
+    def seed_vault(vault):
+        bodies = os.path.join(vault, "bodies")
+        os.makedirs(bodies)
+        plant = {"id": "rm-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+                 "task": "t", "must_match": [r"Verdict:\s*ALARM"]}
+        ctl = {"id": "rm-control", "agent": "claims-verifier", "control_for": "rm-plant",
+               "plant": "c", "edits": [], "task": "t",
+               "must_match": [r"Verdict:\s*CLEAN"], "must_not_match": [r"Verdict:\s*ALARM"]}
+        rows = []
+        for sc in (plant, ctl):
+            path = os.path.join(bodies, sc["id"] + ".json")
+            with open(path, "w") as fh:
+                json.dump(sc, fh)
+                fh.write("\n")
+            rows.append(plant_forms.format_register_row(
+                "2026-08-16", sc["id"], "holdout", plant_forms.plant_sha(path), "seed"))
+        with open(os.path.join(vault, holdout.REGISTER_NAME), "w") as fh:
+            fh.write("# Holdout register\n\n## Entries\n\n" + plant_forms.ENTRIES_TABLE
+                     + "".join(rows))
+        return plant, ctl
+
+    def mk_validator(control_verdict):
+        def v(sc, vd, c, body_path=None, **kw):
+            is_ctl = bool(sc.get("control_for"))
+            verdict = control_verdict if is_ctl else "caught"
+            ok = verdict in holdout.APPROVABLE
+            return {"table": {"id": sc["id"], "kind": "control" if is_ctl else "plant",
+                              "k": 3 if ok else 0, "n": 3, "invalid": 0,
+                              "verdict": verdict, "approvable": ok},
+                    "manifest": {"schema": 1, "candidate_id": sc["id"],
+                                 "candidate_content_sha256":
+                                     plant_forms.plant_sha(body_path) if body_path else "0" * 64,
+                                 "k": 0, "n": 3, "verdict": verdict, "contract": {},
+                                 "reps": []},
+                    "reasoning": None if ok else "RAW-REASONING-SENTINEL"}
+        return v
+
+    def mk_judge(verdict):
+        return lambda sc, reasoning, **kw: {
+            "verdict": verdict, "votes": [verdict] * 3,
+            "rationale": "the control bans a word a correct explanation uses"}
+
+    def statuses(vault):
+        return plant_forms.resolve_statuses(plant_forms.parse_register(
+            open(os.path.join(vault, holdout.REGISTER_NAME)).read()))
+
+    # --- non-interactive ABORTS before any spend ---
+    with tempfile.TemporaryDirectory() as vault:
+        seed_vault(vault)
+        called = {"n": 0}
+
+        def spy_validator(sc, vd, c, **kw):
+            called["n"] += 1
+            return mk_validator("holds")(sc, vd, c, **kw)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
+                                                 validator=spy_validator,
+                                                 interactive=False)
+        check("D4: non-interactive remediate ABORTS before any validation spend",
+              code == 2 and called["n"] == 0 and "ABORT" in buf.getvalue(),
+              (code, called, buf.getvalue()[-200:]))
+
+    # --- FLOW §6c verdict -> confirmed disposition: REJECT retires the PAIR ---
+    with tempfile.TemporaryDirectory() as vault:
+        plant, ctl = seed_vault(vault)
+        confirmed = []
+
+        def yes_confirm(action, msha, **kw):
+            confirmed.append((action, msha))
+            return True
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
+                                                 validator=mk_validator("fails"),
+                                                 judge=mk_judge("REJECT"),
+                                                 confirm=yes_confirm, interactive=True)
+        st = statuses(vault)
+        check("D4 FLOW verdict->disposition: judge REJECT + y retires the PAIR "
+              "(BOTH ids -> legacy-invalid)",
+              st.get("rm-control") == "legacy-invalid"
+              and st.get("rm-plant") == "legacy-invalid", st)
+        check("D4: the confirm was BOUND to a manifest hash",
+              confirmed and len(confirmed[0][1]) == 64, confirmed)
+        check("D4: bodies are IMMUTABLE — both files still on disk, byte-identical",
+              os.path.isfile(os.path.join(vault, "bodies", "rm-plant.json"))
+              and os.path.isfile(os.path.join(vault, "bodies", "rm-control.json")))
+        check("D4: the register is APPEND-only (seed rows survive as the audit trail)",
+              len(plant_forms.parse_register(
+                  open(os.path.join(vault, holdout.REGISTER_NAME)).read())) == 4)
+        check("D4 EGRESS: remediate never prints the raw verifier reasoning",
+              "RAW-REASONING-SENTINEL" not in buf.getvalue(), buf.getvalue()[-300:])
+        check("D4: the operator is told to land a superseding replacement pair",
+              "supersed" in buf.getvalue().lower(), buf.getvalue()[-400:])
+
+    # --- KEEP -> known-overflag on the CONTROL only ---
+    with tempfile.TemporaryDirectory() as vault:
+        seed_vault(vault)
+        with contextlib.redirect_stdout(io.StringIO()):
+            holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
+                                          validator=mk_validator("fails"),
+                                          judge=mk_judge("KEEP"),
+                                          confirm=lambda a, m, **k: True,
+                                          interactive=True)
+        st = statuses(vault)
+        check("D4: judge KEEP + y marks the control known-overflag; the plant stays current",
+              st.get("rm-control") == "known-overflag" and st.get("rm-plant") == "current",
+              st)
+
+    # --- refusals: 'n', INCONCLUSIVE, and a clean pair each change NOTHING ---
+    for label, validator, judge, confirm in (
+            ("an explicit 'n'", mk_validator("fails"), mk_judge("REJECT"),
+             lambda a, m, **k: False),
+            ("judge INCONCLUSIVE", mk_validator("fails"), mk_judge("INCONCLUSIVE"),
+             lambda a, m, **k: (_ for _ in ()).throw(AssertionError("confirm called"))),
+            ("a clean pair", mk_validator("holds"), mk_judge("REJECT"),
+             lambda a, m, **k: (_ for _ in ()).throw(AssertionError("confirm called")))):
+        with tempfile.TemporaryDirectory() as vault:
+            seed_vault(vault)
+            with contextlib.redirect_stdout(io.StringIO()):
+                holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
+                                              validator=validator, judge=judge,
+                                              confirm=confirm, interactive=True)
+            st = statuses(vault)
+            check("D4: {} leaves every status untouched".format(label),
+                  st.get("rm-control") == "current" and st.get("rm-plant") == "current", st)
+
+    # --- CAS: a body edited since the register was written refuses the transition ---
+    with tempfile.TemporaryDirectory() as vault:
+        seed_vault(vault)
+        with open(os.path.join(vault, "bodies", "rm-control.json"), "a") as fh:
+            fh.write("\n")   # drift AFTER the register pinned the sha
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            holdout.cmd_remediate_holdout(vault, "sonnet", "claude", 3,
+                                          validator=mk_validator("fails"),
+                                          judge=mk_judge("REJECT"),
+                                          confirm=lambda a, m, **k: True,
+                                          interactive=True)
+        st = statuses(vault)
+        check("D4 CAS: a drifted body REFUSES its status transition (compare-and-swap on "
+              "the body hash)", st.get("rm-control") == "current", (st, buf.getvalue()[-200:]))
+
+    # --- approve --supersedes: the replacement pair links back to the retired ids ---
+    with tempfile.TemporaryDirectory() as vault:
+        plant, ctl = seed_vault(vault)
+        prop = os.path.join(vault, "proposed")
+        os.makedirs(prop)
+        repl = {"id": "rm-plant-v2", "agent": "claims-verifier", "plant": "p2", "edits": [],
+                "task": "t", "must_match": [r"Verdict:\s*ALARM"]}
+        with open(os.path.join(prop, "rm-plant-v2.json"), "w") as fh:
+            json.dump(repl, fh)
+
+        def ok_validator(sc, vd, c, body_path=None, **kw):
+            return {"table": {"id": sc["id"], "kind": "plant", "k": 3, "n": 3, "invalid": 0,
+                              "verdict": "caught", "approvable": True},
+                    "manifest": {"schema": 1, "candidate_id": sc["id"],
+                                 "candidate_content_sha256": plant_forms.plant_sha(body_path),
+                                 "k": 3, "n": 3, "verdict": "caught", "contract": {},
+                                 "reps": []},
+                    "reasoning": None}
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = holdout.cmd_approve_holdout(vault, "rm-plant-v2", "replacement",
+                                               validator=ok_validator, judge=False,
+                                               supersedes="rm-plant")
+        entries = plant_forms.parse_register(
+            open(os.path.join(vault, holdout.REGISTER_NAME)).read())
+        row = next((e for e in entries if e["plant_id"] == "rm-plant-v2"), None)
+        check("D4: approve --supersedes lands the replacement with the supersession link",
+              code == 0 and row and row["supersedes"] == "rm-plant"
+              and row["status"] == "current", row)
+        check("D4: the supersession graph validates (no dangling link)",
+              plant_forms.form_problems(
+                  entries, plant_forms.shas_in_dir(os.path.join(vault, "bodies"))) == [],
+              plant_forms.form_problems(
+                  entries, plant_forms.shas_in_dir(os.path.join(vault, "bodies"))))
+
+    # --- the subcommand is wired ---
+    hp = subprocess.run([sys.executable, os.path.join(HERE, "holdout.py"),
+                         "remediate", "--help"], capture_output=True, text=True, timeout=30)
+    check("D4: holdout exposes a `remediate` subcommand (--vault-dir)",
+          hp.returncode == 0 and "--vault-dir" in hp.stdout, (hp.returncode, hp.stdout[-160:]))
+
+
 def import_pf_table():
     import plant_forms as pf
     return pf.ENTRIES_TABLE
@@ -3746,6 +3976,8 @@ def main():
     _holdout_status_flow_tests()
     _holdout_validation_gate_tests()
     _control_judge_tests()
+    _authoring_prompt_quality_tests()
+    _remediation_tests()
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()

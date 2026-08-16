@@ -633,7 +633,7 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
 
 
 def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="claude",
-                        repeat=None, validator=None, judge=None):
+                        repeat=None, validator=None, judge=None, supersedes=""):
     """Move a reviewed proposed body into bodies/ and record it in the register (form=holdout,
     real content_sha256). Re-validates (minus dup-id, the proposed file IS the id), echoes
     pairing, and — D1 — runs the body's TARGET VERIFIER against it under the eval contract:
@@ -720,9 +720,166 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
             fh.write("# Holdout register\n\n" + plant_forms.ENTRIES_SECTION + "\n\n"
                      + plant_forms.ENTRIES_TABLE)
         fh.write(plant_forms.format_register_row(
-            _dt.date.today().isoformat(), plant_id, "holdout", sha, reason))
+            _dt.date.today().isoformat(), plant_id, "holdout", sha, reason,
+            status="current", supersedes=supersedes or ""))
     print("APPROVED {} -> bodies/ + register (sha {}...). Commit + push the vault privately."
           .format(plant_id, sha[:12]))
+    return 0
+
+
+# --- D4: remediation — supersede the bad pairs, on confirm ----------------------------------
+def _latest_register_rows(vault_dir):
+    reg = os.path.join(vault_dir, REGISTER_NAME)
+    if not os.path.isfile(reg):
+        return {}
+    latest = {}
+    for e in plant_forms.parse_register(open(reg).read()):
+        latest[e["plant_id"]] = e
+    return latest
+
+
+def _cas_error(vault_dir, sid, latest=None):
+    """COMPARE-AND-SWAP pre-check for a status transition: the body on disk must still be
+    the exact bytes the register last recorded for this id. A drifted body gets NO status
+    transition — investigate the drift first (it is already an integrity finding)."""
+    latest = latest if latest is not None else _latest_register_rows(vault_dir)
+    if sid not in latest:
+        return "no register entry for '{}'".format(sid)
+    body = os.path.join(vault_dir, "bodies", sid + ".json")
+    if not os.path.isfile(body):
+        return "no body on disk for '{}'".format(sid)
+    if plant_forms.plant_sha(body) != latest[sid]["content_sha256"]:
+        return ("CAS refusal: body '{}' no longer matches its registered content sha — it "
+                "changed since the register last recorded it; run the vault integrity "
+                "check before any status transition".format(sid))
+    return None
+
+
+def append_status_row(vault_dir, sid, status, reason, supersedes=""):
+    """Append-only status transition (bodies are IMMUTABLE — a transition is a new register
+    row, never an edit or a deletion), CAS-guarded on the body hash. Returns None on
+    success or the refusal string."""
+    import datetime as _dt
+    err = _cas_error(vault_dir, sid)
+    if err:
+        return err
+    sha = plant_forms.plant_sha(os.path.join(vault_dir, "bodies", sid + ".json"))
+    with open(os.path.join(vault_dir, REGISTER_NAME), "a") as fh:
+        fh.write(plant_forms.format_register_row(
+            _dt.date.today().isoformat(), sid, "holdout", sha, reason,
+            status=status, supersedes=supersedes))
+    return None
+
+
+def cmd_remediate_holdout(vault_dir, model, claude_bin, repeat, only_id=None, *,
+                          validator=None, judge=None, confirm=None, interactive=None):
+    """D4: run the D1 validation + D2 judge over every CURRENT approved pair and apply the
+    CONFIRMED disposition — REJECT/FIX-ORACLE retires the PAIR to legacy-invalid (pair-level:
+    retiring a control retires its plant too, else recall and FP split across asymmetric
+    cohorts); KEEP marks the control known-overflag (counted, tracked, never hidden). Every
+    transition is append-only + CAS-guarded and runs ONLY on an interactive y/n bound to the
+    control's validation-manifest hash. Non-interactive ABORTS before any model spend.
+    A failing PLANT gets a note (harden/supersede via the authoring cycle), not a judge —
+    the judge's three shapes are control shapes. Bodies are never edited or deleted."""
+    _refuse_in_tree(vault_dir)
+    if interactive is None:
+        interactive = sys.stdin.isatty()
+    if not interactive:
+        print("ABORT: remediation applies irreversible register transitions on a human "
+              "y/n — run it in a terminal. Nothing was validated or changed (no spend).")
+        return 2
+    bodies_dir = os.path.join(vault_dir, "bodies")
+    scs = {}
+    if os.path.isdir(bodies_dir):
+        for fn in sorted(os.listdir(bodies_dir)):
+            if fn.endswith(".json"):
+                with open(os.path.join(bodies_dir, fn)) as fh:
+                    sc = json.load(fh)
+                if sc.get("id"):
+                    scs[sc["id"]] = sc
+    latest = _latest_register_rows(vault_dir)
+    statuses = {sid: (latest[sid].get("status") or "current") for sid in latest}
+    pairs = [(scs[sc["control_for"]], sc) for sc in scs.values()
+             if sc.get("control_for") and sc["control_for"] in scs
+             and statuses.get(sc["id"], "current") == "current"
+             and statuses.get(sc["control_for"], "current") == "current"]
+    if validator is None:
+        def validator(s, vd, c, **kw):
+            return validate_item(s, vd, c, host_bin=claude_bin, **kw)
+    cfn = confirm or confirm_disposition
+    acted = 0
+    for plant_sc, ctl_sc in pairs:
+        if only_id and only_id not in (plant_sc["id"], ctl_sc["id"]):
+            continue
+        res = {}
+        for sc in (ctl_sc, plant_sc):
+            contract = eval_contract(sc, model, host_bin=claude_bin, repeat=repeat)
+            res[sc["id"]] = validator(sc, vault_dir, contract,
+                                      body_path=os.path.join(bodies_dir, sc["id"] + ".json"))
+            print_validation_table(res[sc["id"]]["table"])
+        res_c, res_p = res[ctl_sc["id"]], res[plant_sc["id"]]
+        if res_c["table"]["approvable"] and res_p["table"]["approvable"]:
+            print("PAIR OK: {} + {}".format(plant_sc["id"], ctl_sc["id"]))
+            continue
+        if res_c["table"]["approvable"]:
+            # only the plant failed — a weak plant is the authoring cycle's business
+            print("WEAK PLANT {}: the verifier no longer catches it at k/k — harden or "
+                  "supersede it next authoring cycle (no judge disposition; the judge's "
+                  "shapes are control shapes).".format(plant_sc["id"]))
+            continue
+        jr = (judge or judge_control)(ctl_sc, res_c.get("reasoning") or "",
+                                      deny_read=[vault_dir])
+        print("JUDGE (advisory): {} — votes {}".format(
+            jr["verdict"], "/".join(str(v) for v in jr["votes"])))
+        if jr.get("rationale"):
+            print("--- judge rationale (transient — not persisted) ---")
+            print(jr["rationale"].strip()[:2000])
+        if jr["verdict"] == "INCONCLUSIVE":
+            print("INCONCLUSIVE — the judges disagreed; no action taken (re-run, or read "
+                  "the pair yourself).")
+            continue
+        msha = manifest_sha(res_c["manifest"])
+        if jr["verdict"] in ("REJECT", "FIX-ORACLE"):
+            action = ("retire the PAIR {} + {} to legacy-invalid (judge {})"
+                      .format(plant_sc["id"], ctl_sc["id"], jr["verdict"]))
+            if not cfn(action, msha, interactive=True):
+                print("skipped — statuses unchanged.")
+                continue
+            # PAIR atomicity: CAS-check BOTH before writing EITHER, so a drifted body can
+            # never leave a half-retired (asymmetric) pair behind.
+            errs = [e for e in (_cas_error(vault_dir, ctl_sc["id"], latest),
+                                _cas_error(vault_dir, plant_sc["id"], latest)) if e]
+            if errs:
+                for e in errs:
+                    print("REFUSED: " + e)
+                continue
+            reason = "superseded: judge {} at remediation".format(jr["verdict"])
+            for sid in (ctl_sc["id"], plant_sc["id"]):
+                err = append_status_row(vault_dir, sid, "legacy-invalid", reason)
+                if err:
+                    print("REFUSED: " + err)
+            acted += 1
+            print("PAIR retired (append-only; bodies untouched). Land a SEPARATELY-"
+                  "APPROVED superseding replacement pair: `holdout author …` then "
+                  "`holdout approve --vault-dir {} <new-plant> --supersedes {}` and "
+                  "`… <new-control> --supersedes {}` — the corpus only grows."
+                  .format(vault_dir, plant_sc["id"], ctl_sc["id"]))
+        elif jr["verdict"] == "KEEP":
+            action = ("mark control {} known-overflag (a real, tracked verifier weakness "
+                      "— counted, never hidden)".format(ctl_sc["id"]))
+            if not cfn(action, msha, interactive=True):
+                print("skipped — statuses unchanged.")
+                continue
+            err = append_status_row(
+                vault_dir, ctl_sc["id"], "known-overflag",
+                "judge KEEP at remediation — genuine verifier over-flag; do not tune the "
+                "verifier against this held item (promote-and-replace to fix it)")
+            print("REFUSED: " + err if err
+                  else "control marked known-overflag; the corrected FP keeps counting it.")
+            acted += 1 if not err else 0
+    print("remediation pass complete: {} pair(s) reviewed · {} transition(s) applied. "
+          "Commit + push the vault, then re-run `holdout diagnose --vault <url>` — it now "
+          "reports BOTH the legacy and corrected readings.".format(len(pairs), acted))
     return 0
 
 
@@ -759,6 +916,21 @@ def main(argv=None):
                         "your holdout evals use, or 'holds' doesn't predict the reading)")
     v.add_argument("--repeat", type=int, default=None, help="validation reps (default 3)")
     v.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
+    v.add_argument("--supersedes", default="",
+                   help="the retired body id this replacement supersedes (D4 remediation)")
+    m = sub.add_parser("remediate", help="run the validation gate + advisory judge over "
+                                         "every CURRENT approved pair; supersede bad pairs "
+                                         "/ mark known-overflag on YOUR y/n (interactive "
+                                         "only; non-interactive aborts)")
+    m.add_argument("--vault-dir", required=True,
+                   help="a PERSISTENT local clone of the private vault (outside the public "
+                        "tree)")
+    m.add_argument("--model", default=None,
+                   help="verifier model (default TDD_PLAYBOOK_CALIBRATION_MODEL or sonnet — "
+                        "must match your holdout eval model)")
+    m.add_argument("--repeat", type=int, default=None)
+    m.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
+    m.add_argument("--id", default=None, help="remediate only the pair containing this id")
     w = sub.add_parser("validate", help="READ-ONLY: run a body's target verifier against it "
                                         "under the eval contract and print the k/n decision "
                                         "table (moves nothing, writes nothing)")
@@ -787,7 +959,13 @@ def main(argv=None):
         return cmd_author_holdout(args.vault_dir, args.model, args.category, args.claude_bin)
     if args.cmd == "approve":
         return cmd_approve_holdout(args.vault_dir, args.id, args.reason, model=args.model,
-                                   claude_bin=args.claude_bin, repeat=args.repeat)
+                                   claude_bin=args.claude_bin, repeat=args.repeat,
+                                   supersedes=args.supersedes)
+    if args.cmd == "remediate":
+        return cmd_remediate_holdout(
+            args.vault_dir,
+            args.model or os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "sonnet"),
+            args.claude_bin, args.repeat, only_id=args.id)
     if args.cmd == "validate":
         return cmd_validate_holdout(
             args.vault_dir, args.id,

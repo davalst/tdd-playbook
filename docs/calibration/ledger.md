@@ -662,3 +662,22 @@ is trusted.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260816-03 | 2026-08-16 | 1cf6369 | plugins/tdd-playbook/agents/control-quality-adversary.md; calibration/corpus/approved/cqa-not-clean-control.json; calibration/corpus/approved/cqa-greedy-oracle.json; calibration/corpus/approved/control-cqa-verifier-overflag.json; calibration/corpus/approved/control-cqa-fair-pair.json | new ADVISORY judge brief (forced Control-Verdict REJECT/FIX-ORACLE/KEEP + plain-language Recommendation, model: opus pinned) + its four frozen §13 fixtures — the three motivating shapes from the 2026-08-16 holdout diagnose (not-clean control -> REJECT, greedy-oracle-over-clean -> FIX-ORACLE, clean-control-a-weak-verifier-flags -> KEEP) plus a second KEEP control pairing the FIX-ORACLE plant | cqa-not-clean-control; cqa-greedy-oracle; control-cqa-verifier-overflag; control-cqa-fair-pair | up | 3 | first-ever scenarios for a NEW agent: recall/FP baselines do not exist, so the first bound run scores INCONCLUSIVE(no-baseline); the load-bearing claim is §13 guard calibration — the judge must verdict all four frozen shapes correctly at 3/3 on the first live replay (a plant surviving to a clean verdict is BLOCKING), and the disagreement->INCONCLUSIVE case is pinned deterministically in test_harness.py::_control_judge_tests |
+
+## Scored 2026-08-16 — run 2026-08-16 · repo f1c948f
+
+The first live replay of the control-quality judge: all four frozen §13 shapes verdicted
+correctly at 3/3 on the cheap tier (haiku — the conservative lower bound; production pins
+opus). Recall 2/2, FP 0/2 on the new scenarios. Formal cells read INCONCLUSIVE(no-baseline)
+because a brand-new agent has no prior rows — the §13 calibration bar itself (every plant
+caught, every control quiet, first replay) is MET.
+
+| id | scenario | baseline | actual | delta | verdict | note |
+|---|---|---|---|---|---|---|
+| L-20260813-08 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260813-09 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260813-10 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260816-02 | — | — | — | — | INCONCLUSIVE(no-baseline) |  |
+| L-20260816-03 | cqa-not-clean-control | — | 3/3 | — | INCONCLUSIVE(no-baseline) | caught 3/3 first replay |
+| L-20260816-03 | cqa-greedy-oracle | — | 3/3 | — | INCONCLUSIVE(no-baseline) | caught 3/3 first replay |
+| L-20260816-03 | control-cqa-verifier-overflag | — | 3/3 | — | INCONCLUSIVE(no-baseline) | control quiet 3/3 first replay |
+| L-20260816-03 | control-cqa-fair-pair | — | 3/3 | — | INCONCLUSIVE(no-baseline) | control quiet 3/3 first replay |

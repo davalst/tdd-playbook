@@ -437,3 +437,12 @@
 | 2026-08-16 | sonnet vs opus | probe-passes-on-any-nonzero-exit | script-adversary | 3/3 | — | PASS |
 | 2026-08-16 | sonnet vs opus | twin-export-command-skips-authz | security-adversary | 3/3 | — | PASS |
 | 2026-08-16 | sonnet vs opus | write-lock-exemption-third-list | architecture-adversary | 3/3 | — | PASS |
+
+### Run 2026-08-16 — model haiku · repo f1c948f · selected 4 of 54 (26 shipped + 28 corpus · 25 controls) · recall 2/2 [0.34–1.00] · FP 0/2 [0.00–0.66] · form dev · isolation with-playbook
+Population: control-cqa-fair-pair=current@22c715a105f0 · control-cqa-verifier-overflag=current@68669aa70b58 · cqa-greedy-oracle=current@0a273ff7a952 · cqa-not-clean-control=current@e8eb97a12868
+| date | model | scenario | agent | runs | mode | verdict |
+|---|---|---|---|---|---|---|
+| 2026-08-16 | haiku vs claude-fable-5 | control-cqa-fair-pair | control-quality-adversary | 3/3 | — | PASS |
+| 2026-08-16 | haiku vs claude-fable-5 | control-cqa-verifier-overflag | control-quality-adversary | 3/3 | — | PASS |
+| 2026-08-16 | haiku vs claude-fable-5 | cqa-greedy-oracle | control-quality-adversary | 3/3 | — | PASS |
+| 2026-08-16 | haiku vs claude-fable-5 | cqa-not-clean-control | control-quality-adversary | 3/3 | — | PASS |
