@@ -1669,6 +1669,44 @@ def _plant_form_tests():
     except pf.RegisterUnreadable:
         check("forms: PLANTED a misshaped row REFUSES (never silently dropped)", True)
 
+    # --- D0: status/supersede schema migration (back-compat) ---
+    legacy = pf.parse_register(good)[0]
+    check("D0: a legacy 5-cell row defaults status='current' and no supersede link",
+          legacy.get("status") == "current" and legacy.get("supersedes") in (None, "", []),
+          legacy)
+    seven = ("## Entries\n\n"
+             "| date | plant_id | form | content_sha256 | reason | status | supersedes |\n"
+             "|---|---|---|---|---|---|---|\n"
+             "| 2026-08-16 | p2 | holdout | {} | superseding a bad control | current | p1 |\n"
+             .format("b" * 64))
+    e2 = pf.parse_register(seven)[0]
+    check("D0: a 7-cell row parses status + supersedes",
+          e2["status"] == "current" and e2["supersedes"] == "p1", e2)
+    try:
+        pf.parse_register(good.replace("| initial |", "| initial | current |"))  # 6 cells
+        check("D0: a 6-cell (half-migrated) row REFUSES — 5 or 7 only", False)
+    except pf.RegisterUnreadable:
+        check("D0: a 6-cell (half-migrated) row REFUSES — 5 or 7 only", True)
+    row = pf.format_register_row("2026-08-16", "p3", "holdout", "c" * 64,
+                                 "kept as a known over-flag", status="known-overflag",
+                                 supersedes="")
+    back = pf.parse_register("## Entries\n\n" + pf.ENTRIES_TABLE + row)[0]
+    check("D0: format_register_row(status=...) round-trips through parse_register",
+          back["status"] == "known-overflag" and back["plant_id"] == "p3", back)
+    check("D0: format_register_row still defaults to a valid 'current' row (existing 5-arg callers)",
+          '| current |' in pf.format_register_row("2026-08-16", "p4", "holdout", "d" * 64, "x"))
+    check("D0: ENTRIES_TABLE header names the status + supersedes columns",
+          "status" in pf.ENTRIES_TABLE and "supersedes" in pf.ENTRIES_TABLE, pf.ENTRIES_TABLE)
+    # status vocabulary + supersede-graph integrity
+    bad_status = [{"plant_id": "x", "form": "holdout", "reason": "r", "content_sha256": "e" * 64,
+                   "status": "bogus", "supersedes": ""}]
+    check("D0: form_problems flags an unknown status value",
+          any("status" in p for p in pf.form_problems(bad_status, {"x": "e" * 64})), )
+    dangling = [{"plant_id": "y", "form": "holdout", "reason": "r", "content_sha256": "f" * 64,
+                 "status": "current", "supersedes": "no-such-id"}]
+    check("D0: form_problems flags a dangling supersedes link",
+          any("supersed" in p for p in pf.form_problems(dangling, {"y": "f" * 64})), )
+
     # --- the real repo ---
     resolved_real = pf.resolve_forms(
         pf.parse_register(open(os.path.join(REPO, pf.REGISTER)).read()))

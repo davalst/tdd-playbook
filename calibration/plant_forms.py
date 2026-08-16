@@ -98,11 +98,19 @@ def parse_register(text):
         c = _cells(line)
         if not c or not c[0] or c[0] == "date" or set(c[0]) <= set("-: "):
             continue
-        if len(c) != 5:
+        # D0 (2026-08-16): the register migrated from 5 cells to 7 (adds `status` +
+        # `supersedes`) so an approved body can be SUPERSEDED (retired to legacy-invalid + a
+        # replacement lands) instead of edited in place — bodies are immutable. A LEGACY 5-cell
+        # row is a `current` body with no supersede link; 6 is a half-migrated row and REFUSES
+        # (a silently-dropped column is exactly the kind of quiet reclassification this parser
+        # raises to prevent).
+        if len(c) not in (5, 7):
             raise RegisterUnreadable(
-                "register row needs 5 cells, got {}: {}".format(len(c), line[:80]))
+                "register row needs 5 (legacy) or 7 cells, got {}: {}".format(len(c), line[:80]))
         out.append({"date": c[0], "plant_id": c[1], "form": c[2],
-                    "content_sha256": c[3], "reason": c[4]})
+                    "content_sha256": c[3], "reason": c[4],
+                    "status": c[5] if len(c) == 7 else "current",
+                    "supersedes": c[6] if len(c) == 7 else ""})
     return out
 
 
@@ -110,14 +118,23 @@ def parse_register(text):
 # cannot drift between writer and reader (holdout.cmd_approve_holdout is the first programmatic
 # writer of this schema). `_cells` un-escapes `\|`; this escapes it. Keep the two in lockstep.
 ENTRIES_SECTION = "## Entries"
-ENTRIES_TABLE = ("| date | plant_id | form | content_sha256 | reason |\n"
-                 "| --- | --- | --- | --- | --- |\n")
+ENTRIES_TABLE = ("| date | plant_id | form | content_sha256 | reason | status | supersedes |\n"
+                 "| --- | --- | --- | --- | --- | --- | --- |\n")
+
+# The status of a body in the vault. `current` is the trustworthy population; `legacy-invalid`
+# is a superseded (retired) body kept for history but EXCLUDED from the current recall/FP
+# denominator; `known-overflag` is a genuinely-clean control a verifier over-flags — COUNTED (a
+# real, tracked weakness the flag documents, never hides); `asymmetric` labels a rare non-paired
+# retire. Bodies are never edited: a fix lands as a NEW body that `supersedes` the old id.
+VALID_STATUS = ("current", "legacy-invalid", "known-overflag", "asymmetric")
 
 
-def format_register_row(date, plant_id, form, content_sha256, reason):
-    """One register row that parse_register reads back exactly (pipe-escaped)."""
+def format_register_row(date, plant_id, form, content_sha256, reason,
+                        status="current", supersedes=""):
+    """One register row that parse_register reads back exactly (pipe-escaped). status/supersedes
+    default so existing 5-arg callers emit a valid `current` row (forward-compatible 7-cell)."""
     return "| " + " | ".join(str(c).replace("|", "\\|") for c in
-                             (date, plant_id, form, content_sha256, reason)) + " |\n"
+                             (date, plant_id, form, content_sha256, reason, status, supersedes)) + " |\n"
 
 
 def resolve_forms(entries):
@@ -172,10 +189,21 @@ def form_problems(entries, shas):
     """Schema + the name-keyed-authorization rule. `shas` is injected so the check is
     testable without a corpus — a check nobody can plant against is not a check."""
     out = []
+    ids = {e["plant_id"] for e in entries}
     for e in entries:
         i = e["plant_id"]
         if e["form"] not in FORMS:
             out.append("{}: form must be one of {}".format(i, "|".join(FORMS)))
+        status = e.get("status", "current")
+        if status not in VALID_STATUS:
+            out.append("{}: status must be one of {}".format(i, "|".join(VALID_STATUS)))
+        sup = e.get("supersedes") or ""
+        if sup:
+            if sup == i:
+                out.append("{}: supersedes itself (a supersession cycle)".format(i))
+            elif sup not in ids:
+                out.append("{}: supersedes '{}' but no register entry carries that id "
+                           "(a dangling supersession link)".format(i, sup))
         if not e["reason"]:
             out.append("{}: an assignment with no reason is not auditable".format(i))
         h = e["content_sha256"]

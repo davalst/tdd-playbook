@@ -26,3 +26,4 @@ by a byte-identity check at the end of that suite. The two rows above are the re
 the first genuine guard-response cycle, and its honest reading is 0 of 7 accounted.
 | 2026-08-12 | tagguard | 7 | 3 | 4 | 1 |
 | 2026-08-12 | testlock | 1 | 1 | 0 | 0 |
+| 2026-08-16 | testweaken | 1 | 0 | 1 | 0 |

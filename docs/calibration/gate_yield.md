@@ -39,3 +39,6 @@ DATED CORRECTION (v1.27, pre-fix sha 119e2de): rows on or before 2026-08-05 have
 | 2026-08-16 | exitcode | 0 | 20 | 0 | 0 | 0 |
 | 2026-08-16 | overmock | 0 | 0 | 0 | 1 | 0 |
 | 2026-08-16 | exitcode | 0 | 7 | 0 | 0 | 0 |
+| 2026-08-16 | exhaustive | 0 | 0 | 0 | 1 | 0 |
+| 2026-08-16 | exitcode | 0 | 27 | 0 | 0 | 0 |
+| 2026-08-16 | testweaken | 1 | 0 | 0 | 0 | 0 |
