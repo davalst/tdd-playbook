@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-15-holdout-authoring-live-usability",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "341411e3043431b6cd4fc6f1bbbffee277138957",
+    "head": "67aaf0f391b605eaf66138dd223b4d57663fb581"
+  },
+  "reviewers": [
+    "live-dogfooding",
+    "tripwire-auditor"
+  ],
+  "findings": [
+    {
+      "id": "AUTHOR-OPAQUE-REJECT-CATEGORY",
+      "severity": "P2",
+      "summary": "Live usage (first real `holdout author`): every generated plant was rejected with the single opaque category `invalid-schema`, which names the problem but not the fix (adoption S40). The egress lock had collapsed ALL validate_scenario failures into one bucket, when most reasons (wrong agent, edits that don't match the fixture, a missing field) are safe to show — only the oracle regex needs hiding.",
+      "evidence": [
+        "calibration/author_plants.py:158"
+      ],
+      "status": "incorporated",
+      "disposition": "Added author_plants.reject_category: actionable, oracle-SAFE categories (unknown-agent / edits-do-not-apply / bad-oracle-regex [names it, hides the pattern] / missing-required-field / control-schema / duplicate-id). generate_accepted_pairs uses it. Tested: bad plant -> its real category; bad-regex -> category with NO pattern; unknown-agent/edits-do-not-apply named.",
+      "class": "deterministic",
+      "recurrence_key": "opaque-reject-category"
+    },
+    {
+      "id": "AUTHOR-UNKNOWN-AGENT-WEAK-CONSTRAINT",
+      "severity": "P2",
+      "summary": "Live usage: two consecutive `holdout author` runs rejected all 4 plants as unknown-agent — the adversary model invented plausible verifier names (`authorization-verifier`, etc.) because the allowed 12-name roster sat far away in a parenthetical, not at the `agent` field spec.",
+      "evidence": [
+        "calibration/author_plants.py:118"
+      ],
+      "status": "incorporated",
+      "disposition": "adversary_prompt now hard-constrains the agent field IN PLACE: `MUST be EXACTLY one of: <roster> — copy one verbatim, do NOT invent a name … an authz/logic/claim defect maps to claims-verifier or security-adversary`. Verified live (the next run produced valid agents, 4 proposed 0 rejected). Pinned by a test asserting the constraint + full roster are in the prompt (caught red-first by the Playbook's own tripwire Stop hook, which flagged the untested source change).",
+      "class": "deterministic",
+      "recurrence_key": "prompt-constraint-far-from-field"
+    },
+    {
+      "id": "RUN-MODEL-FLAG-NOT-FORWARDED",
+      "severity": "P2",
+      "summary": "Live usage: `holdout.py run --vault URL --model sonnet` errored `unrecognized arguments: --model`. argparse.REMAINDER does not capture LEADING options, so the documented forwarding never worked.",
+      "evidence": [
+        "calibration/holdout.py:314"
+      ],
+      "status": "incorporated",
+      "disposition": "Switched to parse_known_args: `run` forwards unknown args (--model/--repeat/…) to run_calibration; author/approve still reject unknowns strictly. Tested both: `run --vault URL --model sonnet --repeat 3` forwards exactly; approve rejects `--bogus`.",
+      "class": "deterministic",
+      "recurrence_key": "argparse-remainder-drops-leading-options"
+    },
+    {
+      "id": "RUN-HOLDOUT-FORM-SELECTION",
+      "severity": "P2",
+      "summary": "Live usage: `holdout.py run` reported `no scenarios selected` — the holdout bodies loaded but run_calibration resolves a scenario's form from the PUBLIC plant-forms.md, which never names them (arch-F4 body containment), so they defaulted to `dev` and `--form holdout` filtered them ALL out. The eval could never run a single holdout plant — the feature was inert end to end.",
+      "evidence": [
+        "calibration/run_calibration.py:834",
+        "calibration/holdout.py:145"
+      ],
+      "status": "incorporated",
+      "disposition": "run_calibration now marks every body loaded from TDD_PLAYBOOK_HOLDOUT_DIR as holdout-form (the vault IS the holdout store, by construction), so --form holdout selects them. Recorded incorporated (not verified_closed) because the exercising test is in calibration/test_harness.py (a fixed gate stage, not suite_glob) per the known RS-P2 closure-evidence constraint. That test drives real run_calibration --form holdout with a holdout body + a confined stub and asserts selection (macOS-gated: a holdout run confines the agent, which needs sandbox-exec — the same reason a holdout eval only runs on the Mac). Proven live: the eval then ran all 4 plants (recall 2/2, FP 2/2).",
+      "class": "deterministic",
+      "recurrence_key": "holdout-bodies-default-to-dev-form"
+    },
+    {
+      "id": "AUTHOR-SILENT-LONG-OP",
+      "severity": "P3",
+      "summary": "Live usage: `holdout author` printed nothing while the adversary model ran (up to a 10-min block), so it looked frozen — the operator asked whether it had hung.",
+      "evidence": [
+        "calibration/author_plants.py:143"
+      ],
+      "status": "incorporated",
+      "disposition": "generate_accepted_pairs now prints `authoring with <model> via <host> … (runs the model; can take a few minutes)` to stderr before the blocking call. Cosmetic; no dedicated assertion (a stderr progress line is not behavior worth pinning).",
+      "class": "judgment",
+      "recurrence_key": "no-progress-on-long-blocking-op"
+    }
+  ]
+}

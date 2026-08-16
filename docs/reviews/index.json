@@ -76,6 +76,10 @@
     {
       "path": "2026-08-15-holdout-authoring-baseline-isolation.json",
       "sha256": "4d4ef49f6483df09c5bf23784d5701884793c4be23aea90c31a8cc6ded3d4a93"
+    },
+    {
+      "path": "2026-08-15-holdout-authoring-live-usability.json",
+      "sha256": "9f1a3aa04e569fc40ebfc71f0c7f40465a6922330e8297c6c2215c808fbfd317"
     }
   ]
 }
