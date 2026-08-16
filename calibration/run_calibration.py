@@ -286,6 +286,12 @@ def stage(scenario):
 
 _EMPHASIS = str.maketrans("", "", "*_`")
 
+# D1 (2026-08-16): the manifest's oracle-normalization pin. `identity` is the shipped
+# default (oracle(normalizer=None) — scoring unchanged); bump this string when the
+# ORACLE-NORMALISATION debt flips the default, so a validation manifest recorded under one
+# scoring regime can never silently predict a reading under another.
+ORACLE_NORMALIZATION_VERSION = "identity-v1"
+
 
 def normalize_for_oracle(output):
     """Strip markdown emphasis (* _ `) and collapse whitespace runs to a single space. The

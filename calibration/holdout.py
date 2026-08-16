@@ -282,6 +282,195 @@ def run_holdout(vault_url, extra_argv=(), *, runner=None, summary=False):
         shutil.rmtree(workdir, ignore_errors=True)
 
 
+# --- D1: the deterministically-SCORED validation gate (trustworthy-holdout-controls) --------
+# WHY: `holdout diagnose` (v1.38.0) proved the FP number was measuring CONTROL-AUTHORING
+# quality, not verifier quality — controls were approved without ever running a verifier
+# against them. The gate closes that: before a body lands, its TARGET verifier runs against
+# it under the SAME execution contract the eval uses. The verifier is an LLM; the SCORING is
+# deterministic (rc.oracle) — the gate is not "LLM-free", it is deterministically scored.
+# Fail-closed: HOLDS/caught only at k/k; a real split is `unstable`, n==0 `inconclusive`,
+# and every non-approvable verdict refuses the landing.
+
+APPROVABLE = ("holds", "caught")
+
+
+def _sha256_file(path):
+    import hashlib
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+def fixture_tree_sha():
+    """Content hash of the staged fixture world (same filter stage() copies with), so the
+    manifest pins WHAT the verifier was shown, not just which scenario name ran."""
+    import hashlib
+    import run_calibration as rc
+    h = hashlib.sha256()
+    for root, dirs, files in os.walk(rc.FIXTURE):
+        dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+        for fn in sorted(files):
+            if fn.endswith((".pyc", ".pyo")):
+                continue
+            p = os.path.join(root, fn)
+            h.update(os.path.relpath(p, rc.FIXTURE).encode())
+            with open(p, "rb") as fh:
+                h.update(fh.read())
+    return h.hexdigest()
+
+
+def host_binary_identity(host_bin):
+    """What binary would actually run: its self-reported version + resolved path. Cheap,
+    structured, and honest — `unknown` when the binary won't answer, never a guess."""
+    path = shutil.which(host_bin) or host_bin
+    try:
+        p = subprocess.run([host_bin, "--version"], capture_output=True, text=True,
+                           timeout=30)
+        first = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()
+        ver = first[0][:120] if first else "unknown"
+    except Exception:
+        ver = "unknown"
+    return "{} @ {}".format(ver, path)
+
+
+def eval_contract(sc, model, *, host="claude", host_bin="claude",
+                  isolation="with-playbook", repeat=None, host_identity=None):
+    """The FULL execution contract a validation runs under. It MUST equal the eval's
+    contract or "holds" doesn't predict the reading — so every axis the eval varies is
+    RECORDED here (a mismatch is auditable, never silent). STRUCTURED-ONLY by construction:
+    hashes and labels, no fixture text, no oracle regexes."""
+    import run_calibration as rc
+    return {
+        "agent": sc["agent"], "model": model, "host": host,
+        "host_binary_identity": (host_identity if host_identity is not None
+                                 else host_binary_identity(host_bin)),
+        "isolation": isolation,
+        "max_turns": rc.turns_for(sc),
+        "repeat": int(repeat or rc.DEFAULT_REPEAT),
+        "calibration_args": os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", ""),
+        "fixture_sha256": fixture_tree_sha(),
+        "runner_source_sha256": _sha256_file(os.path.join(HERE, "host_runner.py")),
+        "oracle_source_sha256": _sha256_file(RUNNER),
+        "oracle_normalization_version": rc.ORACLE_NORMALIZATION_VERSION,
+        "verifier_brief_sha256": _sha256_file(os.path.join(
+            os.path.dirname(HERE), "plugins", "tdd-playbook", "agents",
+            sc["agent"] + ".md")),
+    }
+
+
+def validation_verdict(k, n, is_control):
+    """Map rc.verdict_for's closed vocabulary onto the validation decision (ONE seam, no
+    second promotion rule): k/k -> holds/caught · a real split -> unstable · 0/n ->
+    fails/missed · n==0 -> inconclusive. Only holds/caught are approvable."""
+    import run_calibration as rc
+    v = rc.verdict_for("_validation", k, n, last=None)
+    if v == "PASS":
+        return "holds" if is_control else "caught"
+    if v.startswith("INVALID"):
+        return "inconclusive"
+    if v.startswith("**BLOCKING"):
+        return "fails" if is_control else "missed"
+    return "unstable"
+
+
+def validate_item(sc, vault_dir, contract, *, runner=None, body_path=None,
+                  host_bin="claude"):
+    """Run the item's TARGET verifier against it under `contract`, deterministically scored.
+    Returns {"table", "manifest", "reasoning"}:
+      table    — the k/n decision table (the ONLY thing a caller may print);
+      manifest — STRUCTURED-ONLY audit record (hashes, labels, rep outcomes — no raw
+                 output, no oracle regexes), hash-bound to the candidate content;
+      reasoning — the worst failing rep's raw verifier output, held IN MEMORY for the D2
+                 judge and then dropped. Callers must never print or persist it.
+    The spawn is confined away from the vault (TDD_PLAYBOOK_HOLDOUT_DENY=vault_dir) for the
+    duration and the env is restored after. `runner(sc) -> (status, out)` is injectable."""
+    import datetime as _dt
+    import run_calibration as rc
+    is_control = bool(sc.get("control_for"))
+    clean = {kk: vv for kk, vv in sc.items() if kk != "_meta"}
+    reps, reasoning = [], None
+    keep_deny = os.environ.get(rc.HOLDOUT_DENY_ENV)
+    os.environ[rc.HOLDOUT_DENY_ENV] = vault_dir
+    try:
+        for _ in range(int(contract["repeat"])):
+            if runner is not None:
+                status, out = runner(clean)
+            else:
+                root = rc.stage(clean)
+                try:
+                    status, out = rc.run_agent(clean, root, host_bin, contract["model"],
+                                               contract["host"],
+                                               isolation=contract["isolation"])
+                finally:
+                    shutil.rmtree(root, ignore_errors=True)
+            if status == "ok":
+                passed, _probs, mode = rc.oracle(clean, out)
+                reps.append({"passed": passed, "mode": mode, "env": False})
+                if not passed and reasoning is None:
+                    reasoning = out
+            else:
+                reps.append({"passed": False,
+                             "mode": "timeout" if status == "timeout" else "env-failure",
+                             "env": status == "env_failure"})
+    finally:
+        if keep_deny is None:
+            os.environ.pop(rc.HOLDOUT_DENY_ENV, None)
+        else:
+            os.environ[rc.HOLDOUT_DENY_ENV] = keep_deny
+    counted = [r for r in reps if not r["env"]]
+    k = sum(1 for r in counted if r["passed"])
+    n = len(counted)
+    verdict = validation_verdict(k, n, is_control)
+    if body_path:
+        cand_sha = _sha256_file(body_path)
+    else:
+        import hashlib
+        cand_sha = hashlib.sha256(
+            json.dumps(clean, sort_keys=True).encode()).hexdigest()
+    table = {"id": sc["id"], "kind": "control" if is_control else "plant",
+             "k": k, "n": n, "invalid": len(reps) - n, "verdict": verdict,
+             "approvable": verdict in APPROVABLE}
+    manifest = {"schema": 1, "candidate_id": sc["id"],
+                "candidate_content_sha256": cand_sha,
+                "kind": table["kind"], "k": k, "n": n, "verdict": verdict,
+                "reps": reps, "contract": contract,
+                "validated_at": _dt.datetime.now().isoformat(timespec="seconds")}
+    return {"table": table, "manifest": manifest, "reasoning": reasoning}
+
+
+def manifest_sha(manifest):
+    """The hash a human confirmation (D2) is bound to — canonical-JSON sha256, so a
+    confirmation can never be replayed for a different item or a re-edited body."""
+    import hashlib
+    return hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+
+
+def print_validation_table(table):
+    """THE one stdout emission for a validation — allow-list shape (id · kind · k/n ·
+    invalid · verdict), the same egress class as scenario_header. Nothing else prints."""
+    print("VALIDATE {} | {} | {}/{} reps passed | invalid {} | {}".format(
+        table["id"], table["kind"], table["k"], table["n"], table["invalid"],
+        table["verdict"].upper()))
+
+
+def cmd_validate_holdout(vault_dir, plant_id, model, claude_bin, repeat):
+    """Read-only: validate a proposed OR approved body against its target verifier and
+    print the decision table. Moves nothing, writes nothing."""
+    _refuse_in_tree(vault_dir)
+    for sub in ("proposed", "bodies"):
+        path = os.path.join(vault_dir, sub, plant_id + ".json")
+        if os.path.isfile(path):
+            break
+    else:
+        print("no holdout body: {}".format(plant_id))
+        return 1
+    with open(path) as fh:
+        sc = json.load(fh)
+    contract = eval_contract(sc, model, host_bin=claude_bin, repeat=repeat)
+    res = validate_item(sc, vault_dir, contract, body_path=path, host_bin=claude_bin)
+    print_validation_table(res["table"])
+    return 0 if res["table"]["approvable"] else 1
+
+
 # --- authoring into the private vault (adversary model -> proposed/ -> approved bodies/) --------
 def _refuse_in_tree(vault_dir):
     """A local vault checkout must live OUTSIDE the public working tree — a holdout body committed
@@ -358,11 +547,17 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
     return 0 if accepted else 1
 
 
-def cmd_approve_holdout(vault_dir, plant_id, reason):
+def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="claude",
+                        repeat=None, validator=None):
     """Move a reviewed proposed body into bodies/ and record it in the register (form=holdout,
-    real content_sha256). Re-validates (minus dup-id, the proposed file IS the id) and echoes
-    pairing, mirroring author_plants.cmd_approve. Only a COUNT of validation problems is printed
-    (never the problem strings, which can echo oracle regexes)."""
+    real content_sha256). Re-validates (minus dup-id, the proposed file IS the id), echoes
+    pairing, and — D1 — runs the body's TARGET VERIFIER against it under the eval contract:
+    only holds/caught at k/k lands; unstable/fails/missed/inconclusive REFUSE (fail closed;
+    the proposed suspect stays in proposed/ for re-authoring — a never-landed body is
+    DISCARDED or re-authored, never "retired"). The structured manifest persists beside the
+    register; the verifier's raw reasoning stays in memory and is never printed. Only a
+    COUNT of schema problems is printed (never the strings, which can echo oracle regexes).
+    `validator` is injectable for tests; the default is validate_item (the real gate)."""
     import datetime as _dt
     import run_calibration as rc
     _refuse_in_tree(vault_dir)
@@ -384,6 +579,31 @@ def cmd_approve_holdout(vault_dir, plant_id, reason):
     for p in rc.pairing_problems(universe):
         if p.startswith(plant_id + ":"):
             print("pairing note: " + p)   # echo (ids only); its control may still be in proposed/
+    # D1 — the validation gate: the verifier must actually be run against the body before
+    # it can land. Deterministically scored; fail closed on anything but k/k.
+    model = model or os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "sonnet")
+    contract = eval_contract(sc, model, host_bin=claude_bin, repeat=repeat)
+    if validator is None:
+        def validator(s, vd, c, **kw):
+            return validate_item(s, vd, c, host_bin=claude_bin, **kw)
+    res = validator(sc, vault_dir, contract, body_path=src)
+    print_validation_table(res["table"])
+    if not res["table"]["approvable"]:
+        print("REFUSING approval — validation verdict '{}' (only k/k lands; a mixed or "
+              "unmeasured run never does). The body stays in proposed/ — fix it and "
+              "re-propose, or discard it. Run `holdout validate --vault-dir {} {}` to "
+              "re-check.".format(res["table"]["verdict"], vault_dir, plant_id))
+        return 1
+    # TOCTOU: the body on disk must still be the exact bytes validation measured.
+    if plant_forms.plant_sha(src) != res["manifest"]["candidate_content_sha256"]:
+        print("REFUSING approval — the body changed after validation (content sha "
+              "mismatch). Re-validate the current bytes.")
+        return 1
+    manifests = os.path.join(vault_dir, "manifests")
+    os.makedirs(manifests, exist_ok=True)
+    with open(os.path.join(manifests, plant_id + ".json"), "w") as fh:
+        json.dump(res["manifest"], fh, indent=2, sort_keys=True)
+        fh.write("\n")
     bodies = os.path.join(vault_dir, "bodies")
     os.makedirs(bodies, exist_ok=True)
     dst = os.path.join(bodies, plant_id + ".json")
@@ -426,10 +646,26 @@ def main(argv=None):
     a.add_argument("--model", required=True, help="adversary model (>= the doer's tier)")
     a.add_argument("--category", help="focus category for this cycle")
     a.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
-    v = sub.add_parser("approve", help="move a reviewed proposed body into bodies/ + register")
+    v = sub.add_parser("approve", help="validate (run the target verifier under the eval "
+                                       "contract; k/k or it refuses), then move a reviewed "
+                                       "proposed body into bodies/ + register")
     v.add_argument("--vault-dir", required=True)
     v.add_argument("id", help="the proposed plant id to approve")
     v.add_argument("--reason", required=True, help="why this assignment (audit trail)")
+    v.add_argument("--model", default=None,
+                   help="verifier model for the validation gate (default: "
+                        "TDD_PLAYBOOK_CALIBRATION_MODEL or sonnet — MUST match the model "
+                        "your holdout evals use, or 'holds' doesn't predict the reading)")
+    v.add_argument("--repeat", type=int, default=None, help="validation reps (default 3)")
+    v.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
+    w = sub.add_parser("validate", help="READ-ONLY: run a body's target verifier against it "
+                                        "under the eval contract and print the k/n decision "
+                                        "table (moves nothing, writes nothing)")
+    w.add_argument("--vault-dir", required=True)
+    w.add_argument("id", help="the proposed or approved body id to validate")
+    w.add_argument("--model", default=None)
+    w.add_argument("--repeat", type=int, default=None)
+    w.add_argument("--claude-bin", default=os.environ.get("TDD_PLAYBOOK_CLAUDE_BIN", "claude"))
     d = sub.add_parser("diagnose", help="run the holdout eval AND classify each miss "
                                         "(would-pass-normalized vs a genuine wrong verdict vs "
                                         "inconclusive) — read-only triage that says WHAT to fix; "
@@ -449,7 +685,13 @@ def main(argv=None):
     if args.cmd == "author":
         return cmd_author_holdout(args.vault_dir, args.model, args.category, args.claude_bin)
     if args.cmd == "approve":
-        return cmd_approve_holdout(args.vault_dir, args.id, args.reason)
+        return cmd_approve_holdout(args.vault_dir, args.id, args.reason, model=args.model,
+                                   claude_bin=args.claude_bin, repeat=args.repeat)
+    if args.cmd == "validate":
+        return cmd_validate_holdout(
+            args.vault_dir, args.id,
+            args.model or os.environ.get("TDD_PLAYBOOK_CALIBRATION_MODEL", "sonnet"),
+            args.claude_bin, args.repeat)
     return 2
 
 

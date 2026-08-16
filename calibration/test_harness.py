@@ -2907,9 +2907,21 @@ def _holdout_authoring_tests():
         os.makedirs(prop)
         with open(os.path.join(prop, "hauth-plant.json"), "w") as fh:
             json.dump(plant, fh)
+        # (post-D1 the approve gate validates via the live verifier; inject a `caught`
+        # validator here — the gate's own refusal/landing behavior is proven in
+        # _holdout_validation_gate_tests, this test pins the move+register mechanics.)
+        def _caught_validator(sc, vd, c, body_path=None, **kw):
+            return {"table": {"id": sc["id"], "kind": "plant", "k": 3, "n": 3, "invalid": 0,
+                              "verdict": "caught", "approvable": True},
+                    "manifest": {"schema": 1, "candidate_id": sc["id"],
+                                 "candidate_content_sha256": plant_forms.plant_sha(body_path),
+                                 "k": 3, "n": 3, "verdict": "caught", "contract": {},
+                                 "reps": []},
+                    "reasoning": None}
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            code = holdout.cmd_approve_holdout(vault, "hauth-plant", "seed the first holdout")
+            code = holdout.cmd_approve_holdout(vault, "hauth-plant", "seed the first holdout",
+                                               validator=_caught_validator)
         body = os.path.join(vault, "bodies", "hauth-plant.json")
         check("D1.c: approve moves the body to bodies/ and removes proposed/",
               code == 0 and os.path.isfile(body)
@@ -3374,6 +3386,180 @@ def _holdout_status_flow_tests():
                   bl and bl[-1].get("corrected"))
 
 
+def _holdout_validation_gate_tests():
+    """D1 (trustworthy-holdout-controls): a body lands ONLY after its target verifier ran
+    against it under the SAME execution contract the eval uses, deterministically SCORED
+    (rc.oracle) — HOLDS/caught only at k/k; a real split is `unstable`, n==0 is
+    `inconclusive`, and every non-approvable verdict REFUSES approval (fail closed). The
+    manifest is STRUCTURED-ONLY and hash-bound; raw verifier output stays in memory for
+    the judge and never reaches stdout or any file (the eval-time containment class)."""
+    print("\n[holdout validation gate (D1) — deterministically-scored authoring gate]")
+    import contextlib
+    import io
+    import holdout
+    import plant_forms
+    import run_calibration as rc
+
+    SENT = "SENTINEL-RAW-VERIFIER-OUTPUT-xyzzy"
+    control = {"id": "vg-control", "agent": "claims-verifier", "control_for": "vg-plant",
+               "plant": "clean control", "edits": [],
+               "task": "review the module and end with the verdict line",
+               "must_match": [r"Verdict:\s*CLEAN-SENTINEL"],
+               "must_not_match": [r"Verdict:\s*ALARM-SENTINEL"]}
+    plant = {"id": "vg-plant", "agent": "claims-verifier", "plant": "a planted defect",
+             "edits": [], "task": "review the module",
+             "must_match": [r"Verdict:\s*ALARM-SENTINEL"]}
+
+    def runner_seq(outputs):
+        it = iter(outputs)
+        return lambda sc: next(it)
+
+    OK = ("ok", "Verdict: CLEAN-SENTINEL\n" + SENT)
+    BAD = ("ok", "Verdict: ALARM-SENTINEL\n" + SENT)
+    ENV = ("env_failure", "[env failure: the CLI refused]")
+
+    with tempfile.TemporaryDirectory() as vault:
+        contract = holdout.eval_contract(control, "sonnet", host_identity="test @ /bin/claude",
+                                         repeat=3)
+        # --- the k/n decision table ---
+        r = holdout.validate_item(control, vault, contract, runner=runner_seq([OK, OK, OK]))
+        check("VGATE: a control the verifier passes k/k HOLDS (approvable)",
+              r["table"]["verdict"] == "holds" and r["table"]["approvable"]
+              and r["table"]["k"] == 3 and r["table"]["n"] == 3, r["table"])
+        r2 = holdout.validate_item(control, vault, contract, runner=runner_seq([OK, BAD, OK]))
+        check("VGATE: a REAL pass/fail split is `unstable` — never collapsed to holds/fails "
+              "— and REFUSES approval",
+              r2["table"]["verdict"] == "unstable" and not r2["table"]["approvable"],
+              r2["table"])
+        r3 = holdout.validate_item(control, vault, contract, runner=runner_seq([ENV, ENV, ENV]))
+        check("VGATE: env-failure-only (n==0) is `inconclusive` and REFUSES approval "
+              "(never land on an unmeasured run)",
+              r3["table"]["verdict"] == "inconclusive" and not r3["table"]["approvable"]
+              and r3["table"]["invalid"] == 3, r3["table"])
+        r4 = holdout.validate_item(control, vault, contract, runner=runner_seq([BAD, BAD, BAD]))
+        check("VGATE: a control the verifier flags 0/3 `fails` (the broken-control catch)",
+              r4["table"]["verdict"] == "fails" and not r4["table"]["approvable"], r4["table"])
+        rp = holdout.validate_item(plant, vault, contract, runner=runner_seq([BAD, BAD, BAD]))
+        check("VGATE: plants mirror — caught at k/k",
+              rp["table"]["verdict"] == "caught" and rp["table"]["approvable"], rp["table"])
+        rp2 = holdout.validate_item(plant, vault, contract, runner=runner_seq([OK, BAD, BAD]))
+        check("VGATE: a plant on a split is `unstable` (weak), not landable",
+              rp2["table"]["verdict"] == "unstable" and not rp2["table"]["approvable"],
+              rp2["table"])
+
+        # --- the manifest: hash-bound, STRUCTURED-ONLY, full contract ---
+        m = r4["manifest"]
+        need = ("agent", "model", "host", "host_binary_identity", "isolation", "max_turns",
+                "repeat", "calibration_args", "fixture_sha256", "runner_source_sha256",
+                "oracle_source_sha256", "oracle_normalization_version",
+                "verifier_brief_sha256")
+        check("VGATE: the manifest pins the FULL eval contract",
+              all(k in m["contract"] for k in need),
+              [k for k in need if k not in m["contract"]])
+        blob = json.dumps(m)
+        check("VGATE: the manifest is STRUCTURED-ONLY — no raw output",
+              SENT not in blob, blob[:400])
+        check("VGATE: the manifest never carries the oracle regexes",
+              "CLEAN-SENTINEL" not in blob and "ALARM-SENTINEL" not in blob, blob[:400])
+        check("VGATE: the manifest binds the candidate content sha",
+              len(m.get("candidate_content_sha256", "")) == 64, m.get("candidate_content_sha256"))
+        check("VGATE: manifest_sha is deterministic (hash-bound confirmation target)",
+              holdout.manifest_sha(m) == holdout.manifest_sha(json.loads(json.dumps(m))))
+        check("VGATE: the failing verifier's reasoning is handed back IN MEMORY (for the "
+              "judge), not printed or persisted", SENT in (r4["reasoning"] or ""), )
+
+        # --- containment: the spawn is confined away from the vault, and restored after ---
+        seen_env = {}
+        def env_runner(sc):
+            seen_env["deny"] = os.environ.get(rc.HOLDOUT_DENY_ENV)
+            return OK
+        keep_deny = os.environ.get(rc.HOLDOUT_DENY_ENV)
+        holdout.validate_item(control, vault, contract, runner=runner_seq([OK, OK, OK])
+                              if False else env_runner)
+        check("VGATE: the validation spawn is confined (HOLDOUT_DENY = the vault dir)",
+              seen_env.get("deny") == vault, seen_env)
+        check("VGATE: the deny env is RESTORED after validation",
+              os.environ.get(rc.HOLDOUT_DENY_ENV) == keep_deny)
+
+    # --- the approve gate (FLOW §6c: validate-result -> approve decision) ---
+    def stub_validator(verdict, cand_sha=None, approvable=None):
+        def v(sc, vault_dir, contract, runner=None, body_path=None):
+            sha = cand_sha or (plant_forms.plant_sha(body_path) if body_path else "0" * 64)
+            ok = (verdict in holdout.APPROVABLE) if approvable is None else approvable
+            return {"table": {"id": sc["id"], "kind": "control", "k": 3, "n": 3,
+                              "invalid": 0, "verdict": verdict, "approvable": ok},
+                    "manifest": {"schema": 1, "candidate_id": sc["id"],
+                                 "candidate_content_sha256": sha, "k": 3, "n": 3,
+                                 "verdict": verdict, "contract": {}, "reps": []},
+                    "reasoning": "in-memory only " + SENT}
+        return v
+
+    with tempfile.TemporaryDirectory() as vault:
+        prop = os.path.join(vault, "proposed")
+        os.makedirs(prop)
+        with open(os.path.join(prop, "vg-plant.json"), "w") as fh:
+            json.dump(plant, fh)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_approve_holdout(vault, "vg-plant", "seed",
+                                               validator=stub_validator("caught"))
+        check("VGATE FLOW validate->approve: a `caught` verdict LANDS the body",
+              code == 0 and os.path.isfile(os.path.join(vault, "bodies", "vg-plant.json")),
+              (code, buf.getvalue()[-300:]))
+        check("VGATE: approval persists the STRUCTURED manifest beside the register (audit)",
+              os.path.isfile(os.path.join(vault, "manifests", "vg-plant.json")))
+        mtext = open(os.path.join(vault, "manifests", "vg-plant.json")).read()
+        check("VGATE: the persisted manifest carries no raw output and no oracle regex",
+              SENT not in mtext and "ALARM-SENTINEL" not in mtext, mtext[:300])
+        check("VGATE EGRESS: approve stdout never echoes the verifier's raw reasoning",
+              SENT not in buf.getvalue(), buf.getvalue()[-300:])
+
+        # non-approvable verdicts BLOCK the move (fail closed)
+        with open(os.path.join(prop, "vg-control.json"), "w") as fh:
+            json.dump(control, fh)
+        for bad in ("unstable", "fails", "inconclusive"):
+            buf2 = io.StringIO()
+            with contextlib.redirect_stdout(buf2):
+                code2 = holdout.cmd_approve_holdout(vault, "vg-control", "seed",
+                                                    validator=stub_validator(bad))
+            check("VGATE: verdict `{}` REFUSES approval and leaves the body in proposed/"
+                  .format(bad),
+                  code2 == 1 and os.path.isfile(os.path.join(prop, "vg-control.json"))
+                  and not os.path.isfile(os.path.join(vault, "bodies", "vg-control.json")),
+                  (code2, buf2.getvalue()[-200:]))
+            check("VGATE EGRESS: the refusal prints the table, never the reasoning ({})"
+                  .format(bad), SENT not in buf2.getvalue(), buf2.getvalue()[-200:])
+
+        # TOCTOU: a body edited after validation invalidates the manifest
+        buf3 = io.StringIO()
+        with contextlib.redirect_stdout(buf3):
+            code3 = holdout.cmd_approve_holdout(
+                vault, "vg-control", "seed",
+                validator=stub_validator("holds", cand_sha="d" * 64))
+        check("VGATE TOCTOU: a candidate-sha mismatch at approval REFUSES the move "
+              "(re-validate)", code3 == 1
+              and os.path.isfile(os.path.join(prop, "vg-control.json")),
+              (code3, buf3.getvalue()[-200:]))
+
+        # no raw-output file persists ANYWHERE in the vault after the whole sequence
+        leaked = []
+        for root, _dirs, files in os.walk(vault):
+            for fn in files:
+                try:
+                    if SENT in open(os.path.join(root, fn), errors="replace").read():
+                        leaked.append(os.path.join(root, fn))
+                except OSError:
+                    pass
+        check("VGATE EGRESS: no raw-output file persists anywhere in the vault", not leaked,
+              leaked)
+
+    # --- the read-only validate subcommand is wired ---
+    hp = subprocess.run([sys.executable, os.path.join(HERE, "holdout.py"),
+                         "validate", "--help"], capture_output=True, text=True, timeout=30)
+    check("VGATE: holdout exposes a read-only `validate` subcommand (--vault-dir, id)",
+          hp.returncode == 0 and "--vault-dir" in hp.stdout, (hp.returncode, hp.stdout[-160:]))
+
+
 def import_pf_table():
     import plant_forms as pf
     return pf.ENTRIES_TABLE
@@ -3394,6 +3580,7 @@ def main():
     print("Calibration-harness calibration")
     _diagnose_tests()
     _holdout_status_flow_tests()
+    _holdout_validation_gate_tests()
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()
