@@ -1,0 +1,28 @@
+{
+ "schema_version": 1,
+ "id": "2026-08-16-v1.39.0-release",
+ "kind": "implementation",
+ "plan": "docs/plans/gated/2026-08-16-trustworthy-holdout-controls.md",
+ "review_range": {
+  "base": "a94f1212f0a39d9fce513377cc75979093f40c6a",
+  "head": "2fb7b31f9ed2c0514d5496d3aaa59e62a46959b0"
+ },
+ "reviewers": [
+  "release-gate"
+ ],
+ "findings": [
+  {
+   "id": "V1.39.0-RELEASE-BUMP",
+   "severity": "P3",
+   "summary": "The trustworthy-holdout-controls span (3f2e7e0..a94f121) sat on main unreleased; the plugin cache deploys the latest TAG, so downstream vendored copies would keep reporting 1.38.0 and the new validation gate, judge brief, and security hardening would never reach them (the committed-not-deployed gap). Cutting v1.39.0 bundles it.",
+   "evidence": [
+    "CHANGELOG.md",
+    "plugins/tdd-playbook/.claude-plugin/plugin.json"
+   ],
+   "status": "incorporated",
+   "disposition": "Version bumped 1.38.0 -> 1.39.0 across all four identity files (plugin.json, marketplace.json, claude+codex adapter.json) + CHANGELOG; test_release_version_identity pins all four EQUAL (96/96 installer checks green). The span itself is covered by the closed record 2026-08-16-trustworthy-holdout-controls (11 findings, 3 verified_closed); this record covers the identity-file + CHANGELOG bump commit. Release-gate preconditions run fresh: check_scoreboard_integrity --baseline-rev v1.38.0 exit 0; scratch-repo install_into_repo.py parity (bins + .claude/.gitignore present, no unexpanded CLAUDE_PLUGIN_ROOT); --doctor guards-live heartbeat current (one PRE-EXISTING standing note: exitcode demoted to warn in settings.local.json, unchanged by this release). Gate GREEN on the shipping commit; David tags v1.39.0 after CI confirms on the pushed sha (the model cannot tag).",
+   "class": "judgment",
+   "recurrence_key": "unreleased-work-not-deployed"
+  }
+ ]
+}

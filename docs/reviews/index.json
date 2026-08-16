@@ -120,6 +120,10 @@
         {
             "path": "2026-08-16-trustworthy-holdout-controls.json",
             "sha256": "574752d2cc1df744dc6d3d3f3a1206c671e0022f34a20d3a77684c5c79c598a3"
+        },
+        {
+            "path": "2026-08-16-v1.39.0-release.json",
+            "sha256": "22ce3b783850142c3b56def81a307168a0e1b6b764dc2992e1c30069dfc7fc61"
         }
     ]
 }

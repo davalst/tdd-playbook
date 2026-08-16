@@ -40,7 +40,8 @@
 - `docs/reviews/2026-08-16-trustworthy-holdout-controls.json` — `574752d2cc1df744dc6d3d3f3a1206c671e0022f34a20d3a77684c5c79c598a3`
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
 - `docs/reviews/2026-08-16-v1.38.0-release.json` — `b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e`
-- `docs/reviews/index.json` — `457579d7298de2c8495f741615be3a42a33405af1278e0084232a810376caa1a`
+- `docs/reviews/2026-08-16-v1.39.0-release.json` — `22ce3b783850142c3b56def81a307168a0e1b6b764dc2992e1c30069dfc7fc61`
+- `docs/reviews/index.json` — `d2073480f39d4ebfa6fd6dbc4341defddcd66ed498dd61dac61cc9e8ba58eb95`
 
 ## Gate surface
 
@@ -143,8 +144,8 @@
 
 ## Adversarial review records
 
-- Review records: 30. Findings: 155.
-- `incorporated`: 66
+- Review records: 31. Findings: 156.
+- `incorporated`: 67
 - `open`: 6
 - `rejected`: 3
 - `verified_closed`: 80
