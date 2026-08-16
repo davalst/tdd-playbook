@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-15-holdout-run-summary",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "222d63e9ec5534e523c6c89da4f002f4fa39202c",
+    "head": "86910a7a8af8776e9f60b9f49daa8964cd633b5f"
+  },
+  "reviewers": [
+    "self-review",
+    "tripwire-auditor"
+  ],
+  "findings": [
+    {
+      "id": "SUMMARY-SMALL-N-WITHHELD",
+      "severity": "P2",
+      "summary": "The --summary mode's whole risk is over-claiming: a dev-vs-holdout gap read off 2 plants is noise dressed as signal (the first real run was recall 2/2 with a Wilson interval of [0.34-1.00]). A naive comparison would have printed a scary/false 'below dev' verdict on nothing.",
+      "evidence": [
+        "calibration/holdout.py:196"
+      ],
+      "status": "incorporated",
+      "disposition": "holdout_summary_lines WITHHOLDS the comparison entirely when n<8 ('too small to compare; author more plants'), and only emits WATCH when holdout recall is materially (>=15 points) below dev WITH enough plants. It reuses history_format.interval_cell (Wilson) rather than a bare point estimate, so the reading itself carries its uncertainty. Tested three ways: small-n withholds, enough-plants-and-below-dev -> WATCH, and the reading shows the interval. Recorded incorporated (tests in the calibration harness, not suite_glob, per the RS-P2 constraint).",
+      "class": "judgment",
+      "recurrence_key": "small-n-comparison-overclaim"
+    },
+    {
+      "id": "SUMMARY-EGRESS-SAFE",
+      "severity": "P3",
+      "summary": "A --summary run reads the calibration history and the run's stdout to build its reading — both must stay answer-key-safe (no plant/oracle text).",
+      "evidence": [
+        "calibration/holdout.py:157"
+      ],
+      "status": "incorporated",
+      "disposition": "_filtered_run_lines keeps ONLY scenario headers (id+agent, which the egress allow-list already strips of plant text in holdout mode), verdict lines (runs/mode counts), and the Calibration reading — it drops everything else. holdout_summary_lines reads history rows, which carry ids + counts only (bodies never enter history, arch-F4). No oracle/plant text on the summary path.",
+      "class": "deterministic",
+      "recurrence_key": "summary-reads-must-stay-egress-safe"
+    }
+  ]
+}

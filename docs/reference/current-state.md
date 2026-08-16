@@ -28,9 +28,10 @@
 - `docs/reviews/2026-08-14-review-as-judgment-surface.json` — `013879179a2bcb26b44eab09064ff0c0b7311a387536fd78ebe66f951e6ddf0f`
 - `docs/reviews/2026-08-15-holdout-authoring-baseline-isolation.json` — `4d4ef49f6483df09c5bf23784d5701884793c4be23aea90c31a8cc6ded3d4a93`
 - `docs/reviews/2026-08-15-holdout-authoring-live-usability.json` — `9f1a3aa04e569fc40ebfc71f0c7f40465a6922330e8297c6c2215c808fbfd317`
+- `docs/reviews/2026-08-15-holdout-run-summary.json` — `199507cf1866d943c99b9d90daf7646a2830ec3e025b167806508da7097a1376`
 - `docs/reviews/2026-08-15-two-tier-calibration-part1.json` — `e136a85d87ce608c43177953945d2349574508528733f962e4ea9629336231a5`
 - `docs/reviews/2026-08-15-two-tier-calibration-part2-controller.json` — `2451276d4660eb33254f542ea4e04df2f18114ccb302e9d001da4f17af79278c`
-- `docs/reviews/index.json` — `e89446a37ecc777d424721765ca98994b1f04310209d29fbd1aa0e2a3a9603b9`
+- `docs/reviews/index.json` — `44c0f0baefb721302aa7796e45a6786f2d870e0183be61b4ac69329fa1491d0d`
 
 ## Gate surface
 
@@ -128,8 +129,8 @@
 
 ## Adversarial review records
 
-- Review records: 20. Findings: 126.
-- `incorporated`: 42
+- Review records: 21. Findings: 128.
+- `incorporated`: 44
 - `open`: 6
 - `rejected`: 3
 - `verified_closed`: 75

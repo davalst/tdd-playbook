@@ -80,6 +80,10 @@
     {
       "path": "2026-08-15-holdout-authoring-live-usability.json",
       "sha256": "9f1a3aa04e569fc40ebfc71f0c7f40465a6922330e8297c6c2215c808fbfd317"
+    },
+    {
+      "path": "2026-08-15-holdout-run-summary.json",
+      "sha256": "199507cf1866d943c99b9d90daf7646a2830ec3e025b167806508da7097a1376"
     }
   ]
 }
