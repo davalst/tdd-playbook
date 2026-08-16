@@ -1,0 +1,20 @@
+{
+  "id": "cqa-not-clean-control",
+  "agent": "control-quality-adversary",
+  "plant": "FROZEN SHAPE 1 (judge must REJECT): a control that is NOT actually clean w.r.t. its own task's question \u2014 the code skips exactly the guard the task asks the verifier to check, so the verifier was RIGHT to flag it. Motivating incident: an approved holdout control with an unguarded price argument, flagged by the verifier and scored as a false positive (2026-08-16 diagnose run).",
+  "edits": [],
+  "task": "A calibration control was FLAGGED \u2014 the verifier refused to pass it, or the oracle failed a correct-looking answer. Judge it per your brief (three questions in order: is the control clean w.r.t. its own task? is the oracle fair? else the verifier over-flagged). The payload is below. Cite the exact edit line / task phrase / regex that decides it, then end with exactly one forced `Control-Verdict:` line and a one-sentence plain-language `Recommendation:`.\n\nPAYLOAD:\n{\n  \"control\": {\n    \"edits\": [\n      {\n        \"file\": \"pricing.py\",\n        \"append\": \"def apply_discount(price, pct):\\n    return price - price * pct / 100\\n\"\n      }\n    ],\n    \"task\": \"Verify apply_discount guards invalid inputs (negative price, pct outside 0-100). End with `Verdict: GUARDED` or `Verdict: UNGUARDED`.\",\n    \"must_match\": [\n      \"Verdict:\\\\s*GUARDED\"\n    ],\n    \"must_not_match\": [\n      \"Verdict:\\\\s*UNGUARDED\"\n    ]\n  },\n  \"verifier_reasoning\": \"Neither input is validated: a negative pct silently INCREASES the price, and a negative price passes straight through. The task asks exactly this question. Verdict: UNGUARDED\"\n}",
+  "must_match": [
+    "Control-Verdict:\\s*REJECT"
+  ],
+  "must_not_match": [
+    "Control-Verdict:\\s*(KEEP|FIX-ORACLE)"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-16",
+    "status": "approved",
+    "approved_at": "2026-08-16",
+    "approved_via": "docs/plans/gated/2026-08-16-trustworthy-holdout-controls.md (D2 frozen judge-calibration fixtures \u2014 the three motivating shapes from the 2026-08-16 holdout diagnose finding, FP 10/10 = control-authoring quality, plus the pair controls)"
+  }
+}

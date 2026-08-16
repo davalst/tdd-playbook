@@ -1,0 +1,21 @@
+{
+  "id": "control-cqa-verifier-overflag",
+  "agent": "control-quality-adversary",
+  "plant": "PAIRED CLEAN CONTROL for cqa-not-clean-control (judge must KEEP): the SAME guarded code, a fair verdict-line-anchored oracle, and a verifier that flagged it anyway on off-task taste (wants bespoke error types). Clean control + fair oracle + real over-flag = a tracked verifier weakness the KEEP flag documents, never hides.",
+  "edits": [],
+  "task": "A calibration control was FLAGGED \u2014 the verifier refused to pass it, or the oracle failed a correct-looking answer. Judge it per your brief (three questions in order: is the control clean w.r.t. its own task? is the oracle fair? else the verifier over-flagged). The payload is below. Cite the exact edit line / task phrase / regex that decides it, then end with exactly one forced `Control-Verdict:` line and a one-sentence plain-language `Recommendation:`.\n\nPAYLOAD:\n{\n  \"control\": {\n    \"edits\": [\n      {\n        \"file\": \"pricing.py\",\n        \"append\": \"def apply_discount(price, pct):\\n    if price < 0 or not 0 <= pct <= 100:\\n        raise ValueError(\\\"invalid discount inputs\\\")\\n    return price - price * pct / 100\\n\"\n      }\n    ],\n    \"task\": \"Verify apply_discount guards invalid inputs (negative price, pct outside 0-100). End with `Verdict: GUARDED` or `Verdict: UNGUARDED`.\",\n    \"must_match\": [\n      \"Verdict:\\\\s*GUARDED\"\n    ],\n    \"must_not_match\": [\n      \"Verdict:\\\\s*UNGUARDED\"\n    ]\n  },\n  \"verifier_reasoning\": \"Raising a bare ValueError is too coarse, and pct == 100 producing a free item feels wrong; I would want dedicated error types before calling this safe. Verdict: UNGUARDED\"\n}",
+  "must_match": [
+    "Control-Verdict:\\s*KEEP"
+  ],
+  "must_not_match": [
+    "Control-Verdict:\\s*REJECT"
+  ],
+  "control_for": "cqa-not-clean-control",
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-16",
+    "status": "approved",
+    "approved_at": "2026-08-16",
+    "approved_via": "docs/plans/gated/2026-08-16-trustworthy-holdout-controls.md (D2 frozen judge-calibration fixtures \u2014 the three motivating shapes from the 2026-08-16 holdout diagnose finding, FP 10/10 = control-authoring quality, plus the pair controls)"
+  }
+}

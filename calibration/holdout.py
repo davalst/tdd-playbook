@@ -44,6 +44,7 @@ needs to defend against the owner's own tooling.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -452,6 +453,90 @@ def print_validation_table(table):
         table["verdict"].upper()))
 
 
+# --- D2: the control-quality judge — ADVISORY, k/k, human-confirmed -------------------------
+# The judge exists so David never reads code: it explains WHY a flagged control is suspect
+# and RECOMMENDS one of three actions defined by the motivating shapes (holdout diagnose,
+# 2026-08-16 — FP 10/10 measured control-authoring quality, not verifier quality):
+#   REJECT      — the control is NOT actually clean w.r.t. its own task's question;
+#   FIX-ORACLE  — the code is clean but the oracle is unfair (a greedy prose regex a
+#                 correct explanation trips; anchor oracles on the verdict line);
+#   KEEP        — control clean AND oracle fair: the verifier genuinely over-flags — a
+#                 real, tracked weakness (-> known-overflag, counted, never hidden).
+# The judge NEVER mutates the corpus. Custody (ONE model): it must read the oracle to judge
+# it — authoring-time exposure, the same class as the adversary AUTHOR — distinct from the
+# tighter eval-time containment. Only structured labels+hashes persist; the free-text
+# rationale is shown transiently for the y/n and never durably persisted.
+
+JUDGE_AGENT = "control-quality-adversary"
+_JUDGE_VERDICT = re.compile(r"Control-Verdict:\s*(REJECT|FIX-ORACLE|KEEP)", re.IGNORECASE)
+
+
+def parse_judge_verdict(text):
+    """The FORCED closed-vocabulary line, or None. Free prose never becomes a verdict."""
+    m = _JUDGE_VERDICT.search(text or "")
+    return m.group(1).upper() if m else None
+
+
+def judge_payload(sc, reasoning):
+    """What the judge reads: the control (edits/task/oracle) + the verifier's reasoning.
+    It cannot judge fairness blind — this IS the accepted authoring-time exposure."""
+    return json.dumps(
+        {"control": {k: sc.get(k) for k in
+                     ("id", "agent", "control_for", "plant", "edits", "task",
+                      "must_match", "must_not_match") if k in sc},
+         "verifier_reasoning": reasoning},
+        indent=2)
+
+
+def judge_control(sc, reasoning, *, model="opus", host="claude", claude_bin="claude",
+                  k=3, invoke=None, deny_read=None):
+    """Run the judge k times; require k/k agreement on the forced verdict — any split or
+    unparseable vote is INCONCLUSIVE (no auto-action; §5a oracle-split: an LLM verdict is
+    advisory, never the silent authority on an irreversible change). Returns
+    {"verdict", "votes", "rationale"} — rationale is the last parseable output, held for
+    TRANSIENT display only. `invoke(prompt) -> text` is injectable."""
+    import run_calibration as rc
+    import host_runner
+    from child_env import child_env
+    prompt = (rc.agent_body(JUDGE_AGENT)
+              + "\n\n# ITEM UNDER JUDGMENT (JSON)\n" + judge_payload(sc, reasoning))
+    votes, rationale = [], None
+    for _ in range(int(k)):
+        if invoke is not None:
+            out = invoke(prompt)
+        else:
+            try:
+                res = host_runner.invoke(
+                    host, claude_bin, prompt, model, HERE, timeout=600, env=child_env(),
+                    extra_args=os.environ.get("TDD_PLAYBOOK_CALIBRATION_ARGS", "").split(),
+                    confine_deny_read=deny_read)
+                out = res.output if res.status == "ok" else ""
+            except Exception:
+                out = ""
+        v = parse_judge_verdict(out or "")
+        votes.append(v)
+        if v is not None:
+            rationale = out
+    agreed = votes and votes[0] is not None and all(v == votes[0] for v in votes)
+    return {"verdict": votes[0] if agreed else "INCONCLUSIVE", "votes": votes,
+            "rationale": rationale}
+
+
+def confirm_disposition(action, msha, *, interactive=None, input_fn=None):
+    """The human-confirm half of an irreversible disposition. True ONLY on an explicit
+    interactive 'y'; non-interactive / no TTY -> ABORT, never auto-proceed. The prompt is
+    BOUND to the manifest content-hash, so a confirmation cannot be replayed for a
+    different item or a re-edited body."""
+    if interactive is None:
+        interactive = sys.stdin.isatty()
+    if not interactive:
+        print("ABORT: '{}' is irreversible and needs an interactive y/n bound to manifest "
+              "{} — re-run in a terminal. Nothing was changed.".format(action, msha[:12]))
+        return False
+    ans = (input_fn or input)("{} — confirm [manifest {}] y/n: ".format(action, msha[:12]))
+    return (ans or "").strip().lower() == "y"
+
+
 def cmd_validate_holdout(vault_dir, plant_id, model, claude_bin, repeat):
     """Read-only: validate a proposed OR approved body against its target verifier and
     print the decision table. Moves nothing, writes nothing."""
@@ -548,7 +633,7 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
 
 
 def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="claude",
-                        repeat=None, validator=None):
+                        repeat=None, validator=None, judge=None):
     """Move a reviewed proposed body into bodies/ and record it in the register (form=holdout,
     real content_sha256). Re-validates (minus dup-id, the proposed file IS the id), echoes
     pairing, and — D1 — runs the body's TARGET VERIFIER against it under the eval contract:
@@ -593,6 +678,22 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
               "unmeasured run never does). The body stays in proposed/ — fix it and "
               "re-propose, or discard it. Run `holdout validate --vault-dir {} {}` to "
               "re-check.".format(res["table"]["verdict"], vault_dir, plant_id))
+        # D2 — hand the in-memory reasoning to the ADVISORY judge so the operator learns
+        # WHY without reading code. Transient display only; a judge failure never masks
+        # the refusal (the deterministic block above needs no confirmation — nothing
+        # irreversible happened, the body simply did not land).
+        if res.get("reasoning") and judge is not False:
+            try:
+                jr = (judge or judge_control)(sc, res["reasoning"],
+                                              deny_read=[vault_dir])
+                print("JUDGE (advisory): {} — votes {}".format(
+                    jr["verdict"], "/".join(str(v) for v in jr["votes"])))
+                if jr.get("rationale"):
+                    print("--- judge rationale (transient — not persisted) ---")
+                    print(jr["rationale"].strip()[:2000])
+            except Exception as e:
+                print("(judge unavailable: {} — the refusal above stands on the "
+                      "deterministic score alone)".format(e))
         return 1
     # TOCTOU: the body on disk must still be the exact bytes validation measured.
     if plant_forms.plant_sha(src) != res["manifest"]["candidate_content_sha256"]:

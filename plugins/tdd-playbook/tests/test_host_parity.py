@@ -165,14 +165,15 @@ def test_installed_host_activation():
 def test_compact_parity_output():
     proc = subprocess.run([sys.executable, BIN, "check"], cwd=REPO,
                           capture_output=True, text=True, timeout=30)
-    # 39 assets / 78 dispositions (A, 2026-08-15) — hooks/scripts/fixture_guard.py joined the
-    # guard family (WARN on Claude, `unavailable` on Codex under the codex-guard-family-parity
-    # debt). The numbers are hand-pinned ON PURPOSE: a self-derived count would move with the
-    # roster and could never reveal an accidental asset loss (§12 — a self-referential N of N
-    # cannot reveal its own narrowing).
+    # 40 assets / 80 dispositions (trustworthy-holdout-controls D2, 2026-08-16) —
+    # agents/control-quality-adversary.md joined the agent family (supported on Claude,
+    # `unavailable` on Codex under the standing codex agent-discovery debt). Previously
+    # 39/78 (fixture_guard, 2026-08-15). The numbers are hand-pinned ON PURPOSE: a
+    # self-derived count would move with the roster and could never reveal an accidental
+    # asset loss (§12 — a self-referential N of N cannot reveal its own narrowing).
     check("parity output: success is compact and denominator-bearing",
           proc.returncode == 0 and len(proc.stdout.splitlines()) <= 2
-          and "39 assets" in proc.stdout and "78 dispositions" in proc.stdout,
+          and "40 assets" in proc.stdout and "80 dispositions" in proc.stdout,
           (proc.returncode, proc.stdout, proc.stderr))
 
 

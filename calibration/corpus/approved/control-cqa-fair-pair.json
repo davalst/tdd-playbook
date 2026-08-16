@@ -1,0 +1,21 @@
+{
+  "id": "control-cqa-fair-pair",
+  "agent": "control-quality-adversary",
+  "plant": "PAIRED CLEAN CONTROL for cqa-greedy-oracle (judge must KEEP): correct CSV escaping, a fair verdict-line oracle, and a verifier that flagged concerns the task never asked about (None handling, missing tests). Clean w.r.t. the task's OWN question -> the flag is an over-flag, not a broken control and not an oracle defect.",
+  "edits": [],
+  "task": "A calibration control was FLAGGED \u2014 the verifier refused to pass it, or the oracle failed a correct-looking answer. Judge it per your brief (three questions in order: is the control clean w.r.t. its own task? is the oracle fair? else the verifier over-flagged). The payload is below. Cite the exact edit line / task phrase / regex that decides it, then end with exactly one forced `Control-Verdict:` line and a one-sentence plain-language `Recommendation:`.\n\nPAYLOAD:\n{\n  \"control\": {\n    \"edits\": [\n      {\n        \"file\": \"csvout.py\",\n        \"append\": \"def csv_cell(value):\\n    text = str(value)\\n    if any(c in text for c in ',\\\"\\\\n'):\\n        text = '\\\"' + text.replace('\\\"', '\\\"\\\"') + '\\\"'\\n    return text\\n\"\n      }\n    ],\n    \"task\": \"Verify csv_cell escapes delimiters, quotes and newlines correctly. End with `Verdict: CLEAN` or `Verdict: BROKEN`.\",\n    \"must_match\": [\n      \"Verdict:\\\\s*CLEAN\"\n    ],\n    \"must_not_match\": [\n      \"Verdict:\\\\s*BROKEN\"\n    ]\n  },\n  \"verifier_reasoning\": \"The escaping itself is correct for commas, quotes and newlines, but nothing handles None and there is no test for empty strings, which the task did not ask about but bothers me. Verdict: BROKEN\"\n}",
+  "must_match": [
+    "Control-Verdict:\\s*KEEP"
+  ],
+  "must_not_match": [
+    "Control-Verdict:\\s*FIX-ORACLE"
+  ],
+  "control_for": "cqa-greedy-oracle",
+  "_meta": {
+    "authored_by_model": "claude-fable-5",
+    "authored_at": "2026-08-16",
+    "status": "approved",
+    "approved_at": "2026-08-16",
+    "approved_via": "docs/plans/gated/2026-08-16-trustworthy-holdout-controls.md (D2 frozen judge-calibration fixtures \u2014 the three motivating shapes from the 2026-08-16 holdout diagnose finding, FP 10/10 = control-authoring quality, plus the pair controls)"
+  }
+}

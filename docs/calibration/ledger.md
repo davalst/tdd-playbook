@@ -643,3 +643,22 @@ purely for coverage — `expect=none`, no scenario, claimed 0.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260816-02 | 2026-08-16 | 068ab7b | plugins/tdd-playbook/commands/grade.md; plugins/tdd-playbook/commands/tdd-unlock.md | /grade reads the forced + session_downgrade unlock-journal flags; /tdd-unlock documents `unlock --force` recovery (TEST-LOCK cross-session deadlock fix) |  | none | 0 | command DOCS, not adversary briefs — commands/ is in SURFACE_PATTERNS (coverage) but OUT of EFFECTFUL, so no calibration scenario measures these; an inert doc change registered for coverage per the 2026-08-14 decision |
+
+### Registered 2026-08-16 — baseline 1cf6369: the control-quality judge (trustworthy-holdout-controls D2)
+
+`holdout diagnose` (2026-08-16) proved the holdout FP number was measuring CONTROL-AUTHORING
+quality, not verifier quality — controls were approved without ever running a verifier against
+them, and the three read directly were all bad controls (unguarded price arg; a greedy
+`must_not_match` that punishes a correct explanation; an ambiguous task). D2 adds the ADVISORY
+control-quality judge (forced closed vocabulary REJECT / FIX-ORACLE / KEEP, k/k agreement,
+human y/n bound to the manifest hash) and freezes the three motivating shapes + a second KEEP
+control as §13 corpus fixtures, so the judge is calibrated against the exact defect shapes it
+was built for before it is trusted. New agent + new scenarios: no baseline rows exist, so the
+first scoring run reads INCONCLUSIVE(no-baseline) per score_cell; the registered claim is the
+§13 calibration bar itself — every plant caught and every control quiet at 3/3 on the live
+replay, with a miss adjudicated at the production-pinned tier (model: opus) before the brief
+is trusted.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260816-03 | 2026-08-16 | 1cf6369 | plugins/tdd-playbook/agents/control-quality-adversary.md; calibration/corpus/approved/cqa-not-clean-control.json; calibration/corpus/approved/cqa-greedy-oracle.json; calibration/corpus/approved/control-cqa-verifier-overflag.json; calibration/corpus/approved/control-cqa-fair-pair.json | new ADVISORY judge brief (forced Control-Verdict REJECT/FIX-ORACLE/KEEP + plain-language Recommendation, model: opus pinned) + its four frozen §13 fixtures — the three motivating shapes from the 2026-08-16 holdout diagnose (not-clean control -> REJECT, greedy-oracle-over-clean -> FIX-ORACLE, clean-control-a-weak-verifier-flags -> KEEP) plus a second KEEP control pairing the FIX-ORACLE plant | cqa-not-clean-control; cqa-greedy-oracle; control-cqa-verifier-overflag; control-cqa-fair-pair | up | 3 | first-ever scenarios for a NEW agent: recall/FP baselines do not exist, so the first bound run scores INCONCLUSIVE(no-baseline); the load-bearing claim is §13 guard calibration — the judge must verdict all four frozen shapes correctly at 3/3 on the first live replay (a plant surviving to a clean verdict is BLOCKING), and the disagreement->INCONCLUSIVE case is pinned deterministically in test_harness.py::_control_judge_tests |

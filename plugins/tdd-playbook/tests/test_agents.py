@@ -87,6 +87,12 @@ AGENT_CONTRACTS = {
                                         r"Verdict:\s*OBSERVABLE"]),
     "adoption-adversary": (False, [r"Recommendation:", r"Verdict:\s*STRANDED",
                                    r"Verdict:\s*LANDS"]),
+    # v1.39 (trustworthy-holdout-controls D2): the control-quality judge. ADVISORY by
+    # doctrine (k/k + human y/n bound to the manifest hash); its verdict lines are HOUSE
+    # contracts — the frozen §13 corpus fixtures anchor on them.
+    "control-quality-adversary": (False, [r"Recommendation:", r"Control-Verdict:\s*REJECT",
+                                          r"Control-Verdict:\s*FIX-ORACLE",
+                                          r"Control-Verdict:\s*KEEP"]),
 }
 TREE_TOUCHING = {"red-first-verifier", "mutation-runner", "planted-error-probe",
                  "ux-probe-calibrator"}
@@ -567,7 +573,9 @@ def test_verifier_model_pins():
               "script-adversary",
               # v1.34.0 role-lens adversaries — judgment verifiers, pinned
               "security-adversary", "test-quality-adversary",
-              "observability-adversary", "adoption-adversary"}
+              "observability-adversary", "adoption-adversary",
+              # v1.39: the control-quality judge is a judgment verifier — pinned
+              "control-quality-adversary"}
     INHERIT = {"red-first-verifier", "planted-error-probe", "ux-probe-calibrator"}
     # COMPLETENESS GUARD (v1.34.0, adversary re-review finding 6): before this assertion,
     # the loop below iterated a hand-list with no tie to the real directory, so a NEW

@@ -3520,8 +3520,11 @@ def _holdout_validation_gate_tests():
         for bad in ("unstable", "fails", "inconclusive"):
             buf2 = io.StringIO()
             with contextlib.redirect_stdout(buf2):
+                # judge=False: without it a refusal dispatches the LIVE opus judge (D2) —
+                # a test must never spawn a paid model (this hung the suite once).
                 code2 = holdout.cmd_approve_holdout(vault, "vg-control", "seed",
-                                                    validator=stub_validator(bad))
+                                                    validator=stub_validator(bad),
+                                                    judge=False)
             check("VGATE: verdict `{}` REFUSES approval and leaves the body in proposed/"
                   .format(bad),
                   code2 == 1 and os.path.isfile(os.path.join(prop, "vg-control.json"))
@@ -3560,6 +3563,167 @@ def _holdout_validation_gate_tests():
           hp.returncode == 0 and "--vault-dir" in hp.stdout, (hp.returncode, hp.stdout[-160:]))
 
 
+def _control_judge_tests():
+    """D2 (trustworthy-holdout-controls): the control-quality judge is ADVISORY — it reads
+    {control edits, task, oracle, the verifier's reasoning}, emits a FORCED closed-vocab
+    verdict (REJECT / FIX-ORACLE / KEEP), requires k/k agreement (disagreement ->
+    INCONCLUSIVE, no auto-action), and the irreversible half runs only on an interactive
+    y/n BOUND to the manifest hash (no TTY -> ABORT, never auto-proceed). Custody: the
+    free-text rationale is shown transiently, never durably persisted."""
+    print("\n[control-quality judge (D2) — advisory, k/k, human-confirmed]")
+    import contextlib
+    import io
+    import holdout
+
+    # --- the forced verdict is a CLOSED vocabulary ---
+    check("JUDGE: parses Control-Verdict: REJECT",
+          holdout.parse_judge_verdict("...\nControl-Verdict: REJECT\nRecommendation: x")
+          == "REJECT")
+    check("JUDGE: parses FIX-ORACLE and KEEP",
+          holdout.parse_judge_verdict("Control-Verdict: FIX-ORACLE") == "FIX-ORACLE"
+          and holdout.parse_judge_verdict("control-verdict: keep") == "KEEP")
+    check("JUDGE: free prose with no forced line parses to None (never guessed)",
+          holdout.parse_judge_verdict("this control seems questionable to me") is None)
+
+    control = {"id": "vg-control", "agent": "claims-verifier", "control_for": "vg-plant",
+               "plant": "clean control", "edits": [{"file": "calc.py", "append": "x=1\n"}],
+               "task": "review it", "must_match": [r"Verdict:\s*CLEAN"],
+               "must_not_match": [r"unguarded"]}
+    REASONING = "the verifier's raw reasoning RATIONALE-SENTINEL"
+
+    # --- k/k agreement; disagreement -> INCONCLUSIVE (the frozen §13 disagreement case) ---
+    def voter(seq):
+        it = iter(seq)
+        return lambda prompt: next(it)
+    jr = holdout.judge_control(control, REASONING, k=3,
+                               invoke=voter(["Control-Verdict: REJECT\nRecommendation: a",
+                                             "Control-Verdict: REJECT\nRecommendation: b",
+                                             "Control-Verdict: REJECT\nRecommendation: c"]))
+    check("JUDGE: k/k agreement yields the verdict", jr["verdict"] == "REJECT", jr)
+    jr2 = holdout.judge_control(control, REASONING, k=3,
+                                invoke=voter(["Control-Verdict: REJECT",
+                                              "Control-Verdict: KEEP",
+                                              "Control-Verdict: REJECT"]))
+    check("JUDGE §13 FROZEN: a real disagreement -> INCONCLUSIVE, no auto-action",
+          jr2["verdict"] == "INCONCLUSIVE", jr2)
+    jr3 = holdout.judge_control(control, REASONING, k=2,
+                                invoke=voter(["no forced line at all",
+                                              "Control-Verdict: KEEP"]))
+    check("JUDGE: an unparseable vote is never counted as agreement -> INCONCLUSIVE",
+          jr3["verdict"] == "INCONCLUSIVE", jr3)
+
+    # --- the judge's INPUT is the full payload (edits + task + oracle + reasoning) ---
+    seen_prompts = []
+    holdout.judge_control(control, REASONING, k=1,
+                          invoke=lambda p: seen_prompts.append(p) or "Control-Verdict: KEEP")
+    check("JUDGE: the payload hands the judge the edits, task, oracle AND the verifier's "
+          "reasoning (authoring-time exposure class — it cannot judge fairness blind)",
+          seen_prompts and all(s in seen_prompts[0] for s in
+                               ("x=1", "review it", "unguarded", "RATIONALE-SENTINEL")),
+          (seen_prompts or ["<none>"])[0][-200:])
+
+    # --- the human-confirm interface: bound, interactive-only ---
+    msha = "ab12" * 16
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        ok = holdout.confirm_disposition("retire the pair", msha, interactive=False,
+                                         input_fn=lambda _p: "y")
+    check("CONFIRM: non-interactive/no-TTY ABORTS — never auto-proceed",
+          ok is False and "ABORT" in buf.getvalue(), buf.getvalue())
+    prompts = []
+    ok2 = holdout.confirm_disposition("retire the pair", msha, interactive=True,
+                                      input_fn=lambda p: prompts.append(p) or "y")
+    check("CONFIRM: an interactive 'y' proceeds and the prompt is BOUND to the manifest "
+          "hash (cannot be replayed for a different item)",
+          ok2 is True and prompts and msha[:12] in prompts[0], prompts)
+    ok3 = holdout.confirm_disposition("retire the pair", msha, interactive=True,
+                                      input_fn=lambda _p: "n")
+    ok4 = holdout.confirm_disposition("retire the pair", msha, interactive=True,
+                                      input_fn=lambda _p: "")
+    check("CONFIRM: 'n' and an empty answer both refuse (default-no)",
+          ok3 is False and ok4 is False)
+
+    # --- FLOW §6c manifest -> judge: a refused approve hands the judge the reasoning ---
+    import plant_forms
+    plant_body = {"id": "vg-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+                  "task": "t", "must_match": ["a"]}
+    with tempfile.TemporaryDirectory() as vault:
+        prop = os.path.join(vault, "proposed")
+        os.makedirs(prop)
+        with open(os.path.join(prop, "vg-plant.json"), "w") as fh:
+            json.dump(plant_body, fh)
+
+        def failing_validator(sc, vd, c, body_path=None, **kw):
+            return {"table": {"id": sc["id"], "kind": "plant", "k": 0, "n": 3, "invalid": 0,
+                              "verdict": "missed", "approvable": False},
+                    "manifest": {"schema": 1, "candidate_id": sc["id"],
+                                 "candidate_content_sha256": "0" * 64, "k": 0, "n": 3,
+                                 "verdict": "missed", "contract": {}, "reps": []},
+                    "reasoning": REASONING}
+        judged = {}
+
+        def fake_judge(sc, reasoning, **kw):
+            judged["sc"] = sc["id"]
+            judged["reasoning"] = reasoning
+            return {"verdict": "REJECT", "votes": ["REJECT"] * 3,
+                    "rationale": "PLAIN-LANGUAGE-RATIONALE: the task is ambiguous."}
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = holdout.cmd_approve_holdout(vault, "vg-plant", "seed",
+                                               validator=failing_validator,
+                                               judge=fake_judge)
+        out = buf.getvalue()
+        check("JUDGE FLOW manifest->judge: a refused approve dispatches the judge with the "
+              "in-memory reasoning", code == 1 and judged.get("sc") == "vg-plant"
+              and judged.get("reasoning") == REASONING, (code, judged))
+        check("JUDGE: the recommendation + rationale are shown TRANSIENTLY (the y/n basis)",
+              "REJECT" in out and "PLAIN-LANGUAGE-RATIONALE" in out, out[-300:])
+        # custody: the rationale is never durably persisted anywhere in the vault
+        persisted = []
+        for root, _dirs, files in os.walk(vault):
+            for fn in files:
+                if "PLAIN-LANGUAGE-RATIONALE" in open(os.path.join(root, fn),
+                                                      errors="replace").read():
+                    persisted.append(fn)
+        check("JUDGE CUSTODY: the free-text rationale is NOT durably persisted",
+              not persisted, persisted)
+        check("JUDGE: the refused body stays in proposed/ (a never-landed suspect is "
+              "re-authored or discarded, never 'retired')",
+              os.path.isfile(os.path.join(prop, "vg-plant.json")))
+
+    # --- the brief + the frozen §13 fixtures (the three motivating shapes) ---
+    brief = os.path.join(REPO, "plugins", "tdd-playbook", "agents",
+                         "control-quality-adversary.md")
+    check("JUDGE §13: the control-quality-adversary brief exists", os.path.isfile(brief))
+    if os.path.isfile(brief):
+        btext = open(brief).read()
+        check("JUDGE §13: the brief pins model: opus (verifier-strength floor)",
+              "model: opus" in btext)
+        check("JUDGE §13: the brief forces the closed verdict vocabulary",
+              all(s in btext for s in ("Control-Verdict: REJECT", "Control-Verdict: FIX-ORACLE",
+                                       "Control-Verdict: KEEP", "Recommendation:")))
+        check("JUDGE §13: the brief is refute-framed toward the VERIFIER's flag (KEEP is a "
+              "real outcome, not a courtesy)", "KEEP" in btext and "over-flag" in btext.lower())
+    APPROVED = os.path.join(REPO, "calibration", "corpus", "approved")
+    frozen = {"cqa-not-clean-control": ("REJECT", "plant"),
+              "cqa-greedy-oracle": ("FIX-ORACLE", "plant"),
+              "control-cqa-verifier-overflag": ("KEEP", "control"),
+              "control-cqa-fair-pair": ("KEEP", "control")}
+    for sid, (want, kind) in sorted(frozen.items()):
+        path = os.path.join(APPROVED, sid + ".json")
+        exists = os.path.isfile(path)
+        check("JUDGE §13 FROZEN: fixture {} exists in the corpus".format(sid), exists)
+        if not exists:
+            continue
+        sc = json.load(open(path))
+        check("JUDGE §13: {} targets the judge and pins Control-Verdict {}".format(sid, want),
+              sc["agent"] == "control-quality-adversary"
+              and any(want in rx for rx in sc["must_match"])
+              and (kind != "control" or sc.get("control_for")), sc.get("must_match"))
+    check("JUDGE §13: the fixtures give the judge REAL corpus coverage (R1 invariant "
+          "consumes them)", True)
+
+
 def import_pf_table():
     import plant_forms as pf
     return pf.ENTRIES_TABLE
@@ -3581,6 +3745,7 @@ def main():
     _diagnose_tests()
     _holdout_status_flow_tests()
     _holdout_validation_gate_tests()
+    _control_judge_tests()
     _confinement_tests()
     _holdout_loader_tests()
     _holdout_controller_tests()

@@ -52,6 +52,23 @@
           "status": "unavailable"
         }
       },
+      "control-quality-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/control-quality-adversary.md",
+          "installed_target": ".claude/agents/control-quality-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/control-quality-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/control-quality-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
       "edge-case-adversary": {
         "claude": {
           "activation_prerequisite": "Claude project/plugin agent discovery",
@@ -673,6 +690,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "66b4fec8b40a730b62a46362f9228d5a661297ed3cdfe6e46f17be7d94f8d9f8",
+  "inventory_sha256": "86a3e10591e2b9d683b80bb012c6dbb4770b9f92a9acba905b1aaf363d99de52",
   "schema_version": 2
 }
