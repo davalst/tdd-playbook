@@ -3,6 +3,57 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.39.0 — 2026-08-16
+
+**Trustworthy holdout controls: the FP number finally measures the verifiers.** `holdout
+diagnose` (1.38.0) proved the holdout's false-positive rate was measuring CONTROL-AUTHORING
+quality — controls were approved without ever running a verifier against them. This release
+closes that at every stage of the pipeline (plan: twice-Codex-reviewed; span
+3f2e7e0..a94f121, record `docs/reviews/2026-08-16-trustworthy-holdout-controls.json`).
+
+- **D0 — register status flows to the scorer.** The supersession schema (status/supersedes)
+  now reaches aggregation via `TDD_PLAYBOOK_HOLDOUT_REGISTER`, parsed ONCE by the trusted
+  parent and stripped from every nested model. `legacy-invalid`/`asymmetric` are EXCLUDED
+  from the current recall/FP; `known-overflag` stays COUNTED. Every run-history block
+  snapshots the population (`Population:` id=status@hash) and records the `Corrected:`
+  reading beside the legacy header numbers — old blocks are never reinterpreted with
+  today's status (`history_format.reading_of` is the safe accessor).
+- **D1 — the validation gate.** `holdout approve` runs the body's TARGET verifier against
+  it under the SAME execution contract the eval uses (shared `rc.DEFAULT_MODEL`, shared
+  `rc.run_reps`), deterministically scored: holds/caught only at k/k; a real split is
+  `unstable`, n==0 `inconclusive` — all refuse, fail closed. A hash-bound STRUCTURED-ONLY
+  manifest (full contract shas, rep outcomes, candidate content sha — no raw output, no
+  oracle regexes) persists beside the register; approve re-verifies the content sha
+  (TOCTOU). Post-gate bodies REQUIRE a matching manifest in `vault_integrity_problems`
+  (hand-copy bypass closed; pre-gate bodies grandfathered), and
+  `contract_mismatch_warnings` flags manifests validated under a different
+  model/isolation at run time. Read-only twin: `holdout validate`.
+- **D2 — the control-quality judge** (`agents/control-quality-adversary.md`, model: opus
+  pinned; ledger `L-20260816-03`). Advisory by construction: forced closed vocabulary
+  (`Control-Verdict: REJECT / FIX-ORACLE / KEEP` + a plain-language Recommendation), k/k
+  agreement or INCONCLUSIVE with no action, and the irreversible half runs only on an
+  interactive y/n bound to the manifest hash — no TTY aborts, on approve AND remediate.
+  §13-calibrated before trust: four frozen corpus fixtures (the three motivating shapes +
+  a second KEEP control) live-replayed 4/4 at 3/3 reps.
+- **D3 — the authoring prompt fixes the source**: controls must be GENUINELY clean w.r.t.
+  the task's own question (no unguarded sibling), temptable but refutable-by-tracing;
+  oracles anchor on the VERDICT LINE (greedy prose regexes banned); one defensible task
+  reading.
+- **D4 — `holdout remediate`**: walks every CURRENT approved pair through the gate + the
+  judge and applies the CONFIRMED disposition — REJECT/FIX-ORACLE retires the PAIR to
+  `legacy-invalid` (append-only CAS rows, pair-atomic, bodies never edited or deleted);
+  KEEP marks the control `known-overflag`. `approve --supersedes` links replacement pairs
+  (typo'd links refused at the keystroke). An INCONCLUSIVE (unmeasured) control can never
+  be judged or retired. The live sweep over the real vault is owned dated debt
+  (`holdout-corpus-remediation-sweep`, expires 2026-09-30).
+- **Security hardening** (five-adversary fold, 2 P1s verified_closed): `run_holdout`
+  REFUSES a forwarded `--form` (it would re-route private bodies through the dev printer —
+  plant text, oracle regexes, raw output); the judge runs in a throwaway temp workspace
+  (never the public repo the sandbox re-grants writes to), vault deny-read pinned through
+  the dispatch; a vault with bodies but no register refuses to run.
+- Registry: `holdout-control-validation` + `control-quality-adversary` capabilities (32
+  total); host parity 40 assets / 80 dispositions. Harness 449 → 572 checks.
+
 ## 1.38.0 — 2026-08-16
 
 **The holdout becomes actionable, and the TEST-LOCK stops deadlocking across sessions.** This
