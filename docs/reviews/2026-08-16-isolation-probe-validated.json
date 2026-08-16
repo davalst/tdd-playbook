@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-16-isolation-probe-validated",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-15-two-tier-calibration.md",
+  "review_range": {
+    "base": "a03abae27dd06249d0039f7cdd09a91dca9d5b4d",
+    "head": "0191518b022e2efc4d351a1ff0bd49101f6322cf"
+  },
+  "reviewers": [
+    "d2d-live-probe"
+  ],
+  "findings": [
+    {
+      "id": "ISOLATION-EFFECT-PROOF-VALIDATED",
+      "severity": "P2",
+      "summary": "Baseline isolation shipped fail-closed but UNVALIDATED: the whole mechanism rested on the unproven assumption that `claude --settings <disable-file>` actually unloads a USER-SCOPE-enabled plugin. If it did not, --isolation no-playbook could never produce a clean number (every run would trip the sink and go INVALID) and a different isolation approach would be needed.",
+      "evidence": [
+        "calibration/run_calibration.py:401",
+        "capabilities.json:364"
+      ],
+      "status": "incorporated",
+      "disposition": "After tagging v1.37.0 and `claude plugin update` (deploying note_hook_fired), the D2.d live probe (scratchpad d2d_isolation_probe.sh) ran two real Sonnet sessions and PASSED both directions: vacuity (plugin enabled) fired 17 hook events into the sink; isolation (--settings disable) fired 0. This CONFIRMS --settings unloads a user-scope plugin AND the deployed hook writes the sink, so the effect-proof is no longer inert and --isolation no-playbook numbers are trustworthy. The deploy-gate integration_debt is marked PAID/VALIDATED (capabilities.json), to be removed at the next debt sweep. Recorded incorporated: the validation is an empirical live-probe run, not a suite_glob test (a subscription-model probe cannot run in CI).",
+      "class": "judgment",
+      "recurrence_key": "unvalidated-deploy-dependent-mechanism"
+    }
+  ]
+}

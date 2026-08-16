@@ -88,6 +88,10 @@
     {
       "path": "2026-08-16-v1.37.0-release.json",
       "sha256": "c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165"
+    },
+    {
+      "path": "2026-08-16-isolation-probe-validated.json",
+      "sha256": "d2cbdea181b1de90c41c2511bf2a08a8bd625e3f5d456864a9f98941d6cbd509"
     }
   ]
 }
