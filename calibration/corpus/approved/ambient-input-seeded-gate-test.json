@@ -1,0 +1,29 @@
+{
+  "id": "ambient-input-seeded-gate-test",
+  "agent": "test-quality-adversary",
+  "plant": "A write-authorization gate authorizes off a run-scoped contextvar; run_agent_once builds the grants but NEVER publishes them (begin_run is never called), so the gate is inert in production. The unit test SEEDS the contextvar by hand and asserts the gate -- green over a dead gate. Correct verdict HOLLOW (the test seeds the ambient input instead of driving run_agent_once).",
+  "edits": [
+    {
+      "file": "audit.py",
+      "append": "\n\nimport contextvars\n\n_run_grants = contextvars.ContextVar(\"run_grants\", default=None)\n\n\ndef begin_run(grants):\n    \"\"\"Publish this run's grants so the write gate can read them.\"\"\"\n    _run_grants.set(grants)\n\n\ndef may_write(path):\n    \"\"\"Authorize a write iff the current run was granted it.\"\"\"\n    return bool((_run_grants.get() or {}).get(\"write\"))\n\n\ndef run_agent_once(grants):\n    \"\"\"Run one agent turn under `grants`, then decide whether it may write its report.\"\"\"\n    prepared = dict(grants)          # normalize the run's grants\n    return may_write(\"report.csv\")   # gate consults the current run context\n"
+    },
+    {
+      "file": "tests/test_calc.py",
+      "append": "\n\nfrom audit import _run_grants, may_write  # noqa: E402\n\n\nclass TestMayWrite(unittest.TestCase):\n    def test_granted_run_may_write(self):\n        _run_grants.set({\"write\": True})\n        self.assertTrue(may_write(\"report.csv\"))\n\n    def test_ungranted_run_may_not_write(self):\n        _run_grants.set({\"write\": False})\n        self.assertFalse(may_write(\"report.csv\"))\n"
+    }
+  ],
+  "task": "A run-scoped write-authorization gate (`may_write`, which reads a run-scoped context variable the production entry is supposed to set) and a unit test for it were just added (audit.py + tests/test_calc.py); the suite is green. Review the TEST through the head-of-QA lens: does its green establish that the gate authorizes correctly in PRODUCTION, or only that the gate agrees with an input the test itself arranged? Specifically -- does the test DRIVE the production entry that populates the gate's context (run_agent_once / begin_run), or SET that context by hand? Cite file:line. End with the house verdict: `Verdict: HOLLOW (<n>)` or `Verdict: LOAD-BEARING`, then `Recommendation: ...`.",
+  "must_match": [
+    "Verdict:\\s*HOLLOW"
+  ],
+  "must_not_match": [
+    "Verdict:\\s*LOAD-BEARING"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-opus-4-8",
+    "authored_at": "2026-08-16",
+    "status": "approved",
+    "approved_at": "2026-08-16",
+    "approved_via": "David request 2026-08-16 (\u00a71 ambient-input calibration anchor; reconstructs the cheliped 2026-08-15 shape; pays the dated debt on calibration-loop)"
+  }
+}

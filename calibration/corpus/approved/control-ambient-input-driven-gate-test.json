@@ -1,0 +1,30 @@
+{
+  "id": "control-ambient-input-driven-gate-test",
+  "agent": "test-quality-adversary",
+  "control_for": "ambient-input-seeded-gate-test",
+  "plant": "PAIRED CLEAN CONTROL: the same gate, but run_agent_once PUBLISHES the grants (begin_run is called) and the test DRIVES run_agent_once -- it observes what the gate reads through the real production path, not a hand-seeded context. Correct verdict LOAD-BEARING; the agent must NOT call this hollow.",
+  "edits": [
+    {
+      "file": "audit.py",
+      "append": "\n\nimport contextvars\n\n_run_grants = contextvars.ContextVar(\"run_grants\", default=None)\n\n\ndef begin_run(grants):\n    \"\"\"Publish this run's grants so the write gate can read them.\"\"\"\n    _run_grants.set(grants)\n\n\ndef may_write(path):\n    \"\"\"Authorize a write iff the current run was granted it.\"\"\"\n    return bool((_run_grants.get() or {}).get(\"write\"))\n\n\ndef run_agent_once(grants):\n    \"\"\"Run one agent turn under `grants`, then decide whether it may write its report.\"\"\"\n    begin_run(grants)                # publish this run's grants to the gate's context\n    return may_write(\"report.csv\")\n"
+    },
+    {
+      "file": "tests/test_calc.py",
+      "append": "\n\nfrom audit import run_agent_once  # noqa: E402\n\n\nclass TestMayWrite(unittest.TestCase):\n    def test_granted_run_may_write(self):\n        self.assertTrue(run_agent_once({\"write\": True}))\n\n    def test_ungranted_run_may_not_write(self):\n        self.assertFalse(run_agent_once({\"write\": False}))\n"
+    }
+  ],
+  "task": "A run-scoped write-authorization gate (`may_write`, which reads a run-scoped context variable the production entry is supposed to set) and a unit test for it were just added (audit.py + tests/test_calc.py); the suite is green. Review the TEST through the head-of-QA lens: does its green establish that the gate authorizes correctly in PRODUCTION, or only that the gate agrees with an input the test itself arranged? Specifically -- does the test DRIVE the production entry that populates the gate's context (run_agent_once / begin_run), or SET that context by hand? Cite file:line. End with the house verdict: `Verdict: HOLLOW (<n>)` or `Verdict: LOAD-BEARING`, then `Recommendation: ...`.",
+  "must_match": [
+    "Verdict:\\s*LOAD-BEARING"
+  ],
+  "must_not_match": [
+    "Verdict:\\s*HOLLOW"
+  ],
+  "_meta": {
+    "authored_by_model": "claude-opus-4-8",
+    "authored_at": "2026-08-16",
+    "status": "approved",
+    "approved_at": "2026-08-16",
+    "approved_via": "David request 2026-08-16 (\u00a71 ambient-input calibration anchor; reconstructs the cheliped 2026-08-15 shape; pays the dated debt on calibration-loop)"
+  }
+}

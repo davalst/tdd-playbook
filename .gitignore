@@ -10,3 +10,4 @@ __pycache__/
 .claude/tdd-lock.json.migrated
 .claude/playbook-guards-heartbeat
 .claude/worktrees/
+calibration/.claude/

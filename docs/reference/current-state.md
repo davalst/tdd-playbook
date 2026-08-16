@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `37c62ad37f395681635807c1a0f3e3d9370ff20a9d3431d16b4cfaab9b42b01e`
 - `docs/architecture/host-parity.json` — `ac5a9b1c6d649c862677bbed993d0dfb6dd05d0a1a0732d0d044b6a523615fd3`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
-- `capabilities.json` — `7013ebec28ed7f015acd653df4c11f148e7357f33925ae08c94e3fc94a794e47`
+- `capabilities.json` — `f82ba1863b6f6f8ed65f4a3ba32d423fe0f0a59e9305c62eb60531a6dcd5cc96`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -77,7 +77,7 @@
 - `calibration-loop` — MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F — the one substantive ite… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point)… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — PAID/VALIDATED 2026-08-16 — the D2.d live probe PASSED on the DEPLOYED 1.37.0 plugin (vacuity… (owner `david`, expires `2026-11-15`)
-- `calibration-loop` — AMBIENT-INPUT SELF-CONSISTENCY CALIBRATION ANCHOR (§1 hardening, cheliped 2026-08-15)… (owner `david`, expires `2026-11-15`)
+- `calibration-loop` — PAID/VALIDATED 2026-08-16 - the anchor is authored and replayed… (owner `david`, expires `2026-11-15`)
 - `scoreboard-integrity` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `scoreboard-integrity` — SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 — DEFERRED, stated not dropped)… (owner `david`, expires `2026-11-15`)
 - `gate-yield` — PAID 2026-08-09 — VERIFIED, not assumed… (owner `david`, expires `2026-12-31`)

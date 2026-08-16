@@ -33,11 +33,15 @@ check what our own code produced?"), then ground it at `file:line`.
    process-scoped object, a global registry): did the test establish the guard's input by
    DRIVING the production entry that populates it, or by setting that state itself
    (`<ambient>.set(...)`, monkeypatching the store, synthesizing the authorization object)?
-   The grep-able tell: an `<ambient>.set(...)` / monkeypatch of the guard's input store
-   followed by an assertion on the guard's verdict, with no call to the entry that publishes
-   it. Flag it as a possible INERT-CONTROL false-green — the gate may authorize off a context
-   a new caller never sets (mutation is blind here; the mutants live in the guard, the test
-   seeds its input). Name the ambient store and the production entry the test skipped.
+   Flag HOLLOW **only** when the TEST performs the `<ambient>.set(...)` / monkeypatch itself
+   and asserts the guard's verdict with no call to a production entry that publishes it — the
+   gate may then authorize off a context a real caller never sets (mutation is blind here; the
+   mutants live in the guard, the test seeds its input). **Do NOT flag** when the test calls a
+   production function that publishes the state before the gate reads it (e.g. a
+   `run_agent_once(grants)` whose body calls `begin_run(grants)`): that test DRIVES the
+   populating entry and FAILS if the wiring is deleted — it is LOAD-BEARING even though the
+   same call also consumes the state. If unsure whether the entry publishes, TRACE its body
+   before flagging. Name the ambient store and the production entry the test skipped.
 
 **What you DE-prioritise:** whether the CODE is well-designed (architecture-adversary),
 whether the mutation SCORE is adequate (mutation-runner — you hunt what the score is blind

@@ -614,3 +614,20 @@ class/key emission — the behavior no current scenario measures.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260815-01 | 2026-08-15 | 4dc1ff0 | plugins/tdd-playbook/agents/security-adversary.md; plugins/tdd-playbook/agents/test-quality-adversary.md | hunt #6 (ambient-input self-consistency / inert control) appended to both briefs — §1 hardening from the cheliped field report | secret-token-reaches-output; control-token-kept-out-of-output; assertion-free-smoke-test; control-asserting-smoke-test | up | 3 | both-directions replay (the brief-growth burial check): the longer briefs must not bury existing detection — every plant stays caught and every control stays quiet at 3/3. The NEW shape (a guard seeded by hand over an inert gate) has no corpus plant YET; that anchor is dated debt on calibration-loop and will register its own prediction when authored, so this entry claims only no-regression, not new coverage |
+
+### Registered 2026-08-16 — baseline d817482: the §1 anchor's first replay exposes an over-trigger
+
+The newly-authored §1 anchor (calibration/corpus/approved/ambient-input-seeded-gate-test.json
++ its control) was replayed against the hardened test-quality-adversary the same day it landed.
+The plant was caught HOLLOW 3/3 — but the clean control was FALSE-POSITIVED 0/3: the adversary
+called a correctly-wired test (one that DRIVES `run_agent_once`, whose body publishes the ambient
+grants) HOLLOW. That is a precision defect in hunt #6, not a bad fixture (the control is genuinely
+load-bearing — deleting the wiring fails it). The restraint clause below encodes the discriminator
+the brief already implied but did not make load-bearing: hand-seeded input is HOLLOW; a driven
+production entry that publishes the input is LOAD-BEARING. The claimed movement is the control
+flipping to clean WITHOUT blinding the plant (the over-correction risk this measures), confirmed by
+the same-day re-run (plant 3/3 caught · control 0/3 → 3/3 · FP 1/1 → 0/1).
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260816-01 | 2026-08-16 | d817482 | plugins/tdd-playbook/agents/test-quality-adversary.md; calibration/corpus/approved/ambient-input-seeded-gate-test.json; calibration/corpus/approved/control-ambient-input-driven-gate-test.json | hunt #6 restraint clause (flag HOLLOW ONLY when the TEST hand-seeds the ambient state; do NOT flag when the test drives a production entry that publishes it — trace the entry's body before flagging) PLUS the §13 anchor authored (the plant+control this entry names as scenarios) — fulfils L-20260815-01's promise to register the anchor's prediction when authored | ambient-input-seeded-gate-test; control-ambient-input-driven-gate-test | up | 3 | first §13 replay of the anchor caught the plant (3/3 HOLLOW) but false-positived the clean control (0/3 — the adversary called the correctly-wired driven test HOLLOW). The restraint clause removes the false green on the driven-entry case; the same-day re-run confirmed BOTH directions (plant holds 3/3, control 0/3 → 3/3, FP 1/1 → 0/1), proving the clause did not blind the plant. Baseline d817482 carries the pre-restraint brief AND predates both corpus fixtures (so each named surface genuinely MOVED after it). The plant+control are new scenarios (no baseline → INCONCLUSIVE on first score); the measurable claim is the control's 3-rep flip to clean |
