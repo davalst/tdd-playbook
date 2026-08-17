@@ -3,6 +3,32 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.40.1 — 2026-08-17
+
+**`holdout integrity`'s clean message carries its DENOMINATOR (§12).** Caught on the
+command's first real run, minutes after v1.40.0 was tagged — which is why this is a patch
+release rather than a bullet in 1.40.0: the fix landed after the tag, and a CHANGELOG entry
+claiming otherwise would describe a release that does not contain it.
+
+The clean line read "N registered body/bodies, every one matching its register row and its
+validation manifest". But bodies dated before `MANIFEST_REQUIRED_SINCE` have their manifest
+SKIPPED, not verified. Run against a real 20-body vault — every row predating the cutoff —
+it printed manifest assurance having checked ZERO of them. The register-sha half was true;
+the manifest half was asserted by the wording and verified by nothing.
+
+It now reports `every one matching its register sha. Validation manifests CHECKED for k of N`
+and names the grandfathered remainder explicitly. A reassurance that does not state its scope
+is the quiet half of a false green — harder to catch than a failure, because nothing looks
+wrong. Red-first: the pinning test asserts `0 of 1` for a pre-cutoff body and `1 of 1` for a
+post-cutoff one, and failed against the old wording quoting the overclaim verbatim.
+
+Also recorded (OPEN, not shipped in this release): the private vault holds 20 approved
+holdout bodies while `calibration/plant-forms.md` carries zero holdout classes and
+`plant_forms.py check` reports the leakage tripwire UNARMED — bodies were approved without
+the public-side registration the tripwire reads. Carried by the standing FIRST HOLDOUT
+ASSIGNMENT debt (`plant-forms` capability, expires 2026-10-15), now also visible from the
+review trail: `docs/reviews/2026-08-17-integrity-denominator.json`.
+
 ## 1.40.0 — 2026-08-17
 
 **A bricked holdout path, fixed; and mutation testing's second blind spot.** Two unrelated
@@ -36,13 +62,6 @@ spans, released together because the first was found while gating the second (sp
   stale was to start a full eval and watch it abort. Read-only — no model, no clone, no
   writes — and a problem exits nonzero while PRINTING the per-body remediation command
   (§4a: a refusing check prints the diagnosis it already holds).
-- **`integrity`'s clean message carries its DENOMINATOR (§12), fixed on its first real run.**
-  The first wording said "every one matching its register row and its validation manifest" —
-  but bodies dated before `MANIFEST_REQUIRED_SINCE` have their manifest SKIPPED, not
-  verified. Run against a real 20-body vault it printed manifest assurance having checked
-  ZERO of them. It now reports "manifests CHECKED for k of n" and names the grandfathered
-  remainder explicitly. A reassurance that does not state its scope is the quiet half of a
-  false green.
 - **§4 — mutation testing's ATTRIBUTION blind spot** (from a Codex `gate-honesty-p1` field
   report). A behavior exercised only by spawning a fresh process is unmeasurable by mutation
   on ANY tool, because no coverage tracer attributes child-process work to the parent test —
