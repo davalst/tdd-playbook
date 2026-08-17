@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-mutation-attribution-doctrine",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "7cebeb1aa8b106ba7700d49dd6193e6c69811c5e",
+    "head": "ee0d7a449213d5246c99dce3ac273912927a10cc"
+  },
+  "reviewers": [
+    "codex-field-report",
+    "self-review"
+  ],
+  "findings": [
+    {
+      "id": "DOCTRINE-F1-MUTATION-BLIND-TO-CHILD-PROCESS",
+      "severity": "P2",
+      "summary": "\u00a74 documented the SEAM blind spot but not the ATTRIBUTION one: a behavior exercised only by spawning a fresh process is unmeasurable by mutation on any tool, because no coverage tracer attributes child-process work to the parent test. Observed twice at 889 generated / 0 executed on a repo whose behavioral calls all shelled out (Codex 7e1f4539, fad338eb). \u00a74a's killed+survived<generated rule DID catch it and correctly reported CANNOT MEASURE \u2014 the gap was doctrine on the remedy, so the documented response was to keep trying to make the tracer follow the child, which cannot work.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:312",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:459",
+        "plugins/tdd-playbook/tests/test_hooks.py:52"
+      ],
+      "status": "incorporated",
+      "disposition": "\u00a74 gains the attribution blind spot as a named second structural blindness beside the seam one, citing the two shas; \u00a78 gains the remedy as a test-SHAPE rule \u2014 keep the fresh-process test (the real seam, and the only proof the executable runs and imports) and ADD an in-process twin driving the same public function, with the honest fallback of hand-applied targeted mutants plus an UNMEASURED label where no in-process seam exists. Latent in THIS repo: test_hooks.py:52 runs all 14 guard behaviors through subprocess.run, so any guard placed on a mutation roster would reproduce 889/0 exactly. Deliberately NOT fixed here \u2014 no mutation tool is configured anywhere in this repo (verified: no mutmut, no pyproject.toml/setup.cfg, no invocation in scripts/), so building twins would be ceremony for a gate that does not exist, and no debt was opened for the same reason.",
+      "class": "judgment",
+      "recurrence_key": "mutation-blind-to-child-process"
+    },
+    {
+      "id": "DOCTRINE-F2-BASELINE-GREEN-AT-HEAD-IS-NOT-SUFFICIENT",
+      "severity": "P2",
+      "summary": "\u00a74a required baseline-green and explicitly said to check it \"at HEAD\", which is necessary but not sufficient: mutation tools run the suite against an instrumented REWRITTEN copy, and a suite green at HEAD can be red there, producing the identical generate-but-never-execute false green. That was Codex's first failure (889 mutants generated against a red rewritten-tree baseline). Compounding it, every \u00a74a check was phrased \"before trusting a pass\", which invites running them post-hoc after the 40-minute pass is already spent.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:448",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:466"
+      ],
+      "status": "incorporated",
+      "disposition": "Baseline-green now explicitly means green in the tool's own rewritten tree AND at HEAD, named as two different facts in both places. Added a PREFLIGHT bullet reordering the checks \u00a74a already required to run first \u2014 roster integrity including the duplicate-paths_to_mutate abort (mutmut 3.6 aborts after stats collection and names the cause nowhere), kill-test collection asserted as an exact count, rewritten-tree green, and a tracer-maps-at-least-one-function precheck that points at F1 when it maps none. Same assertions, seconds instead of a discarded hour. /mutate step 2 carries the operational form.",
+      "class": "judgment",
+      "recurrence_key": "gate-precondition-checked-on-the-wrong-tree"
+    },
+    {
+      "id": "DOCTRINE-F3-AST-ASSERTION-RULE-COLLIDES-WITH-REWRITTEN-TREE",
+      "severity": "P3",
+      "summary": "\u00a712 instructs that absence claims about code must PARSE the code and assert on AST nodes rather than grep. Codex found that those exact tests are structurally unsatisfiable against a mutation tool's rewritten modules \u2014 so two of this Playbook's own correct rules collide, and the naive resolution (skip the module) silently drops the real kill tests sitting beside them.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:940",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:469"
+      ],
+      "status": "incorporated",
+      "disposition": "Named as a collision between two correct rules rather than a defect in either, in \u00a74a beside the rewritten-tree precondition, with the resolution: register the individual TESTS in a mutation-only exclusion list, never their whole module. Also cited as the common cause when a suite is green at HEAD and red in the rewritten tree, so the diagnosis is attached to the symptom.",
+      "class": "judgment",
+      "recurrence_key": "two-correct-rules-collide-unnamed"
+    },
+    {
+      "id": "DOCTRINE-F4-SANDBOX-AND-LOST-LONG-RUN-EVIDENCE",
+      "severity": "P3",
+      "summary": "Three operational gaps the field report filed as Codex-specific runtime trivia, none of which are actually host-specific. \u00a77 banned network but gave no rule for libraries that phone home by default (a Hugging Face retry loop was misread as a slow suite rather than a config failure) and no rule for sandbox refusals \u2014 a sandbox that blocks a loopback bind or a repo-local tool cache invites rewriting the assertion to fit it. \u00a712 had no rule that a long run's evidence must outlive the session: a nearly complete full-suite run was lost to a context-compaction boundary, and the recovery instinct is to re-run the whole suite to reconstruct output already produced.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:768",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:945"
+      ],
+      "status": "incorporated",
+      "disposition": "Written HOST-NEUTRALLY into \u00a77 and \u00a712 rather than as the Codex addendum the report proposed \u2014 sandboxes, phone-home libraries and context compaction apply to every host, and SKILL.md vendors to both (install_into_repo.py:44), whereas a Codex-branded addendum would have landed in commands/ or agents/, both `unavailable` on Codex under the standing test-lock/codex-command-agent-discovery debt: dark on the exact host it was written for. \u00a77 gains environment-restriction-never-weakens-a-test (move the artifact, not the assertion), offline-enforced-before-collection with a retry-loop-is-a-config-failure diagnostic, and hang-must-yield-a-stack. \u00a712 gains evidence-you-cannot-re-read-is-not-evidence, which promotes what the release gate already practices. No new surface and no new debt on top of dated debt.",
+      "class": "judgment",
+      "recurrence_key": "host-specific-framing-hides-a-universal-rule"
+    },
+    {
+      "id": "DOCTRINE-F5-AGENT-BRIEF-EDIT-WOULD-HAVE-FAKED-A-PREDICTION",
+      "severity": "P3",
+      "summary": "The span originally also updated agents/mutation-runner.md with the same preflight additions. agents/ is EFFECTFUL in the calibration ledger, so expect=none is unavailable there by construction, and the only corpus scenario covering that agent (shadowed-import-vacuous-suite) measures shadowed imports \u2014 a defect shape these preflight additions would not plausibly move. Registering expect=up against it to satisfy the coverage rule would have been exactly the instrument-satisfying the ledger's own rising no-effect share (16 of 63, 25%) warns about.",
+      "evidence": [
+        "calibration/ledger.py:73",
+        "calibration/corpus/approved/shadowed-import-vacuous-suite.json",
+        "docs/calibration/ledger.md"
+      ],
+      "status": "incorporated",
+      "disposition": "The agent-brief edit was DROPPED from the commit rather than registered, and the reasoning is recorded in the L-20260817-01 ledger block so the omission is a visible decision instead of a gap. The brief change belongs with a plant+control pair authored for the child-process attribution shape, which is what \u00a713 would require of it anyway. No dated debt opened: authoring corpus plants needs a live adversary model and human approval, and the brief is Claude-only in any case (agents are unavailable on Codex), so the deferral costs nothing that is currently reachable.",
+      "class": "deterministic",
+      "recurrence_key": "prose-deferral-needs-mechanical-trigger"
+    }
+  ]
+}

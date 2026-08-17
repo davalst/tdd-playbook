@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-holdout-sha-chain-implementation",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "656eff52449b2caba49cca61581d2c7c03eab89c",
+    "head": "7cebeb1aa8b106ba7700d49dd6193e6c69811c5e"
+  },
+  "reviewers": [
+    "self-review",
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "HOLDOUT-F1-MANIFEST-SHA-MEASURED-PRE-REWRITE",
+      "severity": "P1",
+      "summary": "cmd_approve_holdout computed the validation manifest's candidate_content_sha256 from the PROPOSED file (body_path=src), TOCTOU-checked that same file, persisted the manifest, and then re-dumped the body into bodies/ with json.dump(sc, indent=2) \u2014 different bytes. The register row recorded the NEW sha, so the approve->register->parse_register round-trip test passed and only the manifest check failed. vault_integrity_problems compares the manifest sha against the body sha and run_holdout ABORTS on a non-empty problem list, so a single hand-authored or reformatted proposed file bricked the entire vault. cmd_author_holdout already wrote proposed bodies in exactly the canonical form as a DUPLICATED literal, which is why machine-authored bodies matched by luck and the defect stayed invisible until a hand-shaped body met the date gate.",
+      "evidence": [
+        "calibration/holdout.py:770",
+        "calibration/holdout.py:175",
+        "calibration/holdout.py:818"
+      ],
+      "status": "verified_closed",
+      "disposition": "Introduced holdout.write_body(path, sc) as THE one byte-form for a holdout body. approve canonicalizes the proposed file through it BEFORE validation (so the bytes the verifier measures are the bytes that land), lands the body through it, and cmd_author_holdout uses it too \u2014 retiring the third copy. Chose closing the identity chain over restamping the manifest with the destination sha: restamping goes green while asserting the manifest covers bytes the verifier never saw. Red-first verified against 656eff5 (the D1.c invariant printed the two differing shas), green after; the defect shape is frozen in the test comment citing the pre-fix sha per \u00a713. Closure verified in a worktree at the pre-fix sha: the FIRST fixture failed on the vacuity guard (approve refused an invalid scenario), which proves only that a test can fail \u2014 \u00a713's exact trap. Corrected to the real scenario schema, it fails with 'manifest sha e768e378 != landed body sha 43ff185f' pre-fix and passes after, so red-first is proven for the reason the test was written.",
+      "class": "deterministic",
+      "recurrence_key": "nth-copy-of-owned-helper",
+      "remediation_commit": "7cebeb1aa8b106ba7700d49dd6193e6c69811c5e",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_holdout_confinement.py::test_approve_manifest_sha_matches_landed_body"
+      ]
+    },
+    {
+      "id": "HOLDOUT-F2-DATE-ACTIVATED-CHECK-CANNOT-BE-REPLAYED",
+      "severity": "P2",
+      "summary": "MANIFEST_REQUIRED_SINCE = \"2026-08-17\" gates the manifest reader on a hardcoded FUTURE date relative to the day it shipped (2026-08-16). The consequence is not hypothetical: the blessed gate was green in CI on 656eff5 (run 31969034651) and RED on a clean worktree the next morning, with no code change between. A check that cannot be observed failing until a calendar date arrives ships together with the defect it guards against, and \u00a713's guard-calibration rule \u2014 replay a new guard against its motivating artifact before trusting it \u2014 cannot be satisfied at authoring time unless the clock is injected. The grandfathering INTENT is sound; the unfalsifiable-at-authoring-time mechanism is the finding.",
+      "evidence": [
+        "calibration/holdout.py:140",
+        "calibration/test_harness.py:2945"
+      ],
+      "status": "open",
+      "disposition": "NOT fixed in this span, stated rather than assumed. The D1.c invariant test now exercises the manifest branch unconditionally (the threshold is in the past from today forward), so this specific check is no longer a time bomb. The general rule \u2014 a date-activated gate needs an injected clock so both sides of its threshold are testable on the day it ships \u2014 is a doctrine question for David rather than a silent local edit, and \u00a77's own no-real-clock rule already covers it if applied to gate activation dates. Raised in the report to David rather than folded in.",
+      "class": "judgment",
+      "recurrence_key": "date-activated-gate-unfalsifiable-at-authoring"
+    }
+  ]
+}
