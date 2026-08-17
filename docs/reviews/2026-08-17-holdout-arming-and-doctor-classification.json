@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-holdout-arming-and-doctor-classification",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "a9abd873a9cc4bd398cad8fc47c9c896ed18e047",
+    "head": "2a5be9d5549111a68baabfb8faeca20baf52e69f"
+  },
+  "reviewers": [
+    "self-review",
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "ARM1-LEAKAGE-TRIPWIRE-COULD-NOT-FAIL",
+      "severity": "P1",
+      "summary": "Closes INTEG-F2 (2026-08-17-integrity-denominator.json). 20 holdout bodies were approved into the private vault while calibration/plant-forms.md carried zero holdout rows, so plant_forms.py check reported the leakage tripwire UNARMED: 'scanned 29 files across 4 of 9 roots and COULD NOT HAVE FAILED'. The control that exists to catch holdout ids reaching SKILL.md, agent briefs, commands or scenarios.json was inert for the entire window in which holdout material existed to leak.",
+      "evidence": [
+        "calibration/plant-forms.md",
+        "calibration/plant_forms.py:347"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "2a5be9d5549111a68baabfb8faeca20baf52e69f",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_doctor_classifies_overrides_against_each_guards_default"
+      ],
+      "disposition": "All 20 registered with content_sha256=`private` (form_problems refuses a real sha for a body this repo cannot see: 'the tool must not imply it checked something it could not see'). Ordered safety: the tripwire was run against the real ids BEFORE publishing them (0 leaks across all four live scan roots), so registration could not itself burn a plant; then a real id was planted into a scanned surface and DETECTED, proving the now-armed alarm can fire. The harness already carried a planted-leak test (test_harness.py:1641) so the mechanism was proven \u2014 what was missing was ids for it to scan. NOTE on the closure evidence: the only test in the blessed suite_glob touching this change is the doctor classifier; the arming itself is verified by check_scoreboard_integrity + plant_forms check in the gate (calibration stage), which the schema's path::test_* form cannot cite. Stated rather than papered over.",
+      "class": "deterministic",
+      "recurrence_key": "opt-in-feature-goes-dark"
+    },
+    {
+      "id": "ARM2-APPEND-ONLY-VIOLATED-BY-THE-FIRST-DRAFT",
+      "severity": "P2",
+      "summary": "The first attempt at registering the entries REWROTE plant-forms.md in place \u2014 replaced the 5-column Entries header with the canonical 7-column one, deleted the 'no holdout classes assigned yet' note, and inserted rows into the Legal values table. check_scoreboard_integrity rule (a) REDded the gate: 'baseline content is not a byte-prefix of the candidate (append-only violated)'. The intent was better hygiene (one writer for the header) and it was still a violation.",
+      "evidence": [
+        "calibration/check_scoreboard_integrity.py",
+        "calibration/plant_forms.py:87"
+      ],
+      "status": "incorporated",
+      "disposition": "Re-done as a pure APPEND: a second `## Entries \u2014 first holdout assignment` heading at EOF, which parse_register re-arms on, carrying the canonical 7-cell header and rows. The legacy empty 5-cell table is untouched and both cell counts are legal by design (the 2026-08-16 D0 migration comment). The two extra columns and the reason-stays-categorical rule are documented INSIDE the appended block rather than by editing the Legal values table above it. The gate caught this, not review \u2014 recorded because 'the gate stopped me' is the outcome the guards exist for and it should appear in the trail, not just in a fixed file.",
+      "class": "deterministic",
+      "recurrence_key": "append-only-header-edit"
+    },
+    {
+      "id": "ARM3-DOCTOR-CALLED-AN-ENABLEMENT-A-KILL-SWITCH",
+      "severity": "P2",
+      "summary": "Closes REL1401-DOCTOR-MISLABELS-AN-OPT-IN-GUARD-AS-DEMOTED. doctor() flagged every var passing _is_guard_control_var as a 'STANDING DEMOTION \u2026 H-class kill switch' and exited 1. Five guards ship `off` since v1.32.0, so this repo's TDD_PLAYBOOK_HOOK_EXITCODE=warn \u2014 the documented way to turn a retired guard back ON \u2014 was reported as a kill switch on every release run of this session. It was quoted to the operator once as a real demotion before being checked against _common.py's defaults table.",
+      "evidence": [
+        "scripts/install_into_repo.py:297",
+        "plugins/tdd-playbook/hooks/scripts/_common.py:49"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "2a5be9d5549111a68baabfb8faeca20baf52e69f",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_doctor_classifies_overrides_against_each_guards_default"
+      ],
+      "disposition": "Added _common.guard_override_effect(key, value) -> demotion|enablement|noop|unknown, keyed off _DEFAULT_MODES and a mode-strength order, placed in the module that OWNS the contract for the same reason the doctor already delegates is_guard_control_var there (an installer-side prefix guess once exempted BREAK_GLASS). BREAK_GLASS is always a demotion; the global MODE var is a demotion unless set to `block`, since which hooks it lowers cannot be known from the settings file. Demotions and unknowns still exit 1; enablements print `guard opt-in` and do not. Nine classification cases plus an end-to-end pass through the real doctor pin both directions, so this cannot regress to flagging everything OR nothing. Red-first verified against the v1.40.1 installer in a worktree: exit 1 with the kill-switch line for the enablement.",
+      "class": "deterministic",
+      "recurrence_key": "misdirecting-fail-closed-message"
+    }
+  ]
+}
