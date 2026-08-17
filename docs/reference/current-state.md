@@ -51,7 +51,8 @@
 - `docs/reviews/2026-08-17-v1.40.1-release.json` — `94f41fb01433c82a8ff8f83f007ec342e5fdaa4c9754e1ba0c731d307da0ce27`
 - `docs/reviews/2026-08-17-v1.40.2-release.json` — `942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c`
 - `docs/reviews/2026-08-17-v1.41.0-attribution-precheck.json` — `f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c`
-- `docs/reviews/index.json` — `026d708db2e5af484c5f10dc0cc1ba628a6df718048eff55fea891d159c405a7`
+- `docs/reviews/2026-08-17-v1.42.0-release.json` — `dd49fe20d14d5ea2543b7f1e13eeecb2b10752611dee84ed8d66628f205bf7cd`
+- `docs/reviews/index.json` — `280c713609ce1ffb4736f279ee30ade70c57cd7c429b756f666abbfccdd253c1`
 
 ## Gate surface
 
@@ -156,13 +157,13 @@
 
 ## Adversarial review records
 
-- Review records: 41. Findings: 192.
+- Review records: 42. Findings: 197.
 - `incorporated`: 81
-- `open`: 12
+- `open`: 13
 - `rejected`: 5
-- `verified_closed`: 94
+- `verified_closed`: 98
 
-participation: what the 41 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
+participation: what the 42 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
 - adoption-adversary · authors records — 1
 - architecture-adversary · authors records — 16
 - claims-verifier · authors records — 1

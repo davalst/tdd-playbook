@@ -164,6 +164,10 @@
     {
       "path": "2026-08-17-agent-eval-doctrine.json",
       "sha256": "79f52e8533ae5b42e36bdd0cfe0368d7d62ab473293768736f731ce28ebe6e4c"
+    },
+    {
+      "path": "2026-08-17-v1.42.0-release.json",
+      "sha256": "dd49fe20d14d5ea2543b7f1e13eeecb2b10752611dee84ed8d66628f205bf7cd"
     }
   ]
 }

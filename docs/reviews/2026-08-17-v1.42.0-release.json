@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-v1.42.0-release",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-adversary-accountability.md",
+  "review_range": {
+    "base": "a95df827e17bb1f6b6e94216688c06b925de27c5",
+    "head": "9944ac143a179f44fac2c0f1fe8347e69897bf15"
+  },
+  "reviewers": [
+    "self-review",
+    "release-gate",
+    "live-dogfooding"
+  ],
+  "findings": [
+    {
+      "id": "TAGGUARD-GREPS-NOT-PARSES",
+      "severity": "P1",
+      "summary": "tag_guard blocked a read-only tag listing, then blocked guard_note.py recording that block because the note quoted the command. One root cause: it matched the verb by regex over raw command text instead of parsing what the command DOES \u2014 the failure mode SS12 names in its own rule.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py",
+        "plugins/tdd-playbook/tests/test_hooks.py",
+        "plugins/tdd-playbook/bin/guard_note.py"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "guard-out-of-jurisdiction-treated-as-violation",
+      "catalog_row": "H10",
+      "disposition": "Quoted text is stripped before any verb match, and creation is keyed on the FACT (a positional name, or a creation flag) rather than an allow-list of listing flags someone had to remember. Both live false positives are frozen as ALLOW rows in the guard's existing two-directional calibration table; all eleven BLOCK rows still block. Recorded through guard_note BEFORE the fix, with performed_elsewhere=yes naming the substitution, so the reroute is distinguishable from evasion.",
+      "remediation_commit": "9944ac143a179f44fac2c0f1fe8347e69897bf15",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tag_guard"
+      ]
+    },
+    {
+      "id": "D5-ASSUMPTION-FALSE",
+      "severity": "P1",
+      "summary": "The plan's stated assumption \u2014 that a subagent dispatch emits tool_name 'Task' \u2014 is FALSE. Real captures on Claude Code 2.1.234 show tool_name 'Agent'; one dispatch emits BOTH a tool_decision and a tool_result, so counting every Agent-bearing record double-counts; and no subagent_type attribute exists at all.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/grade_from_otel.py",
+        "plugins/tdd-playbook/tests/test_grade_from_otel.py",
+        "docs/telemetry.md"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "seam-self-consistency-return-only",
+      "catalog_row": "H11",
+      "disposition": "The deliverable was evidence-gated rather than assumption-gated precisely so this could be caught: a fixture invented around 'Task' would have passed forever while production counted zero dispatches. Implemented against the verified names, counting decisions only. The per-type breakdown is NOT built \u2014 it has no supplier. Provenance is recorded in the test docstring, not merely in a commit message.",
+      "remediation_commit": "9944ac143a179f44fac2c0f1fe8347e69897bf15",
+      "closure_review": "live-dogfooding",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_grade_from_otel.py::test_subagent_dispatch_counting"
+      ]
+    },
+    {
+      "id": "FALSE-ZERO-DISPATCH",
+      "severity": "P1",
+      "summary": "grade_from_otel reported telemetry-unavailable only when the TOTAL record count was zero, so an export containing ordinary tool events but no dispatch events would have printed a confident 'subagents: 0' \u2014 merging 'none happened' with 'I cannot see them'.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/grade_from_otel.py"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "misdirecting-fail-closed-message",
+      "disposition": "A zero is now reported only when a tool event was actually observed, which proves the export carries tool_name; otherwise 'unmeasured'. Planted fixture: recognizable records with no tool event must yield unmeasured, never 0.",
+      "remediation_commit": "9944ac143a179f44fac2c0f1fe8347e69897bf15",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_grade_from_otel.py::test_subagent_dispatch_counting"
+      ]
+    },
+    {
+      "id": "TELEMETRY-RECIPE-UNRUN",
+      "severity": "P2",
+      "summary": "docs/telemetry.md's quick-capture recipe stated the console exporter writes to stderr (it writes to stdout) and implied its output is machine-readable (it is pretty-printed JS-object notation with unquoted keys; the parser recognises nothing and exits 1). The documented path had evidently never been run end-to-end.",
+      "evidence": [
+        "docs/telemetry.md",
+        "plugins/tdd-playbook/bin/grade_from_otel.py"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "undocumented-process-caused-operator-error",
+      "disposition": "Both claims corrected, the console path marked eyeball-only, and the verified event/attribute names tabled so the next reader does not have to buy them with a live run. The parser's behaviour was correct throughout \u2014 it failed closed rather than inventing a grade.",
+      "remediation_commit": "9944ac143a179f44fac2c0f1fe8347e69897bf15",
+      "closure_review": "live-dogfooding",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_grade_from_otel.py::test_subagent_dispatch_counting"
+      ]
+    },
+    {
+      "id": "GUARD-FIX-NOT-RUNNING",
+      "severity": "P2",
+      "summary": "The tag_guard fix is committed and tested but is NOT the guard running in live sessions: hooks execute from the installed plugin copy, which the doctor reports as 1.41.0 and older against a canonical 1.42.0. 'Fixed' here means fixed in the repo, not fixed in the session.",
+      "evidence": [
+        "scripts/install_into_repo.py",
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py"
+      ],
+      "status": "open",
+      "class": "deterministic",
+      "recurrence_key": "unreleased-work-not-deployed",
+      "disposition": "Stated rather than rounded up, per the standing rule that committed is not deployed and deployed is not running. It was demonstrated live: after the fix passed its tests, the same read was still blocked in-session, and the doctor named the cache skew. Remains OPEN until the plugin is updated on David's machine \u2014 an action no agent can take. The doctor's PLUGIN CACHE SKEW line is the mechanical reader that will confirm it."
+    }
+  ]
+}
