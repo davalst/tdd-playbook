@@ -101,6 +101,7 @@ def main():
               (len(before), len(after)))
 
     test_doctor()
+    test_doctor_classifies_overrides_against_each_guards_default()
     test_codex_install_preserves_user_config()
     test_vendoring_containment()
     test_vendored_skill_equality()
@@ -236,6 +237,71 @@ def test_release_version_identity():
     planted["codex-adapter"] = "previous-release-plant"
     check("release identity: PLANTED stale host adapter is detected",
           len(set(planted.values())) != 1, planted)
+
+
+def test_doctor_classifies_overrides_against_each_guards_default():
+    """A standing override is a DEMOTION only if it is weaker than what the guard ships.
+
+    Origin 2026-08-17: doctor called every guard control var a "STANDING DEMOTION … H-class
+    kill switch". Five guards ship `off` since v1.32.0, so this repo's own
+    TDD_PLAYBOOK_HOOK_EXITCODE=warn — the documented way to turn a retired guard back ON — was
+    reported as a kill switch on every release run of that session. A warning that fires on a
+    correct configuration teaches the operator to skim the one that matters.
+
+    Both directions, over the SAME mechanism, so this cannot regress to flagging nothing
+    either: an off-by-default guard raised to warn must NOT set exit 1; a block-by-default
+    guard lowered to warn MUST; BREAK_GLASS MUST regardless of value; and an unrecognised hook
+    name MUST (fail toward flagging)."""
+    print("\n[doctor override classification]")
+    mod = load_installer()
+    sys.path.insert(0, os.path.join(REPO, "plugins", "tdd-playbook", "hooks", "scripts"))
+    import _common
+
+    # unit: the contract lives in _common, keyed off its own defaults table
+    cases = [
+        ("TDD_PLAYBOOK_HOOK_EXITCODE", "warn", "enablement"),   # ships off
+        ("TDD_PLAYBOOK_HOOK_TESTLOCK", "warn", "demotion"),     # ships block
+        ("TDD_PLAYBOOK_HOOK_TESTLOCK", "off", "demotion"),
+        ("TDD_PLAYBOOK_HOOK_TESTLOCK", "block", "noop"),
+        ("TDD_PLAYBOOK_HOOK_FIXTUREGUARD", "block", "enablement"),  # ships warn
+        ("TDD_PLAYBOOK_HOOK_FIXTUREGUARD", "off", "demotion"),
+        ("TDD_PLAYBOOK_BREAK_GLASS", "1", "demotion"),
+        ("TDD_PLAYBOOK_HOOK_NOSUCHGUARD", "warn", "unknown"),   # fail toward flagging
+        ("TDD_PLAYBOOK_HOOK_EXITCODE", "nonsense", "unknown"),
+    ]
+    for key, val, want in cases:
+        got = _common.guard_override_effect(key, val)
+        check("classify {}={} -> {}".format(key, val, want), got == want, got)
+
+    # end-to-end through the real doctor, since a classifier nobody consults is inert
+    with tempfile.TemporaryDirectory() as target, tempfile.TemporaryDirectory() as cache:
+        os.environ["TDD_PLAYBOOK_PLUGIN_CACHE"] = cache
+        try:
+            mod.main([target])
+            with open(os.path.join(REPO, "plugins", "tdd-playbook", ".claude-plugin",
+                                   "plugin.json")) as fh:
+                canonical = json.load(fh)["version"]
+            os.makedirs(os.path.join(cache, "mkt", "tdd-playbook", canonical))
+            settings = os.path.join(target, ".claude", "settings.local.json")
+
+            def doctor_with(env):
+                with open(settings, "w") as fh:
+                    json.dump({"env": env}, fh)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    code = mod.main(["--doctor", target])
+                return code, buf.getvalue()
+
+            code, out = doctor_with({"TDD_PLAYBOOK_HOOK_EXITCODE": "warn"})
+            check("opt-in enablement is NOT a demotion (exit 0)", code == 0, out)
+            check("and it is still REPORTED, not silent", "guard opt-in" in out, out)
+            check("the alarming wording is absent", "STANDING DEMOTION" not in out, out)
+
+            code, out = doctor_with({"TDD_PLAYBOOK_HOOK_TESTLOCK": "warn"})
+            check("a real demotion still fails (exit 1)", code == 1, out)
+            check("a real demotion is named", "STANDING DEMOTION" in out, out)
+        finally:
+            os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
 
 
 def test_doctor():

@@ -22,12 +22,36 @@ is the quiet half of a false green — harder to catch than a failure, because n
 wrong. Red-first: the pinning test asserts `0 of 1` for a pre-cutoff body and `1 of 1` for a
 post-cutoff one, and failed against the old wording quoting the overclaim verbatim.
 
-Also recorded (OPEN, not shipped in this release): the private vault holds 20 approved
-holdout bodies while `calibration/plant-forms.md` carries zero holdout classes and
-`plant_forms.py check` reports the leakage tripwire UNARMED — bodies were approved without
-the public-side registration the tripwire reads. Carried by the standing FIRST HOLDOUT
-ASSIGNMENT debt (`plant-forms` capability, expires 2026-10-15), now also visible from the
-review trail: `docs/reviews/2026-08-17-integrity-denominator.json`.
+**FIRST HOLDOUT ASSIGNMENT — the leakage tripwire is ARMED (debt PAID).** The private vault
+held 20 approved holdout bodies while `calibration/plant-forms.md` carried zero holdout
+classes, so `plant_forms.py check` reported itself UNARMED: the alarm meant to catch holdout
+ids leaking into published surfaces *could not fail*. All 20 are now registered, and check
+reports `20 holdout / 0 dev · tripwire scanned 29 files across 4 of 9 roots with no leak`.
+
+- Every row records `private` — `form_problems` refuses a sha256 for a body this repo cannot
+  see, in as many words: "the tool must not imply it checked something it could not see."
+- **APPENDED under a second `## Entries` heading, not edited in place.** The file is
+  append-only under `check_scoreboard_integrity` rule (a); the first draft rewrote the table
+  and the gate REDded it. `parse_register` re-arms on any heading beginning "Entries" and
+  accepts legacy 5-cell and current 7-cell rows alike.
+- **The `reason` cell records `initial`, never the vault's own text.** Ids are public by design
+  (`plant_forms.py`'s LEAK_SCAN note: "what must stay private is the BODY"), but the private
+  register's reasons describe each defect in plain English — copying them would publish the
+  answer key in prose while the bodies stayed private.
+- Armed *and falsifiable*: the tripwire was run against the real ids before publishing them
+  (0 leaks), then a real id was planted into a scanned surface and DETECTED. An alarm that
+  cannot be shown to fire is decoration.
+
+**`--doctor` no longer cries wolf on an opt-in guard.** It called every guard env override a
+"STANDING DEMOTION … H-class kill switch". Five guards ship `off` since v1.32.0, so this
+repo's own `TDD_PLAYBOOK_HOOK_EXITCODE=warn` — the documented way to turn a retired guard back
+ON — was reported as a kill switch on every release run, and taken at face value once before
+being checked. Overrides are now classified against each guard's OWN default by
+`_common.guard_override_effect` (the module that owns the mode contract, where
+`is_guard_control_var` already lives): weaker than shipped is a DEMOTION and still exits 1,
+stronger is reported as a `guard opt-in`, equal as a no-op, and an unparseable value or unknown
+hook name fails toward flagging. A warning that fires on a correct configuration is how a real
+demotion gets skimmed past — the same defect as an overclaiming green, pointed the other way.
 
 ## 1.40.0 — 2026-08-17
 

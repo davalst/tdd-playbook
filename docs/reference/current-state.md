@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `b21600ff86fabfd8576f29ad42586fc9dfe9a05c2797906bc454532925e560fa`
 - `docs/architecture/host-parity.json` — `b34caa13e83f45bdee44e7595e885ef398bb27cbd3632c64885282168ef482d4`
 - `plugins/tdd-playbook/bin/host_parity.py` — `b468b1f80d24ff0c6cce8ddf9b75c8c2de9bbe6c79fe464cff8db810b275eda8`
-- `capabilities.json` — `a12e1b88863fb1934998d370a9c145d56f6c627a4a8e2f219090537b1449a59b`
+- `capabilities.json` — `e040619679639b5cd78fb9b029907948fd15b7a3a4362fa983f5d02bf3150d7e`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -121,7 +121,7 @@
 - `gate-surface-ledger` — DOCTRINE SHRINK NOT DONE (v1.32.0)… (owner `david`, expires `2026-10-31`)
 - `gate-surface-ledger/ledger-L-20260812-06-followup` — REFUTATION OWNED (L-20260812-06)… (owner `david`, expires `2026-09-30`)
 - `gate-surface-ledger/ledger-L-20260813-01-followup` — REFUTATION OWNED (L-20260813-01)… (owner `david`, expires `2026-11-30`)
-- `plant-forms` — FIRST HOLDOUT ASSIGNMENT (v1.29, David's ships-on-or-triggered rule)… (owner `david`, expires `2026-10-15`)
+- `plant-forms` — PAID 2026-08-17 — VERIFIED, not assumed… (owner `david`, expires `2026-10-15`)
 - `plant-vitality` — SATURATION K IS PROVISIONAL (v1.29)… (owner `david`, expires `2026-11-01`)
 - `release-tag-authority` — SERVER-SIDE TAG PROTECTION NOT ARMED… (owner `david`, expires `2026-09-30`)
 - `release-tag-authority` — NO SIGNING KEY CONFIGURED… (owner `david`, expires `2026-09-30`)

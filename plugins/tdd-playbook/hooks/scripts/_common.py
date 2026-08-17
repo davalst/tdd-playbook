@@ -103,6 +103,50 @@ def is_guard_control_var(key):
     return key == "TDD_PLAYBOOK_BREAK_GLASS" or key.startswith("TDD_PLAYBOOK_HOOK")
 
 
+MODE_STRENGTH = {"off": 0, "warn": 1, "block": 2}
+
+
+def guard_override_effect(key, value):
+    """Classify a standing env override against the guard's OWN default: "demotion",
+    "enablement", "noop", or "unknown".
+
+    Origin 2026-08-17: `install_into_repo.py --doctor` called EVERY guard control var a
+    "STANDING DEMOTION … H-class kill switch". Five guards ship `off` since v1.32.0, so this
+    repo's own `TDD_PLAYBOOK_HOOK_EXITCODE=warn` — which turns a retired guard back ON, the
+    documented opt-in path — was reported as a kill switch on every release run in that
+    session, and taken at face value once before being checked. A warning that cries wolf on a
+    correct configuration is how a real demotion gets skimmed past; that is the same failure
+    as an overclaiming green, pointed the other way.
+
+    Lives here rather than in the installer because this module OWNS the mode contract — the
+    doctor already delegates `is_guard_control_var` here for exactly that reason, after a
+    prefix guess in the installer once exempted BREAK_GLASS.
+
+    Fails toward flagging: an unparseable value or an unknown hook name is "unknown", never
+    silently benign."""
+    if key == "TDD_PLAYBOOK_BREAK_GLASS":
+        # Strictly wider than any per-hook knob and never a way to strengthen anything.
+        return "demotion"
+    raw = (value or "").strip().lower()
+    if key == _GLOBAL_ENV:
+        # The global default. `block` can only raise a hook that ships weaker; anything else
+        # can lower one that ships stronger, and we cannot tell which hooks it reaches from
+        # here — so treat it as a demotion unless it is the strongest setting.
+        return "enablement" if raw == "block" else "demotion"
+    if not key.startswith("TDD_PLAYBOOK_HOOK_"):
+        return "unknown"
+    name = key[len("TDD_PLAYBOOK_HOOK_"):].lower()
+    default = _DEFAULT_MODES.get(name)
+    if default is None or raw not in MODE_STRENGTH:
+        return "unknown"
+    set_at, ships_at = MODE_STRENGTH[raw], MODE_STRENGTH[default]
+    if set_at < ships_at:
+        return "demotion"
+    if set_at > ships_at:
+        return "enablement"
+    return "noop"
+
+
 def _parse_mode(raw, source, allow_off=True):
     """'off'|'warn'|'block' from an operator-set value, or None — LOUDLY.
 

@@ -241,6 +241,18 @@ def _is_guard_control_var(key):
         return key.startswith("TDD_PLAYBOOK_HOOK") or key == "TDD_PLAYBOOK_BREAK_GLASS"
 
 
+def _guard_override_effect(key, value):
+    """Delegate the demotion-vs-enablement call to the module that owns the mode contract
+    (same reasoning as _is_guard_control_var). On a partial vendored tree where _common is
+    unavailable, fail toward flagging: every override reads as a demotion."""
+    try:
+        sys.path.insert(0, os.path.join(PLUGIN, "hooks", "scripts"))
+        from _common import guard_override_effect
+        return guard_override_effect(key, value)
+    except Exception:
+        return "demotion"
+
+
 def doctor(target: str) -> int:
     """Version-skew check across canonical / vendored / plugin cache. 1 = skew found."""
     canonical = _canonical_version()
@@ -294,12 +306,27 @@ def doctor(target: str) -> int:
         # prefix here: TDD_PLAYBOOK_BREAK_GLASS does not start with TDD_PLAYBOOK_HOOK and is a
         # STRICTLY WIDER switch than the per-hook demotions this check was written to catch,
         # so the prefix silently exempted the biggest one (v1.32.0).
-        demoted = {k: v for k, v in envblock.items() if _is_guard_control_var(k)}
-        if demoted:
-            print(f"STANDING DEMOTION: {rel} env block sets {demoted} — guards are "
+        # Classify against each guard's OWN default, don't flag every knob. Five guards ship
+        # `off` since v1.32.0, so an override can just as easily turn one back ON — reporting
+        # that as a kill switch is how the real demotions get skimmed past (2026-08-17).
+        overrides = {k: v for k, v in envblock.items() if _is_guard_control_var(k)}
+        buckets = {}
+        for k, v in overrides.items():
+            buckets.setdefault(_guard_override_effect(k, v), {})[k] = v
+        weaker = {**buckets.get("demotion", {}), **buckets.get("unknown", {})}
+        if weaker:
+            print(f"STANDING DEMOTION: {rel} env block sets {weaker} — guards are "
                   "demoted for EVERY session in this repo; restore or journal it with an "
                   "owner and expiry (H-class kill switch otherwise)")
             rc = 1
+        stronger = buckets.get("enablement", {})
+        if stronger:
+            print(f"guard opt-in: {rel} env block sets {stronger} — STRONGER than shipped "
+                  "defaults (a retired/advisory guard turned up), not a demotion")
+        same = buckets.get("noop", {})
+        if same:
+            print(f"guard override (no effect): {rel} env block sets {same} — already the "
+                  "shipped default")
 
     # H8 (live incident 2026-07-28): plugin enablement is USER-scope — disabling it in any
     # repo darkens the guard layer everywhere, silently. The heartbeat (written by the

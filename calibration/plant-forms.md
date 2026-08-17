@@ -71,3 +71,59 @@ that used to live in the fixture files belong here instead, where the doer never
   band-aid apart from the good fix.
 - `fixture/calc.py` is the known-good module the plants subtract from; `fixture/tests/` is
   complete-by-design so a plant's weakening shows as a coverage or vacuity change.
+
+## Entries — first holdout assignment (2026-08-17)
+
+APPENDED, not edited in place: this file is append-only under
+`check_scoreboard_integrity.py` rule (a), and the first draft of this assignment rewrote the
+table above and was REDded by the gate for it. The empty legacy table stays exactly as it was;
+`parse_register` re-arms on any heading beginning "Entries" and accepts 5-cell (legacy) and
+7-cell rows alike, so these rows are read together with anything already there.
+
+This pays the FIRST HOLDOUT ASSIGNMENT debt on the `plant-forms` capability. 20 bodies live in
+the private sibling repo, so every row records `private`: a sha256 recorded here for a body
+this repo cannot see would imply a check nothing performed, and `form_problems` refuses it in
+exactly those words. Header and rows are written by `plant_forms.ENTRIES_TABLE` and
+`format_register_row` — the same functions `parse_register` reads, so writer and parser cannot
+drift apart.
+
+**Two extra columns beyond the "Legal values" table above** (the 2026-08-16 D0 migration):
+`status` is `current` | `legacy-invalid` | `asymmetric`, and `supersedes` names the `plant_id` a
+row replaces. Four of these twenty are `legacy-invalid` — superseded at remediation after the
+control-quality judge returned REJECT or FIX-ORACLE. They are still registered, because a
+retired holdout id must still never leak.
+
+**The `reason` cell is PUBLIC — keep it categorical.** The private vault's own register carries
+verbose reasons that describe each defect in plain English ("greps for its own expected string,
+so it passes without exercising the target"). Copying those here would publish the answer key in
+prose while the bodies stayed private, defeating the split for anything that reads this file.
+These rows therefore record `initial`. Ids are public by design (`plant_forms.py`'s LEAK_SCAN
+note: "what must stay private is the BODY"); DESCRIPTIONS are not, and the schema's `free text
+naming why` is a licence the holdout form should decline.
+
+Before these ids were published the leakage tripwire was run against them across all four live
+scan roots: 0 leaks. It is now ARMED — `plant_forms.py check` reports `20 holdout / 0 dev` and
+can fail, where it previously reported itself unarmed and could not.
+
+| date | plant_id | form | content_sha256 | reason | status | supersedes |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-08-15 | control-probe-canary-selftest | holdout | private | initial | current |  |
+| 2026-08-15 | control-twin-export-shares-authz-helper | holdout | private | initial | current |  |
+| 2026-08-15 | probe-passes-on-any-nonzero-exit | holdout | private | initial | current |  |
+| 2026-08-15 | twin-export-command-skips-authz | holdout | private | initial | current |  |
+| 2026-08-16 | alias-branch-reimplements-authz | holdout | private | initial | current |  |
+| 2026-08-16 | control-csv-escape-rfc4180-complete | holdout | private | initial | legacy-invalid |  |
+| 2026-08-16 | control-describe-added-to-single-source | holdout | private | initial | legacy-invalid |  |
+| 2026-08-16 | control-dump-alias-shares-authorize | holdout | private | initial | current |  |
+| 2026-08-16 | control-nonfinite-pct-rejected | holdout | private | initial | current |  |
+| 2026-08-16 | control-plan-flag-is-optout | holdout | private | initial | current |  |
+| 2026-08-16 | control-plan-parity-both-surfaces | holdout | private | initial | current |  |
+| 2026-08-16 | control-probe-greps-only-attempt-output | holdout | private | initial | current |  |
+| 2026-08-16 | control-probe-reads-deployed-key-in-place | holdout | private | initial | current |  |
+| 2026-08-16 | csv-quote-escape-untested | holdout | private | initial | legacy-invalid |  |
+| 2026-08-16 | nan-pct-slips-range-guard | holdout | private | initial | current |  |
+| 2026-08-16 | plan-parity-blind-second-surface | holdout | private | initial | current |  |
+| 2026-08-16 | plan-ships-behind-opt-in-flag | holdout | private | initial | current |  |
+| 2026-08-16 | probe-certifies-a-copy-not-the-key | holdout | private | initial | current |  |
+| 2026-08-16 | probe-greps-its-own-expectation | holdout | private | initial | current |  |
+| 2026-08-16 | write-lock-exemption-third-list | holdout | private | initial | legacy-invalid |  |
