@@ -148,6 +148,10 @@
     {
       "path": "2026-08-17-holdout-arming-and-doctor-classification.json",
       "sha256": "99da48761a2d99ee1aedba176766284c8244b471dc7d75513668791469579797"
+    },
+    {
+      "path": "2026-08-17-v1.40.2-release.json",
+      "sha256": "942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c"
     }
   ]
 }
