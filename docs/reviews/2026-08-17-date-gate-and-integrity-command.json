@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-date-gate-and-integrity-command",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "35fff0dc10148c8f3d5d0072056072fe398bb29c",
+    "head": "c2046e68c68953a49f9bd167001525582915b762"
+  },
+  "reviewers": [
+    "self-review",
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "DATEGATE-F1-APPROVE-PATH-STAMPED-THE-REAL-CLOCK",
+      "severity": "P1",
+      "summary": "Closes HOLDOUT-F2, left OPEN in 2026-08-17-holdout-sha-chain-implementation.json. MANIFEST_REQUIRED_SINCE activates the manifest reader on a date. vault_integrity_problems was ALWAYS two-directionally testable \u2014 it reads the register row's date, and test_harness.py pinned a pre-gate and a post-gate row \u2014 but cmd_approve_holdout stamped _dt.date.today(), so the branch a body landed on through the real approve path was whatever the calendar said. That is precisely how the sha-chain P1 hid for a day: the D1.c approve test stamped 2026-08-16, one day under the threshold, so the manifest check never ran through approve until the following morning, when CI had already certified the release. The earlier record overstated this as 'the threshold is untested in both directions'; the accurate finding is narrower and is stated here rather than left as the version on file.",
+      "evidence": [
+        "calibration/holdout.py:140",
+        "calibration/test_harness.py:4085",
+        "docs/reviews/2026-08-17-holdout-sha-chain-implementation.json"
+      ],
+      "status": "verified_closed",
+      "remediation_commit": "c7ba2fd33f90f7848c34aceedaa0c5d5b08e5526",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_holdout_confinement.py::test_approve_manifest_gate_exercised_on_both_sides_of_its_date"
+      ],
+      "disposition": "cmd_approve_holdout takes an injectable `today` (defaulting to the real clock, so production behaviour is unchanged). The new test lands a body on BOTH sides of the threshold carrying the SAME planted stale manifest, so the only variable is the date \u2014 an ALLOW row and a BLOCK row over one condition. The dates are derived RELATIVE to MANIFEST_REQUIRED_SINCE, so the test pins the MECHANISM and stays green across a deliberate policy change to the constant. Load-bearing in both directions proven by TARGETED MUTANTS on the condition rather than by red-first alone: forcing the branch never-taken kills the BLOCK assertion, forcing it always-taken kills the ALLOW assertion. Method note worth keeping: the first falsification run was itself INVALID \u2014 the mutated date strings are length-preserving and a stale __pycache__ served the original bytecode, so every mutant read as PASS. That is the exact hazard the mutation-runner brief documents, hit live; the re-run busts caches. The general doctrine question (should a date-activated gate be allowed at all?) is NOT resolved here \u2014 the mechanism is now falsifiable, which was the actionable half.",
+      "class": "deterministic",
+      "recurrence_key": "date-activated-gate-unfalsifiable-at-authoring"
+    },
+    {
+      "id": "DATEGATE-F2-INTEGRITY-CHECK-HAD-NO-OPERATOR-READER",
+      "severity": "P2",
+      "summary": "vault_integrity_problems ran ONLY inside run_holdout. So the only way to learn whether a vault was fit to feed an eval was to start a full eval and watch it abort, and the operator-facing answer to 'is my vault OK?' was a hand-typed Python one-liner against an internal function. A check nobody can invoke reports to nobody (\u00a76a darkness), and it is the check that would have told an operator their vault was stale during exactly the window this release fixes.",
+      "evidence": [
+        "calibration/holdout.py:352",
+        "calibration/holdout.py:1090"
+      ],
+      "status": "incorporated",
+      "disposition": "Added `holdout integrity --vault-dir <dir>`: read-only, no model, no clone, no writes \u2014 the same problem list `run` refuses on, printed on demand. Distinguishes three states honestly (no register -> nothing recorded to check, with the body count; clean -> the count of bodies verified; problems -> exit 1). A refusal PRINTS the per-body remediation command rather than naming a fault and leaving the next step to be looked up (\u00a74a). Pinned by a test that invokes the REAL CLI as a subprocess (so the subcommand cannot be present-but-unwired), asserts exit 0 on clean and exit 1 on a planted stale manifest, and asserts the fix command appears in the output.",
+      "class": "deterministic",
+      "recurrence_key": "cli-feature-ships-dark"
+    },
+    {
+      "id": "DATEGATE-F3-STALENESS-CANNOT-BE-PLANTED-THROUGH-THE-GATE",
+      "severity": "P3",
+      "summary": "The first version of both new tests tried to plant a stale manifest by having the injected validator return a bogus candidate sha. approve REFUSED (exit 1) because its own TOCTOU check compares the manifest sha against the proposed bytes \u2014 correct behaviour, but it meant the tests failed on the vacuity guard ('approve did not land the body') rather than on the assertion they were written for. A test that fails for the wrong reason proves only that a test can fail (\u00a713).",
+      "evidence": [
+        "calibration/holdout.py:805",
+        "plugins/tdd-playbook/tests/test_holdout_confinement.py"
+      ],
+      "status": "incorporated",
+      "disposition": "The defect is now planted AFTER landing via _stale_the_manifest(), matching the pattern test_harness.py's ISLAND1 tests already used, and every assertion is guarded by an explicit `code == 0` landing check so a refused approve fails loudly instead of silently skipping the interesting assertions. Incidentally confirms the TOCTOU check is live: staleness genuinely cannot be injected through the approve gate.",
+      "class": "deterministic",
+      "recurrence_key": "red-for-the-wrong-reason"
+    }
+  ]
+}

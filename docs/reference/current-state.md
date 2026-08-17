@@ -41,9 +41,10 @@
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
 - `docs/reviews/2026-08-16-v1.38.0-release.json` — `b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e`
 - `docs/reviews/2026-08-16-v1.39.0-release.json` — `22ce3b783850142c3b56def81a307168a0e1b6b764dc2992e1c30069dfc7fc61`
+- `docs/reviews/2026-08-17-date-gate-and-integrity-command.json` — `fcbc01936aabf82c87fee05cbbb1b0c73a43eb54d7927ddd02cb3dd370fe1095`
 - `docs/reviews/2026-08-17-holdout-sha-chain-implementation.json` — `d53e08184843989ba16fdf2414b8851d5ee77cbc4bae19ecb137467e99e12765`
 - `docs/reviews/2026-08-17-mutation-attribution-doctrine.json` — `e84b9248858ee055e0f09ee0d2c19300a716421ea4ef77101eb4e614ac525a81`
-- `docs/reviews/index.json` — `edcfc2d356ba7d329f129904ee730dcf7d6c545e9c95a9d87f3359e82f3d0c8a`
+- `docs/reviews/index.json` — `9aec6fcf4ce062b59630a2b64771178d7a2eecd468a4ac7584d6794d510425b1`
 
 ## Gate surface
 
@@ -146,8 +147,8 @@
 
 ## Adversarial review records
 
-- Review records: 33. Findings: 163.
-- `incorporated`: 72
+- Review records: 34. Findings: 166.
+- `incorporated`: 74
 - `open`: 7
 - `rejected`: 3
-- `verified_closed`: 81
+- `verified_closed`: 82

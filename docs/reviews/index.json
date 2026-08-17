@@ -132,6 +132,10 @@
     {
       "path": "2026-08-17-mutation-attribution-doctrine.json",
       "sha256": "e84b9248858ee055e0f09ee0d2c19300a716421ea4ef77101eb4e614ac525a81"
+    },
+    {
+      "path": "2026-08-17-date-gate-and-integrity-command.json",
+      "sha256": "fcbc01936aabf82c87fee05cbbb1b0c73a43eb54d7927ddd02cb3dd370fe1095"
     }
   ]
 }
