@@ -156,6 +156,10 @@
     {
       "path": "2026-08-17-v1.41.0-attribution-precheck.json",
       "sha256": "f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c"
+    },
+    {
+      "path": "2026-08-17-adversary-accountability.json",
+      "sha256": "ac91280c04081fd376b3ec04b10a90546d5fdf18febc5f263204adcaad18916b"
     }
   ]
 }

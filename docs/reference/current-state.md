@@ -41,6 +41,7 @@
 - `docs/reviews/2026-08-16-v1.37.0-release.json` — `c238c55c4622072207224eaf51ba91e2d7908d7e563941841d8c6f09c6948165`
 - `docs/reviews/2026-08-16-v1.38.0-release.json` — `b17725c76e0c522c9204477e93435fecace26a27868efa7a6c4406d00ae8835e`
 - `docs/reviews/2026-08-16-v1.39.0-release.json` — `22ce3b783850142c3b56def81a307168a0e1b6b764dc2992e1c30069dfc7fc61`
+- `docs/reviews/2026-08-17-adversary-accountability.json` — `ac91280c04081fd376b3ec04b10a90546d5fdf18febc5f263204adcaad18916b`
 - `docs/reviews/2026-08-17-date-gate-and-integrity-command.json` — `fcbc01936aabf82c87fee05cbbb1b0c73a43eb54d7927ddd02cb3dd370fe1095`
 - `docs/reviews/2026-08-17-holdout-arming-and-doctor-classification.json` — `99da48761a2d99ee1aedba176766284c8244b471dc7d75513668791469579797`
 - `docs/reviews/2026-08-17-holdout-sha-chain-implementation.json` — `d53e08184843989ba16fdf2414b8851d5ee77cbc4bae19ecb137467e99e12765`
@@ -49,7 +50,7 @@
 - `docs/reviews/2026-08-17-v1.40.1-release.json` — `94f41fb01433c82a8ff8f83f007ec342e5fdaa4c9754e1ba0c731d307da0ce27`
 - `docs/reviews/2026-08-17-v1.40.2-release.json` — `942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c`
 - `docs/reviews/2026-08-17-v1.41.0-attribution-precheck.json` — `f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c`
-- `docs/reviews/index.json` — `d0286c43810a814557a315f29cb3b38c3255720680121ed1d78f123dc9f56527`
+- `docs/reviews/index.json` — `9e3add1f9974779afb64aef3ca0feb1d4fc1fb8b1e92d0e56682f04c3c5a980d`
 
 ## Gate surface
 
@@ -154,19 +155,19 @@
 
 ## Adversarial review records
 
-- Review records: 39. Findings: 178.
+- Review records: 40. Findings: 186.
 - `incorporated`: 81
 - `open`: 10
-- `rejected`: 3
-- `verified_closed`: 84
+- `rejected`: 4
+- `verified_closed`: 91
 
-participation: what the 39 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
+participation: what the 40 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
 - adoption-adversary · authors records — 1
-- architecture-adversary · authors records — 15
+- architecture-adversary · authors records — 16
 - claims-verifier · authors records — 1
 - control-quality-adversary — not named in any indexed review
 - edge-case-adversary — not named in any indexed review
-- integration-adversary · authors records — 17
+- integration-adversary · authors records — 18
 - mutation-runner — not named in any indexed review
 - observability-adversary — not named in any indexed review
 - planted-error-probe — not named in any indexed review

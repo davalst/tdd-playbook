@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-adversary-accountability",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-adversary-accountability.md",
+  "review_range": {
+    "base": "01497ca252d592c346c97cd40a0f715840efab57",
+    "head": "f5bc8070b8401a3d00c4a847950c21741c921513"
+  },
+  "reviewers": [
+    "integration-adversary",
+    "architecture-adversary",
+    "codex-field-report",
+    "cheliped-field-report",
+    "self-review"
+  ],
+  "findings": [
+    {
+      "id": "INT-P0",
+      "severity": "P0",
+      "summary": "host_parity.canonical_inventory() hardcodes <root>/plugins/tdd-playbook and refuses a vacuous family, so it raises FileNotFoundError in EVERY vendored layout (Claude and Codex, both reproduced by scratch install). It had no production bin/ caller, so nothing had ever exercised that path; D3's reviewer binding would have been the first, taking review_ledger's DEFAULT validate verb dark on exactly the downstream hosts it serves.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/host_parity.py:61-70",
+        "scripts/install_into_repo.py:54-57",
+        "plugins/tdd-playbook/bin/review_ledger.py:342-350"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "cli-feature-ships-dark",
+      "disposition": "New blocking prerequisite D0: host_parity.agents_roster()/agents_dir() resolve source, Claude-vendored and Codex-vendored layouts and return None instead of raising, on the catalog_rows degradation contract. canonical_inventory is untouched — its vacuity refusal is correct for parity duty, and weakening it would have traded one correct invariant for another.",
+      "remediation_commit": "78544d5e9a30136e4eb1093f5c7dda8be8c280e3",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_host_parity.py::test_agents_roster"
+      ]
+    },
+    {
+      "id": "ARCH-F2",
+      "severity": "P1",
+      "summary": "The plan's judgment-vs-mechanical partition for the participation report would have been a third copy of a classification the repo already derives — and test_agents.py's existing PINNED/INHERIT split already disagrees with its OWN docstring on mutation-runner, the exact member the partition needed to exclude.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py:567-579",
+        "calibration/run_calibration.py:55-59",
+        "calibration/test_harness.py:1110-1119"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "nth-copy-of-owned-helper",
+      "catalog_row": "H11",
+      "disposition": "The partition was DELETED rather than sourced: participation_report prints the whole roster and flags nothing, so nothing can be false-flagged. The record-authoring marker is derived by reading the briefs, not listed. Separately D8 corrected the contradicting docstring — the PINNED set was right, the sentence was not.",
+      "remediation_commit": "f5bc8070b8401a3d00c4a847950c21741c921513",
+      "closure_review": "architecture-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_participation_report"
+      ]
+    },
+    {
+      "id": "INT-P1-DARK",
+      "severity": "P1",
+      "summary": "The participation report's only named consumer was run_calibration, which is opt-in and triggered by 'a verifier misbehaves'. An adversary named in no record cannot misbehave, so the report would have been dark in precisely the condition it exists to surface — dark by construction, not by omission.",
+      "evidence": [
+        "calibration/run_calibration.py:1282",
+        "plugins/tdd-playbook/bin/render_reference.py:65-84",
+        "capabilities.json"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "opt-in-feature-goes-dark",
+      "disposition": "Routed the block into render_reference.review_section(), regenerated at every release, in addition to the recurrence verb. The test asserts at the CONSUMER — it reads the committed docs/reference/current-state.md — so a producer that stops being read goes red rather than passing on its own output.",
+      "remediation_commit": "f5bc8070b8401a3d00c4a847950c21741c921513",
+      "closure_review": "integration-adversary",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_participation_report"
+      ]
+    },
+    {
+      "id": "CODEX-RENAME",
+      "severity": "P1",
+      "summary": "The plan claimed a single grandfather cutoff kept append-only records valid 'through any future agent rename'. It does not: a post-cutoff record naming architecture-adversary breaks if that file is renamed later. The cutoff only grandfathers records predating the rollout.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/review_ledger.py:51-54",
+        "plugins/tdd-playbook/tests/test_agents.py:111"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "small-n-comparison-overclaim",
+      "disposition": "Replaced with a stated TWO-part contract: the cutoff for the rollout, plus agent filenames as canonical ids — already frozen by test_agents.py:111 and :588, so this NAMES an existing constraint rather than adding one — with a renamed id joining NON_AGENT_REVIEWERS as a historical alias. No alias table, no versioned ids.",
+      "remediation_commit": "78544d5e9a30136e4eb1093f5c7dda8be8c280e3",
+      "closure_review": "codex-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_review_ledger.py::test_reviewer_vocabulary_bound_to_roster"
+      ]
+    },
+    {
+      "id": "CODEX-DEBT",
+      "severity": "P1",
+      "summary": "The plan's 'dated debt' section carried an owner and nothing else — no capability id, expiry, done condition, or validate --as-of proof. That is prose parking, and it violates this repo's own deferral contract.",
+      "evidence": [
+        "capabilities.json",
+        "plugins/tdd-playbook/bin/capability_registry.py:21"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "prose-deferral-needs-mechanical-trigger",
+      "disposition": "Both deferrals registered as integration_debt with owner, expiry and done condition (loop-closed-contracts-unparsed 2026-10-31; codex-skill-surface-absent 2026-11-15), each demonstrated to RED at expiry+1 via validate --as-of and to stay quiet today. A third item (the mutation-runner docstring) was cheap enough to promote out of debt and shipped as D8.",
+      "remediation_commit": "f5bc8070b8401a3d00c4a847950c21741c921513",
+      "closure_review": "codex-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "CODEX-VERIFY",
+      "severity": "P2",
+      "summary": "The plan's end-to-end verification installed only the Claude surface and asserted Codex behaviour in a comment — on a deliverable whose entire premise is cross-layout portability. It also called render_reference.py with no argument, which runs check, not render.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/render_reference.py:178",
+        "plugins/tdd-playbook/tests/test_host_parity.py"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "outermost-wire-untested",
+      "disposition": "D0's tests drive the PRODUCTION installer for both hosts in fresh temp trees, import the VENDORED copy rather than only the source module, and cover the empty-directory case. The verification block now runs render then check.",
+      "remediation_commit": "78544d5e9a30136e4eb1093f5c7dda8be8c280e3",
+      "closure_review": "codex-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_host_parity.py::test_agents_roster"
+      ]
+    },
+    {
+      "id": "CODEX-CADENCE",
+      "severity": "P1",
+      "summary": "README and capabilities.json still described the calibration cadence v1.32.0 retired — 'on a schedule', 'weekly', and a 14-day staleness check that 'runs inside the blessed gate'. The README contradicted itself within a few lines, and check_staleness.py appears in neither gate-manifest.json, gate_runner.py, nor .github/workflows/gate.yml, so both surfaces claimed a mechanism that does not run.",
+      "evidence": [
+        "README.md",
+        "capabilities.json",
+        "gate-manifest.json"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "changelog-claims-a-tree-it-is-not-in",
+      "disposition": "D7, promoted into Phase 1 because it is wrong today and independent of the deferred doctrine work. Both surfaces now state that calibration is opt-in, that check_staleness gates nothing and is invoked by nothing, and what the opt-in posture trades away.",
+      "remediation_commit": "f5bc8070b8401a3d00c4a847950c21741c921513",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_own_registry"
+      ]
+    },
+    {
+      "id": "CHELI-KEYS",
+      "severity": "P2",
+      "summary": "External review asserted that 0 of 39 records carry a recurrence_key, and concluded the new key should be framed as a first-instance class rather than an existing taxonomy.",
+      "evidence": [
+        "docs/reviews/",
+        "plugins/tdd-playbook/bin/review_ledger.py:428-455"
+      ],
+      "status": "rejected",
+      "class": "deterministic",
+      "recurrence_key": "field-report-normal-state-read-as-staleness",
+      "rationale": "Refuted by counting: 24 of 39 records carry at least one recurrence_key, and 90 of 178 findings are keyed. The reviewer confirmed the correction in the following round and attributed it to a path-resolution error on their side. The premise being false inverts the conclusion — the taxonomy is well established, so the operative rule is to REUSE an existing key, which this record does for five of its eight findings rather than minting new vocabulary."
+    }
+  ]
+}
