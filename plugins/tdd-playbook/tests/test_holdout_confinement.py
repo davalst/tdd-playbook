@@ -292,6 +292,43 @@ def test_approve_manifest_gate_exercised_on_both_sides_of_its_date():
             "a POST-threshold body with a stale manifest must be caught: " + repr(probs))
 
 
+def test_integrity_clean_message_carries_its_denominator():
+    """§12 (2026-08-17, found on the FIRST real run): the clean message read "every one matching
+    its register row and its validation manifest" — but bodies dated before
+    MANIFEST_REQUIRED_SINCE have their manifest SKIPPED, not verified. On David's real vault that
+    printed manifest assurance for 20 bodies while checking 0 of them.
+
+    A result carries its scope. The clean line must state how many manifests were actually
+    CHECKED and how many were grandfathered, and must not claim manifest verification it did not
+    do. Two directions: a pre-cutoff body reports 0 checked, a post-cutoff body reports 1.
+    """
+    before = (holdout.MANIFEST_REQUIRED_SINCE[:8]
+              + "{:02d}".format(int(holdout.MANIFEST_REQUIRED_SINCE[8:]) - 1))
+    after = (holdout.MANIFEST_REQUIRED_SINCE[:8]
+             + "{:02d}".format(int(holdout.MANIFEST_REQUIRED_SINCE[8:]) + 1))
+    script = os.path.join(REPO, "calibration", "holdout.py")
+
+    def clean_line(today):
+        plant = {"id": "denom-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+                 "task": "t", "must_match": ["SENTINEL_ORACLE"], "must_not_match": ["x"]}
+        with tempfile.TemporaryDirectory() as vault:
+            code, _ = _approve_into_fresh_vault(vault, plant, today=today)
+            assert code == 0, "approve did not land the body"
+            out = subprocess.run([sys.executable, script, "integrity", "--vault-dir", vault],
+                                 capture_output=True, text=True, timeout=60)
+            assert out.returncode == 0, out
+            return out.stdout
+
+    grandfathered = clean_line(before)
+    assert "0 of 1" in grandfathered, \
+        "a grandfathered body must report 0 manifests checked: " + grandfathered
+    assert "grandfathered" in grandfathered.lower(), grandfathered
+
+    verified = clean_line(after)
+    assert "1 of 1" in verified, \
+        "a post-cutoff body must report 1 manifest checked: " + verified
+
+
 def test_integrity_subcommand_is_wired_and_names_the_fix():
     """§6a (2026-08-17): vault_integrity_problems ran ONLY inside run_holdout, so the only way to
     learn a vault was stale was to start a full eval and watch it abort. `holdout integrity` is
@@ -331,6 +368,7 @@ def main():
     failures = []
     for fn in (test_run_holdout_refuses_form_override,
                test_approve_manifest_sha_matches_landed_body,
+               test_integrity_clean_message_carries_its_denominator,
                test_approve_manifest_gate_exercised_on_both_sides_of_its_date,
                test_integrity_subcommand_is_wired_and_names_the_fix,
                test_judge_workspace_outside_public_repo,

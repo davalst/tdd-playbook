@@ -228,9 +228,24 @@ def cmd_integrity(vault_dir):
               "register.".format(n))
         return 0
     if not problems:
-        n = len(holdout_shas(os.path.join(vault_dir, "bodies")))
-        print("vault integrity: CLEAN — {} registered body/bodies, every one matching its "
-              "register row and its validation manifest.".format(n))
+        # §12 — a result carries its SCOPE. Bodies dated before MANIFEST_REQUIRED_SINCE have their
+        # manifest SKIPPED, not verified, so a flat "every one matches its manifest" is an
+        # overclaim: the first real run of this command printed manifest assurance for 20 bodies
+        # having checked 0 of them. Report the denominator, not the reassurance.
+        shas = holdout_shas(os.path.join(vault_dir, "bodies"))
+        latest = plant_forms.resolve_latest(plant_forms.parse_register(
+            open(os.path.join(vault_dir, REGISTER_NAME)).read()))
+        on_disk = [e for sid, e in latest.items() if sid in shas]
+        checked = [e for e in on_disk
+                   if e["date"] >= MANIFEST_REQUIRED_SINCE
+                   and (e.get("status") or "current") == "current"]
+        print("vault integrity: CLEAN — {n} registered body/bodies, every one matching its "
+              "register sha. Validation manifests CHECKED for {k} of {n}.".format(
+                  n=len(on_disk), k=len(checked)))
+        if len(checked) < len(on_disk):
+            print("  {} predate the {} manifest requirement and are grandfathered — their "
+                  "manifests were NOT verified (cleanup is the remediation sweep's job, not a "
+                  "bricked run).".format(len(on_disk) - len(checked), MANIFEST_REQUIRED_SINCE))
         return 0
     print("vault integrity: {} PROBLEM(S) — `holdout run` will refuse this vault.".format(
         len(problems)))

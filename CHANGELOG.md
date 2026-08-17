@@ -36,6 +36,13 @@ spans, released together because the first was found while gating the second (sp
   stale was to start a full eval and watch it abort. Read-only — no model, no clone, no
   writes — and a problem exits nonzero while PRINTING the per-body remediation command
   (§4a: a refusing check prints the diagnosis it already holds).
+- **`integrity`'s clean message carries its DENOMINATOR (§12), fixed on its first real run.**
+  The first wording said "every one matching its register row and its validation manifest" —
+  but bodies dated before `MANIFEST_REQUIRED_SINCE` have their manifest SKIPPED, not
+  verified. Run against a real 20-body vault it printed manifest assurance having checked
+  ZERO of them. It now reports "manifests CHECKED for k of n" and names the grandfathered
+  remainder explicitly. A reassurance that does not state its scope is the quiet half of a
+  false green.
 - **§4 — mutation testing's ATTRIBUTION blind spot** (from a Codex `gate-honesty-p1` field
   report). A behavior exercised only by spawning a fresh process is unmeasurable by mutation
   on ANY tool, because no coverage tracer attributes child-process work to the parent test —
