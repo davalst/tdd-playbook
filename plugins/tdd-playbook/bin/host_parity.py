@@ -99,12 +99,18 @@ def agents_roster(root: str) -> set[str] | None:
     first — which would have taken the ledger's default `validate` verb dark on exactly
     the hosts it serves. Weakening the parity refusal to fix that would have traded one
     correct invariant for another; a sibling with its own contract does not."""
+    directory = agents_dir(root)
+    return _markdown_names(directory) if directory else None
+
+
+def agents_dir(root: str) -> str | None:
+    """The directory backing `agents_roster` — the first layout holding a NON-EMPTY agent
+    family, or None. Separate so a caller needing the BRIEFS (not just their ids) reads
+    the same resolution instead of re-deriving the layout list."""
     for relative in AGENT_FAMILY_LAYOUTS:
         directory = os.path.join(root, relative)
-        if os.path.isdir(directory):
-            names = _markdown_names(directory)
-            if names:
-                return names
+        if os.path.isdir(directory) and _markdown_names(directory):
+            return directory
     return None
 
 

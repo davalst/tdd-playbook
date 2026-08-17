@@ -212,12 +212,15 @@ tool directory or a workflow cannot fall outside it — and fails the gate if on
 a tag. `hooks/scripts/tag_guard.py` (BLOCKING) stops a session doing the same at the Bash seam. `bin/verify_verdict.py` (stdlib-only, pure-Python Ed25519) is retained
 **unwired** to read historical signed verdicts from the retired CIVerd engine; nothing in the
 release path consults it. See CLAUDE.md for the full procedure.
-The **agents** are calibrated behaviorally on a schedule — planted defects a live agent must
-catch (`calibration/`, results in `docs/calibration/`):
+The **agents** are calibrated behaviorally against planted defects a live agent must catch
+(`calibration/`, results in `docs/calibration/`). Calibration is **opt-in and reactive since
+v1.32.0** — you run it when a verifier misbehaves, when a doer-model upgrade lands, or when a
+gate needs proving against a planted defect. There is no clock: the schedule produced
+obligations faster than findings, and a cadence nobody can meet stops being a control:
 ```bash
-python3 calibration/check_staleness.py             # deterministic: is the scoreboard stale? (F5)
+python3 calibration/check_staleness.py             # deterministic staleness read; gates nothing
 python3 calibration/run_calibration.py --dry-run   # free validation (CI) + R2 pairing invariant
-python3 calibration/run_calibration.py             # Claude history.md; weekly live calibration
+python3 calibration/run_calibration.py             # Claude history.md; live calibration run
 python3 calibration/run_calibration.py --host codex --model <model>  # separate history-codex.md
 ```
 Since v1.17 each scenario runs 3× (one roll is a coin flip, not a measurement): `PASS` only at
@@ -227,10 +230,14 @@ paired clean control the verifier must stay quiet on. Since v1.22 both numbers c
 Wilson intervals, every calibratable agent must have a plant (the coverage invariant), and
 removing any gate surface — a SKILL section, an agent brief, a command — costs a journaled
 `gate-changes.md` entry while adding one stays free: gate removal costs what addition costs.
-`check_staleness.py` makes the 14-day cadence mechanical instead of a memory: it fails loudly when
-`docs/calibration/history.md`'s latest run is missing or stale. It runs inside the blessed gate, so it is
-re-run off-box on every push by `.github/workflows/gate.yml` (the CIVerd engine that used to do
-this was retired in v1.32.0).
+`check_staleness.py` still reads `docs/calibration/history.md` and still reports a missing or
+stale latest run — but it **gates nothing**, and nothing invokes it: it is absent from
+`gate-manifest.json`, `gate_runner.py` and `.github/workflows/gate.yml`. It gated the release
+path until v1.32.0 retired the calibration clock along with the CIVerd engine. What that trades
+away is stated rather than glossed: nothing now notices if the verifiers decay quietly, and the
+trigger is a human seeing a verifier behave badly. A MISS is still a blocking failure when it is
+found, the plant corpus only grows, and the doer-upgrade trigger stands — if verifier quality
+visibly slips, the schedule is the first thing to bring back.
 
 ## Layout
 ```

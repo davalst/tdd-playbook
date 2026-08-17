@@ -9,7 +9,9 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from review_ledger import VALID_STATUS as VALID_REVIEW_STATUS  # noqa: E402  (sibling; the one status-vocabulary owner)
+from review_ledger import (VALID_STATUS as VALID_REVIEW_STATUS,  # noqa: E402  (sibling; the one status-vocabulary owner)
+                           participation_report, record_authoring_briefs)
+from host_parity import agents_roster  # noqa: E402  (sibling; vendored together)
 
 
 class ReferenceError(RuntimeError):
@@ -62,7 +64,7 @@ def _load(root: str, relative: str):
         return json.load(fh)
 
 
-def review_section(reviews: list[dict]) -> list[str]:
+def review_section(reviews: list[dict], root: str | None = None) -> list[str]:
     """The adversarial-review lines. When no finding has ever been rejected, that fact is
     a SENTENCE, not a `0` a reader's eye slides past (the /readable business-owner test).
     Printed, not interpreted: whether the zero is a rubber-stamp signal or a schema fact
@@ -80,6 +82,16 @@ def review_section(reviews: list[dict]) -> list[str]:
         lines.append("- `{}`: {}".format(status, count))
     if findings and not any(finding.get("status") == "rejected" for finding in findings):
         lines.append("- No finding has ever been rejected.")
+    # D4 (adversary-accountability, 2026-08-17): recorded participation lands HERE, not
+    # only in `review_ledger.py recurrence`. That verb's reader is run_calibration, which
+    # is opt-in and triggered by "a verifier misbehaves" — and an agent named in no record
+    # cannot misbehave, so the report would have been dark in exactly the case it exists
+    # to show. This file is regenerated at every release, so the inventory is READ.
+    if root is not None:
+        lines.append("")
+        for line in participation_report(reviews, agents_roster(root),
+                                         record_authoring_briefs(root)):
+            lines.append("- " + line.strip() if line.startswith("  ") else line)
     return lines
 
 
@@ -150,7 +162,7 @@ def render(root: str) -> str:
             len(capabilities), len(debts)),
     ])
     lines.extend("- `{}` — {} (owner `{}`, expires `{}`)".format(*row) for row in debts)
-    lines.extend(review_section(reviews))
+    lines.extend(review_section(reviews, root))
     return "\n".join(lines) + "\n"
 
 

@@ -567,7 +567,20 @@ def test_v19_planted_fixtures():
 def test_verifier_model_pins():
     """F3: the judgment/adversary verifiers pin a strong model floor so live dispatch never
     silently floats to a cheap session model (a verifier on the doer's tier is the same mind it
-    checks). Mechanical test-runners stay inherit — they run suites, not judgment."""
+    checks).
+
+    The criterion is whether the agent's OUTPUT requires judgment, not whether it runs a
+    suite. `mutation-runner` runs one and is PINNED, because triaging survivors
+    real-vs-equivalent is a judgment call that a cheap model gets wrong in the expensive
+    direction. INHERIT is for agents whose verdict is mechanical all the way down —
+    red-first-verifier (did the test go red then green), planted-error-probe and
+    ux-probe-calibrator (did the plant get caught) — where tier barely moves the answer.
+
+    Until 2026-08-17 this docstring read "Mechanical test-runners stay inherit — they run
+    suites, not judgment," which the PINNED set below has contradicted on `mutation-runner`
+    for as long as both have existed. Surfaced by the architecture-adversary reviewing the
+    adversary-accountability plan, whose first draft was about to copy the wrong half into a
+    third classification. The set was right; the sentence was not."""
     PINNED = {"claims-verifier", "tripwire-auditor", "architecture-adversary",
               "integration-adversary", "edge-case-adversary", "mutation-runner",
               "script-adversary",

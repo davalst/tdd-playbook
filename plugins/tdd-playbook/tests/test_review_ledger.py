@@ -447,6 +447,86 @@ def test_reviewer_vocabulary_bound_to_roster():
           any("reviewers" in p for p in empty), empty)
 
 
+def test_participation_report():
+    """D4 (2026-08-17 adversary-accountability): RECORDED REVIEW PARTICIPATION — for every
+    agent in the roster, how many indexed records NAME it.
+
+    What it does not claim, deliberately: `reviewers` is hand-authored, so this can only
+    show what was RECORDED, never that an agent ran. The plan's first draft called this
+    "usage"/"dispatch" and proposed the finding key
+    `adversary-built-registered-never-dispatched`; both were dropped in review because the
+    machine cannot establish "never dispatched," and a gate on a hand-typed field would
+    reward name-stuffing.
+
+    No partition and no exemption list: earlier drafts split the roster judgment-vs-
+    mechanical and three reviewers flagged that as an Nth-copy classification and an
+    unpinned darkness hatch. Printing the WHOLE roster deletes the problem instead of
+    relocating it — nothing is flagged, so nothing can be false-flagged
+    (run_calibration.py:55-59: "the roster stays DERIVED, never a second hand-maintained
+    list")."""
+    rl = load_module()
+
+    def rec(rid, reviewers):
+        return {"id": rid, "reviewers": reviewers, "findings": []}
+
+    records = [rec("2026-08-01-a", ["architecture-adversary", "self-review"]),
+               rec("2026-08-02-b", ["architecture-adversary"]),
+               rec("2026-08-03-c", ["integration-adversary"])]
+    roster = {"architecture-adversary", "integration-adversary", "observability-adversary"}
+    producers = {"architecture-adversary", "integration-adversary"}
+
+    lines = rl.participation_report(records, roster, producers)
+    body = "\n".join(lines)
+
+    check("counts the records that NAME each agent",
+          any("architecture-adversary" in l and "2" in l for l in lines), lines)
+    check("an agent named in no record is shown, not omitted",
+          "observability-adversary" in body, lines)
+    check("zero is worded as NOT NAMED, never as unused/never-dispatched",
+          "not named in any indexed review" in body
+          and "dispatch" not in body.lower() and "never used" not in body.lower(), lines)
+    check("record-authoring briefs are marked so a real zero is legible",
+          any("observability-adversary" in l and "authors records" not in l for l in lines)
+          and any("architecture-adversary" in l and "authors records" in l for l in lines),
+          lines)
+    check("non-agent reviewer tokens are not counted as roster participation",
+          "self-review" not in body, lines)
+
+    # the §4a invariant: counts reconcile with the (record, reviewer) pairs they summarise
+    pairs = sum(1 for r in records for name in r["reviewers"] if name in roster)
+    counted = sum(int(tok) for l in lines for tok in [l.rsplit(" ", 1)[-1]] if tok.isdigit())
+    check("PROPERTY: counts sum to the (record, reviewer) pairs inside the roster",
+          counted == pairs, (counted, pairs))
+
+    empty = "\n".join(rl.participation_report([], roster, producers))
+    check("zero records -> unmeasured, never a vacuous 100%",
+          "unmeasured" in empty, empty)
+
+    # vacuity guard on the enumerator (§6c, mandatory) — an empty roster must not pass
+    # green having enumerated nothing
+    vacuous = "\n".join(rl.participation_report(records, set(), producers))
+    check("VACUITY: an empty roster refuses rather than printing an empty clean list",
+          "unmeasured" in vacuous or "vacuous" in vacuous, vacuous)
+
+    # downstream: no roster to enumerate (codex vendoring carries no agents/)
+    absent = "\n".join(rl.participation_report(records, None, producers))
+    check("roster None -> the block states WHY it is absent, never silently empty",
+          "roster" in absent.lower() and absent.strip() != "", absent)
+
+    # §1 seam rule: assert at the seam this code does NOT own. The producer emitting a
+    # block proves nothing about whether anyone reads it — and the whole reason this
+    # deliverable exists is that its first design had only an opt-in reader. So read the
+    # ALWAYS-ON surface: docs/reference/current-state.md, regenerated at every release.
+    committed = open(os.path.join(REPO, "docs", "reference", "current-state.md"),
+                     encoding="utf-8").read()
+    check("the participation block REACHES the always-on reference surface",
+          "participation:" in committed, "not found in committed current-state.md")
+    real_roster = rl.agents_roster(REPO)
+    check("every roster member is accounted for on that surface (no silent narrowing)",
+          real_roster and all(name in committed for name in real_roster),
+          sorted(n for n in (real_roster or ()) if n not in committed))
+
+
 def _vendor_bin(real):
     """Mirror the REAL vendored layout: install_into_repo copies bin/ as a whole tree,
     so review_ledger.py always ships beside its dataflow_sweeps/_debt/host_parity
@@ -526,6 +606,7 @@ if __name__ == "__main__":
     test_repository_review_records_are_valid()
     test_taxonomy_required_after_ship_date()
     test_reviewer_vocabulary_bound_to_roster()
+    test_participation_report()
     test_recurrence_report()
     test_recurrence_verb_vacuity_and_usage_event()
     test_root_resolution_vendored_and_canonical()

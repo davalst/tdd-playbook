@@ -425,6 +425,69 @@ def validate_repository(root: str) -> list[str]:
     return problems
 
 
+def record_authoring_briefs(root: str) -> set[str]:
+    """The agents whose brief carries the review-record output contract — DERIVED by
+    reading the briefs, never a hand list (run_calibration.py:55-59 states the rule: "the
+    roster stays DERIVED, never a second hand-maintained list"). `recurrence_key` is the
+    marker because only a brief instructed to AUTHOR a record needs to name it; the same
+    membership is asserted independently at test_agents.py:1038."""
+    directory = agents_dir(root)
+    if directory is None:
+        return set()
+    found = set()
+    for name in sorted(os.listdir(directory)):
+        if not name.endswith(".md"):
+            continue
+        with open(os.path.join(directory, name), encoding="utf-8") as fh:
+            if "recurrence_key" in fh.read():
+                found.add(name[:-3])
+    return found
+
+
+def participation_report(records: list[dict], roster: set[str] | None,
+                         producers: set[str]) -> list[str]:
+    """RECORDED REVIEW PARTICIPATION — for each agent in the roster, how many indexed
+    records NAME it.
+
+    What this is not, stated in the output itself because the distinction is the whole
+    point: `reviewers` is hand-authored, so a count is evidence a name was RECORDED and
+    never evidence an agent ran. An earlier draft called this usage/dispatch and proposed
+    the finding key `adversary-built-registered-never-dispatched`; both were dropped —
+    the machine cannot establish "never dispatched," and a GATE on a hand-typed field
+    would reward name-stuffing rather than review.
+
+    Every roster member is printed and NOTHING is flagged. Earlier drafts partitioned the
+    roster judgment-vs-mechanical so a zero could be called a defect; that partition was
+    an Nth copy of a classification the repo already derives, and an unpinned exemption
+    set is the documented darkness hatch (test_harness.py:1116). Printing the whole
+    roster deletes the problem instead of relocating it: with nothing flagged, nothing
+    can be false-flagged, and a reader who sees a zero beside `authors records` has the
+    two facts needed to judge it. Same category as capability_registry doctor's
+    dark-feature inventory."""
+    if roster is None:
+        return ["participation: unmeasured — no agent roster resolves from this tree "
+                "(a vendored copy carrying bin/ without agents/), so no id can be checked"]
+    if not roster:
+        return ["participation: unmeasured — the agent roster enumerated VACUOUSLY (zero "
+                "ids); an empty enumeration is refused, never reported as clean"]
+    if not records:
+        return ["participation: unmeasured — no indexed review records"]
+    counts: dict[str, int] = {}
+    for record in records:
+        for name in set(record.get("reviewers") or []):
+            if name in roster:
+                counts[name] = counts.get(name, 0) + 1
+    lines = ["participation: what the {} indexed records RECORDED — `reviewers` is written "
+             "by hand, so this shows which names were written down, never who ran".format(
+                 len(records))]
+    for name in sorted(roster):
+        mark = " · authors records" if name in producers else ""
+        count = counts.get(name, 0)
+        lines.append("  {}{} — {}".format(
+            name, mark, count if count else "not named in any indexed review"))
+    return lines
+
+
 def recurrence_report(records: list[dict]) -> list[str]:
     """The judgment surface speaking back: a recurrence_key appearing in >=2 DISTINCT
     records at class `deterministic` is an UNBUILT GUARD — a machine could have caught
@@ -506,7 +569,7 @@ def _log_usage(verb: str, extra: dict) -> None:
 # unreachable, untestable second home for the constant).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dataflow_sweeps import EXIT_VACUOUS  # noqa: E402  (sibling; vendored together)
-from host_parity import agents_roster  # noqa: E402  (sibling; vendored together)
+from host_parity import agents_dir, agents_roster  # noqa: E402  (siblings; vendored together)
 
 
 def main(argv=None) -> int:
@@ -527,6 +590,8 @@ def main(argv=None) -> int:
                   "(zero scanned is not clean; §4a)", file=sys.stderr)
             return EXIT_VACUOUS
         lines = recurrence_report(records)
+        lines += participation_report(records, agents_roster(root),
+                                      record_authoring_briefs(root))
         for line in lines:
             print(line)
         _log_usage("recurrence", {

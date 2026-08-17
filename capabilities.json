@@ -279,7 +279,7 @@
       ],
       "activation": {
         "default": "off",
-        "switch": "python3 calibration/run_calibration.py (weekly, David-run or scheduled; --dry-run is CI-only validation)"
+        "switch": "python3 calibration/run_calibration.py \u2014 OPT-IN and reactive since v1.32.0 (run it when a verifier misbehaves, on a doer-model upgrade, or to prove a gate against a planted defect); there is no clock. --dry-run is CI-only validation"
       },
       "wired_by": [
         "calibration/host_runner.py",
@@ -308,7 +308,7 @@
       ],
       "liveness": {
         "max_quiet_days": 14,
-        "probe": "calibration/check_staleness.py \u2014 mechanical history.md staleness gate (F5, INVALID rows never extend freshness), run in the release gate and as a CIVerd check"
+        "probe": "calibration/check_staleness.py \u2014 mechanical history.md staleness READ (F5, INVALID rows never extend freshness), run BY HAND. It gates nothing and nothing invokes it: absent from gate-manifest.json, gate_runner.py and .github/workflows/gate.yml. It did gate the release path until v1.32.0 retired the calibration clock with the CIVerd engine; max_quiet_days below is therefore an advisory staleness hint, not an enforced budget"
       },
       "integration_debt": [
         {
@@ -940,7 +940,14 @@
       "liveness": {
         "max_quiet_days": 90,
         "probe": "test_review_ledger plants an unresolved P1, an evidence-free closure, an invalid review SHA, and a duplicate finding ID; recurrence liveness = a `gate: review-ledger, event: usage` row lands in the yield log per invocation (drained into docs/calibration/usage.md by gate_yield rollup)"
-      }
+      },
+      "integration_debt": [
+        {
+          "what": "loop-closed-contracts-unparsed (adversary-accountability plan, 2026-08-17): the five `Loop closed:` contracts in commands/{probe,mutate,integration-audit,edge,tdd-plan}.md are FREE PROSE parsed by nothing. test_agents.py:148 asserts only that the STRING appears in the command FILE - an artifact this repo wrote - so it proves the instruction exists and can never detect a loop that stopped closing. This is the largest population of agent output in the repo with zero mechanical verification, and the doctrine that would govern it (forced closed-vocabulary output as the precondition for parsing) is Phase 2's SS5b. DONE = each of the five emits a forced closed-vocabulary line parsed by a test, on the model of calibration/holdout.py:630-637 (_JUDGE_VERDICT: 'Free prose never becomes a verdict'), or a recorded decision that a session-emitted line is unverifiable repo-side and what replaces it.",
+          "owner": "david",
+          "expires": "2026-10-31"
+        }
+      ]
     },
     {
       "id": "generated-current-state-reference",
@@ -1392,6 +1399,11 @@
           "what": "CLAUDE-ONLY BY PARITY: the four agents are codex-unavailable under the standing codex-command-agent-discovery debt (test-lock capability). Its expiry is a DELIBERATE known-RED: on 2026-09-30 the gate goes red unless Codex discovery lands or the debt is consciously re-dated with a recovery trigger \u2014 stated in CHANGELOG v1.34.0 so it cannot read as a surprise",
           "owner": "david",
           "expires": "2026-09-30"
+        },
+        {
+          "what": "codex-skill-surface-absent (adversary-accountability plan, 2026-08-17): skills/ is not a host-parity family (host_parity.py:20 FAMILIES = commands, agents, guards) and CODEX_COPY_TREES carries adapters + bin only, so NO skill reaches a Codex install. Consequence to state rather than assume: any doctrine claim of the form 'on by default, the skill loads every session' is true on Claude ONLY - which is why Phase 2's SS5b activation claim must be qualified rather than asserted. DONE = skills/ joins FAMILIES with a per-host disposition, or the Codex host's skill unavailability is a RECORDED parity disposition (docs/architecture/host-parity-policy.json) instead of a silent omission.",
+          "owner": "david",
+          "expires": "2026-11-15"
         }
       ]
     },

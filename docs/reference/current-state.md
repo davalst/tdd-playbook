@@ -8,8 +8,8 @@
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `b21600ff86fabfd8576f29ad42586fc9dfe9a05c2797906bc454532925e560fa`
 - `docs/architecture/host-parity.json` — `b34caa13e83f45bdee44e7595e885ef398bb27cbd3632c64885282168ef482d4`
-- `plugins/tdd-playbook/bin/host_parity.py` — `cf834716f4a1c822be2729471026d73269dbe92cd365ea64dcbbe2f719bb7267`
-- `capabilities.json` — `e040619679639b5cd78fb9b029907948fd15b7a3a4362fa983f5d02bf3150d7e`
+- `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
+- `capabilities.json` — `f021b349cffda22d0101588337668d60531ad38aafee284e6bf4565e5f53af03`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -70,7 +70,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 32. Owned dated integration-debt entries: 78.
+- Registered capabilities: 32. Owned dated integration-debt entries: 80.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -126,6 +126,7 @@
 - `gate-surface-ledger/ledger-L-20260813-01-followup` — REFUTATION OWNED (L-20260813-01)… (owner `david`, expires `2026-11-30`)
 - `plant-forms` — PAID 2026-08-17 — VERIFIED, not assumed… (owner `david`, expires `2026-10-15`)
 - `plant-vitality` — SATURATION K IS PROVISIONAL (v1.29)… (owner `david`, expires `2026-11-01`)
+- `adversarial-review-ledger` — loop-closed-contracts-unparsed (adversary-accountability plan, 2026-08-17)… (owner `david`, expires `2026-10-31`)
 - `release-tag-authority` — SERVER-SIDE TAG PROTECTION NOT ARMED… (owner `david`, expires `2026-09-30`)
 - `release-tag-authority` — NO SIGNING KEY CONFIGURED… (owner `david`, expires `2026-09-30`)
 - `release-tag-authority` — TAG-CADENCE COUPLING IS NOW MANUAL (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -143,6 +144,7 @@
 - `generated-agents-md/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `role-adversaries/observability-haiku-flakiness` — PAID 2026-08-13 on evidence, then RE-SCOPED… (owner `david`, expires `2026-09-30`)
 - `role-adversaries/role-adversaries-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
+- `role-adversaries` — codex-skill-surface-absent (adversary-accountability plan, 2026-08-17)… (owner `david`, expires `2026-11-15`)
 - `scenario-inventory/scenario-inventory-not-vendored` — THIS REPO ONLY, BY DECISION (dissolves the parity exception both reviewers flagged)… (owner `david`, expires `2026-11-30`)
 - `readable-surface/readable-surface-keep-kill` — THE R&D DECISION… (owner `david`, expires `2026-09-30`)
 - `readable-surface/readable-surface-downstream-inert-emitter` — JOINS THE EXISTING gate-yield DOWNSTREAM WRITE-ONLY DEBT (capabilities.json gate-yield entry)… (owner `david`, expires `2026-12-31`)
@@ -157,3 +159,20 @@
 - `open`: 10
 - `rejected`: 3
 - `verified_closed`: 84
+
+participation: what the 39 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
+- adoption-adversary · authors records — 1
+- architecture-adversary · authors records — 15
+- claims-verifier · authors records — 1
+- control-quality-adversary — not named in any indexed review
+- edge-case-adversary — not named in any indexed review
+- integration-adversary · authors records — 17
+- mutation-runner — not named in any indexed review
+- observability-adversary — not named in any indexed review
+- planted-error-probe — not named in any indexed review
+- red-first-verifier — not named in any indexed review
+- script-adversary · authors records — 1
+- security-adversary — 5
+- test-quality-adversary — 2
+- tripwire-auditor · authors records — 11
+- ux-probe-calibrator — not named in any indexed review
