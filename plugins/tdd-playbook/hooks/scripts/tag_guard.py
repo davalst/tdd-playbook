@@ -96,8 +96,70 @@ def workflow_findings(text):
 
 
 def _statements(cmd):
-    """Split on statement separators so `a && git tag v1` is inspected as two statements."""
+    """Split on statement separators so a chained create is inspected as two statements."""
     return [s for s in re.split(r";|&&|\|\||\n|\|", cmd) if s.strip()]
+
+
+# v1.42 (2026-08-17) — two live FALSE POSITIVES, both recorded through guard_note before
+# the fix, and both the same root cause: this guard GREPPED the command instead of parsing
+# it, which is the exact failure §12 names in its own rule ("a grep matches your own
+# docstring"). The motivating artifacts are frozen in tests/test_hooks.py::test_tag_guard.
+#
+#   (1) A read-only listing sorted by version was blocked, because the read pattern was an
+#       ALLOW-LIST of flags and nobody had enumerated that one. Allow-listing is wrong by
+#       construction here: the subcommand cannot create anything without a NAME to create,
+#       whatever flags accompany it, so the fact to key on is the name — not the spelling
+#       of the flags around it (§1: assert the outcome, not the proxy).
+#   (2) The guard then blocked guard_note.py RECORDING the block, because the note quoted
+#       the offending command. That made §12's accounting mechanism unusable for precisely
+#       the gate most likely to need it. A verb inside a quoted argument is PROSE — the
+#       same fact the echo rule above already encodes, generalised: only a verb in command
+#       position is an action.
+#
+# Cost of getting this wrong in the ALLOW direction is not "mild annoyance": a guard that
+# blocks reads teaches its operator to reach for the demotion switch, which is how a
+# blocking gate becomes a warn-tier one nobody reads.
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+# flags that MAKE a tag; their presence is creation regardless of anything else
+_CREATE_FLAGS = frozenset({"-a", "--annotate", "-s", "--sign", "-m", "--message",
+                           "-F", "--file", "-u", "--local-user", "-f", "--force",
+                           "-e", "--edit"})
+# listing/filter flags that CONSUME the next token, so that token is not a name
+_VALUE_FLAGS = frozenset({"--sort", "--format", "--points-at", "--merged", "--no-merged",
+                          "--contains", "--no-contains", "--color", "--column", "--count",
+                          "-n"})
+_TAG_SUBCOMMAND = re.compile(_GIT + r"tag\b")
+
+
+def _strip_quoted(stmt):
+    """Quoted text is data, not a command. Replaced with a space so token boundaries
+    survive — the difference between reporting a block and being blocked by it."""
+    return _QUOTED.sub(" ", stmt)
+
+
+def _creates_a_tag(stmt):
+    """True only when the subcommand is given a NAME to create (a positional argument) or
+    a creation flag. Everything else — bare listing, any filter, any format — is a read."""
+    match = _TAG_SUBCOMMAND.search(stmt)
+    if not match:
+        return False
+    args = stmt[match.end():].split()
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg in _CREATE_FLAGS:
+            return True
+        if arg.startswith("--") and "=" in arg:
+            index += 1                       # --flag=value: value is attached, never a name
+            continue
+        if arg in _VALUE_FLAGS:
+            index += 2                       # the next token belongs to the flag
+            continue
+        if arg.startswith("-"):
+            index += 1                       # any other flag (-l, --list, -n5, --i-am-new)
+            continue
+        return True                          # a bare positional IS the name being created
+    return False
 
 
 # A statement that merely PRINTS text cannot create a tag. Without this, `echo "David runs
@@ -111,12 +173,15 @@ def findings(cmd):
     if not cmd:
         return []
     out = []
-    for stmt in _statements(cmd):
+    for raw in _statements(cmd):
+        # quoted text is data (v1.42): strip it BEFORE any verb match, so a command that
+        # merely quotes the forbidden verb — a note, a grep, a message — is not an action
+        stmt = _strip_quoted(raw)
         if _PRINTS_ONLY.match(stmt) or _TAG_READ_OR_DELETE.search(stmt):
             continue
-        if _TAG_CREATE.search(stmt):
+        if _creates_a_tag(stmt):
             out.append("creating a release tag is the OWNER's action, not the agent's: "
-                       + stmt.strip()[:100])
+                       + raw.strip()[:100])
         elif _TAG_REF_WRITE.search(stmt):
             out.append("writing refs/tags/* creates a tag by another name: "
                        + stmt.strip()[:100])

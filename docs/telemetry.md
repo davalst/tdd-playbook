@@ -10,10 +10,35 @@ natively; this recipe captures it to a local file and feeds it to
 export CLAUDE_CODE_ENABLE_TELEMETRY=1
 export OTEL_LOGS_EXPORTER=console
 export OTEL_METRICS_EXPORTER=console
-claude 2>>~/.claude/otel-session.jsonl   # console exporter writes to stderr
-# ... work ...
-python3 <plugin>/bin/grade_from_otel.py ~/.claude/otel-session.jsonl
+claude >>~/.claude/otel-session.log        # console exporter writes to STDOUT, not stderr
 ```
+
+**The console exporter is for eyeballing, NOT for `grade_from_otel.py`.** Verified 2026-08-17
+on Claude Code 2.1.234: it emits pretty-printed, multi-line JS-object notation with UNQUOTED
+keys (`tool_name: "Read"`), which is not JSON and not JSONL. Pointed at such a file the parser
+recognises nothing and exits 1 with "telemetry unavailable" — correct behaviour (it fails
+closed rather than inventing a zero-grade), but it means the quick path never fed the grader.
+Two claims in this recipe were wrong until that capture was actually run: the stream, and the
+implied machine-readability. Use the OTLP path below for anything mechanical.
+
+**Event and attribute names, VERIFIED against real captures** (2026-08-17, Claude Code
+2.1.234) rather than assumed from the semantic conventions:
+
+| Fact | Event | Attribute |
+|---|---|---|
+| a tool was invoked | `claude_code.tool_decision` | `tool_name`, `decision` |
+| a tool returned | `claude_code.tool_result` | `tool_name`, `success` |
+| **a subagent was dispatched** | `claude_code.tool_decision` | **`tool_name: "Agent"`** |
+
+Two traps that cost nothing to avoid and everything to discover late:
+- the dispatch tool is **`Agent`**, NOT `Task`. `grade_from_otel.py` was specified against
+  `Task` and would have counted zero dispatches forever while its own fixtures passed.
+- ONE dispatch emits BOTH a `tool_decision` and a `tool_result`, so counting every
+  `Agent`-bearing record double-counts. Count decisions.
+- there is **no `subagent_type` attribute** in either capture, so a per-agent-type breakdown
+  has no supplier. `grade_from_otel.py` reports the total only, and says `unmeasured` — never
+  `0` — when an export contains no tool events at all, because a zero and a blind spot are
+  different facts.
 
 ## Proper capture (OTLP → collector → file)
 

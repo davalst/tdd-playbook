@@ -334,7 +334,31 @@ def test_tag_guard():
             ("ordinary branch push", "git push origin main"),
             ("for-each-ref", "git for-each-ref refs/{T}s --format='%(refname)'"),
             ("commit", "git commit -m 'feat: x'"),
-            ("prose in an echo", "echo 'David runs git {T} -s to release'")]:
+            ("prose in an echo", "echo 'David runs git {T} -s to release'"),
+            # v1.42 live false positives (2026-08-17, recorded via guard_note before the
+            # fix). Both are the SAME root cause: the guard grepped the command instead of
+            # parsing it, which is the failure §12 names in its own rule. Frozen here as
+            # the motivating artifacts (§13 guard calibration) so the parse cannot regress
+            # to a grep.
+            #  (1) a LISTING flag the read-pattern's allow-list did not enumerate. The
+            #      allow-list approach is wrong by construction: `git tag` with no tag NAME
+            #      and no creation flag cannot create anything, whatever flags follow.
+            ("listing sorted by version", "git {T} --sort=-v:refname"),
+            ("listing sorted, separate value", "git {T} --sort -v:refname"),
+            ("listing with a format", "git {T} --list --format='%(refname:short)'"),
+            ("listing merged into HEAD", "git {T} --merged HEAD"),
+            ("listing in a pipeline", "git {T} --sort=-v:refname | head -1"),
+            ("assigned from a subshell", "LAST=$(git {T} --sort=-v:refname | head -1)"),
+            #  (2) the second-order bug: the guard blocked guard_note.py RECORDING the
+            #      block, because the note QUOTED the offending command — so §12's own
+            #      accounting mechanism was unusable for this gate. A verb inside a quoted
+            #      argument is prose, exactly like the echo case above; only a verb in
+            #      COMMAND POSITION is an action.
+            ("the verb quoted inside an argument",
+             "python3 guard_note.py record --gate {T}guard --objected 'git {T} -a {V} -m x'"),
+            ("the verb inside a double-quoted argument",
+             'python3 note.py --text "we blocked git {T} -s {V} here"'),
+            ("a grep for the verb", "grep -rn 'git {T}' docs/")]:
         rc, _o, e = run(s, ev(cmd.format(T=T, V=V, V2=V2, R=R)))
         check("tagguard ALLOWS: " + label, rc == 0, (rc, e[:100]))
 

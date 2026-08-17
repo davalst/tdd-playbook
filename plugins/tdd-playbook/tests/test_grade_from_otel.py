@@ -50,8 +50,75 @@ def otlp(event, **attrs):
     return json.dumps({"resourceLogs": [{"scopeLogs": [{"logRecords": [{"attributes": kv}]}]}]})
 
 
+def subagent_checks():
+    """D5 (adversary-accountability plan, 2026-08-17) — subagent dispatch as a COUNTED FACT,
+    and the difference between `0 observed` and `unmeasured`.
+
+    PROVENANCE, because this is the deliverable the plan refused to build on a guess. The
+    plan's stated assumption was that a dispatch emits `tool_name: "Task"`. That assumption
+    is FALSE. Two real headless captures on Claude Code 2.1.234, 2026-08-17
+    (CLAUDE_CODE_ENABLE_TELEMETRY=1, OTEL_LOGS_EXPORTER=console):
+      · dispatch run  -> `"event.name": "tool_decision"` + `tool_name: "Agent"`, and a
+        matching `tool_result` + `tool_name: "Agent"`. ONE dispatch emits BOTH, so counting
+        every Agent-bearing record double-counts; the decision event is the dispatch.
+      · control run (Read only, no dispatch) -> zero Agent records, tool events present.
+      · NO `subagent_type` attribute appears in either capture, so the per-type breakdown
+        the plan sketched has no supplier and is NOT built.
+    A fixture invented around "Task" would have passed forever while production counted
+    zero dispatches — the §1 self-consistency failure this plan exists to hunt, which is
+    why the deliverable was evidence-gated instead of assumption-gated.
+
+    THE FALSE ZERO. `main` reports telemetry-unavailable only when the TOTAL record count is
+    zero, so an export carrying ordinary tool events but no dispatch would have printed a
+    confident `subagents: 0`. The distinction is derivable rather than guessed: if any tool
+    event was observed the schema demonstrably carries `tool_name`, so a zero is a real
+    zero; if no tool event was observed at all, dispatch observability is unproven and the
+    honest answer is `unmeasured`."""
+    # a real dispatch: decision + result for the same call counts ONCE
+    lines = [
+        flat("claude_code.api_request", input_tokens=100, output_tokens=10),
+        flat("claude_code.tool_decision", tool_name="Agent", decision="accept"),
+        flat("claude_code.tool_result", tool_name="Agent", success="true"),
+        flat("claude_code.tool_decision", tool_name="Read", decision="accept"),
+    ]
+    rc, out, _e = run(lines, "--json")
+    data = json.loads(out)
+    check("D5: one dispatch counts ONCE (decision, not decision+result)",
+          data.get("subagents") == 1, out)
+    check("D5: the run is otherwise unaffected", rc == 0, rc)
+
+    # the control capture's shape: tool events present, no dispatch -> a REAL zero
+    rc, out, _e = run([
+        flat("claude_code.api_request", input_tokens=100, output_tokens=10),
+        flat("claude_code.tool_decision", tool_name="Read", decision="accept"),
+    ], "--json")
+    check("D5: tool events present but no dispatch -> 0 observed, not unmeasured",
+          json.loads(out).get("subagents") == 0, out)
+
+    # PLANTED: recognizable records, but NO tool event ever observed. The parser cannot
+    # know whether this host emits dispatch events at all, so a 0 here would be a claim it
+    # has no evidence for.
+    rc, out, _e = run([
+        flat("claude_code.api_request", input_tokens=100, output_tokens=10),
+        flat("claude_code.api_request", input_tokens=50, output_tokens=5),
+    ], "--json")
+    data = json.loads(out)
+    check("PLANTED: no tool events at all -> subagents is UNMEASURED, never a confident 0",
+          data.get("subagents") is None, out)
+    check("PLANTED: the human-readable line says unmeasured rather than printing a zero",
+          "unmeasured" in run([
+              flat("claude_code.api_request", input_tokens=100, output_tokens=10)])[1].lower(),
+          run([flat("claude_code.api_request", input_tokens=1, output_tokens=1)])[1])
+
+    # the OTLP shape carries the same fact
+    rc, out, _e = run([otlp("claude_code.tool_decision", tool_name="Agent")], "--json")
+    check("D5: dispatch counted in the OTLP shape too",
+          json.loads(out).get("subagents") == 1, out)
+
+
 def main():
     print("grade_from_otel calibration")
+    subagent_checks()
 
     # flat JSONL shape: known counts in -> exact numbers out
     lines = [

@@ -99,6 +99,14 @@ def analyze(lines):
         "records": 0, "api_requests": 0,
         "input_tokens": 0, "output_tokens": 0, "cache_read_tokens": 0,
         "files_read": 0, "searches": 0, "edits": 0, "bash": 0,
+        # D5 (2026-08-17): subagent dispatch as a counted fact. The tool name is "Agent",
+        # VERIFIED against a real headless capture on Claude Code 2.1.234 — not "Task",
+        # which is what the plan assumed and what a self-written fixture would have
+        # enshrined forever. ONE dispatch emits both a tool_decision and a tool_result, so
+        # only the DECISION is counted. `tool_events_seen` is what separates a real zero
+        # from an unknown: with no tool event anywhere, this host's dispatch observability
+        # is unproven and 0 would be a claim without evidence (§12).
+        "subagent_dispatches": 0, "tool_events_seen": False,
         "test_files_touched": set(), "source_files_touched": set(),
         "cost_usd": 0.0,
     }
@@ -125,7 +133,12 @@ def analyze(lines):
                     pass
             elif name in TOOL_EVENT_NAMES or tool:
                 m["records"] += 1
+                m["tool_events_seen"] = True
                 fp = rec.get("file_path") or ""
+                if tool == "Agent":
+                    if name.endswith("tool_decision"):
+                        m["subagent_dispatches"] += 1
+                    continue
                 if tool in READ_TOOLS:
                     m["files_read"] += 1
                 elif tool in SEARCH_TOOLS:
@@ -162,6 +175,7 @@ def main(argv=None):
         out["test_files_touched"] = sorted(m["test_files_touched"])
         out["source_files_touched"] = sorted(m["source_files_touched"])
         out["input_tokens_net_of_cache"] = net
+        out["subagents"] = m["subagent_dispatches"] if m["tool_events_seen"] else None
         print(json.dumps(out, indent=2))
         return 0
     print("GRADE TELEMETRY (mechanical — the seam emits the count)")
@@ -174,6 +188,10 @@ def main(argv=None):
         m["files_read"], m["searches"], m["bash"]))
     print("  edits: {} tool calls · {} test file(s) vs {} source file(s) touched".format(
         m["edits"], tests_n, src_n))
+    # 0 and "can't tell" are different facts and must never share a rendering
+    print("  subagents dispatched: {}".format(
+        m["subagent_dispatches"] if m["tool_events_seen"]
+        else "unmeasured (no tool events in this export — dispatch observability unproven)"))
     if src_n and not tests_n:
         print("  ⚠ source touched with NO test files — §1/§6 smell, grade accordingly")
     return 0
