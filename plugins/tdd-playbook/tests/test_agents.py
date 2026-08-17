@@ -1032,6 +1032,100 @@ def test_v125_planted_fixtures():
                                     "never supply an attribute, method, or seam")))
 
 
+def test_v142_agent_eval_doctrine():
+    """v1.42 §5b Agent evals — the section that closes the `## Open upgrade` IOU (removed in
+    the same change, journaled in calibration/gate-changes.md under rule (d)).
+
+    The IOU's own framing was too coarse and shipping it verbatim would have installed a
+    FLAKY gate: it said "deterministic-oracle evals are blocking CI gates", but the oracle
+    being deterministic says nothing about its SUBJECT — "did the agent refuse / pick the
+    right tool / get the count right" is stochastic however mechanically it is checked. §5b
+    splits on agent-path INDEPENDENCE instead. These pins keep that correction, and the
+    rules that make the lane survivable, from being paraphrased back to the IOU's wording."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §5b: section exists", "## 5b. Agent evals"),
+        ("SKILL §5b: calibration/ named as the in-repo worked example",
+         "`calibration/` IS a\n§5b eval"),
+        ("SKILL §5b: the premise (output is a distribution)", "a distribution, not a value"),
+        # the correction itself — the single most important line in the section
+        ("SKILL §5b: BLOCKING is agent-path-INDEPENDENT",
+         "BLOCKING = agent-path-INDEPENDENT invariants"),
+        ("SKILL §5b: path-dependent outcomes are k/k over N",
+         "Path-DEPENDENT outcomes are k/k over N"),
+        ("SKILL §5b: the flaky-gate aphorism", "flaky gate wearing a deterministic costume"),
+        ("SKILL §5b: judge lane never gates", "never a gate** (`eval_judge`)"),
+        ("SKILL §5b: 0-5 rubric (R11)", "0–5\n  rubric"),
+        ("SKILL §5b: human agreement is MEASURED, not merely thresholded",
+         "measure that agreement"),
+        ("SKILL §5b: smoke-alarm-with-no-battery aphorism", "smoke alarm with no battery"),
+        ("SKILL §5b: grade outcomes not paths (R11)", "Grade OUTCOMES, not paths"),
+        ("SKILL §5b: forced closed-vocabulary line is the precondition for parsing",
+         "FORCED closed-vocabulary line"),
+        ("SKILL §5b: cites the oracle-drift evidence", "calibration/oracle-changes.md:35"),
+        ("SKILL §5b: seam rule at agent scale — assert the EFFECT at the consumer",
+         "assert the EFFECT at the consumer"),
+        ("SKILL §5b: names the industry metric it contradicts", "Tool-call accuracy"),
+        ("SKILL §5b: opt-in cadence, no clock", "OPT-IN and reactive, no clock"),
+        ("SKILL §5b: per-commit lane replays rather than calling a model",
+         "A per-commit lane REPLAYS"),
+        ("SKILL §5b: a model change starts a new trend segment", "NEW trend SEGMENT"),
+        ("SKILL §5b: plants live in the existing corpus, not a second library",
+         "not a second\n  uncalibrated library"),
+        ("SKILL §5b: downstream honesty — calibration/ is not vendored",
+         "BYO-harness"),
+        # the cross-references the removed section used to serve
+        ("SKILL §8: [→EVAL] resolves to §5b", "**§5b is that discipline**"),
+        ("SKILL §5a: MCP bullet points at §5b, not a pending upgrade",
+         "converges with\n    §5b"),
+        ("SKILL markers: eval is the blocking lane", "`eval` (§5b blocking lane"),
+        ("SKILL markers: eval_judge never gates", "`eval_judge` (§5b trend lane, NEVER gates)"),
+        ("SKILL markers: states why two markers and not one",
+         "cannot carry two gate semantics"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    check("SKILL: the Open upgrade IOU is GONE (superseded, not duplicated)",
+          "## Open upgrade" not in text)
+    check("SKILL: no dangling pointer to the removed section survives",
+          "pending agent-eval upgrade" not in text and "open §-upgrade" not in text)
+
+    fm = frontmatter(text) or {}
+    desc = fm.get("description", "")
+    check("SKILL description carries the eval trigger vocabulary",
+          "agent evals" in desc and "LLM-judge" in desc, desc[:80])
+    check("SKILL description still within the 1024-char budget after the trim",
+          len(desc) <= 1024, len(desc))
+
+
+def test_v142_planted_fixtures():
+    """The §5b pins must be able to FAIL — doctrine paraphrased back to the IOU's coarser
+    rule must be DETECTED, or the pins are theater (§13 calibrate-the-checker). The plant is
+    the pre-fix wording itself: the `## Open upgrade` text as it stood at v1.41.0."""
+    iou = ("The load-bearing rule to debate: deterministic-oracle evals are blocking CI "
+           "gates; LLM-judge evals are tracked trend lines, never hard gates.\n")
+    check("planted: the IOU's coarse rule lacks the path-independence correction",
+          "BLOCKING = agent-path-INDEPENDENT invariants" not in iou)
+    check("planted: the IOU has no k/k rule for path-dependent outcomes",
+          "Path-DEPENDENT outcomes are k/k over N" not in iou)
+    check("planted: the IOU has no forced-verdict precondition",
+          "FORCED closed-vocabulary line" not in iou)
+    check("planted: the IOU never reaches the consumer seam",
+          "assert the EFFECT at the consumer" not in iou)
+
+    intact = ("## 5b. Agent evals — BLOCKING = agent-path-INDEPENDENT invariants; "
+              "Path-DEPENDENT outcomes are k/k over N; a FORCED closed-vocabulary line; "
+              "assert the EFFECT at the consumer; OPT-IN and reactive, no clock.\n")
+    check("planted: intact §5b doctrine passes the same needles",
+          all(n in intact for n in ("## 5b. Agent evals",
+                                    "BLOCKING = agent-path-INDEPENDENT invariants",
+                                    "Path-DEPENDENT outcomes are k/k over N",
+                                    "FORCED closed-vocabulary line",
+                                    "assert the EFFECT at the consumer")))
+
+
 def test_review_record_producing_seam():
     """D-A A1/A2/A4 (2026-08-14): the six briefs that actually author docs/reviews/
     records (the real ledger names exactly these six reviewers) each carry the
@@ -1098,6 +1192,7 @@ def main():
                test_v124_gate_surfaces, test_v124_gate_surfaces_planted,
                test_v125_doctrine, test_v125_downstream_pins,
                test_v125_planted_fixtures, test_v126_seam_contract_pins,
+               test_v142_agent_eval_doctrine, test_v142_planted_fixtures,
                test_review_record_producing_seam):
         print("\n[{}]".format(fn.__name__))
         fn()

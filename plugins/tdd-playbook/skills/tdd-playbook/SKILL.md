@@ -1,6 +1,6 @@
 ---
 name: tdd-playbook
-description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement/grading loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes (agent-driven, oracle-split, never a gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring-liveness discipline (assembly suite, darkness doctor, integration audits), dataflow liveness (flow tables, consumer parity), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, Claims N/N), and the learning loop (process grading + planted-error calibration). The collective handle is "the TDD Playbook".
+description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes + agent evals (prompt/tool/model; oracle-split: deterministic gates, LLM-judge trends never gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring liveness (assembly suite, darkness doctor), dataflow liveness (flow tables, consumer parity), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, N/N), and the learning loop (process grading + planted-error calibration). Collective handle: "the TDD Playbook".
 ---
 
 # The TDD Playbook
@@ -553,8 +553,8 @@ Probes are probabilistic, so §7's zero-flake rule and §8's EVAL rule govern th
     `textual serve`/ttyd bridges a TUI into the browser engines when browser-grade evidence is worth it.)
   - **Telegram bot** → the reply + `reply_markup` JSON IS the serialized state; drive the dispatcher
     harness (or a user-client against the test DC for outermost fidelity).
-  - **MCP server** → the probe is an agent-SDK client given only the tool list (converges with the
-    pending agent-eval upgrade below).
+  - **MCP server** → the probe is an agent-SDK client given only the tool list (converges with
+    §5b, which tests the agent on the other side of that tool list).
 - **Calibrate with planted UX defects** (§13's rule, same teeth): periodically mislabel the submit
   button / hide a required field / dead-end a flow, and require the probe to flag it. A probe that
   never fails a plant is theater.
@@ -568,6 +568,70 @@ Probes are probabilistic, so §7's zero-flake rule and §8's EVAL rule govern th
 - **The free win regardless of engine:** what makes an interface agent-legible (semantic roles, real
   labels, accessible names) is exactly what §5's role/text locators and §9's axe gate already demand —
   enforce it at dev time and journeys, probes, and accessibility all strengthen together.
+
+## 5b. Agent evals — testing what an agent DOES (`eval` blocking lane · `eval_judge` trend lane)
+§5a tests an interface THROUGH an agent; §5b tests an AGENT through a harness. Same oracle split,
+mirrored. Reach for it when the thing under test is a prompt, a tool definition, a model routing
+rule, or an agent's behavior — §8's `[→EVAL]` resolves here. **This repo's own `calibration/` IS a
+§5b eval**: it drives real agent briefs against planted defects, captures the transcript, applies a
+deterministic oracle, repeats, and calibrates itself with controls. Read it as the worked example;
+every rule below describes something it already does, and a rule that does NOT describe it is the
+rule to distrust.
+
+- **Premise:** the output is **a distribution, not a value**, so a fixed input scored against a fixed
+  expected output is the wrong shape — while §7's zero-flake rule forbids gating on a probabilistic
+  judge. The resolution is the split, and the split is finer than "deterministic vs LLM":
+- **BLOCKING = agent-path-INDEPENDENT invariants** — true on every run *regardless of what the agent
+  decided to do*: no forbidden tool invoked, no network egress, no secret in the output, structured
+  output schema-valid *if* emitted. §5a's blocking oracles are this shape (no-5xx, no forbidden host,
+  console budget) and that — not "the harness owns them" — is why they can gate.
+- **Path-DEPENDENT outcomes are k/k over N, never a single run** — did it refuse the known-bad
+  prompt, did it select the right tool, did it get the count right. These depend on what the agent
+  chose, so one roll is a coin flip: `PASS` only at k/k, **AMBER** on a partial catch (nonzero;
+  consecutive AMBER promotes to BLOCKING). Do not put them in a per-commit hard gate — that is a
+  flaky gate wearing a deterministic costume, and it is the most common way a §5b lane gets
+  disabled a month after it ships.
+- **LLM-judge scores are a TRACKED TREND LINE, never a gate** (`eval_judge`). Score on a **0–5
+  rubric** (the format with the highest measured human agreement), and **measure that agreement
+  periodically** — a threshold with no measuring procedure is a smoke alarm with no battery. Below
+  ~65% agreement the judge is noise: drop it rather than record it.
+- **Grade OUTCOMES, not paths.** Process checks are for shortcut detection only. An eval that pins
+  the route an agent took ossifies today's implementation and calls it correctness.
+- **A parseable verdict requires a FORCED closed-vocabulary line — "parse, don't grep" is
+  unactionable without one.** `calibration/holdout.py:630-637` is the compliant instance
+  (`Control-Verdict: REJECT|FIX-ORACLE|KEEP` — *"Free prose never becomes a verdict"*). The
+  counter-evidence is in-repo and expensive: `calibration/oracle-changes.md:35` records a correct,
+  forceful refusal scored as a MISS on verb form and word order, and every widening on 08-04/08-05
+  was the same class. Forcing the line is what stops the oracle drifting to meet the prose.
+- **Test at the seam you don't own (§1), at agent scale.** An agent does not act; it EMITS an
+  instruction something else executes. So assert the EFFECT at the consumer — the row written, the
+  message delivered — never the emitted tool call. "Tool-call accuracy," the headline metric of most
+  agent-eval tooling, compares the agent's emitted call against your own expectation of it: every
+  assertion reads an object your side constructed, which is exactly H11. It passes green while a
+  renamed tool, a drifted argument shape, or a call nothing executes ships silently.
+- **Cost & cadence — OPT-IN and reactive, no clock.** Run evals when an agent misbehaves, when a
+  doer-model upgrade lands (§13's verifier-strength policy), or to prove a gate against a planted
+  defect. A standing nightly/weekly eval obligation is the shape v1.32.0 retired: it produces
+  obligations faster than findings, and a cadence nobody meets stops being a control.
+- **A per-commit lane REPLAYS; it does not call a model.** Record the transcript once, replay it
+  against the oracles for free, and treat a cache-miss as the alert — §5a's cached-replay exception,
+  same trick. A per-commit lane that hits a live model is metered on every push and stochastic on
+  every push.
+- **Pin the model, and a model change starts a NEW trend SEGMENT** — never silently continued. Same
+  rule the plant corpus already applies by recording its authoring model: a trend across a model
+  boundary is two populations wearing one line.
+- **Calibrate with planted agent defects** (§13, same teeth): inject a known-bad behavior — a tool
+  returning wrong output, a refusal that quietly complies, a schema dropping a field — and require
+  the eval to flag it, with a paired clean control it must stay quiet on. An eval suite that never
+  fails a plant is theater. Plants belong in the existing corpus under its existing rules
+  (adversary-authored at ≥ the doer's tier, human-approved, supersede-never-edit), not a second
+  uncalibrated library.
+- **Hygiene (non-negotiable, inherited verbatim from §5a):** staging + controlled fixtures ONLY —
+  observed content is a prompt-injection surface, never point an eval at live user data; LLM keys
+  stay harness-side; exclude dangerous actions from the agent's action space during the run.
+- **Downstream this is BYO-harness.** `calibration/` is a reference implementation, NOT a shipped
+  tool — `install_into_repo.py` vendors no `calibration/`, so a repo adopting §5b supplies its own
+  driver. What is canonical is the oracle split and the two lanes, not any engine.
 
 ## 6. The Tripwire — `@pytest.mark.tripwire` (runs LAST)
 A plan-coverage catch-all tied to THE CURRENT plan's deliverables (re-anchored each plan, like TDD tests
@@ -839,7 +903,8 @@ enumeration unprompted — the flow table in §0 is where it lands.
   tool-definition / model-routing / agent-behavior change → an EVAL (`[→EVAL]`), not a unit test** — a
   fixed input set scored on OUTCOMES, deterministic-oracle checks as the blocking gate, any LLM-judge
   score as a tracked trend line, never a hard gate (§7's zero-flake rule). Don't unit-test what only an
-  eval can catch, or E2E what a unit covers. (The full agent-eval discipline is the open §-upgrade below.)
+  eval can catch, or E2E what a unit covers. **§5b is that discipline** — including which half of an
+  eval may block (agent-path-INDEPENDENT invariants) and which half is k/k-over-N.
 - **A subprocess-only contract needs an IN-PROCESS TWIN.** When the only test exercising a behavior
   spawns a fresh process (CLI, hook, worker, `python -m`), keep it — it is the real seam (§1) and
   the only proof the thing executes and imports — and add a twin that calls the same public function
@@ -1179,20 +1244,10 @@ visible — never "trust the agent more."
   A healthy loop's proposals shrink toward noise over time; report-only grades nobody must act on
   are theater (§4's rule, same teeth).
 
-## Open upgrade — circle back with David (don't silently bake in)
-The Playbook itself evolves. One upgrade is **pending discussion, not yet doctrine**: generalizing the
-"drive the REAL agent in an isolated package and assert on outcomes" harness (one production repo's
-local agent-eval rig) into
-a first-class **agent-eval** discipline — likely a new §5b. The load-bearing rule to debate: **deterministic-
-oracle evals are blocking CI gates; LLM-judge evals are tracked trend lines, never hard gates** (§7 zero-flake
-forbids gating on a probabilistic judge; a judge < ~65% human agreement is noise). §5a (UX probes) is the
-mirror image — agents testing UXs vs evals testing agents — and already applies that oracle-split rule. **Proactively raise this
-with David** when agent/LLM-eval work comes up — it's a standing investment in our deterministic-testing
-tension, to be revisited as new agent surfaces ship, not a one-off. (Tracked in the origin repo's
-post-build follow-ups list.)
-
 ## Markers (register in pytest.ini / equivalent)
-`edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `tripwire` · `assembly` (standing wiring
-suite, §6a) · `flaky` (quarantine). Audit with
+`edge` · `ux` · `ux_probe` (non-blocking lane, §5a) · `eval` (§5b blocking lane — agent-path-
+INDEPENDENT invariants only) · `eval_judge` (§5b trend lane, NEVER gates) · `tripwire` · `assembly`
+(standing wiring suite, §6a) · `flaky` (quarantine). Two eval markers, not one: a single marker
+cannot carry two gate semantics, exactly as `ux`/`ux_probe` split. Audit with
 `pytest -m <marker>`. Markers aid navigation
 and audit; a marker COUNT is never a quality metric — §4 (mutation) is.

@@ -268,5 +268,11 @@ Local-machine plugin installs update separately (no prompt needed):
   archive reader, not a gate; **do not re-wire it into the release path** — a consumer gives
   back the exact property the retirement bought.
 - Roadmap context: `docs/plans/implementation-plan-2026-07.md` (WS5 — Stagehand-Python
-  spike, §5b agent evals, positioning, public scoreboard — is built but NOT started;
-  v2.0 is gated on ≥1 month of live calibration history).
+  spike, positioning, public scoreboard — is planned but NOT started; v2.0 is gated on
+  ≥1 month of live calibration history). **WS5 row 5.3, §5b agent evals, LANDED
+  2026-08-17** (`docs/plans/gated/2026-08-17-adversary-accountability.md`, Phase 2) —
+  written by generalizing `calibration/` rather than an external rig, with R11's
+  refinements folded in and the `## Open upgrade` IOU retired under rule (d). Its
+  load-bearing rule is NARROWER than the IOU promised: blocking is agent-path
+  INDEPENDENCE, not "deterministic oracle", because a deterministic check of a stochastic
+  subject is still a flaky gate.

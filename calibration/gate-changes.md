@@ -36,3 +36,31 @@ repo has ever made), one added (scored entries are spent). Pinned by
 because it changes what the gate enforces, and rule (d) exists so that is never a silent
 edit. Related: the same-day `check_scoreboard_integrity` change to name the RESOLVED
 baseline sha on success as well as failure — same class, found by CIVerd.
+
+## 2026-08-17 — §5b lands; the open-upgrade placeholder is retired
+
+Removed name, verbatim including its heading marker (rule (d) matches the exact string):
+
+`## Open upgrade — circle back with David (don't silently bake in)`
+
+`- 2026-08-17 · superseded by §5b "Agent evals — testing what an agent DOES", which is the
+discipline that section existed to promise.`
+
+The removed section was a standing IOU: it named the load-bearing rule to debate
+(deterministic-oracle evals gate, LLM-judge evals trend) and told the reader to raise it with
+David when agent-eval work came up. It had been pending for months while §8's `[→EVAL]` tag
+pointed at it and §5a's MCP bullet forward-referenced it — a promise with two live callers and
+no implementation.
+
+§5b supersedes it and CORRECTS it. The IOU's framing — "deterministic-oracle evals are blocking
+CI gates" — is too coarse, and shipping it verbatim would have installed a flaky gate: the
+oracle is deterministic but its SUBJECT is not, so "did the agent refuse / pick the right tool /
+get the count right" is stochastic no matter how mechanically it is checked. §5b splits on
+agent-path INDEPENDENCE instead: invariants true regardless of what the agent chose may block;
+path-dependent outcomes run k/k over N with AMBER, reusing `run_calibration`'s existing rule
+rather than inventing a second one.
+
+Net: one gate surface removed, one larger surface added in its place, and the removed section's
+own claim is narrower in the replacement than it was in the original — the direction rule (d)
+exists to make visible. The replacement is pinned by needles + a planted-stripped twin in
+`test_agents.py`, so it cannot quietly regress to prose the way its predecessor sat unimplemented.
