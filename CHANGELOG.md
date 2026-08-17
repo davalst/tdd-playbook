@@ -3,6 +3,80 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.42.0 — 2026-08-17
+
+**Adversary accountability, §5b agent evals, and three claims about our own machinery that
+were false.** The thread started as a review of an outside §5b draft and turned into a
+measurement: across 39 review records, `observability-adversary` and `edge-case-adversary`
+appear zero times — and the `reviewers` field was free text bound to nothing, so a typo, a
+renamed agent or an invented name validated clean. The counts were only as good as their
+spelling.
+
+**D0 — a helper that was dark everywhere it shipped.** `canonical_inventory` hardcodes the
+source layout and refuses a vacuous family, so it raises `FileNotFoundError` in EVERY vendored
+layout. It had no production `bin/` caller, so nothing had exercised that path in its life; the
+reviewer binding would have been the first, taking the ledger's DEFAULT `validate` verb dark on
+exactly the downstream hosts it serves. Found independently by both plan adversaries, each by
+scratch-installing rather than reading. New `host_parity.agents_roster()/agents_dir()` resolve
+source, Claude-vendored and Codex-vendored layouts and return `None` rather than raising, on
+the `catalog_rows` degradation contract. `canonical_inventory` is untouched — its refusal is
+correct for parity duty. Tested THROUGH the production installer, both hosts.
+
+**D3/D3b — the reviewer field is bound.** Canonical agent ids plus an explicit non-agent
+vocabulary (verified exhaustive against all 39 records), with a TWO-part compatibility
+contract: a ship-date cutoff for the rollout, and agent filenames as canonical ids — already
+frozen by `test_agents.py:111/:588`, so this NAMES an existing constraint rather than adding
+one. The first revision claimed the cutoff alone survived a later rename; it does not. The six
+authoring briefs carry the vocabulary in the SAME release, because a gate whose producers do
+not know its contract is more friction, not less.
+
+**D4 — recorded review participation, report-only.** Every roster member printed, nothing
+flagged: earlier drafts partitioned the roster so a zero could be called a defect, and three
+reviewers named that an Nth copy of a classification the repo already derives plus an unpinned
+exemption hatch. Printing everything deletes the problem instead of relocating it. It lands in
+`render_reference.review_section()` — regenerated every release — because its first design's
+only reader was opt-in and triggered by "a verifier misbehaves", and an agent named in no
+record cannot misbehave. Wording is deliberate: `reviewers` is hand-authored, so it evidences
+what was RECORDED, never who ran.
+
+**§5b Agent evals — and the correction to the IOU it replaces.** The `## Open upgrade` section
+had been pending for months while §8's `[→EVAL]` tag and §5a's MCP bullet both pointed at it.
+Written by GENERALIZING `calibration/`, which already is a §5b eval. Its stated rule —
+"deterministic-oracle evals are blocking CI gates" — is too coarse to ship: a deterministic
+check of a STOCHASTIC subject is still stochastic, so §5b splits on agent-path INDEPENDENCE
+instead, and path-dependent outcomes run k/k over N reusing `run_calibration`'s existing rule.
+Plus forced closed-vocabulary output as the precondition for parsing (with
+`oracle-changes.md:35` as the in-repo counter-evidence), R11's 0–5 rubric and periodic
+human-agreement MEASUREMENT, outcomes-not-paths, opt-in cadence, replay rather than a live
+model per-commit, a new trend segment on model change, and the §1 seam rule at agent scale —
+assert the effect at the CONSUMER, which makes "tool-call accuracy" an H11 self-consistency
+test. Downstream it is BYO-harness: `calibration/` is not vendored, and the section says so.
+Markers gain `eval` and `eval_judge` — two, because one cannot carry two gate semantics.
+
+**Three false claims about our own machinery, retired.** README and `capabilities.json` still
+said calibration runs weekly and that `check_staleness.py` "runs inside the blessed gate"; it
+appears in no gate file at all. `docs/telemetry.md` said the console exporter writes to stderr
+(it writes to stdout) and implied it was machine-readable (it is not — pretty-printed,
+unquoted keys, and the parser correctly recognises nothing). `test_verifier_model_pins`'
+docstring said mechanical runners stay inherit while its own set has always pinned
+`mutation-runner`.
+
+**D5 — subagent dispatch, built on evidence instead of an assumption.** The plan assumed a
+dispatch emits `tool_name: "Task"`. Two real headless captures say otherwise: it is
+**`Agent`**, one dispatch emits BOTH a `tool_decision` and a `tool_result` (so counting every
+Agent record double-counts), and there is no `subagent_type` attribute at all — so the
+per-type breakdown has no supplier and is not built. A fixture written around "Task" would
+have passed forever while production counted zero. `grade_from_otel` now reports `unmeasured`,
+never `0`, when an export carries no tool events: a zero and a blind spot are different facts.
+
+**`tag_guard` stopped blocking reads.** It fired on a read-only tag LISTING, then blocked
+`guard_note.py` RECORDING that block because the note quoted the command — making §12's
+accounting mechanism unusable for the one gate most likely to need it. Root cause was the
+failure §12 names in its own rule: it grepped instead of parsing. Now quoted text is treated as
+data, and creation is keyed on a NAME being supplied or a creation flag present, not on an
+allow-list of flags somebody remembered. Both live false positives are frozen as calibration
+rows. Recorded through `guard_note` before the fix rather than worked around.
+
 ## 1.41.0 — 2026-08-17
 
 **The attribution precheck reaches the agent that runs mutation — with the pair that measures

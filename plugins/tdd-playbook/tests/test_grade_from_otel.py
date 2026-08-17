@@ -50,7 +50,7 @@ def otlp(event, **attrs):
     return json.dumps({"resourceLogs": [{"scopeLogs": [{"logRecords": [{"attributes": kv}]}]}]})
 
 
-def subagent_checks():
+def test_subagent_dispatch_counting():
     """D5 (adversary-accountability plan, 2026-08-17) — subagent dispatch as a COUNTED FACT,
     and the difference between `0 observed` and `unmeasured`.
 
@@ -118,7 +118,7 @@ def subagent_checks():
 
 def main():
     print("grade_from_otel calibration")
-    subagent_checks()
+    test_subagent_dispatch_counting()
 
     # flat JSONL shape: known counts in -> exact numbers out
     lines = [

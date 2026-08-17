@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "host": "claude",
-  "adapter_version": "1.41.0",
+  "adapter_version": "1.42.0",
   "max_probe_age_days": 14,
   "capabilities": {
     "test-lock": {
