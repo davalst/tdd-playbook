@@ -709,3 +709,41 @@ it; the brief change belongs with a plant+control pair authored for the child-pr
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260817-01 | 2026-08-17 | 656eff5 | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md; plugins/tdd-playbook/commands/mutate.md | §4 attribution blind spot (child-process coverage is unattributable; remedy is §8's in-process twin) · §4a rewritten-tree baseline + cheap-checks-first preflight + the §12-AST/rewritten-tree collision resolved per-test · §7 environment-restriction-never-weakens-a-test, offline-before-collection, hang-yields-a-stack · §12 evidence-must-outlive-the-session · /mutate preflight step |  | none | 0 | doctrine prose + one command doc — both in SURFACE_PATTERNS, both out of EFFECTFUL per the 2026-08-14 decision, so no calibration scenario measures them (the L-20260816-02 precedent). Registered for coverage, not as a prediction. The measurable claim these rules WOULD make lives downstream where a mutation gate actually runs; this repo configures no mutation tool at all, so the twin rule is doctrine here and load-bearing in Cheliped |
+
+### Registered 2026-08-17 — baseline 6509117: the attribution precheck, now measured
+
+L-20260817-01 registered the doctrine (SKILL §4/§4a/§7/§8/§12) as INERT, because SKILL.md and
+`commands/` are deliberately out of EFFECTFUL. The `agents/mutation-runner.md` half was DROPPED
+from that commit rather than registered: `agents/` IS effectful, so `expect: none` is unavailable
+there by construction, and the only scenario covering that agent
+(`shadowed-import-vacuous-suite`) measures a SHADOWED IMPORT — a defect shape these preflight
+additions would not plausibly move. Claiming `up` against it would have been satisfying the
+instrument rather than using it, which is exactly what the rising no-effect share (16 of 63, 25%)
+is there to catch.
+
+So the pair was AUTHORED FIRST and the brief edit follows it. `subprocess-only-gate-unmeasurable`
+plants the real Codex shape: every test of `cli.main` drives it as a fresh child process, the
+suite is green with three dedicated CLI tests, and a scoped gate therefore GENERATES mutants and
+EXECUTES none. Correct verdict `Mutation gate UNMEASURED`; the pre-edit brief has no rule that
+would reach it, which is why the movement is real rather than assumed.
+
+`control-subprocess-with-in-process-twin` guards the OVER-CORRECTION, which is the failure a
+precheck like this actually invites: the same fresh-process tests plus an in-process twin calling
+`cli.main(argv)` directly, so the target IS attributable and a pass is correct. The brief's
+discriminator is stated in the same words — whether ANY test drives the target in-process, never
+whether child processes appear in the file. Both oracles anchor on the brief's FORCED verdict
+line (`Mutation gate UNMEASURED` vs `Mutation gate PASSES`) rather than on prose about
+subprocesses, so a correct explanation that mentions child processes cannot be punished — the
+greedy-`must_not_match` defect the 2026-08-16 holdout diagnose found in three controls.
+
+Hand-authored from the motivating incident rather than model-generated (§13: freeze the defect
+shape from the artifact that caused it — Codex `7e1f4539`/`fad338eb`), so authoring cost no model
+spend. Both staged and their fixture suites confirmed GREEN before approval (13 tests plant, 16
+control) — the plant's premise is a green suite, and a plant whose suite is red measures the red
+instead. New scenarios have no baseline, so the first scored run reads INCONCLUSIVE(no-baseline);
+the load-bearing claim is the §13 calibration bar itself — the plant caught and the control quiet
+at k/k on the first live replay, with a plant surviving to a clean verdict BLOCKING.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260817-02 | 2026-08-17 | 6509117 | plugins/tdd-playbook/agents/mutation-runner.md; calibration/corpus/approved/subprocess-only-gate-unmeasurable.json; calibration/corpus/approved/control-subprocess-with-in-process-twin.json | mutation-runner step 1 gains the ATTRIBUTION precheck (tracer maps no mutated function to a test -> UNMEASURED + name the in-process twin remedy; never chase the child process) plus roster-duplicate integrity and the rewritten-tree baseline distinction — AND the plant+control pair that measures it | subprocess-only-gate-unmeasurable; control-subprocess-with-in-process-twin | up | 3 | the brief edit L-20260817-01 declined to register without a scenario that could move. Recall should rise on the plant (the pre-edit brief carries no attribution rule, so the shape is unreachable for it) while the control stays quiet (the twin makes the target attributable; the brief names the discriminator explicitly to prevent the over-correction). First replay reads INCONCLUSIVE(no-baseline) for both; the bar is 3/3 caught and 3/3 quiet, and a plant surviving to a clean verdict is BLOCKING |

@@ -56,6 +56,27 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    day. Before EVERY mutant run: delete `__pycache__` in the mutated tree (or run with
    `PYTHONDONTWRITEBYTECODE=1` from a clean tree). A mutation result from a run without
    cache-busting is UNMEASURED, not evidence.
+   **Roster integrity (cheapest check, run it FIRST):** no DUPLICATE `paths_to_mutate` entries —
+   a duplicate makes mutmut 3.6 abort after stats collection and names the cause NOWHERE in its
+   output, so the symptom you would otherwise chase is the wrong one; and every entry must
+   resolve to a real file.
+   **Baseline green means green in the TOOL'S REWRITTEN TREE, not just at HEAD** — different
+   facts. Mutation tools run the suite against an instrumented copy, so a suite green at HEAD can
+   be RED there and produce the identical generate-but-never-execute false green. The usual cause
+   is a test that reads or AST-parses its own SOURCE, structurally unsatisfiable against a
+   rewritten module: register those individual TESTS in a mutation-only exclusion list, never
+   their whole module (that drops the real kill tests sitting beside them).
+   **ATTRIBUTION precheck — does the tracer map ANY mutated function to a test?** If it maps
+   none, STOP. A behavior exercised only by spawning a fresh CHILD PROCESS is unmeasurable by any
+   tool, because no coverage tracer attributes child work to the parent test (observed 889
+   generated / 0 executed, Codex 2026-08-17). Report `Mutation gate UNMEASURED — <what could not
+   be measured and why>` and name the remedy: an IN-PROCESS TWIN calling the same public function
+   directly, kept BESIDE the fresh-process test, never replacing it (§8 — the fresh-process test
+   is the real seam and the only proof the executable runs and imports). Do NOT try to make the
+   tracer follow the child; it cannot, and the attempts are the documented time sink.
+   **But the discriminator is whether ANY test drives the target IN-PROCESS** — not whether child
+   processes appear in the file. A target with a subprocess test AND an in-process twin is
+   measurable; calling that one unmeasurable is the over-correction this precheck risks.
    **Killing-suite visibility — collection AND binding:** if the tool uses a dedicated mutation
    suite (mutmut's `tests_mutation/`), confirm it actually COLLECTS the kill tests you're counting
    on (shim/star-import + a mechanical collected-count/collision check) before trusting any score.
