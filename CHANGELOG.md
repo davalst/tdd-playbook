@@ -3,6 +3,66 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.40.0 — 2026-08-17
+
+**A bricked holdout path, fixed; and mutation testing's second blind spot.** Two unrelated
+spans, released together because the first was found while gating the second (span
+656eff5..HEAD, records `docs/reviews/2026-08-17-holdout-sha-chain-implementation.json`,
+`…-mutation-attribution-doctrine.json`, `…-date-gate-and-integrity-command.json`).
+
+- **FIX — the holdout manifest sha chain (P1).** `holdout approve` computed the validation
+  manifest's `candidate_content_sha256` from the **proposed** file, then re-dumped the body
+  into `bodies/` with `indent=2` — different bytes. The register recorded the *new* sha, so
+  its round-trip test passed and only the manifest check failed; but
+  `vault_integrity_problems` compares manifest sha against body sha, and `holdout run`
+  ABORTS on a stale vault. One hand-edited or reformatted proposed file bricked the whole
+  vault. `cmd_author_holdout` already wrote the canonical form as a DUPLICATED literal, so
+  machine-authored bodies matched by luck of the two copies agreeing — which is why this was
+  invisible until a hand-shaped body met the date gate. Fixed with one owner for the
+  byte-form, `holdout.write_body()`: approve canonicalizes the proposed file through it
+  BEFORE validating and lands the body through it, so the bytes the verifier measured are
+  the bytes that land. Chosen over restamping the manifest with the destination sha, which
+  goes green while asserting the manifest covers bytes the verifier never saw.
+- **The defect surfaced because a date arrived, not because anything changed.**
+  `MANIFEST_REQUIRED_SINCE = "2026-08-17"` activated its reader on the morning after it
+  shipped: the gate was green in CI on `656eff5` and red on a clean worktree the next day,
+  with no commit between. `cmd_approve_holdout` now takes an injectable `today`, and the
+  threshold is pinned on BOTH sides with the same planted stale manifest, so the only
+  variable is the date. Proven load-bearing by targeted mutants on the condition — branch
+  never-taken kills the BLOCK row, always-taken kills the ALLOW row — because red-first
+  alone proves a test can fail, not that it fails for its reason (§13).
+- **NEW — `holdout integrity --vault-dir <dir>`.** `vault_integrity_problems` had no
+  standalone reader: it ran only inside `run_holdout`, so the only way to learn a vault was
+  stale was to start a full eval and watch it abort. Read-only — no model, no clone, no
+  writes — and a problem exits nonzero while PRINTING the per-body remediation command
+  (§4a: a refusing check prints the diagnosis it already holds).
+- **§4 — mutation testing's ATTRIBUTION blind spot** (from a Codex `gate-honesty-p1` field
+  report). A behavior exercised only by spawning a fresh process is unmeasurable by mutation
+  on ANY tool, because no coverage tracer attributes child-process work to the parent test —
+  observed at 889 generated / 0 executed, twice. §4a's `killed + survived < generated` rule
+  CAUGHT it and correctly said CANNOT MEASURE, which is the first external evidence those
+  plumbing rules work on a host they were not written for; the missing half was the remedy.
+  **§8** now carries it: keep the fresh-process test (the real seam, and the only proof the
+  executable runs and imports) and ADD an in-process twin driving the same public function.
+  Picking one is choosing which blindness to keep.
+- **§4a — three sharpenings.** "Baseline green" now means green in the tool's **rewritten
+  tree**, not merely at HEAD (they are different facts, and the difference is a documented
+  false green). A PREFLIGHT bullet reorders checks §4a already required but phrased
+  post-hoc — same assertions, seconds instead of a discarded 40-minute pass — including the
+  duplicate-`paths_to_mutate` abort that names its cause nowhere. And the collision between
+  §12's AST-assertion rule and mutation's rewritten tree is NAMED: two correct rules, not a
+  defect in either, resolved per-test and never per-module.
+- **§7 / §12 — sandboxes, offline, and evidence that outlives the session.** An environment
+  restriction is never a reason to weaken a test (move the artifact, not the assertion);
+  a network-free suite enforces offline BEFORE collection and a retry loop against a host is
+  a config failure, not slowness; a hang must yield a stack. And evidence you cannot re-read
+  is not evidence — a long run's complete log goes to a FILE, never a `tail` kept instead of
+  the log, because an agent's context gets summarized and a nearly-complete buffer is simply
+  gone at that boundary. Written host-neutrally rather than as the Codex-specific addendum
+  the report proposed: none of it is actually host-specific, and a Codex-branded addendum
+  would have landed in `commands/` or `agents/`, both `unavailable` on Codex — dark on the
+  exact host it was written for.
+
 ## 1.39.0 — 2026-08-16
 
 **Trustworthy holdout controls: the FP number finally measures the verifiers.** `holdout
