@@ -160,6 +160,10 @@
     {
       "path": "2026-08-17-adversary-accountability.json",
       "sha256": "ac91280c04081fd376b3ec04b10a90546d5fdf18febc5f263204adcaad18916b"
+    },
+    {
+      "path": "2026-08-17-agent-eval-doctrine.json",
+      "sha256": "79f52e8533ae5b42e36bdd0cfe0368d7d62ab473293768736f731ce28ebe6e4c"
     }
   ]
 }

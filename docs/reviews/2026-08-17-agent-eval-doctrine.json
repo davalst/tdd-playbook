@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-agent-eval-doctrine",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-adversary-accountability.md",
+  "review_range": {
+    "base": "f323002945e30b83a8e0f6089d312e9442f7816e",
+    "head": "fac579e6e64b86d7f21732523bae6b68b4b02dca"
+  },
+  "reviewers": [
+    "self-review",
+    "codex-field-report",
+    "cheliped-field-report"
+  ],
+  "findings": [
+    {
+      "id": "IOU-COARSE",
+      "severity": "P1",
+      "summary": "The `## Open upgrade` IOU's load-bearing rule \u2014 'deterministic-oracle evals are blocking CI gates; LLM-judge evals are tracked trend lines' \u2014 is too coarse to ship. The oracle being deterministic says nothing about its SUBJECT: 'did the agent refuse / select the right tool / get the count right' is stochastic however mechanically it is checked, so shipping the IOU verbatim would have installed a flaky gate in the same document that forbids them (\u00a77).",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md",
+        "calibration/gate-changes.md",
+        "calibration/run_calibration.py:729"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "gate-default-wire-untested",
+      "disposition": "\u00a75b splits on agent-path INDEPENDENCE rather than on oracle mechanism: invariants true regardless of what the agent chose may block; path-dependent outcomes run k/k over N with AMBER, reusing run_calibration's existing rule rather than minting a second. \u00a75a's blocking oracles were re-read and turn out to be the same shape, which is the reason they can gate \u2014 a fact the IOU had mis-attributed to harness ownership.",
+      "remediation_commit": "fac579e6e64b86d7f21732523bae6b68b4b02dca",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_v142_agent_eval_doctrine",
+        "plugins/tdd-playbook/tests/test_agents.py::test_v142_planted_fixtures"
+      ]
+    },
+    {
+      "id": "IOU-DANGLING",
+      "severity": "P2",
+      "summary": "The IOU had two live callers with no implementation behind them: \u00a78's [\u2192EVAL] tag routed prompt/tool-definition/agent-behavior changes to 'the open \u00a7-upgrade below', and \u00a75a's MCP bullet forward-referenced 'the pending agent-eval upgrade'. A promise consumed by two surfaces and fulfilled by none.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md",
+        "plugins/tdd-playbook/tests/test_agents.py"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "outermost-wire-untested",
+      "disposition": "Both cross-references now resolve to \u00a75b, and both are pinned as needles so a future edit cannot re-dangle them silently. A dedicated check asserts no pointer to the removed section survives anywhere in the file.",
+      "remediation_commit": "fac579e6e64b86d7f21732523bae6b68b4b02dca",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_v142_agent_eval_doctrine"
+      ]
+    },
+    {
+      "id": "EVAL-MARKER-SEMANTICS",
+      "severity": "P2",
+      "summary": "A single `eval` marker cannot express \u00a75b, because the section defines two lanes with opposite gate semantics \u2014 one that may block and one that must never gate. Registering one marker would have left the trend lane indistinguishable from the blocking lane in any `pytest -m` audit.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "unpinned-prose-constant",
+      "disposition": "Two markers registered \u2014 `eval` (blocking lane, agent-path-INDEPENDENT invariants only) and `eval_judge` (trend lane, never gates) \u2014 mirroring the existing `ux`/`ux_probe` split, with the reason stated inline so the pair is not later 'simplified' back to one. Stated weakness: this repo has no pytest.ini, so the marker list is prose and nothing binds a marker to a real test.",
+      "remediation_commit": "fac579e6e64b86d7f21732523bae6b68b4b02dca",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_v142_agent_eval_doctrine"
+      ]
+    },
+    {
+      "id": "DESC-BUDGET-EXHAUSTED",
+      "severity": "P2",
+      "summary": "The skill description had 6 characters of headroom against its 1024 budget and needed ~45 for eval trigger vocabulary. After a dedupe trim it sits at 1021 \u2014 3 characters spare. The budget is now structurally exhausted: the next doctrine addition cannot buy trigger vocabulary by trimming, because the remaining text is no longer redundant.",
+      "evidence": [
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md",
+        "plugins/tdd-playbook/tests/test_agents.py:249"
+      ],
+      "status": "open",
+      "class": "deterministic",
+      "recurrence_key": "unpinned-prose-constant",
+      "disposition": "Trimmed by dedupe as David's standing rule requires (warn, never silently exceed, never cut trigger vocabulary): 'wiring-liveness discipline' lost a redundant word, the second 'audits' and the second 'grading' were dropped, and UX probes and agent evals were MERGED into one clause because they share one rule \u2014 which is a doctrinal improvement, not only a saving. A regression check confirms no trigger word was lost: only the hyphenated compounds 'agent-driven' and 'wiring-liveness' changed form, and both survive as their components. FLAGGED FOR DAVID rather than closed: 3 characters is not a budget, and the next addition needs a real restructure or a raised ceiling \u2014 a decision that is his, not an agent's."
+    },
+    {
+      "id": "TAGGUARD-BLOCKS-READS",
+      "severity": "P2",
+      "summary": "tag_guard fired on a READ-ONLY tag listing used to resolve a baseline rev for check_scoreboard_integrity.py \u2014 it matches the verb substring and cannot distinguish enumerating tags from creating one. It then blocked the guard_note.py RECORD of that block, because the note quoted the offending command, so the \u00a712 accounting mechanism is unusable for this gate unless the operator paraphrases.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/tag_guard.py",
+        "plugins/tdd-playbook/bin/guard_note.py",
+        "calibration/check_scoreboard_integrity.py"
+      ],
+      "status": "open",
+      "class": "deterministic",
+      "recurrence_key": "guard-out-of-jurisdiction-treated-as-violation",
+      "catalog_row": "H10",
+      "disposition": "RECORDED, not worked around: guard_note.py record --gate tagguard, performed_elsewhere=yes, naming the substitution (the same read via a different porcelain) so it is distinguishable from evasion. Left OPEN because neither half is fixed. Reuses the existing recurrence key \u2014 this is the SECOND record of a guard treating an out-of-jurisdiction action as a violation, which by the ledger's own rule makes it an UNBUILT GUARD candidate the next recurrence report will surface. Neither half is a release-path risk; both are adoption risks, and a guard that blocks reads is exactly how an operator learns to reach for the demotion switch."
+    },
+    {
+      "id": "BYO-HARNESS-DOWNSTREAM",
+      "severity": "P2",
+      "summary": "\u00a75b's reference implementation does not travel: install_into_repo.py vendors no calibration/, so a downstream repo adopting \u00a75b gets doctrine describing a harness it does not have. Every other blocking-capable discipline in the Playbook ships an instrument (\u00a72\u2192/edge, \u00a74\u2192/mutate, \u00a75a\u2192/probe, \u00a76\u2192/tripwire, \u00a712\u2192/claims).",
+      "evidence": [
+        "scripts/install_into_repo.py:43-50",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
+      ],
+      "status": "rejected",
+      "class": "judgment",
+      "recurrence_key": "cli-feature-ships-dark",
+      "rationale": "Rejected as a defect and STATED as a limit instead. Building a /eval command plus an eval-calibrator agent would duplicate calibration/ \u2014 the architecture-adversary confirmed the rejection as correct, and a parallel surface would be textbook DUPLICATION plus GATE-BY-PROXY. \u00a75b therefore says in its own body that downstream it is BYO-harness and that calibration/ is a reference implementation rather than a shipped tool, so the reader is never told to run something that is not there. Making the gap loud in the doctrine is the honest close; hiding it behind a thin command would not be."
+    }
+  ]
+}
