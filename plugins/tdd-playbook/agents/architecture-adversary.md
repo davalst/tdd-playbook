@@ -104,3 +104,11 @@ plugins/tdd-playbook/bin/review_ledger.py recurrence` lists the keys already see
 optional `catalog_row` (`H<n>`) naming the `docs/HACK_CATALOG.md` Guard ↔ entry map row the
 recurrence feeds. Records dated on/after 2026-08-15 are REFUSED by `validate` without the
 class and key; earlier history is untouched.
+
+The record's `reviewers` list is BOUND, not free text: every entry is a **canonical agent id** — a basename in `agents/`, which are stable
+ids and are not renamed — or one of the
+non-agent reviewer kinds: self-review, release-gate, operator-field-report, live-dogfooding, cheliped-field-report, calibration-live-replay, d2d-live-probe, codex-field-report. Records dated
+on/after 2026-08-17 are REFUSED by `validate` with an unrecognised name, so write the
+id exactly; a plausible-looking variant is a refusal, not a silent miss. Name every
+reviewer that actually contributed — the ledger's participation report reads this field,
+and it can only ever show what was RECORDED, never who ran.

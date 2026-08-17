@@ -70,6 +70,44 @@ def canonical_inventory(root: str = REPO) -> dict[str, set[str]]:
     return inventory
 
 
+AGENT_FAMILY_LAYOUTS = (os.path.join("plugins", "tdd-playbook", "agents"),
+                        os.path.join(".claude", "agents"))
+
+
+def agents_roster(root: str) -> set[str] | None:
+    """CANONICAL REVIEWER IDS — the agent family across every layout the installer really
+    produces — or None where the family is genuinely absent.
+
+    Contract, stated rather than left to a caller's optimism (the model is
+    review_ledger.catalog_rows, which returns None when docs/ is not vendored here):
+      - source tree      -> <root>/plugins/tdd-playbook/agents
+      - claude vendored  -> <root>/.claude/agents
+      - codex vendored   -> None; CODEX_COPY_TREES carries adapters + bin only, so the
+                            family does not exist there and cannot be invented
+      - empty/absent     -> None, NEVER a vacuous set of zero names
+
+    This returns IDs, not a description of the installed copy that happens to be running:
+    the first layout yielding a NON-EMPTY family wins, source first, so a dev tree holding
+    both is unambiguous — and an empty directory in one layout cannot mask a real family
+    in the next.
+
+    Deliberately NOT `canonical_inventory`. That function hardcodes the source layout
+    (`os.path.join(root, "plugins", "tdd-playbook")`) and REFUSES a vacuous family, which
+    is correct for parity duty and fatal for a downstream consumer: it raises
+    FileNotFoundError in every vendored layout. It had no production bin/ caller, so
+    nothing had exercised that path until review_ledger's reviewer binding became the
+    first — which would have taken the ledger's default `validate` verb dark on exactly
+    the hosts it serves. Weakening the parity refusal to fix that would have traded one
+    correct invariant for another; a sibling with its own contract does not."""
+    for relative in AGENT_FAMILY_LAYOUTS:
+        directory = os.path.join(root, relative)
+        if os.path.isdir(directory):
+            names = _markdown_names(directory)
+            if names:
+                return names
+    return None
+
+
 def inventory_digest(inventory: dict[str, set[str]]) -> str:
     body = json.dumps({family: sorted(inventory[family]) for family in FAMILIES},
                       sort_keys=True, separators=(",", ":"))

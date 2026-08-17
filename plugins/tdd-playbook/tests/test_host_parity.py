@@ -162,6 +162,61 @@ def test_installed_host_activation():
               not unavailable_present, unavailable_present)
 
 
+def test_agents_roster():
+    """D0 (2026-08-17 adversary-accountability): the agent family resolved as CANONICAL
+    REVIEWER IDS across every layout the installer actually produces, degrading to None
+    instead of raising where the family is absent.
+
+    Motivating defect, reproduced independently by the integration- and
+    architecture-adversaries on the plan: `canonical_inventory` hardcodes
+    `<root>/plugins/tdd-playbook` (host_parity.py:62) and REFUSES a vacuous family
+    (:68-69), so it raises FileNotFoundError in EVERY vendored layout. It had no
+    production bin/ caller, so nothing had ever exercised it there — review_ledger's
+    reviewer binding would have been the first, taking the ledger's default `validate`
+    path dark on exactly the downstream hosts it was built to serve.
+
+    `canonical_inventory` is deliberately left alone: its refusal is correct for parity
+    duty. This is a sibling accessor with a different contract, modelled on
+    review_ledger.catalog_rows() — None when not vendored here, stated rather than
+    silent."""
+    hp = _load_resolver()
+
+    check("D0: source layout resolves the real agent family",
+          hp.agents_roster(REPO) == _names(os.path.join(PLUGIN, "agents")))
+
+    with tempfile.TemporaryDirectory() as target:
+        install = subprocess.run([sys.executable, INSTALLER, target],
+                                 cwd=REPO, capture_output=True, text=True, timeout=60)
+        check("D0: claude scratch install succeeds", install.returncode == 0,
+              (install.stdout, install.stderr))
+        # the layout the installer really produces, not a hand-built directory shape
+        check("D0: claude vendored layout resolves from .claude/agents/",
+              hp.agents_roster(target) == _names(os.path.join(target, ".claude", "agents")))
+        # and the VENDORED module itself resolves it — the copy that actually runs there
+        vendored = importlib.util.spec_from_file_location(
+            "vendored_host_parity", os.path.join(target, ".claude", "bin", "host_parity.py"))
+        vmod = importlib.util.module_from_spec(vendored)
+        vendored.loader.exec_module(vmod)
+        check("D0: the VENDORED copy resolves its own layout",
+              vmod.agents_roster(target) == _names(os.path.join(target, ".claude", "agents")))
+
+    with tempfile.TemporaryDirectory() as target:
+        install = subprocess.run([sys.executable, INSTALLER, "--host", "codex", target],
+                                 cwd=REPO, capture_output=True, text=True, timeout=60)
+        check("D0: codex scratch install succeeds", install.returncode == 0,
+              (install.stdout, install.stderr))
+        # CODEX_COPY_TREES carries no agents/ — the family genuinely is not there
+        check("D0: codex vendored layout degrades to None, never raises",
+              hp.agents_roster(target) is None)
+
+    with tempfile.TemporaryDirectory() as target:
+        os.makedirs(os.path.join(target, ".claude", "agents"))
+        check("D0: an EMPTY agents dir refuses a vacuous roster",
+              hp.agents_roster(target) is None)
+        check("D0: a tree with no agents family at all returns None",
+              hp.agents_roster(os.path.join(target, "nowhere")) is None)
+
+
 def test_compact_parity_output():
     proc = subprocess.run([sys.executable, BIN, "check"], cwd=REPO,
                           capture_output=True, text=True, timeout=30)
@@ -180,7 +235,8 @@ def test_compact_parity_output():
 def main():
     print("host asset parity calibration")
     for fn in (test_host_parity_inventory, test_parity_digest_and_exception_plants,
-               test_installed_host_activation, test_compact_parity_output):
+               test_installed_host_activation, test_agents_roster,
+               test_compact_parity_output):
         try:
             fn()
         except Exception as exc:

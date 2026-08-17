@@ -372,13 +372,90 @@ def test_recurrence_verb_vacuity_and_usage_event():
                   for r in rows), rows[:3])
 
 
+def test_reviewer_vocabulary_bound_to_roster():
+    """D3 (2026-08-17 adversary-accountability): `reviewers` is bound to the real agent
+    roster plus an explicit non-agent vocabulary, so a typo or a stale name is refused
+    instead of recorded.
+
+    Pre-fix shape (§13 guard calibration): `reviewers` was checked only by
+    `_strings(record.get("reviewers"))` — non-empty list of non-empty strings — so
+    `sekurity-adversary`, a renamed agent, or any invented name validated clean. Every
+    participation count read off that field was therefore only as good as its spelling.
+
+    TWO-PART compatibility contract, because the cutoff alone does NOT survive later
+    renames (the defect Codex caught in review):
+      (1) cutoff — records dated before REVIEWER_VOCAB_SHIP_DATE keep append-only history
+          valid across the rollout;
+      (2) agent filenames are CANONICAL IDS and are not renamed — already enforced at
+          test_agents.py:111 and :588 — with a renamed ID joining NON_AGENT_REVIEWERS as
+          a historical alias if that ever becomes necessary."""
+    rl = load_module()
+    post = rl.REVIEWER_VOCAB_SHIP_DATE + "-reviewer-vocab-review"
+    roster = {"architecture-adversary", "integration-adversary"}
+    known = lambda name: name in roster or name in rl.NON_AGENT_REVIEWERS
+
+    def dated(rid, reviewers):
+        row = record([_keyed("ARCH-1", "deterministic", "reviewer-field-unbound")])
+        row["id"] = rid
+        row["reviewers"] = reviewers
+        return row
+
+    good = rl.validate_record(dated(post, ["architecture-adversary"]), "control.json",
+                              lambda _s: True, reviewer_known=known)
+    check("post-cutoff record naming a real agent passes", good == [], good)
+
+    token = rl.validate_record(dated(post, ["self-review"]), "control.json",
+                               lambda _s: True, reviewer_known=known)
+    check("post-cutoff record naming a non-agent token passes", token == [], token)
+
+    for bad in ("sekurity-adversary", "architecture_adversary", "Architecture-Adversary",
+                "dogfooding"):
+        problems = rl.validate_record(dated(post, [bad]), "plant.json",
+                                      lambda _s: True, reviewer_known=known)
+        check("PLANTED unrecognised reviewer {!r} is refused".format(bad),
+              any("reviewers" in p for p in problems), problems)
+        # adoption rule: an error that names the problem must name the next step
+        check("PLANTED {!r} refusal enumerates the accepted vocabulary".format(bad),
+              any("self-review" in p for p in problems), problems)
+
+    grandfathered = rl.validate_record(dated("2026-08-07-old-review", ["whoever-reviewed-this"]),
+                                       "control.json", lambda _s: True, reviewer_known=known)
+    check("pre-cutoff history with an unknown reviewer is untouched",
+          grandfathered == [], grandfathered)
+
+    boundary = rl.validate_record(dated(post, ["not-an-agent"]), "plant.json",
+                                  lambda _s: True, reviewer_known=known)
+    check("cutoff boundary: dated exactly REVIEWER_VOCAB_SHIP_DATE is BOUND (>=, not >)",
+          any("reviewers" in p for p in boundary), boundary)
+
+    # rename escape hatch: a former canonical ID carried as a historical alias
+    alias = rl.validate_record(dated(post, ["retired-adversary"]), "control.json",
+                               lambda _s: True,
+                               reviewer_known=lambda n: known(n) or n == "retired-adversary")
+    check("a historical alias keeps immutable history valid through a rename",
+          alias == [], alias)
+
+    # downstream degradation: no roster to bind to (codex vendoring carries no agents/)
+    degraded = rl.validate_record(dated(post, ["anything-at-all"]), "control.json",
+                                  lambda _s: True)
+    check("roster absent -> shape-only, NEVER a crash (the catalog_rows contract)",
+          degraded == [], degraded)
+
+    empty = rl.validate_record(dated(post, []), "plant.json", lambda _s: True,
+                               reviewer_known=known)
+    check("an EMPTY reviewers list is still refused (vocabulary never relaxes shape)",
+          any("reviewers" in p for p in empty), empty)
+
+
 def _vendor_bin(real):
     """Mirror the REAL vendored layout: install_into_repo copies bin/ as a whole tree,
-    so review_ledger.py always ships beside its dataflow_sweeps/_debt siblings — a test
-    tree with the script alone would be a layout the installer cannot produce."""
+    so review_ledger.py always ships beside its dataflow_sweeps/_debt/host_parity
+    siblings — a test tree with the script alone would be a layout the installer cannot
+    produce. host_parity joined the roster when D3 (2026-08-17) made the reviewer field
+    resolve canonical agent IDs through it."""
     import shutil
     os.makedirs(os.path.join(real, ".claude", "bin"))
-    for sibling in ("review_ledger.py", "dataflow_sweeps.py", "_debt.py"):
+    for sibling in ("review_ledger.py", "dataflow_sweeps.py", "_debt.py", "host_parity.py"):
         shutil.copy2(os.path.join(PLUGIN, "bin", sibling),
                      os.path.join(real, ".claude", "bin", sibling))
     return os.path.join(real, ".claude", "bin", "review_ledger.py")
@@ -448,6 +525,7 @@ if __name__ == "__main__":
     test_append_only_index_refuses_deleted_record()
     test_repository_review_records_are_valid()
     test_taxonomy_required_after_ship_date()
+    test_reviewer_vocabulary_bound_to_roster()
     test_recurrence_report()
     test_recurrence_verb_vacuity_and_usage_event()
     test_root_resolution_vendored_and_canonical()

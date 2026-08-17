@@ -33,6 +33,25 @@ FINDING_CLASSES = ("deterministic", "judgment")
 TAXONOMY_SHIP_DATE = "2026-08-15"
 # Keys reach human-facing report lines: short-kebab only, so adversarial content
 # (newlines, pipes, case games) is unrepresentable rather than escaped (§2).
+# D3 (adversary-accountability plan, 2026-08-17): `reviewers` used to be checked only for
+# SHAPE — a non-empty list of non-empty strings — so a typo, a renamed agent, or an
+# invented name validated clean, and every participation count read off the field was only
+# as good as its spelling. Entries are now canonical agent IDs (resolved through
+# host_parity.agents_roster) or one of these NON-AGENT reviewer kinds. The ONE owner of
+# the vocabulary: the authoring briefs' roster sweep imports THIS tuple, on the
+# FINDING_CLASSES rule above — a second copy is how a rename leaves one reader wrong.
+#
+# A rename is the escape hatch, not a reason for an alias table: agent filenames are
+# canonical IDs and are already frozen by test_agents.py:111 and :588. If one ever must
+# change, the FORMER id joins this tuple as a historical alias, and immutable history
+# stays valid.
+NON_AGENT_REVIEWERS = ("self-review", "release-gate", "operator-field-report",
+                       "live-dogfooding", "cheliped-field-report",
+                       "calibration-live-replay", "d2d-live-probe", "codex-field-report")
+# Records dated on/after this bind `reviewers`; earlier append-only history is untouched.
+# Verified at authoring time: all 39 existing records use exactly 8 agent names + the 8
+# tokens above, so the rollout binds today's records at zero cost.
+REVIEWER_VOCAB_SHIP_DATE = "2026-08-17"
 RECURRENCE_KEY = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 CATALOG_ROW = re.compile(r"^H\d+$")
 RECORD_ID_DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})-")
@@ -60,7 +79,8 @@ def _strings(value) -> bool:
 
 def validate_record(record: dict, source: str, exists, evidence_exists=lambda _target: True,
                     plan_exists=lambda _p: True,
-                    catalog_exists=lambda _row: True) -> list[str]:
+                    catalog_exists=lambda _row: True,
+                    reviewer_known=lambda _name: True) -> list[str]:
     problems = []
     prefix = source + ": "
     if record.get("schema_version") != 1:
@@ -88,6 +108,15 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
         problems.append(prefix + "kind must be plan or implementation")
     if not _strings(record.get("reviewers")):
         problems.append(prefix + "reviewers must be a non-empty string list")
+    elif record_date is not None and record_date >= REVIEWER_VOCAB_SHIP_DATE:
+        # The refusal ENUMERATES the accepted vocabulary: an error that names the problem
+        # and not the next step is the adoption failure this ledger's own briefs hunt.
+        unknown = [name for name in record["reviewers"] if not reviewer_known(name)]
+        if unknown:
+            problems.append(
+                prefix + "reviewers not recognised: {} — each must be a canonical agent id "
+                "(a basename in agents/) or one of: {}".format(
+                    ", ".join(sorted(unknown)), ", ".join(NON_AGENT_REVIEWERS)))
     review_range = record.get("review_range") or {}
     for endpoint in ("base", "head"):
         sha = review_range.get(endpoint)
@@ -226,7 +255,8 @@ def validate_index(directory: str, index: dict, baseline_records: list[dict]) ->
 
 def validate_directory(directory: str, exists, evidence_exists=lambda _target: True,
                        plan_exists=lambda _p: True,
-                       catalog_exists=lambda _row: True) -> list[str]:
+                       catalog_exists=lambda _row: True,
+                       reviewer_known=lambda _name: True) -> list[str]:
     paths = sorted(path for path in glob.glob(os.path.join(directory, "*.json"))
                    if os.path.basename(path) != INDEX_NAME)
     if not paths:
@@ -246,7 +276,8 @@ def validate_directory(directory: str, exists, evidence_exists=lambda _target: T
             problems.append(path + ": duplicate review record id " + str(rid))
         record_ids.add(rid)
         problems.extend(validate_record(record, os.path.basename(path), exists,
-                                        evidence_exists, plan_exists, catalog_exists))
+                                        evidence_exists, plan_exists, catalog_exists,
+                                        reviewer_known))
         for finding in record.get("findings") or []:
             fid = finding.get("id")
             if fid in finding_ids:
@@ -353,11 +384,17 @@ def catalog_rows(root: str) -> set[str] | None:
 def validate_repository(root: str) -> list[str]:
     directory = os.path.join(root, "docs", "reviews")
     rows = catalog_rows(root)
+    # D3: agents_roster returns None where the family is not vendored (codex carries
+    # adapters + bin only), and the binding degrades to shape-only there — the same
+    # contract catalog_rows already declares one function above. Stated, not incidental.
+    roster = agents_roster(root)
     problems = validate_directory(directory, lambda sha: commit_exists(root, sha),
                                   lambda target: closure_evidence_exists(root, target),
                                   lambda p: os.path.isfile(os.path.join(root, p)),
                                   (lambda row: row in rows) if rows is not None
-                                  else lambda _row: True)
+                                  else lambda _row: True,
+                                  (lambda name: name in roster or name in NON_AGENT_REVIEWERS)
+                                  if roster is not None else lambda _name: True)
     try:
         with open(os.path.join(directory, INDEX_NAME), encoding="utf-8") as fh:
             index = json.load(fh)
@@ -469,6 +506,7 @@ def _log_usage(verb: str, extra: dict) -> None:
 # unreachable, untestable second home for the constant).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dataflow_sweeps import EXIT_VACUOUS  # noqa: E402  (sibling; vendored together)
+from host_parity import agents_roster  # noqa: E402  (sibling; vendored together)
 
 
 def main(argv=None) -> int:

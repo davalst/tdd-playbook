@@ -1046,6 +1046,17 @@ def test_review_record_producing_seam():
               "recurrence_key" in brief and "REUSED" in brief)
         check("{}: routes catalog_row into the HACK_CATALOG map".format(name),
               "catalog_row" in brief and "HACK_CATALOG" in brief)
+        # D3b (adversary-accountability, 2026-08-17): `reviewers` became a BOUND field in
+        # the same change that added this needle — a release-blocking gate whose producers
+        # are not told its contract is more friction, not less (the reason the 60-day
+        # deferral in the plan's first revision was rejected by two reviewers). Derived
+        # from the ONE owner, so a vocabulary edit REDs here rather than leaving six
+        # briefs quietly stale — the FINDING_CLASSES rule, applied to the second field.
+        check("{}: carries the reviewer vocabulary from its owner".format(name),
+              ", ".join(rl.NON_AGENT_REVIEWERS) in brief,
+              "expected the NON_AGENT_REVIEWERS list verbatim")
+        check("{}: states that reviewers are canonical agent ids".format(name),
+              "canonical agent id" in brief)
         # arch F5: the ship date is the constant most likely to slip; six prose copies
         # with no pin would state a false refusal date under a green suite
         check("{}: states the CURRENT ship date ({})".format(name, rl.TAXONOMY_SHIP_DATE),
