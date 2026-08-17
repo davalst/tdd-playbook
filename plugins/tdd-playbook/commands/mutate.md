@@ -27,7 +27,18 @@ check across one). Steps:
    **Precondition for a REVERT-BASED script** (one that `git checkout`s to restore source):
    commit/stash first, or gate it on `with_snapshot.py preflight` — a bare checkout silently
    clobbers uncommitted work.
-2. Run it; CAPTURE the tool's exit/stats output and confirm the run actually EXECUTED (run-stats
+2. **PREFLIGHT BEFORE THE EXPENSIVE PASS — seconds, not the 40 minutes you'd then discard.** In
+   order, refusing on any failure: (a) roster integrity — no DUPLICATE `paths_to_mutate` entries
+   (a duplicate makes mutmut 3.6 abort after stats collection and names the cause nowhere), every
+   entry resolves, every entry is in a gate invocation; (b) the kill tests are COLLECTED by the
+   configured killing suite, exact count asserted; (c) that suite is GREEN **against the tool's
+   rewritten tree**, which is a different fact from green at HEAD (a test that reads its own source
+   is the usual cause — register those individual TESTS in a mutation-only exclusion, never skip
+   their module); (d) the tracer maps at least one mutated function to at least one test — if it
+   maps none, suspect the ATTRIBUTION blind spot (§4): behavior exercised only in a CHILD process is
+   unmeasurable by any tool, and the fix is an in-process twin beside the fresh-process test (§8),
+   or hand-applied targeted mutants as the executed evidence with the broad pass labelled UNMEASURED.
+   Then run it; CAPTURE the tool's exit/stats output and confirm the run actually EXECUTED (run-stats
    total > 0, baseline green) BEFORE reading survivors — an aborted run returns an empty survivor
    set that masquerades as a clean gate. Then collect surviving mutants from the machine-readable stats.
    **Account for every mutant:** if killed + survived < generated, the gap (segfault/timeout/

@@ -681,3 +681,31 @@ caught, every control quiet, first replay) is MET.
 | L-20260816-03 | cqa-greedy-oracle | — | 3/3 | — | INCONCLUSIVE(no-baseline) | caught 3/3 first replay |
 | L-20260816-03 | control-cqa-verifier-overflag | — | 3/3 | — | INCONCLUSIVE(no-baseline) | control quiet 3/3 first replay |
 | L-20260816-03 | control-cqa-fair-pair | — | 3/3 | — | INCONCLUSIVE(no-baseline) | control quiet 3/3 first replay |
+
+### Registered 2026-08-17 — baseline 656eff5: mutation attribution + long-run evidence (inert)
+
+A field report from a Codex build (`codex/gate-honesty-p1`, 2026-08-17) surfaced two structural gaps
+in §4/§4a and three in §7/§12. The load-bearing addition is the **attribution blind spot**: a
+behavior exercised only by spawning a fresh process is unmeasurable by mutation on ANY tool, because
+no coverage tracer attributes child-process work to the parent test (889 generated / 0 executed,
+twice — `7e1f4539`, `fad338eb`). §4a's `killed + survived < generated` rule already CAUGHT it and
+correctly said CANNOT MEASURE, which is the first external evidence those plumbing rules work on a
+host they were not written for; the missing half was the REMEDY, which is test shape (§8's in-process
+twin beside the fresh-process test), not tooling. Also: "baseline green" now means green in the
+tool's REWRITTEN tree (a different fact from green at HEAD, and Codex's failure #1); a preflight
+ordering of checks §4a already required but phrased post-hoc; the §12-AST-assertions vs
+rewritten-tree collision named and resolved per-test; and in §7/§12, an environment restriction is
+never a reason to weaken a test, offline is enforced before collection, a hang must yield a stack,
+and a long run's evidence must outlive the session.
+
+SKILL.md and `commands/` are in SURFACE_PATTERNS but deliberately OUT of EFFECTFUL (2026-08-14
+decision — doctrine yield is unmeasured by position, not by oversight), so this registers INERT for
+coverage: `expect=none`, no scenario, claimed 0. The `agents/mutation-runner.md` half of the change
+was DROPPED rather than registered — `agents/` IS effectful, and the one scenario covering that agent
+(`shadowed-import-vacuous-suite`) measures shadowed imports, which these preflight additions would
+not plausibly move. Claiming `up` against it would be satisfying the instrument rather than using
+it; the brief change belongs with a plant+control pair authored for the child-process shape.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260817-01 | 2026-08-17 | 656eff5 | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md; plugins/tdd-playbook/commands/mutate.md | §4 attribution blind spot (child-process coverage is unattributable; remedy is §8's in-process twin) · §4a rewritten-tree baseline + cheap-checks-first preflight + the §12-AST/rewritten-tree collision resolved per-test · §7 environment-restriction-never-weakens-a-test, offline-before-collection, hang-yields-a-stack · §12 evidence-must-outlive-the-session · /mutate preflight step |  | none | 0 | doctrine prose + one command doc — both in SURFACE_PATTERNS, both out of EFFECTFUL per the 2026-08-14 decision, so no calibration scenario measures them (the L-20260816-02 precedent). Registered for coverage, not as a prediction. The measurable claim these rules WOULD make lives downstream where a mutation gate actually runs; this repo configures no mutation tool at all, so the twin rule is doctrine here and load-bearing in Cheliped |

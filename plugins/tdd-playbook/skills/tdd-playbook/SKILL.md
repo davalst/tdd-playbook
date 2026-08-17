@@ -323,6 +323,19 @@ hand, the mutants live in the guard and the test's planted input still satisfies
 score over a control that never runs in production, because the production path that should publish
 the input is on neither side of what mutation touches (Cheliped 2026-08-15).
 
+**What mutation score cannot REACH (the attribution blind spot).** A second structural blindness,
+independent of the seam one: a behavior exercised ONLY by spawning a fresh process is unmeasurable
+by mutation on any tool, because no coverage tracer attributes work done in a CHILD process to the
+parent test. The tool generates mutants and executes none — observed at 889 generated / 0 executed
+on a repo whose behavioral calls all shelled out (Codex `7e1f4539`, `fad338eb`, 2026-08-17). §4a's
+`killed + survived < generated` rule CATCHES this and reports CANNOT MEASURE, which is the correct
+verdict and not a fix. The fix is test SHAPE (§8): keep the fresh-process test — it drives the real
+seam (§1) and is the only thing proving the executable runs and imports cleanly — and ADD an
+in-process twin driving the same public function. Both, not either. Where no legitimate in-process
+seam exists, hand-apply targeted mutants (targeted-mutant mode below) as the executed-mutant
+evidence and label the broad pass UNMEASURED. Do not spend time making the tracer follow a child
+process; it cannot, and the attempts are the documented time sink.
+
 **Scope — what goes on the roster.**
 - Run a mutation pass on CRITICAL modules only (auth, money, permissions, lifecycle, core algorithms) —
   not the whole repo (mutant explosion). Tools: `mutmut`/`cosmic-ray` (Python), `Stryker` (JS/TS).
@@ -446,7 +459,10 @@ nothing. These are the documented false-green modes — each has bitten a real g
   returned N` and run ZERO mutants while still GENERATING them on disk, so the survivor collector
   comes back empty and `generated>0 / 0 survivors / exit 0` reads as a clean green. **0 survivors ≠
   pass, and generated > 0 ≠ measured** — before trusting any pass assert three things: (1) baseline
-  GREEN, (2) executed/run count > 0 read from the tool's RUN stats (not the on-disk generated set),
+  GREEN **in the tool's own REWRITTEN TREE, not merely at HEAD** — mutation tools run the suite
+  against an instrumented copy, so a suite green at HEAD can be red there and produce the identical
+  generate-but-never-execute false green (the common cause is a test that reads its own source —
+  below), (2) executed/run count > 0 read from the tool's RUN stats (not the on-disk generated set),
   (3) kill tests collected (below). The gate must CAPTURE the tool's exit code / output and
   detect its stats-abort markers — **a discarded exit code is a discarded truth**; a gate that runs
   the tool and ignores the result certifies unmeasured scopes as green. A SHARED baseline is a
@@ -463,14 +479,29 @@ nothing. These are the documented false-green modes — each has bitten a real g
   the guard (observed: 151 segfaults + 56 no-covering-test in one pass, 94 of the segfaults in the
   single function carrying a feature's whole safety claim — the gate called it clean). RULE: if
   killed + survived < generated, the scope is UNMEASURED — REFUSE to certify, don't merely warn.
-  And CHECK baseline-green at HEAD as an explicit PRECONDITION (don't assume it): under a shared
-  baseline one pre-existing red test silently disables every scoped gate, so assume-green is exactly
-  how it stays undetected.
+  And CHECK baseline-green as an explicit PRECONDITION — at HEAD *and* in the rewritten tree, which
+  are different facts (don't assume either): under a shared baseline one pre-existing red test
+  silently disables every scoped gate, so assume-green is exactly how it stays undetected.
 - **Verify the gate's KILLING SUITE actually collects your kill tests.** Tools with a dedicated
   mutation suite (e.g. mutmut's `tests_mutation/`) never see kill tests written in the normal
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
   the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
   shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
+- **PREFLIGHT the cheap checks BEFORE the expensive pass — the same assertions, seconds instead of
+  an hour.** Every rule above reads "before trusting a pass," which invites running them post-hoc,
+  after you have already spent the 40 minutes you must then discard. Run them FIRST, in this order,
+  and REFUSE the pass on any failure: (1) roster integrity — no DUPLICATE entries (a duplicated
+  `paths_to_mutate` path makes mutmut 3.6 abort after stats collection, with the cause named nowhere
+  in its output), every entry resolves to a real file, every entry appears in a gate invocation;
+  (2) the kill tests are COLLECTED by the configured killing suite, asserted as an exact count;
+  (3) that killing suite is GREEN against the tool's rewritten tree; (4) the tracer maps at least
+  one mutated function to at least one test — if it maps none, the run cannot measure anything and
+  the attribution blind spot (§4) is the first thing to check.
+- **Tests that read their own SOURCE are structurally unsatisfiable under a rewritten tree.** §12's
+  "absence claims about code PARSE the code" rule tells you to assert on AST nodes — and those exact
+  tests fail against a mutation tool's instrumented copy. That is a COLLISION between two correct
+  rules, not a defect in either. Register the individual TESTS in a mutation-only exclusion list;
+  never skip their whole module, which silently drops the real kill tests sitting beside them.
 - **A refusing gate prints the diagnosis it already holds.** "Refusing a vacuous pass" held for
   four days because nothing named the CAUSE sitting in the gate's own captured output — the
   refusal message carries the failing assertion/path, and the same condition is mirrored by a
@@ -782,6 +813,22 @@ enumeration unprompted — the flow table in §0 is where it lands.
 - **Hunt order-dependence with `pytest-randomly`** (shuffles collection order + seeds randomness each run,
   prints the seed to reproduce). A suite green across seeds is provably order-independent. Combine with
   `--count=N` (`pytest-repeat`) in a BLOCKING `flake-detect` job to surface both repeat- and order-flakiness.
+- **An ENVIRONMENT restriction is never a reason to weaken a test.** A sandbox that refuses a loopback
+  bind, a write outside the allowed roots, or a repo-local tool cache is an environment fact, not a
+  test defect. Name the restriction and use the host's escalation path, or MOVE the artifact rather
+  than the assertion (`ruff --no-cache`, pytest `-p no:cacheprovider`, a mypy cache under a temp dir —
+  tools that create repo-local caches fail for purely environmental reasons in a sandboxed workspace,
+  and sibling worktrees are commonly readable but not writable). Rewriting the assertion to fit the
+  sandbox is "never weaken a test" with a new excuse.
+- **A network-free suite ENFORCES offline before collection, and a retry loop is a CONFIG failure, not
+  slowness.** Libraries that phone home by default (model/asset hubs, telemetry SDKs) need their
+  offline switches exported before the run — e.g. `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1` where
+  those libraries are present — not stubbed per-test and hoped for. A suite hanging on retries against
+  a remote host is diagnosed as environment/configuration; it is never re-labelled "slow" and never
+  re-run hoping.
+- **A hang must yield a STACK, not a mystery:** a per-test timeout plus `faulthandler` (or the
+  stack-dump equivalent) so a wedged run names the frame it wedged in. A long run that dies nameless
+  costs a second long run to learn nothing.
 
 ## 8. Test shape (don't drift E2E-heavy)
 - Use the FASTEST layer that gives real confidence: most coverage in fast unit/integration; reserve slow
@@ -793,6 +840,12 @@ enumeration unprompted — the flow table in §0 is where it lands.
   fixed input set scored on OUTCOMES, deterministic-oracle checks as the blocking gate, any LLM-judge
   score as a tracked trend line, never a hard gate (§7's zero-flake rule). Don't unit-test what only an
   eval can catch, or E2E what a unit covers. (The full agent-eval discipline is the open §-upgrade below.)
+- **A subprocess-only contract needs an IN-PROCESS TWIN.** When the only test exercising a behavior
+  spawns a fresh process (CLI, hook, worker, `python -m`), keep it — it is the real seam (§1) and
+  the only proof the thing executes and imports — and add a twin that calls the same public function
+  in-process. Without the twin the behavior is invisible to coverage and unmeasurable by mutation
+  (§4's attribution blind spot); with only the twin, nothing proves the executable runs at all. The
+  pair is the shape; picking one is choosing which blindness to keep.
 
 ## 9. Security & supply chain
 - Run `/security-review` (CC) on any diff touching security-relevant surfaces — auth/session, routes/tools
@@ -942,6 +995,15 @@ unverified NEGATIVE about a file it never read.)
   a comment while the real call remains — assert on AST nodes (attribute access, calls),
   excluding docstrings. The sweep above says WHERE to look; this is the instrument it must use —
   the general parse-over-grep rule (§1, §6's EXERCISED leg) applied to the absence direction.
+- **Evidence you cannot RE-READ is not evidence — a long run's output must outlive the session.**
+  Write the COMPLETE log to a FILE (`… > run.log 2>&1`), never a `tail` you keep INSTEAD of the log,
+  and record the run/process identifier in continuation state. An agent's context gets summarized;
+  a buffer holding a nearly-complete result is simply gone at that boundary, and the claim it would
+  have supported becomes unsupportable. (Origin: a near-complete full-suite run lost to a compaction
+  boundary, Codex 2026-08-17.) The correct recovery is to retrieve the artifact and re-run only the
+  IDENTIFIED failure slices — re-running the whole suite to reconstruct output you already produced
+  buys no new information. Corollary for the run itself: once on a quiet, committed tree at the
+  merge/deploy gate; named slices during development.
 - **Built ≠ wired-in ≠ usable applies to claims too:** trace the wire end-to-end — who SETS the
   value, who CONSUMES it, which config gates it — before claiming wired or unwired. A registration,
   an export, or a comment is not a wire.
