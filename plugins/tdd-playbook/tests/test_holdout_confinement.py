@@ -174,9 +174,58 @@ def test_judge_workspace_outside_public_repo():
     assert jr["verdict"] == "KEEP", jr
 
 
+def test_approve_manifest_sha_matches_landed_body():
+    """The bytes VALIDATED are the bytes that LAND (2026-08-17, pre-fix 656eff5).
+
+    approve computed the manifest's candidate sha on the PROPOSED file and then re-dumped
+    the body into bodies/ with indent=2 — different bytes — so the manifest held a sha that
+    could never match the body it authorizes. vault_integrity_problems reads exactly that
+    pair, and `holdout run` ABORTS on a non-empty problem list, so ONE hand-authored or
+    reformatted proposed file bricked the whole vault. `cmd_author_holdout` already wrote
+    the canonical form as a duplicated literal, which is why machine-authored bodies matched
+    by luck and this stayed invisible until a hand-shaped body met MANIFEST_REQUIRED_SINCE.
+
+    The proposed body here is written NON-canonically ON PURPOSE (compact, no trailing
+    newline): that is the hand-edited shape the flow invites, since `holdout author` tells a
+    human to review the file before approving. Vacuity-guarded — an approve that does not
+    land fails the test rather than skipping the assertions.
+    """
+    plant = {"id": "sha-chain-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+             "task": "t", "must_match": ["SENTINEL_ORACLE"], "must_not_match": ["x"]}
+
+    def caught(sc, vd, contract, body_path=None, **kw):
+        import plant_forms
+        return {"table": {"id": sc["id"], "kind": "plant", "k": 3, "n": 3, "invalid": 0,
+                          "verdict": "caught", "approvable": True},
+                "manifest": {"schema": 1, "candidate_id": sc["id"],
+                             "candidate_content_sha256": plant_forms.plant_sha(body_path),
+                             "k": 3, "n": 3, "verdict": "caught", "contract": {}, "reps": []},
+                "reasoning": None}
+
+    import contextlib
+    import io
+    import plant_forms
+    with tempfile.TemporaryDirectory() as vault:
+        os.makedirs(os.path.join(vault, "proposed"))
+        with open(os.path.join(vault, "proposed", plant["id"] + ".json"), "w") as fh:
+            json.dump(plant, fh)          # deliberately NOT the canonical byte-form
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = holdout.cmd_approve_holdout(vault, plant["id"], "sha-chain regression",
+                                               validator=caught)
+        body = os.path.join(vault, "bodies", plant["id"] + ".json")
+        assert code == 0 and os.path.isfile(body), (code, os.listdir(vault))
+        manifest = json.load(open(os.path.join(vault, "manifests", plant["id"] + ".json")))
+        assert manifest["candidate_content_sha256"] == plant_forms.plant_sha(body), (
+            "manifest sha {} != landed body sha {}".format(
+                manifest["candidate_content_sha256"][:12], plant_forms.plant_sha(body)[:12]))
+        assert holdout.vault_integrity_problems(vault) == [], \
+            holdout.vault_integrity_problems(vault)
+
+
 def main():
     failures = []
     for fn in (test_run_holdout_refuses_form_override,
+               test_approve_manifest_sha_matches_landed_body,
                test_judge_workspace_outside_public_repo,
                test_holdout_deny_read_prefers_clone_root,
                test_run_holdout_denies_whole_clone_tree,

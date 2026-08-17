@@ -140,6 +140,31 @@ def stage_vault(vault_url, workdir):
 MANIFEST_REQUIRED_SINCE = "2026-08-17"
 
 
+def write_body(path, sc):
+    """THE one byte-form for a holdout body. `approve` canonicalizes the PROPOSED file through
+    this BEFORE validating and lands the body through it too, so the bytes the verifier measured
+    are byte-IDENTICAL to the bytes that land, and the manifest's candidate sha therefore matches
+    the body it authorizes.
+
+    Origin (2026-08-17, the day MANIFEST_REQUIRED_SINCE activated the reader that exposed it):
+    approve computed the manifest sha on the proposed file, then re-dumped the body with
+    indent=2. `cmd_author_holdout` already wrote proposed bodies in exactly this canonical form,
+    so machine-authored bodies matched by luck of a duplicated literal — but the flow tells a
+    human to REVIEW the file first, and any hand-authored or reformatted proposed body produced a
+    manifest sha that could NEVER match its body. vault_integrity_problems then read every such
+    vault as stale, and `holdout run` ABORTS on that, so one reformatted file bricked the whole
+    vault. Two write sites agreeing to stay byte-identical is how they drift; one owner cannot
+    (arch-F3, the shas_in_dir pattern).
+
+    Canonicalizing the proposed file is a FORMATTING-only rewrite — `sc` is what was parsed from
+    it — and it happens before validation, so a body that later fails the gate is left in
+    proposed/ canonical rather than as-authored. That is intentional: re-proposing it validates
+    the same bytes that would land."""
+    with open(path, "w") as fh:
+        json.dump(sc, fh, indent=2)
+        fh.write("\n")
+
+
 def vault_integrity_problems(vault_root):
     """Integrity of a vault BEFORE it feeds an eval: (1) HASH-DRIFT via verify_bodies (a body
     whose content no longer matches its recorded content_sha256), (2) an UNREGISTERED body —
@@ -707,9 +732,7 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
     for sc in res["accepted"]:
         sc["_meta"] = {"authored_by_model": model, "authored_at": _dt.date.today().isoformat(),
                        "status": "proposed", "form": "holdout"}
-        with open(os.path.join(proposed, sc["id"] + ".json"), "w") as fh:
-            json.dump(sc, fh, indent=2)
-            fh.write("\n")
+        write_body(os.path.join(proposed, sc["id"] + ".json"), sc)
         accepted += 1
         print("PROPOSED {} (review the file, then: holdout approve --vault-dir {} {} --reason "
               "...)".format(sc["id"], vault_dir, sc["id"]))
@@ -749,6 +772,9 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
         return 1
     with open(src) as fh:
         sc = json.load(fh)
+    # Canonicalize the proposed bytes BEFORE anything measures them, so the sha the verifier
+    # records in its manifest is the sha the landed body will carry (see write_body).
+    write_body(src, sc)
     universe = _vault_universe(vault_dir)
     existing = {s["id"] for s in universe if s["id"] != plant_id}
     probs = rc.validate_scenario({k: v for k, v in sc.items() if k != "_meta"}, existing)
@@ -814,9 +840,7 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
     bodies = os.path.join(vault_dir, "bodies")
     os.makedirs(bodies, exist_ok=True)
     dst = os.path.join(bodies, plant_id + ".json")
-    with open(dst, "w") as fh:
-        json.dump(sc, fh, indent=2)
-        fh.write("\n")
+    write_body(dst, sc)
     os.remove(src)
     sha = plant_forms.plant_sha(dst)
     reg = os.path.join(vault_dir, REGISTER_NAME)

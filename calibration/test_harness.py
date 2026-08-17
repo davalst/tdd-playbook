@@ -2941,6 +2941,23 @@ def _holdout_authoring_tests():
               and entries[0]["content_sha256"] == plant_forms.plant_sha(body)
               and entries[0]["plant_id"] == "hauth-plant", entries)
 
+        # --- D1.c SEAM (2026-08-17): the bytes VALIDATED are the bytes that LAND ---
+        # The proposed file above is written NON-canonically ON PURPOSE (compact, no trailing
+        # newline): that is the hand-edited shape the flow invites — `holdout author` prints
+        # "review the file, then: holdout approve", and any editor that reformats produces it.
+        # Pre-fix (656eff5), approve validated the PROPOSED bytes, recorded that sha in the
+        # manifest, then re-dumped the body with indent=2 — so the manifest held a sha that
+        # could NEVER match the body it authorizes, and vault_integrity_problems (live from
+        # MANIFEST_REQUIRED_SINCE = 2026-08-17) called every such vault stale, which ABORTS
+        # `holdout run` for the whole vault. Machine-authored bodies were byte-canonical
+        # already, which is exactly why this stayed invisible until a hand-shaped body met the
+        # date gate. One byte-form, one writer — two writers agreeing to stay identical drift.
+        manifest = json.load(open(os.path.join(vault, "manifests", "hauth-plant.json")))
+        check("D1.c: the manifest's candidate sha IS the landed body's sha — ONE byte-form "
+              "across the validate->land seam (a non-canonical proposed file cannot strand it)",
+              manifest["candidate_content_sha256"] == plant_forms.plant_sha(body),
+              (manifest["candidate_content_sha256"], plant_forms.plant_sha(body)))
+
         # --- D1.d: vault_integrity_problems — clean, drift, unregistered ---
         check("D1.d: a clean vault (body matches register) has NO integrity problems",
               holdout.vault_integrity_problems(vault) == [],
