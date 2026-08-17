@@ -3,24 +3,15 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
-## 1.40.1 — 2026-08-17
+## 1.40.2 — 2026-08-17
 
-**`holdout integrity`'s clean message carries its DENOMINATOR (§12).** Caught on the
-command's first real run, minutes after v1.40.0 was tagged — which is why this is a patch
-release rather than a bullet in 1.40.0: the fix landed after the tag, and a CHANGELOG entry
-claiming otherwise would describe a release that does not contain it.
-
-The clean line read "N registered body/bodies, every one matching its register row and its
-validation manifest". But bodies dated before `MANIFEST_REQUIRED_SINCE` have their manifest
-SKIPPED, not verified. Run against a real 20-body vault — every row predating the cutoff —
-it printed manifest assurance having checked ZERO of them. The register-sha half was true;
-the manifest half was asserted by the wording and verified by nothing.
-
-It now reports `every one matching its register sha. Validation manifests CHECKED for k of N`
-and names the grandfathered remainder explicitly. A reassurance that does not state its scope
-is the quiet half of a false green — harder to catch than a failure, because nothing looks
-wrong. Red-first: the pinning test asserts `0 of 1` for a pre-cutoff body and `1 of 1` for a
-post-cutoff one, and failed against the old wording quoting the overclaim verbatim.
+**Tagged-after-the-fact correction.** v1.40.1 was tagged at `d9839f6` and these two changes
+landed after it, so they get their own version rather than being described inside a section
+whose tag cannot contain them. That is the SECOND time in one day this repo's notes claimed a
+tree they were not in (`changelog-claims-a-tree-it-is-not-in`, first recorded against v1.40.1
+itself). The cause is not the CHANGELOG: it is issuing the tag instruction while work is still
+in flight. The release steps now say the tag instruction is the LAST thing emitted, and any fix
+found after it becomes the next patch — never a retro-edit of a tagged section.
 
 **FIRST HOLDOUT ASSIGNMENT — the leakage tripwire is ARMED (debt PAID).** The private vault
 held 20 approved holdout bodies while `calibration/plant-forms.md` carried zero holdout
@@ -52,6 +43,25 @@ being checked. Overrides are now classified against each guard's OWN default by
 stronger is reported as a `guard opt-in`, equal as a no-op, and an unparseable value or unknown
 hook name fails toward flagging. A warning that fires on a correct configuration is how a real
 demotion gets skimmed past — the same defect as an overclaiming green, pointed the other way.
+
+## 1.40.1 — 2026-08-17
+
+**`holdout integrity`'s clean message carries its DENOMINATOR (§12).** Caught on the
+command's first real run, minutes after v1.40.0 was tagged — which is why this is a patch
+release rather than a bullet in 1.40.0: the fix landed after the tag, and a CHANGELOG entry
+claiming otherwise would describe a release that does not contain it.
+
+The clean line read "N registered body/bodies, every one matching its register row and its
+validation manifest". But bodies dated before `MANIFEST_REQUIRED_SINCE` have their manifest
+SKIPPED, not verified. Run against a real 20-body vault — every row predating the cutoff —
+it printed manifest assurance having checked ZERO of them. The register-sha half was true;
+the manifest half was asserted by the wording and verified by nothing.
+
+It now reports `every one matching its register sha. Validation manifests CHECKED for k of N`
+and names the grandfathered remainder explicitly. A reassurance that does not state its scope
+is the quiet half of a false green — harder to catch than a failure, because nothing looks
+wrong. Red-first: the pinning test asserts `0 of 1` for a pre-cutoff body and `1 of 1` for a
+post-cutoff one, and failed against the old wording quoting the overclaim verbatim.
 
 ## 1.40.0 — 2026-08-17
 

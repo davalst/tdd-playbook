@@ -220,6 +220,17 @@ Local-machine plugin installs update separately (no prompt needed):
      `git config user.signingkey` is currently unset, so `-s` fails today; tracked as dated
      debt on `release-tag-authority`), then `git push origin vX.Y.Z`.
 
+  **The tag instruction is the LAST thing the agent emits, and emitting it ENDS the span.**
+  Twice on 2026-08-17 the agent handed over the tag command and then kept committing — once
+  finding a real defect minutes later, once folding in follow-up work — so David tagged a
+  commit that was current when he read the message and stale by the time he ran it, and in both
+  cases the CHANGELOG section for that version had since been edited to describe work the tag
+  cannot contain (`changelog-claims-a-tree-it-is-not-in`, recorded twice). The rule is not "write
+  the notes more carefully": once the tag command is given, anything further becomes the NEXT
+  patch version with its own section. Never retro-edit a section whose tag exists — a tagged
+  section is a claim about a specific tree, and a released tree does not change. If work might
+  still be in flight, do not emit the tag command yet; say what remains instead.
+
   **What authorizes a release is David tagging it.** The model can propose, gate, and bump; it
   cannot tag. This is DELETION, not a smaller wall — with no verdict anywhere in the release
   path there is nothing to forge, argue past, or `--force`. Two mechanical halves, each
