@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-v1.40.1-release",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "bdcb39ce783ef0bbf8adeb72f647403e0590730c",
+    "head": "a9abd873a9cc4bd398cad8fc47c9c896ed18e047"
+  },
+  "reviewers": [
+    "self-review",
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "REL1401-CHANGELOG-DESCRIBED-A-RELEASE-IT-IS-NOT-IN",
+      "severity": "P2",
+      "summary": "The denominator fix (dae2da0) was written as a bullet INSIDE the 1.40.0 CHANGELOG section, but v1.40.0 was tagged at 3db86fc \u2014 two commits earlier. So the tagged release's own notes advertised a fix its tree does not contain, and anyone installing from the tag would get the overclaiming `integrity` message while reading that it had been fixed. A CHANGELOG is a claim about a specific tree; writing into a section whose tag already exists makes it a false one.",
+      "evidence": [
+        "CHANGELOG.md",
+        "docs/reviews/2026-08-17-integrity-denominator.json"
+      ],
+      "status": "incorporated",
+      "disposition": "Bullet moved out of 1.40.0 into its own 1.40.1 section, which states plainly why it is a patch release rather than an amendment. 1.40.0's notes now describe only what 1.40.0 ships. Retagging v1.40.0 onto the newer commit was the alternative and was REJECTED: moving a published release marker is precisely what the tag-authority discipline exists to prevent, and it would have made the tag unverifiable against what anyone already fetched. Ordering lesson for the release steps: the tag instruction must be the LAST thing issued, and any fix found after it becomes the next patch, never a retro-edit of the tagged section.",
+      "class": "judgment",
+      "recurrence_key": "changelog-claims-a-tree-it-is-not-in"
+    },
+    {
+      "id": "REL1401-DOCTOR-MISLABELS-AN-OPT-IN-GUARD-AS-DEMOTED",
+      "severity": "P3",
+      "summary": "`install_into_repo.py --doctor` prints 'STANDING DEMOTION: \u2026 sets {TDD_PLAYBOOK_HOOK_EXITCODE: warn} \u2014 guards are demoted for EVERY session in this repo' for this repo's settings.local.json. But _common.py:49 sets exitcode's DEFAULT to 'off' (retired to opt-in in v1.32.0), so setting it to 'warn' ENABLES the guard rather than weakening it. The doctor compares against an assumed block-by-default rather than each guard's actual default, so it reports an enablement as a kill switch. Repeated across several release runs in this session and taken at face value once before being checked.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/_common.py:49",
+        "scripts/install_into_repo.py"
+      ],
+      "status": "open",
+      "disposition": "Left OPEN, not fixed in a release commit \u2014 the doctor's H8 output is release-gate machinery and changing what it reports mid-release is the wrong moment. The fix is to compare each env override against that guard's own default from _common.py's table and label only genuine downgrades as demotions (an override that raises off->warn or warn->block is an ENABLEMENT). Recorded because a warning that cries wolf on a correct configuration is how real demotions get skimmed past \u2014 the same class as an overclaiming clean message, in the opposite direction.",
+      "class": "deterministic",
+      "recurrence_key": "misdirecting-fail-closed-message"
+    }
+  ]
+}
