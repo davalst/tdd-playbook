@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-v1.41.0-attribution-precheck",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "65091175fa63dbf8eb07b714703f0bad9104656e",
+    "head": "97b8f2ddf66e9842761b39391084b58a8e1d356e"
+  },
+  "reviewers": [
+    "self-review",
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "ATTR-F1-BRIEF-EDIT-HAD-NO-SCENARIO-THAT-COULD-MOVE",
+      "severity": "P2",
+      "summary": "Closes DOCTRINE-F5. The attribution rule reached §4/§8 doctrine in v1.40.0 but not agents/mutation-runner.md, the brief of the agent that actually runs mutation passes — so the rule was written where it reads well and absent where it would act. It was dropped rather than registered because agents/ is EFFECTFUL in the calibration ledger (expect=none unavailable by construction) and the sole scenario covering that agent, shadowed-import-vacuous-suite, measures a SHADOWED IMPORT: a defect shape the preflight additions cannot plausibly move. Registering expect=up against it would have been satisfying the instrument, which the ledger's own no-effect share (now 17 of 65, 26%) exists to catch.",
+      "evidence": [
+        "calibration/ledger.py:73",
+        "docs/calibration/ledger.md",
+        "plugins/tdd-playbook/agents/mutation-runner.md"
+      ],
+      "status": "incorporated",
+      "disposition": "Inverted the order: the plant+control pair was authored FIRST, then the brief edit followed it, so the prediction registered in L-20260817-02 (expect=up, claimed 3) names scenarios that can actually move. subprocess-only-gate-unmeasurable freezes the real Codex shape (every test of cli.main spawns a fresh child process; green suite, three dedicated CLI tests; a scoped gate generates mutants and executes none -> `Mutation gate UNMEASURED`). The pre-edit brief carries no rule that reaches it, which is what makes the movement real rather than assumed. Hand-authored from the motivating artifact per §13 rather than model-generated, so authoring cost no model spend.",
+      "class": "deterministic",
+      "recurrence_key": "prose-deferral-needs-mechanical-trigger"
+    },
+    {
+      "id": "ATTR-F2-A-PRECHECK-LIKE-THIS-INVITES-AN-OVER-CORRECTION",
+      "severity": "P2",
+      "summary": "A rule that says 'child-process-only coverage is unmeasurable' will be over-applied: the failure mode it creates is calling a target unmeasurable because subprocess tests appear ANYWHERE in the file, when an in-process twin sitting beside them makes the target perfectly attributable. A plant alone would have rewarded exactly that over-flagging — the 2026-08-16 holdout diagnose already found FP 10/10 measuring control-authoring quality rather than verifier quality, and three of the controls read directly were bad controls.",
+      "evidence": [
+        "calibration/corpus/approved/control-subprocess-with-in-process-twin.json",
+        "docs/reviews/2026-08-16-trustworthy-holdout-controls.json"
+      ],
+      "status": "incorporated",
+      "disposition": "control-subprocess-with-in-process-twin carries the same fresh-process tests PLUS an in-process twin calling cli.main(argv) directly with return-code and captured-stdout assertions, so a PASS is the correct verdict and an UNMEASURED verdict is a false positive. The brief states the discriminator in the SAME words as the control's rationale — whether ANY test drives the target in-process, never whether child processes appear in the file — so the rule and the control cannot drift into disagreeing about what clean means. Both oracles anchor on the brief's FORCED verdict line (`Mutation gate UNMEASURED` vs `Mutation gate PASSES`) rather than on prose about subprocesses, so a correct explanation that MENTIONS child processes is not punished: that is the greedy-must_not_match defect the same diagnose found, avoided by construction rather than by care.",
+      "class": "judgment",
+      "recurrence_key": "hardened-adversary-over-triggers-on-control"
+    },
+    {
+      "id": "ATTR-F3-A-PLANT-WHOSE-SUITE-IS-RED-MEASURES-THE-RED",
+      "severity": "P3",
+      "summary": "Both scenarios' premise is a GREEN fixture suite — the plant's task says so in as many words ('the suite is green and has three dedicated tests'), and its whole point is that a green suite can still leave a gate unmeasurable. A staged plant whose suite is actually RED would measure the agent's reaction to a broken suite instead, and neither the schema validator nor the pairing rule checks that: dry-run validates fields, not that the edits leave a runnable tree.",
+      "evidence": [
+        "calibration/corpus/approved/subprocess-only-gate-unmeasurable.json",
+        "calibration/run_calibration.py:299"
+      ],
+      "status": "incorporated",
+      "disposition": "Both scenarios were STAGED through the real run_calibration.stage() and their fixture suites executed before approval: 13 tests OK for the plant (10 original + 3 CLI), 16 OK for the control (10 + 2 fresh-process + 4 in-process). Verified rather than assumed, and recorded because the corpus is immutable once approved — a plant that stages red cannot be edited in place, only superseded, so this check belongs before --approve and not after. NOT built as a mechanism: an author-time green-suite precondition in author_plants --approve would make this structural instead of remembered, and is left unbuilt rather than claimed.",
+      "class": "deterministic",
+      "recurrence_key": "gate-default-wire-untested"
+    }
+  ]
+}

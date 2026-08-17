@@ -48,7 +48,8 @@
 - `docs/reviews/2026-08-17-mutation-attribution-doctrine.json` — `e84b9248858ee055e0f09ee0d2c19300a716421ea4ef77101eb4e614ac525a81`
 - `docs/reviews/2026-08-17-v1.40.1-release.json` — `94f41fb01433c82a8ff8f83f007ec342e5fdaa4c9754e1ba0c731d307da0ce27`
 - `docs/reviews/2026-08-17-v1.40.2-release.json` — `942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c`
-- `docs/reviews/index.json` — `e3e58108807e8c9ceaf5679092e036e579eb6a53f6ee08d77b5f393df4b9ff3f`
+- `docs/reviews/2026-08-17-v1.41.0-attribution-precheck.json` — `f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c`
+- `docs/reviews/index.json` — `d0286c43810a814557a315f29cb3b38c3255720680121ed1d78f123dc9f56527`
 
 ## Gate surface
 
@@ -151,8 +152,8 @@
 
 ## Adversarial review records
 
-- Review records: 38. Findings: 175.
-- `incorporated`: 78
+- Review records: 39. Findings: 178.
+- `incorporated`: 81
 - `open`: 10
 - `rejected`: 3
 - `verified_closed`: 84

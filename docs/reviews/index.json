@@ -152,6 +152,10 @@
     {
       "path": "2026-08-17-v1.40.2-release.json",
       "sha256": "942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c"
+    },
+    {
+      "path": "2026-08-17-v1.41.0-attribution-precheck.json",
+      "sha256": "f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c"
     }
   ]
 }
