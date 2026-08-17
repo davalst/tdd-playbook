@@ -207,6 +207,46 @@ def vault_integrity_problems(vault_root):
     return problems
 
 
+def cmd_integrity(vault_dir):
+    """READ-ONLY operator check: is this vault fit to feed an eval? Nothing is written, no model
+    is invoked, no clone is made — the same problem list `run` refuses on, printed on demand.
+
+    Born 2026-08-17: vault_integrity_problems had no standalone reader. It ran only INSIDE
+    run_holdout, so the only way to learn a vault was stale was to start a full eval and watch it
+    abort — and the answer to "is my vault OK?" was a Python one-liner. A check an operator cannot
+    run is a check that reports to nobody (§6a). Prints the remediation command per affected body
+    rather than naming a problem and leaving the next step to be looked up (§4a)."""
+    if not os.path.isdir(vault_dir):
+        print("no such vault dir: {}".format(vault_dir))
+        return 1
+    problems = vault_integrity_problems(vault_dir)
+    if problems is None:
+        bodies = os.path.join(vault_dir, "bodies")
+        n = len(holdout_shas(bodies)) if os.path.isdir(bodies) else 0
+        print("vault has no register ({} body/bodies on disk) — nothing recorded to check. A "
+              "fresh vault reads CLEAN here; `run` still refuses if bodies exist without a "
+              "register.".format(n))
+        return 0
+    if not problems:
+        n = len(holdout_shas(os.path.join(vault_dir, "bodies")))
+        print("vault integrity: CLEAN — {} registered body/bodies, every one matching its "
+              "register row and its validation manifest.".format(n))
+        return 0
+    print("vault integrity: {} PROBLEM(S) — `holdout run` will refuse this vault.".format(
+        len(problems)))
+    for p in problems:
+        print("  - " + p)
+    ids = sorted({e["plant_id"] for e in plant_forms.parse_register(
+        open(os.path.join(vault_dir, REGISTER_NAME)).read())
+        if any(e["plant_id"] in p for p in problems)})
+    if ids:
+        print("\nTo fix, re-run the validation gate for the affected body/bodies (one at a time; "
+              "this DOES invoke the verifier):")
+        for sid in ids:
+            print("  python3 holdout.py validate --vault-dir {} {}".format(vault_dir, sid))
+    return 1
+
+
 def contract_mismatch_warnings(vault_root, run_model, run_isolation="with-playbook"):
     """arch-F1/F6 (2026-08-16): a manifest's 'holds' predicts a reading only under the SAME
     contract. Compare each persisted manifest's recorded model/isolation against the run
@@ -743,7 +783,7 @@ def cmd_author_holdout(vault_dir, model, category, claude_bin):
 
 def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="claude",
                         repeat=None, validator=None, judge=None, supersedes="",
-                        interactive=None):
+                        interactive=None, today=None):
     """Move a reviewed proposed body into bodies/ and record it in the register (form=holdout,
     real content_sha256). Re-validates (minus dup-id, the proposed file IS the id), echoes
     pairing, and — D1 — runs the body's TARGET VERIFIER against it under the eval contract:
@@ -849,8 +889,17 @@ def cmd_approve_holdout(vault_dir, plant_id, reason, *, model=None, claude_bin="
         if new:
             fh.write("# Holdout register\n\n" + plant_forms.ENTRIES_SECTION + "\n\n"
                      + plant_forms.ENTRIES_TABLE)
+        # `today` is injectable ONLY so the MANIFEST_REQUIRED_SINCE threshold is exercisable on
+        # BOTH sides on the day a change ships (2026-08-17). vault_integrity_problems was always
+        # two-directionally testable — it reads the register row's date, and test_harness pins a
+        # pre-gate and a post-gate row — but the APPROVE path stamped the real clock, so the
+        # branch it lands on was whatever the calendar said. That is exactly how the manifest-sha
+        # defect hid: the D1.c approve test stamped 2026-08-16, one day under the threshold, so
+        # the manifest check never ran through approve until the morning it went red in CI's
+        # absence. A date-activated gate that can only be exercised on one side of its own
+        # threshold is unfalsifiable at authoring time (§13).
         fh.write(plant_forms.format_register_row(
-            _dt.date.today().isoformat(), plant_id, "holdout", sha, reason,
+            today or _dt.date.today().isoformat(), plant_id, "holdout", sha, reason,
             status="current", supersedes=supersedes or ""))
     print("APPROVED {} -> bodies/ + register (sha {}...). Commit + push the vault privately."
           .format(plant_id, sha[:12]))
@@ -1034,6 +1083,10 @@ def main(argv=None):
     # Extra run_calibration args (e.g. --model sonnet --repeat 3) are captured by parse_known_args
     # below and forwarded — argparse.REMAINDER does not collect LEADING options like --model, which
     # is why `run --vault URL --model sonnet` used to error.
+    i = sub.add_parser("integrity", help="READ-ONLY: check whether a vault is fit to feed an "
+                                         "eval (no model, no clone, no writes)")
+    i.add_argument("--vault-dir", required=True,
+                   help="a local clone of the private vault (outside the public tree)")
     a = sub.add_parser("author", help="generate fresh holdout plants (adversary model) into the "
                                       "vault's proposed/ for review")
     a.add_argument("--vault-dir", required=True,
@@ -1094,6 +1147,8 @@ def main(argv=None):
     # author/approve take no forwarded args — reject unknowns strictly.
     if extra:
         ap.error("unrecognized arguments: " + " ".join(extra))
+    if args.cmd == "integrity":
+        return cmd_integrity(args.vault_dir)
     if args.cmd == "author":
         return cmd_author_holdout(args.vault_dir, args.model, args.category, args.claude_bin)
     if args.cmd == "approve":

@@ -222,10 +222,117 @@ def test_approve_manifest_sha_matches_landed_body():
             holdout.vault_integrity_problems(vault)
 
 
+def _approve_into_fresh_vault(vault, plant, today=None):
+    """Land `plant` in `vault` through the REAL approve path, from a deliberately non-canonical
+    proposed file."""
+    import plant_forms
+    os.makedirs(os.path.join(vault, "proposed"), exist_ok=True)
+    with open(os.path.join(vault, "proposed", plant["id"] + ".json"), "w") as fh:
+        json.dump(plant, fh)
+
+    def caught(sc, vd, contract, body_path=None, **kw):
+        return {"table": {"id": sc["id"], "kind": "plant", "k": 3, "n": 3, "invalid": 0,
+                          "verdict": "caught", "approvable": True},
+                "manifest": {"schema": 1, "candidate_id": sc["id"],
+                             "candidate_content_sha256": plant_forms.plant_sha(body_path),
+                             "k": 3, "n": 3, "verdict": "caught", "contract": {}, "reps": []},
+                "reasoning": None}
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()) as buf:
+        code = holdout.cmd_approve_holdout(vault, plant["id"], "regression fixture",
+                                           validator=caught, today=today)
+    return code, buf.getvalue()
+
+
+def _stale_the_manifest(vault, plant_id):
+    """PLANT the defect the date gate is supposed to catch, AFTER landing — approve's own TOCTOU
+    check refuses a manifest sha that disagrees with the proposed bytes, so staleness cannot be
+    injected through the gate (which is itself correct behaviour)."""
+    path = os.path.join(vault, "manifests", plant_id + ".json")
+    manifest = json.load(open(path))
+    manifest["candidate_content_sha256"] = "f" * 64
+    with open(path, "w") as fh:
+        json.dump(manifest, fh, indent=2, sort_keys=True)
+
+
+def test_approve_manifest_gate_exercised_on_both_sides_of_its_date():
+    """§13 two-directional (2026-08-17): MANIFEST_REQUIRED_SINCE activates the manifest reader on
+    a date. vault_integrity_problems was always testable both ways (it reads the register row's
+    date), but APPROVE stamped the real clock, so the branch a landed body fell on was whatever
+    the calendar said — which is exactly how the manifest-sha defect hid for a day: the approve
+    test stamped one day under the threshold and the check never ran through approve.
+
+    `today` is now injectable, so BOTH directions are pinned regardless of when this suite runs:
+    a PRE-threshold row is grandfathered even with a deliberately stale manifest, and a
+    POST-threshold row is caught. The stale manifest is the SAME planted defect in both halves,
+    so the only variable is the date — an ALLOW row and a BLOCK row over one condition.
+    """
+    plant = {"id": "date-gate-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+             "task": "t", "must_match": ["SENTINEL_ORACLE"], "must_not_match": ["x"]}
+    before = (holdout.MANIFEST_REQUIRED_SINCE[:8]
+              + "{:02d}".format(int(holdout.MANIFEST_REQUIRED_SINCE[8:]) - 1))
+    after = (holdout.MANIFEST_REQUIRED_SINCE[:8]
+             + "{:02d}".format(int(holdout.MANIFEST_REQUIRED_SINCE[8:]) + 1))
+
+    with tempfile.TemporaryDirectory() as vault:
+        code, _ = _approve_into_fresh_vault(vault, plant, today=before)
+        assert code == 0, "approve did not land the pre-threshold body"
+        _stale_the_manifest(vault, plant["id"])
+        assert holdout.vault_integrity_problems(vault) == [], (
+            "a PRE-threshold body must be grandfathered: "
+            + repr(holdout.vault_integrity_problems(vault)))
+
+    with tempfile.TemporaryDirectory() as vault:
+        code, _ = _approve_into_fresh_vault(vault, plant, today=after)
+        assert code == 0, "approve did not land the post-threshold body"
+        _stale_the_manifest(vault, plant["id"])
+        probs = holdout.vault_integrity_problems(vault)
+        assert any("date-gate-plant" in p and "manifest" in p.lower() for p in probs), (
+            "a POST-threshold body with a stale manifest must be caught: " + repr(probs))
+
+
+def test_integrity_subcommand_is_wired_and_names_the_fix():
+    """§6a (2026-08-17): vault_integrity_problems ran ONLY inside run_holdout, so the only way to
+    learn a vault was stale was to start a full eval and watch it abort. `holdout integrity` is
+    the read-only reader. Pins that the subcommand EXISTS in the real CLI (a function nobody can
+    invoke is dark), that a clean vault exits 0, and that a problem exits nonzero AND prints the
+    remediation command — a refusing check prints the diagnosis it already holds (§4a)."""
+    plant = {"id": "integ-plant", "agent": "claims-verifier", "plant": "p", "edits": [],
+             "task": "t", "must_match": ["SENTINEL_ORACLE"], "must_not_match": ["x"]}
+    after = (holdout.MANIFEST_REQUIRED_SINCE[:8]
+             + "{:02d}".format(int(holdout.MANIFEST_REQUIRED_SINCE[8:]) + 1))
+    script = os.path.join(REPO, "calibration", "holdout.py")
+
+    help_run = subprocess.run([sys.executable, script, "integrity", "--help"],
+                              capture_output=True, text=True, timeout=30)
+    assert help_run.returncode == 0 and "--vault-dir" in help_run.stdout, help_run
+
+    with tempfile.TemporaryDirectory() as vault:
+        code, _ = _approve_into_fresh_vault(vault, plant, today=after)
+        assert code == 0, "approve did not land the body"
+        clean = subprocess.run([sys.executable, script, "integrity", "--vault-dir", vault],
+                               capture_output=True, text=True, timeout=60)
+        assert clean.returncode == 0 and "CLEAN" in clean.stdout, clean
+
+    with tempfile.TemporaryDirectory() as vault:
+        code, _ = _approve_into_fresh_vault(vault, plant, today=after)
+        assert code == 0, "approve did not land the body"
+        _stale_the_manifest(vault, plant["id"])
+        dirty = subprocess.run([sys.executable, script, "integrity", "--vault-dir", vault],
+                               capture_output=True, text=True, timeout=60)
+        assert dirty.returncode == 1, dirty
+        assert "PROBLEM" in dirty.stdout, dirty.stdout
+        assert "validate --vault-dir" in dirty.stdout and "integ-plant" in dirty.stdout, \
+            "the refusal must name the fix command: " + dirty.stdout
+
+
 def main():
     failures = []
     for fn in (test_run_holdout_refuses_form_override,
                test_approve_manifest_sha_matches_landed_body,
+               test_approve_manifest_gate_exercised_on_both_sides_of_its_date,
+               test_integrity_subcommand_is_wired_and_names_the_fix,
                test_judge_workspace_outside_public_repo,
                test_holdout_deny_read_prefers_clone_root,
                test_run_holdout_denies_whole_clone_tree,
