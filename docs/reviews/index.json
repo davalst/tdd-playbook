@@ -136,6 +136,10 @@
     {
       "path": "2026-08-17-date-gate-and-integrity-command.json",
       "sha256": "fcbc01936aabf82c87fee05cbbb1b0c73a43eb54d7927ddd02cb3dd370fe1095"
+    },
+    {
+      "path": "2026-08-17-integrity-denominator.json",
+      "sha256": "df25edc47e6d6d1e03eba0ab8bf8638e46af0b99e497891a949a18ab69088d3f"
     }
   ]
 }

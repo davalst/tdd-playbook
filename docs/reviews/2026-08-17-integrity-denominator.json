@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-17-integrity-denominator",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-holdout-sha-chain-and-mutation-attribution.md",
+  "review_range": {
+    "base": "c2046e68c68953a49f9bd167001525582915b762",
+    "head": "dae2da00aa87a0f093d64b4ccdd5de706cf5932a"
+  },
+  "reviewers": [
+    "self-review",
+    "operator-field-report"
+  ],
+  "findings": [
+    {
+      "id": "INTEG-F1-CLEAN-MESSAGE-CLAIMED-UNCHECKED-MANIFESTS",
+      "severity": "P2",
+      "summary": "`holdout integrity`'s clean line read 'N registered body/bodies, every one matching its register row and its validation manifest'. Bodies dated before MANIFEST_REQUIRED_SINCE have their manifest SKIPPED by vault_integrity_problems, not verified. On the operator's real vault \u2014 20 bodies, all dated 2026-08-15/16, all pre-cutoff \u2014 the command printed manifest assurance for 20 bodies having checked ZERO. The register-sha half of the sentence was true; the manifest half was asserted by the wording and verified by nothing. Found on the command's FIRST real invocation, in the same session that shipped it.",
+      "evidence": [
+        "calibration/holdout.py:168",
+        "calibration/holdout.py:196"
+      ],
+      "status": "incorporated",
+      "disposition": "The clean line now separates what was verified from what was skipped: 'every one matching its register sha. Validation manifests CHECKED for k of N', plus an explicit line naming the grandfathered remainder and why it is not a bricked run. Red-first: the new test asserts '0 of 1' for a pre-cutoff body and '1 of 1' for a post-cutoff one and failed against the old wording, quoting the overclaim verbatim. This is \u00a712's scope rule applied to a REASSURANCE rather than a finding \u2014 the direction that gets less scrutiny, because nothing looks broken.",
+      "class": "judgment",
+      "recurrence_key": "verdict-surface-without-its-denominator"
+    },
+    {
+      "id": "INTEG-F2-HOLDOUT-TRIPWIRE-STILL-UNARMED-DESPITE-A-POPULATED-VAULT",
+      "severity": "P2",
+      "summary": "Not a defect in this diff \u2014 a state finding surfaced by running the new command. The private vault holds 20 approved holdout bodies (register rows dated 2026-08-15/16), but calibration/plant-forms.md has ZERO holdout classes and `plant_forms.py check` reports the leakage tripwire UNARMED: 'scanned 29 files across 4 of 9 roots and could not have failed'. So bodies were approved into the vault without the public-side registration the tripwire reads, which means the mechanism meant to detect holdout leakage remains inert and the quarterly LIFT read stays hard-blocked. The FIRST HOLDOUT ASSIGNMENT debt on the `plant-forms` capability describes this accurately and is NOT stale; this session initially misread it as 'no vault exists' and that misreading is corrected here.",
+      "evidence": [
+        "calibration/plant-forms.md:56",
+        "capabilities.json"
+      ],
+      "status": "open",
+      "disposition": "Left OPEN and untouched. Paying it means deciding what the public register records for private bodies (the schema allows a `private` sha) and touching the private vault, which is David's call, not an agent's \u2014 and the existing dated debt already carries it with a Done condition ('>=1 holdout class in plant-forms.md with check reporting ARMED') and a 2026-10-15 expiry that will RED the suite. Recorded here so the gap is visible from the review trail rather than only from a debt entry that a reader can misinterpret, as happened in this session.",
+      "class": "deterministic",
+      "recurrence_key": "opt-in-feature-goes-dark"
+    }
+  ]
+}
