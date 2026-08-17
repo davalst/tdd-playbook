@@ -3,6 +3,41 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.41.0 — 2026-08-17
+
+**The attribution precheck reaches the agent that runs mutation — with the pair that measures
+it.** v1.40.0 put the attribution blind spot into §4/§8 doctrine but deliberately left
+`agents/mutation-runner.md` untouched: `agents/` is EFFECTFUL in the calibration ledger, so
+`expect: none` is unavailable there, and the one existing scenario covering that agent measures a
+shadowed import — a shape the preflight additions would not plausibly move. Registering `up`
+against it would have been satisfying the instrument rather than using it. So the calibration pair
+was authored first and the brief follows it.
+
+- **`mutation-runner` step 1 gains the ATTRIBUTION precheck.** If the tracer maps no mutated
+  function to any test, STOP and report `Mutation gate UNMEASURED`, naming the remedy: an
+  in-process twin calling the same public function directly, kept BESIDE the fresh-process test,
+  never replacing it. Do not try to make the tracer follow a child process — it cannot, and the
+  attempts are the documented time sink. Also: roster-duplicate integrity (a duplicated
+  `paths_to_mutate` entry makes mutmut 3.6 abort after stats collection and names the cause
+  nowhere) and the rewritten-tree-vs-HEAD baseline distinction.
+- **`subprocess-only-gate-unmeasurable`** freezes the real Codex shape: every test of `cli.main`
+  drives it as a fresh child process, the suite is green with three dedicated CLI tests, and a
+  scoped gate therefore generates mutants and executes none.
+- **`control-subprocess-with-in-process-twin`** guards the OVER-CORRECTION a precheck like this
+  invites — the same fresh-process tests plus an in-process twin, so the target is attributable and
+  a pass is correct. The brief states the discriminator in the same words: whether ANY test drives
+  the target in-process, never whether child processes appear in the file.
+
+Both oracles anchor on the brief's FORCED verdict line rather than on prose about subprocesses, so
+a correct explanation that mentions child processes cannot be punished — the greedy
+`must_not_match` defect the 2026-08-16 holdout diagnose found in three controls. Hand-authored from
+the motivating incident (§13: freeze the shape from the artifact that caused it, Codex
+`7e1f4539`/`fad338eb`) rather than model-generated, so authoring cost no model spend; both were
+staged and their fixture suites verified GREEN before approval, because a plant whose suite is red
+measures the red instead of the plant. Registered `L-20260817-02`, `expect=up`; the first live
+replay reads INCONCLUSIVE(no-baseline) and the bar is 3/3 caught with 3/3 quiet, a plant surviving
+to a clean verdict being BLOCKING.
+
 ## 1.40.2 — 2026-08-17
 
 **Tagged-after-the-fact correction.** v1.40.1 was tagged at `d9839f6` and these two changes
