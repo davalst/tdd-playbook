@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-18-debt-pile-review",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-adversary-accountability.md",
+  "review_range": {
+    "base": "2cfb66b4f3ec87b31459f18f1562d633c7f34848",
+    "head": "ec4b0ee16f42e7f7251987ecb71306f67692f269"
+  },
+  "reviewers": [
+    "self-review",
+    "operator-field-report",
+    "release-gate"
+  ],
+  "findings": [
+    {
+      "id": "TRIGGER-GATED-IN-A-DATE-GATED-REGISTER",
+      "severity": "P1",
+      "summary": "12 integration_debt entries carried expiry dates their own text called 'REVIEW dates' - settled by the next calibration run, whenever that is. A review date inside a mechanism whose only enforcement is going RED on a date fires, cannot be acted on, and gets bulk re-dated; that had already happened twice (RE-DATED and RE-SCOPED, both 2026-08-09). Residue of the retired calibration clock, still wearing dates.",
+      "evidence": [
+        "capabilities.json",
+        "plugins/tdd-playbook/bin/capability_registry.py"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "prose-deferral-needs-mechanical-trigger",
+      "disposition": "Moved to calibration_followup: same text, same owner, no expiry, printed by doctor on EVERY run - visible continuously instead of loudly once. Nothing dropped (63 debts + 12 follow-ups = 75). One was RESTORED to date-gating because a test pins its fire date, a deliberate decision the move had overridden and the pin caught. The 60-word re-scoping preamble duplicated 13 times was factored out.",
+      "remediation_commit": "ec4b0ee16f42e7f7251987ecb71306f67692f269",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_capability_registry.py::test_calibration_followups_are_trigger_gated_not_date_gated"
+      ]
+    },
+    {
+      "id": "LEDGER-READ-ONE-HOME",
+      "severity": "P2",
+      "summary": "Moving the follow-ups broke calibration/ledger.py, which read integration_debt alone when checking that a FLAT/REGRESSED ledger entry has an owned follow-up. A producer writing to two homes with a consumer reading one is the SS6c consumer-parity failure.",
+      "evidence": [
+        "calibration/ledger.py"
+      ],
+      "status": "incorporated",
+      "class": "deterministic",
+      "recurrence_key": "seam-self-consistency-return-only",
+      "catalog_row": "H11",
+      "disposition": "The check reads BOTH homes now. What it actually asks is whether a person OWNS the refutation - both carry an owner, only the due-shape differs; reading integration_debt alone conflated ownership with dating. Caught by the gate the same day the move landed, which is the argument for running it before pushing rather than after. Recorded as INCORPORATED rather than verified_closed for an honest reason: its regression coverage lives in calibration/test_harness.py, whose sections are named `_*_tests` by that file's own convention, and closure_evidence only resolves a `test_*` symbol. Claiming a citable closure here would mean inventing one. The fix is in and the harness exercises it; the citation gap is the ledger's, not the fix's. Severity set to P2 on reflection: it was caught by the gate in the same session it was introduced and never reached a push, so it is a near-miss the system absorbed, not a defect that escaped."
+    },
+    {
+      "id": "THRESHOLD-UNIT-BROKE-WITH-THE-CLOCK",
+      "severity": "P2",
+      "summary": "The warn-tier promote-or-delete debts specify '>=2 cycles'. That was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN - several a day - so the bar silently got ~20x cheaper. Applying its letter today would delete a rarely-triggered safety guard on three days of evidence.",
+      "evidence": [
+        "capabilities.json",
+        "docs/calibration/gate_yield.md"
+      ],
+      "status": "open",
+      "class": "judgment",
+      "recurrence_key": "unpinned-prose-constant",
+      "disposition": "The read the debts asked for was PERFORMED and recorded (exitcode 701 warns/0 blocks/0 fp over 6 cycles; fixtureguard zero rows over the 3 cycles since ship). Left OPEN deliberately: executing a mis-calibrated rule is worse than missing the date. Re-express the bar in a unit that survived the reversal - elapsed days since ship, or gate runs on days the guarded artifact was actually touched - BEFORE promoting or deleting anything. A retired cadence leaves thresholds behind that still read as if it existed; this is the general shape, not one bad number."
+    },
+    {
+      "id": "GUARD-CRIED-WOLF",
+      "severity": "P1",
+      "summary": "exitcode_guard fired 701 times across 6 cycles with 0 blocks and 0 adjudicated false positives, rendering as a red 'hook error' every few seconds. Surfaced as a user complaint mid-session ('unsettling and non-stop'), independently of the measurement that had just said the same thing.",
+      "evidence": [
+        "plugins/tdd-playbook/hooks/scripts/exitcode_guard.py",
+        "plugins/tdd-playbook/tests/test_hooks.py"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "misdirecting-fail-closed-message",
+      "disposition": "Narrowed, not deleted. The guard was UNDER-SPECIFIED rather than wrong: SS4a's concern is 'a RED gate reads as 0', which requires the piped status to be CONSUMED. It now fires only on consumption ($?, an if/while condition, or an &&/|| chain). Both motivating incidents are consumption shapes and still flag; their display-only variants moved to ALLOW with the reasoning frozen, on the H15 scope-decision precedent already in that file. A guard demoted for crying wolf protects nothing - and this one guards the release path.",
+      "remediation_commit": "ec4b0ee16f42e7f7251987ecb71306f67692f269",
+      "closure_review": "operator-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_exitcode"
+      ]
+    },
+    {
+      "id": "NEGATIVES-WERE-UNCITABLE",
+      "severity": "P1",
+      "summary": "SS12 demands MORE evidence for a negative than a positive, but the tooling supplied NONE: a positive cites file:line and gets resolved, a negative cited nothing, so verify_citations had nothing to check and could not see the claim at all. Doctrine strictest exactly where the mechanism was absent.",
+      "evidence": [
+        "plugins/tdd-playbook/bin/verify_citations.py",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md",
+        "plugins/tdd-playbook/commands/claims.md"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "outermost-wire-untested",
+      "disposition": "`(absent: <path>)` makes the negative citable; verify_citations re-runs it and REFUTES the finding if the path is there. A directory counts as present. The frozen plant is the live incident - 'this repo has no capability registry', inferred from unrelated missing tooling, never checked; it had ten. Worth stating plainly: the claims-verifier brief already opened with this exact failure class, so the doctrine was never missing. It was unenforced, which is why the fix is a mechanism and not another sentence.",
+      "remediation_commit": "ec4b0ee16f42e7f7251987ecb71306f67692f269",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_verify_citations.py::test_absence_checks"
+      ]
+    }
+  ]
+}

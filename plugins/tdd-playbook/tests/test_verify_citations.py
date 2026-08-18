@@ -46,7 +46,7 @@ SRC = "def login(u, p):\n    if not u:\n        return False\n    return check(u
 
 def main():
     print("verify_citations calibration\n")
-    absence_checks()
+    test_absence_checks()
 
     # 1. valid citation, no quote -> VERIFIED, exit 0
     rc, out = run("Bug in `src/auth.py:3`.", {"src/auth.py": SRC})
@@ -110,7 +110,7 @@ def main():
 
 
 
-def absence_checks():
+def test_absence_checks():
     """A NEGATIVE must be citable, or the gate is blind exactly where doctrine is strictest.
 
     §12 demands MORE evidence for a negative than a positive ("never called / unreachable"

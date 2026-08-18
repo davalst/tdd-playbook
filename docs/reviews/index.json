@@ -172,6 +172,10 @@
     {
       "path": "2026-08-18-vendored-guard-rename.json",
       "sha256": "2a0a7119813a669c6d9350cd69d944a0aa30a534fb3c1742c45199f4db902913"
+    },
+    {
+      "path": "2026-08-18-debt-pile-review.json",
+      "sha256": "4ed737028fce26f36f37768282eba4ba47261fb8ae8789f70048f78809e58b8f"
     }
   ]
 }

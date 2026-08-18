@@ -52,8 +52,9 @@
 - `docs/reviews/2026-08-17-v1.40.2-release.json` — `942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c`
 - `docs/reviews/2026-08-17-v1.41.0-attribution-precheck.json` — `f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c`
 - `docs/reviews/2026-08-17-v1.42.0-release.json` — `dd49fe20d14d5ea2543b7f1e13eeecb2b10752611dee84ed8d66628f205bf7cd`
+- `docs/reviews/2026-08-18-debt-pile-review.json` — `4ed737028fce26f36f37768282eba4ba47261fb8ae8789f70048f78809e58b8f`
 - `docs/reviews/2026-08-18-vendored-guard-rename.json` — `2a0a7119813a669c6d9350cd69d944a0aa30a534fb3c1742c45199f4db902913`
-- `docs/reviews/index.json` — `ee565f04a8059ece1d2b1f909126e8d7b69fb06f64a685932afb517831b8b281`
+- `docs/reviews/index.json` — `106fee668c696a71b0e277161103af9721bdfee1aaf5567c4b9ea69908593add`
 
 ## Gate surface
 
@@ -141,13 +142,13 @@
 
 ## Adversarial review records
 
-- Review records: 43. Findings: 200.
-- `incorporated`: 81
-- `open`: 13
+- Review records: 44. Findings: 205.
+- `incorporated`: 82
+- `open`: 14
 - `rejected`: 5
-- `verified_closed`: 101
+- `verified_closed`: 104
 
-participation: what the 43 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
+participation: what the 44 indexed records RECORDED — `reviewers` is written by hand, so this shows which names were written down, never who ran
 - adoption-adversary · authors records — 1
 - architecture-adversary · authors records — 16
 - claims-verifier · authors records — 1
