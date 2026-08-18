@@ -1,6 +1,6 @@
 ---
 name: tdd-playbook
-description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes + agent evals (prompt/tool/model; oracle-split: deterministic gates, LLM-judge trends never gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring liveness (assembly suite, darkness doctor), dataflow liveness (flow tables, consumer parity), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, N/N), and the learning loop (process grading + planted-error calibration). Collective handle: "the TDD Playbook".
+description: David's universal TDD/QA workflow — use whenever building or changing a feature, fixing a bug, writing or reviewing tests, or planning test coverage, in ANY repo. ALSO fires for ANALYSIS work — audits, code review, diagnosis/root-cause, "investigate/verify/grade X", and self-improvement loops. Covers the reviewable TDD plan, edge-case rigor, property-based + mutation testing, interface-agnostic UX journeys (web/Telegram/TUI/MCP), intent-only UX probes + agent evals (prompt/tool/model; oracle-split — deterministic gates, LLM-judge trends never gate), the Tripwire wiring check (BUILT + WIRED + ACTIVATED + EXERCISED + RUNNING), the integration surface + capability registry + wiring liveness (assembly suite, darkness doctor), dataflow liveness (flow tables, consumer parity), determinism/flaky policy, security tests, test shape, CI hygiene, the claims discipline (cite-or-refuse, exhaustive negatives, N/N), and the learning loop (process grading + planted-error calibration). Collective handle "the TDD Playbook".
 ---
 
 # The TDD Playbook
@@ -17,6 +17,16 @@ on sub-threshold turns is a tax, not diligence). Here path-criticality beats lin
 - **Feature / multi-deliverable / risky / ambiguous / bug-with-blast-radius / ANY diff on mutation-
   roster or security paths** → the full flow below. A 3-line auth change gets full ceremony;
   salami-slicing a big change into small diffs doesn't dodge it.
+
+**And the posture that governs the table: the Playbook is SILENT until it has something real to
+say.** The hooks already work that way — they speak only when something is wrong. Artifacts are
+things you REACH FOR when they have something to say, never tolls paid to proceed: a review
+record when a review actually FINDS something; an adversary when you want the second pair of
+eyes; a plan when the work is genuinely multi-deliverable. A record nobody needed is not
+evidence of rigour, and an artifact produced on a schedule is bureaucracy wearing a lab coat.
+(Origin, 2026-08-18: the upstream repo required a review record on EVERY non-metadata commit.
+205 findings, 57% keyed, 12 UNBUILT-GUARD keys — and zero guards ever built from any of them.
+The obligation fired on every commit; its output was read by nobody. Deleted.)
 
 ## Repo-specific testing extensions — ALWAYS layer these on top (do this FIRST in each repo)
 This Playbook is the universal FLOOR, not the ceiling. It ships from one canonical plugin so it is
@@ -1055,6 +1065,15 @@ unverified NEGATIVE about a file it never read.)
   wired / dead" requires grepping ALL reference/assignment sites and citing the SWEEP. Citing one
   file where X *should* appear proves nothing — the refutation usually lives in a file you didn't
   open (e.g. the "unreachable" toolset that was wired via a profiles file nobody cited).
+- **An absence claim is CITABLE — cite it, or it is not a claim.** Write it as
+  `(absent: <path>)` and `verify_citations.py` RE-RUNS the check, REFUTING the finding if the
+  thing is there. Until v1.42 a positive cited `file:line` and got resolved while a negative
+  cited NOTHING, so the gate could not see the strictest claims in the discipline — doctrine
+  demanded more evidence for a negative and the mechanism supplied none. The live shape that
+  closed it: "this repo has no capability registry", inferred from unrelated missing tooling,
+  never checked; it had ten. A directory counts as present — "no `docs/reviews/`" is the same
+  claim. **Absence is the one claim it is cheapest to check and easiest to skip**, which is why
+  it is the one that ships false.
 - **Absence claims about code PARSE the code.** `assert "x" not in source` matches the very
   comment explaining the removal (4-for-4 false REDs in one cycle) and, inverted, stays green on
   a comment while the real call remains — assert on AST nodes (attribute access, calls),

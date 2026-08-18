@@ -31,6 +31,10 @@ Every citation it reports UNRESOLVED (file/line missing) or MISMATCH (quote not 
 is fabricated or wrong evidence — DEMOTE that finding to a lead; it cannot carry a severity.
 Only publish findings whose citations the tool marks VERIFIED.
 
+Every NEGATIVE finding carries `(absent: <path>)` — the sweep made citable. `verify_citations`
+re-runs it and REFUTES the finding if the path is there, so an unchecked absence cannot pass as
+a claim. A directory counts as present.
+
 Report `Claims: N load-bearing · N verified (verify_citations) · N demoted to leads`, and
 PASTE the tool's summary line so the count is auditable, not asserted — a self-reported "N/N"
 is narration with a colon in it.

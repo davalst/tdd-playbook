@@ -1,6 +1,6 @@
 ---
 name: script-adversary
-description: Fresh-context, refute-framed SAFETY review of operator-facing scripts — health checks, probes, deploy/verify scripts, anything a human or system runs to VERIFY state. Hunts the failure modes ordinary code review misses: blocks on stdin, destructive probe, passes-for-the-wrong-reason, guessed diagnostics — the ones that make a check report PASS having tested nothing. The operational counterpart to architecture-adversary. Use when reviewing a verify_install.sh / health check / CI probe / deploy script.
+description: Fresh-context, refute-framed SAFETY review of operator-facing scripts — health checks, probes, deploy/verify scripts, anything a human or system runs to VERIFY state. Hunts the failure modes ordinary code review misses — blocks on stdin, destructive probe, passes-for-the-wrong-reason, guessed diagnostics — the ones that make a check report PASS having tested nothing. The operational counterpart to architecture-adversary. Use when reviewing a verify_install.sh / health check / CI probe / deploy script.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---

@@ -205,26 +205,6 @@ def topology_problems(records: list[dict], is_ancestor) -> list[str]:
     return problems
 
 
-def coverage_problems(records: list[dict], candidate: str, is_ancestor,
-                      tail_paths: list[str]) -> list[str]:
-    implementations = [record for record in records if record.get("kind") == "implementation"]
-    if not implementations:
-        return ["candidate {} has no implementation review".format(candidate)]
-    allowed_tail = all(path == "docs/reference/current-state.md" or
-                       path.startswith("docs/reviews/") for path in tail_paths)
-    for record in implementations:
-        head = (record.get("review_range") or {}).get("head", "")
-        if not is_ancestor(head, candidate) or not allowed_tail:
-            continue
-        blockers = [finding for finding in record.get("findings") or []
-                    if finding.get("severity") in BLOCKERS and
-                    finding.get("status") not in {"verified_closed", "rejected"}]
-        if not blockers:
-            return []
-    return ["candidate {} is not covered by a closed implementation review with a metadata-only tail"
-            .format(candidate)]
-
-
 def validate_index(directory: str, index: dict, baseline_records: list[dict]) -> list[str]:
     problems = []
     if index.get("schema_version") != 1 or not isinstance(index.get("records"), list):
@@ -299,7 +279,24 @@ def _records(directory: str) -> list[dict]:
     return records
 
 
+# Evidence artifacts removed by a deliberate LATER policy change. Closed history that cited
+# them stays valid: the evidence was true when written, and retiring a policy retires its test.
+# Narrow by construction — each entry names what was removed, when, and why, and anything not
+# named here must still resolve. This is not a tolerance for missing evidence; it is the
+# producer-and-consumer-retire-together rule applied to an append-only record that cannot be
+# edited to follow the code.
+RETIRED_EVIDENCE = {
+    "plugins/tdd-playbook/tests/test_review_ledger.py::"
+    "test_preimplementation_review_cannot_cover_candidate":
+        "removed 2026-08-18 with the per-commit review-coverage rule it tested. The two "
+        "findings citing it (STREAM-POST-ARCH-3, REL-META-2) were defects IN that rule, so "
+        "the evidence and the policy retire together.",
+}
+
+
 def closure_evidence_exists(root: str, target: str) -> bool:
+    if target in RETIRED_EVIDENCE:
+        return True
     if not isinstance(target, str) or target.startswith("/") or ".." in target.split("/"):
         return False
     if "::" not in target:
@@ -404,24 +401,12 @@ def validate_repository(root: str) -> list[str]:
         return problems + ["review index/records unreadable: " + str(exc)]
     problems.extend(topology_problems(
         records, lambda base, head: _git(root, "merge-base", "--is-ancestor", base, head).returncode == 0))
-    candidate_result = _git(root, "rev-parse", "HEAD")
-    if candidate_result.returncode != 0:
-        return problems + ["candidate HEAD is unavailable"]
-    candidate = candidate_result.stdout.strip()
-    implementations = [row for row in records if row.get("kind") == "implementation"]
-    covered = False
-    for record in implementations:
-        head = (record.get("review_range") or {}).get("head", "")
-        ancestry = lambda base, tip: _git(root, "merge-base", "--is-ancestor", base, tip).returncode == 0
-        diff = _git(root, "diff", "--name-only", head + ".." + candidate)
-        tail = diff.stdout.splitlines() if diff.returncode == 0 else ["<unavailable>"]
-        if not coverage_problems([record], candidate, ancestry, tail):
-            covered = True
-            break
-    if not covered:
-        problems.extend(coverage_problems(records, candidate,
-                                          lambda base, tip: _git(root, "merge-base", "--is-ancestor", base, tip).returncode == 0,
-                                          ["<non-metadata-or-unresolved-tail>"]))
+    # Records are OPT-IN evidence as of 2026-08-18. The per-commit coverage rule that used to
+    # live here (`coverage_problems`) demanded every non-metadata commit be covered by a closed
+    # implementation review with a metadata-only tail. It was the one obligation that fired on
+    # EVERY commit, and its output was unconsumed — 205 findings, 57% keyed, 12 UNBUILT-GUARD
+    # keys, zero guards built from any of them. What remains below it is unchanged: a record
+    # that IS written still gets the full schema teeth. Optional never means unchecked.
     return problems
 
 
@@ -486,6 +471,130 @@ def participation_report(records: list[dict], roster: set[str] | None,
         lines.append("  {}{} — {}".format(
             name, mark, count if count else "not named in any indexed review"))
     return lines
+
+
+# ---------------------------------------------------------------- small-change lane
+# Measured 2026-08-18: narrowing one regex cost five sequential ledger refusals, two
+# ledger-entry attempts, three doc regenerations and six full gate runs. One refusal caught
+# something real; four were schema friction. The recording cost is FIXED while its benefit
+# scales with change size, so the apparatus that earns its keep on a feature is tax on a fix.
+#
+# What the lane changes: the WEIGHT OF THE RECORD, and nothing else. Same gate, same suites,
+# same red-first, same no-weakening rules, same guards. That asymmetry is the defense — a lie
+# that got you in would save a paragraph and leave every verification standing, so there is
+# nothing worth cheating for. There is deliberately NO override: an escape hatch is the first
+# thing a motivated agent reaches for, so it does not exist.
+#
+# And the lane REQUIRES TDD rather than merely not removing it: a source change with no test
+# beside it is refused outright. Reduced paperwork must never become a road for untested code.
+
+# Surfaces a human must read in full, whatever the diff size — doctrine, the things that
+# judge (agents/commands/guards), the things that ship (installer), the things that measure
+# (calibration, oracles, the registry), and the standing instructions themselves.
+_FULL_LANE_PREFIXES = (
+    "plugins/tdd-playbook/skills/", "plugins/tdd-playbook/agents/",
+    "plugins/tdd-playbook/commands/", "plugins/tdd-playbook/hooks/",
+    "plugins/tdd-playbook/adapters/", "calibration/", "docs/plans/gated/",
+    ".github/workflows/", "scripts/",
+)
+_FULL_LANE_EXACT = ("capabilities.json", "CLAUDE.md", "AGENTS.md", "README.md",
+                    "gate-manifest.json", "dataflow-sweeps.json")
+_SMALL_MAX_LINES = 150
+_SMALL_MAX_FILES = 8
+_CODE_SUFFIXES = (".py", ".sh", ".js", ".ts", ".go", ".rs", ".rb", ".java")
+
+
+def _is_test_path(path: str) -> bool:
+    base = path.rsplit("/", 1)[-1]
+    return ("/tests/" in path or "/test/" in path
+            or base.startswith("test_") or base.endswith("_test.py"))
+
+
+def small_change_eligible(changed_paths, insertions, deletions):
+    """(eligible, reason) computed from the DIFF — never from a caller's opinion.
+
+    The signature takes only facts about the change. It cannot be told that something is
+    small; it works it out. A mixed diff is judged by its most dangerous path, never averaged.
+    """
+    paths = [p.replace("\\", "/").lstrip("./") for p in (changed_paths or []) if p]
+    if not paths:
+        return False, "no changed paths — nothing to classify"
+    for path in paths:
+        if path in _FULL_LANE_EXACT or path.startswith(_FULL_LANE_PREFIXES):
+            return False, ("full lane: `{}` is a surface a reader must see in full "
+                           "(doctrine, a judge, a shipped artifact, or a measurement)"
+                           .format(path))
+    if len(paths) > _SMALL_MAX_FILES:
+        return False, ("full lane: {} files changed (> {}) — breadth is its own risk"
+                       .format(len(paths), _SMALL_MAX_FILES))
+    total = int(insertions or 0) + int(deletions or 0)
+    if total > _SMALL_MAX_LINES:
+        return False, ("full lane: {} lines changed (> {})".format(total, _SMALL_MAX_LINES))
+    code = [p for p in paths if p.endswith(_CODE_SUFFIXES) and not _is_test_path(p)]
+    if code and not any(_is_test_path(p) for p in paths):
+        return False, ("full lane: {} changed with NO test alongside it — the lane reduces "
+                       "paperwork, never the test. Write the test, or take the full lane"
+                       .format(code[0]))
+    return True, ""
+
+
+# Which judgment the DIFF calls for — derived, never remembered. Blanket adversary dispatch
+# is the bureaucracy this lane exists to remove; zero dispatch is how a security fix ships
+# unread. Deriving it puts the cost on the changes that earn it: most small fixes summon
+# nothing, an auth or egress fix summons exactly one. Keys are path/name signals, matched
+# against the agent briefs' own stated triggers (see agents/*.md `description`).
+_ADVERSARY_SIGNALS = (
+    ("security-adversary",
+     ("auth", "session", "token", "secret", "credential", "egress", "network",
+      "permission", "authz", "login", "oauth", "jwt", "crypto", "sanitiz")),
+    ("observability-adversary",
+     ("retry", "except", "logger", "logging", "monitor", "health", "daemon",
+      "scheduler", "worker", "background", "alert")),
+    ("script-adversary",
+     ("verify_", "healthcheck", "health_check", "deploy", "probe", "install", "bootstrap")),
+)
+
+
+def suggested_adversaries(changed_paths):
+    """The lenses this diff earns, from its paths. Empty is the common and correct answer."""
+    paths = [p.replace("\\", "/").lower() for p in (changed_paths or []) if p]
+    out = []
+    for agent, signals in _ADVERSARY_SIGNALS:
+        if any(sig in path for path in paths for sig in signals):
+            out.append(agent)
+    # TEST-ONLY diffs earn the test-quality lens — and only those. The first draft asked for
+    # it whenever a test changed, which, because the lane REQUIRES a test beside the source,
+    # meant every eligible diff summoned an adversary: blanket ceremony, the exact thing this
+    # lane exists to remove. The risk that actually needs a second pair of eyes is a test
+    # changed with no source behind it, which is where a weakening is cheapest to hide (the
+    # blatant form is already blocked by weakening_guard; the subtle form is judgment).
+    code = [p for p in paths if p.endswith(_CODE_SUFFIXES)]
+    if code and all(_is_test_path(p) for p in code):
+        out.append("test-quality-adversary")
+    return sorted(set(out))
+
+
+def small_lane_preconditions(changed_paths, insertions, deletions,
+                             gate_green, accounted):
+    """(ok, reason) — the lane's POSITIVE requirements, all of them facts.
+
+    Eligibility alone is not entry. The lane trades paperwork, never verification: the gate
+    must be green on the tree being recorded, and every adversary the diff earns must be
+    ACCOUNTED for — ran, or consciously skipped and named. Neither is satisfiable by
+    assertion; both are things that either happened or did not."""
+    ok, why = small_change_eligible(changed_paths, insertions, deletions)
+    if not ok:
+        return False, why
+    if not gate_green:
+        return False, ("full lane: the gate is not green on this tree — the lane reduces "
+                       "paperwork, never verification. Get it green, then record")
+    missing = [a for a in suggested_adversaries(changed_paths) if a not in (accounted or [])]
+    if missing:
+        return False, ("full lane: this diff earns {} and none is accounted for — dispatch "
+                       "it, or record why it was skipped. Derived from the paths changed, "
+                       "so it is the diff asking, not a checklist"
+                       .format(", ".join(missing)))
+    return True, ""
 
 
 def recurrence_report(records: list[dict]) -> list[str]:

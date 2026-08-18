@@ -3,6 +3,34 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.43.1 — 2026-08-18
+
+**THE SKILL WAS DARK IN 1.42.0 AND 1.43.0. Update immediately.** The v1.42.0 description trim
+introduced `oracle-split: deterministic gates` and `Collective handle: "..."`. An unquoted plain
+YAML scalar containing `: ` terminates the value, so the entire frontmatter failed to parse and
+skill discovery returned `{}`. Every repo on those two versions silently lost the Playbook.
+Reported from a downstream repo, not caught here.
+
+**Why every test passed throughout, which is the part worth keeping.** `test_agents.frontmatter()`
+splits each line on the FIRST colon and returns a dict. It is lenient exactly where the host is
+strict, so it produced a truncated description and asserted happily against it — including a
+1024-char budget check on a string the host never saw. Every assertion read an object OUR OWN
+parser built, with no representation of the real consumer: §1's seam rule, violated in the file
+that teaches §1.
+
+**Five agent briefs had the identical defect** — `architecture-adversary`,
+`control-quality-adversary`, `observability-adversary`, `script-adversary`,
+`test-quality-adversary` — and were equally unloadable. The first version of the fix checked
+SKILL.md alone and passed; checking the reported INSTANCE rather than the CLASS is how a bug
+survives its own fix. The standing check now parses **every shipped frontmatter** with a real
+YAML parser, with a structural fallback for the exact hazard when PyYAML is absent, and a
+vacuity guard on the roster.
+
+**Also fixed:** this repo's own vendored `.claude/hooks/scripts/exitcode_guard.py` was stale and
+registered ahead of the plugin, so the v1.42.0 narrowing never took effect here — the operator
+kept seeing warnings on every piped command while the source tree said they were fixed.
+Committed is not running, for the third time in one day.
+
 ## 1.43.0 — 2026-08-18
 
 **The Playbook is SILENT until it has something real to say.** This release deletes the one

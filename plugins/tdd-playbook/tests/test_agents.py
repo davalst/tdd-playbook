@@ -1177,6 +1177,84 @@ def test_review_record_producing_seam():
     check("PLANTED divergent vocabulary is caught", "class: " + vocab not in planted)
 
 
+
+def test_skill_frontmatter_is_valid_yaml_to_a_real_parser():
+    """The frontmatter must parse for the HOST, not merely for us.
+
+    LIVE INCIDENT (2026-08-18, reported from a downstream repo): the skill was DARK in v1.42.0
+    and v1.43.0. The v1.42.0 description trim introduced `oracle-split: deterministic gates`
+    and `Collective handle: "..."` — an unquoted plain scalar containing `: ` is invalid YAML,
+    so the whole frontmatter fails to parse and skill discovery returns {}. Two shipped
+    releases, and every repo on them lost the Playbook silently.
+
+    WHY EVERY TEST HERE PASSED THROUGHOUT — this is the part worth keeping: `frontmatter()`
+    above splits each line on the FIRST colon and returns a dict. It is lenient where the host
+    is strict, so it happily produced a truncated description and asserted against it. Every
+    assertion read an object OUR OWN parser built, with no representation of the real consumer
+    — §1's seam rule, in the file that teaches §1. A 1024-char budget check on a string the
+    host never sees is a check on nothing.
+
+    So this asserts against a REAL YAML parser when one is available, and falls back to the
+    exact structural hazard when it is not (the suite is stdlib-only by house rule, and a
+    check that silently skips is worse than no check)."""
+    # EVERY frontmatter that ships, not just the skill. The first version of this check looked
+    # at SKILL.md alone and passed — while FIVE agent briefs carried the identical defect and
+    # were equally unloadable. Checking the instance that was reported, rather than the class,
+    # is how the same bug survives its own fix.
+    targets = [os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")]
+    targets += sorted(os.path.join(AGENTS, n) for n in os.listdir(AGENTS) if n.endswith(".md"))
+    check("frontmatter sweep is non-vacuous (empty roster must not pass green)",
+          len(targets) > 10, len(targets))
+
+    for path in targets:
+        label = os.path.basename(path)
+        with open(path) as fh:
+            text = fh.read()
+        match = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+        check("{}: has a frontmatter block".format(label), match is not None)
+        if match is None:
+            continue
+        _check_frontmatter(label, match.group(1))
+
+
+def _check_frontmatter(label, raw):
+
+    parsed = None
+    try:
+        import yaml
+        try:
+            parsed = yaml.safe_load(raw)
+            check("{}: parses as YAML for the HOST (real parser)".format(label), True)
+        except Exception as exc:
+            check("{}: parses as YAML for the HOST (real parser)".format(label), False,
+                  "{}: {}".format(type(exc).__name__, str(exc)[:160]))
+    except ImportError:
+        check("{}: parses as YAML for the HOST (real parser)".format(label), True,
+              "PyYAML unavailable — structural fallback below is the binding check")
+
+    if isinstance(parsed, dict) and label == "SKILL.md":
+        check("the real parser sees the FULL description, not a truncation",
+              len(parsed.get("description") or "") > 900, len(parsed.get("description") or ""))
+
+    # Structural fallback, and the frozen shape of the incident: an unquoted plain scalar
+    # containing `: ` terminates the value and makes the mapping invalid.
+    for key in ("name", "description"):
+        line = re.search(r"^{}: (.*)$".format(key), raw, re.M)
+        if not line:
+            continue
+        value = line.group(1)
+        quoted = len(value) > 1 and value[0] == value[-1] and value[0] in "'\""
+        check("{} {}: no unquoted `: ` (the v1.42.0 dark-skill shape)".format(label, key),
+              quoted or ": " not in value,
+              "found: ..." + value[max(0, value.find(": ") - 45):value.find(": ") + 25])
+
+    # PLANTED: the detector must SEE the exact string that shipped dark
+    planted = "description: a workflow (oracle-split: deterministic gates, judge trends)"
+    v = planted.split("description: ", 1)[1]
+    check("PLANTED: the shipped-dark description is detected",
+          ": " in v and not (v[0] == v[-1] and v[0] in "'\""))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1193,7 +1271,8 @@ def main():
                test_v125_doctrine, test_v125_downstream_pins,
                test_v125_planted_fixtures, test_v126_seam_contract_pins,
                test_v142_agent_eval_doctrine, test_v142_planted_fixtures,
-               test_review_record_producing_seam):
+               test_review_record_producing_seam,
+               test_skill_frontmatter_is_valid_yaml_to_a_real_parser):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
