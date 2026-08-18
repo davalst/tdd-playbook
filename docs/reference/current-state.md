@@ -52,8 +52,8 @@
 - `docs/reviews/2026-08-17-v1.40.2-release.json` — `942018feb4b8cf0c262c59feec504bbbb55f02d54df06199331df79ebb0bad6c`
 - `docs/reviews/2026-08-17-v1.41.0-attribution-precheck.json` — `f650e992b3d4f7dcadc325854a02474181f3643daa19647c956584d1d94eb38c`
 - `docs/reviews/2026-08-17-v1.42.0-release.json` — `dd49fe20d14d5ea2543b7f1e13eeecb2b10752611dee84ed8d66628f205bf7cd`
-- `docs/reviews/2026-08-18-vendored-guard-rename.json` — `62383de55aeb2f0008c00a93fc6d77346e57ed18fd8e53638960e8d981d92e40`
-- `docs/reviews/index.json` — `3f7509c94b6294cd880d909713dbd7ea45546c4edb2a78c7895bf7a3c5c8c106`
+- `docs/reviews/2026-08-18-vendored-guard-rename.json` — `2a0a7119813a669c6d9350cd69d944a0aa30a534fb3c1742c45199f4db902913`
+- `docs/reviews/index.json` — `ee565f04a8059ece1d2b1f909126e8d7b69fb06f64a685932afb517831b8b281`
 
 ## Gate surface
 

@@ -5,7 +5,7 @@
   "plan": "docs/plans/gated/2026-08-17-adversary-accountability.md",
   "review_range": {
     "base": "1928eefeb6e7af7ffc73a3545f26bae5c05ed06a",
-    "head": "dcd6f82468220027803a68a5ef70457992189b91"
+    "head": "1310c173636b4ff959637a03ff1c406c73d456cf"
   },
   "reviewers": [
     "self-review",
@@ -27,7 +27,7 @@
       "recurrence_key": "seam-self-consistency-return-only",
       "catalog_row": "H11",
       "disposition": "Renamed to lock_guard.py / weakening_guard.py. Two alternative remedies were empirically TESTED and rejected first: conftest collect_ignore_glob does not apply to explicitly-passed paths, and __init__.py does not resolve the basename clash. The standing check asserts the INVARIANT (no vendored file matches pytest discovery) rather than the two names, so a future collectible guard fails on the day it is added.",
-      "remediation_commit": "dcd6f82468220027803a68a5ef70457992189b91",
+      "remediation_commit": "1310c173636b4ff959637a03ff1c406c73d456cf",
       "closure_review": "self-review",
       "closure_evidence": [
         "plugins/tdd-playbook/tests/test_installer.py::test_no_vendored_file_is_pytest_collectible"
@@ -45,7 +45,7 @@
       "class": "judgment",
       "recurrence_key": "unreleased-work-not-deployed",
       "disposition": "Two mechanisms. GENERAL and derived: files the previous manifest claims we wrote that are absent from the current roster are removed, so the next rename needs no migration code. BOUNDED and dated: a frozen LEGACY_COLLECTIBLE list, because the trees carrying the broken names predate manifests and the derived prune has no input there. Both narrow to paths we claimed; a user's own file in a vendored directory is never touched.",
-      "remediation_commit": "dcd6f82468220027803a68a5ef70457992189b91",
+      "remediation_commit": "1310c173636b4ff959637a03ff1c406c73d456cf",
       "closure_review": "live-dogfooding",
       "closure_evidence": [
         "plugins/tdd-playbook/tests/test_installer.py::test_legacy_collectible_guards_are_removed_without_a_manifest"
@@ -63,7 +63,7 @@
       "class": "judgment",
       "recurrence_key": "outermost-wire-untested",
       "disposition": "Closed by PROVING the fix at the seam rather than in unit tests alone: the consumer's tree was reproduced (3 collection errors observed), the fixed installer run against it, and collection verified clean. The unit tests are the regression net; the reproduction is the evidence the net is pointed at the real failure.",
-      "remediation_commit": "dcd6f82468220027803a68a5ef70457992189b91",
+      "remediation_commit": "1310c173636b4ff959637a03ff1c406c73d456cf",
       "closure_review": "operator-field-report",
       "closure_evidence": [
         "plugins/tdd-playbook/tests/test_installer.py::test_no_vendored_file_is_pytest_collectible"
