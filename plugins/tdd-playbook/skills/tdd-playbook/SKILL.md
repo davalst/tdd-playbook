@@ -18,6 +18,16 @@ on sub-threshold turns is a tax, not diligence). Here path-criticality beats lin
   roster or security paths** → the full flow below. A 3-line auth change gets full ceremony;
   salami-slicing a big change into small diffs doesn't dodge it.
 
+**And the posture that governs the table: the Playbook is SILENT until it has something real to
+say.** The hooks already work that way — they speak only when something is wrong. Artifacts are
+things you REACH FOR when they have something to say, never tolls paid to proceed: a review
+record when a review actually FINDS something; an adversary when you want the second pair of
+eyes; a plan when the work is genuinely multi-deliverable. A record nobody needed is not
+evidence of rigour, and an artifact produced on a schedule is bureaucracy wearing a lab coat.
+(Origin, 2026-08-18: the upstream repo required a review record on EVERY non-metadata commit.
+205 findings, 57% keyed, 12 UNBUILT-GUARD keys — and zero guards ever built from any of them.
+The obligation fired on every commit; its output was read by nobody. Deleted.)
+
 ## Repo-specific testing extensions — ALWAYS layer these on top (do this FIRST in each repo)
 This Playbook is the universal FLOOR, not the ceiling. It ships from one canonical plugin so it is
 identical in every repo and on every surface (local, web, mobile). But each repo has its OWN stack and
