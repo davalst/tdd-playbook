@@ -767,3 +767,21 @@ rather than the two names.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260818-01 | 2026-08-18 | 1928eef | plugins/tdd-playbook/commands/tdd-lock.md | rename the guard FILENAME reference (test_lock_guard.py -> lock_guard.py) so vendored guards stop matching pytest discovery downstream; no instruction, tier, oracle or guard identity changed | — | none | 0 | a pure path rename with byte-identical guard behaviour; no scenario can move on it, and claiming one would be satisfying the instrument rather than using it |
+
+### Registered 2026-08-18 — baseline 2cfb66b: absence claims become citable (§12)
+
+`/claims` gains one instruction: every NEGATIVE finding carries `(absent: <path>)`, and
+`verify_citations` re-runs it, REFUTING the finding if the path is there. This is a surface
+change with real teeth — until now a positive cited `file:line` and was resolved while a
+negative cited nothing, so the gate could not see the strictest claims in the discipline.
+
+Registered with `expect: up` on the claims scenarios rather than `none`: the command now
+tells the agent to produce a checkable artifact for a class of claim it previously asserted
+freely, and if that does not move recall on false-negative plants, the mechanism is ceremony
+and this entry is how we find out. The motivating incident is frozen as a fixture
+(test_verify_citations::absence_checks) — "this repo has no capability registry", asserted
+from unrelated missing tooling, never checked; it had ten.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260818-02 | 2026-08-18 | 2cfb66b | plugins/tdd-playbook/commands/claims.md | every NEGATIVE finding must carry a citable `(absent: <path>)` that verify_citations re-runs and refutes if the path exists | false-negative-claim | up | 1 | the command previously demanded an exhaustive sweep for negatives but gave the agent no way to RECORD it, so the sweep was unfalsifiable at review time. Recall on the false-negative plant should rise now that the claim must carry a re-runnable artifact; if it stays FLAT the instruction is ceremony and the mechanism needs to move earlier than the report |

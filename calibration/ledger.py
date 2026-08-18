@@ -458,13 +458,22 @@ def followup_problems(scored, registry, today):
         raise LedgerUnreadable("registry unreadable: {}".format(exc))
     cap = next((c for c in reg.get("capabilities", [])
                 if c.get("id") == LEDGER_CAPABILITY), None)
-    debts = (cap or {}).get("integration_debt", [])
+    # BOTH homes count (2026-08-18). What this check is really asking is "does a person OWN
+    # this refutation" — a refutation nobody owns is a write-only journal. It used to read
+    # `integration_debt` alone, which conflated ownership with DATING. The trigger-gated
+    # follow-ups moved to `calibration_followup` (same text, same owner, no expiry, printed
+    # by `doctor` every run) are owned just as firmly; only their due-shape differs. Reading
+    # one home while the producer writes to two is the consumer-parity failure §6c names —
+    # and the gate caught it the same day the move landed.
+    owned = list((cap or {}).get("integration_debt", []) or [])
+    owned += list((cap or {}).get("calibration_followup", []) or [])
     out = []
     for i in needs:
-        if not any(i in (d.get("what") or "") for d in debts):
-            out.append("{}: scored FLAT/REGRESSED/SURPRISE with no dated follow-up — add an "
-                       "integration_debt naming {} on the '{}' capability (a refutation "
-                       "nobody owns is a write-only journal)".format(i, i, LEDGER_CAPABILITY))
+        if not any(i in (d.get("what") or "") for d in owned):
+            out.append("{}: scored FLAT/REGRESSED/SURPRISE with no OWNED follow-up — add an "
+                       "integration_debt (dated) or calibration_followup (trigger-gated) "
+                       "naming {} on the '{}' capability (a refutation nobody owns is a "
+                       "write-only journal)".format(i, i, LEDGER_CAPABILITY))
     return out
 
 
