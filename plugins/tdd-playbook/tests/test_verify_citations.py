@@ -46,6 +46,7 @@ SRC = "def login(u, p):\n    if not u:\n        return False\n    return check(u
 
 def main():
     print("verify_citations calibration\n")
+    absence_checks()
 
     # 1. valid citation, no quote -> VERIFIED, exit 0
     rc, out = run("Bug in `src/auth.py:3`.", {"src/auth.py": SRC})
@@ -106,6 +107,53 @@ def main():
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
+
+
+
+def absence_checks():
+    """A NEGATIVE must be citable, or the gate is blind exactly where doctrine is strictest.
+
+    §12 demands MORE evidence for a negative than a positive ("never called / unreachable"
+    needs an exhaustive sweep). The tooling provided LESS: a positive cites `file:line` and
+    gets resolved; a negative cites NOTHING, so this tool had nothing to check and could not
+    see the claim at all. Doctrine strictest, mechanism absent.
+
+    Origin (2026-08-18, live): I told David "MemStruct has no capability registry." It has
+    ten, authored 2026-07-21, validating clean — inferred from unrelated missing tooling,
+    never checked, and a debt record written about a problem that did not exist. The
+    claims-verifier brief already opens with this exact failure ("8 findings, 4 false — every
+    false one an unverified NEGATIVE about a file never read"), so doctrine was not missing.
+    It was unenforced.
+
+    Form: `(absent: <path>)`. The tool RE-RUNS the check — if the path exists, the finding is
+    REFUTED. The inverse of what it already does for presence, at the same seam."""
+    print()
+    # PLANTED, frozen from the live incident: absence asserted about a file that is there
+    rc, out = run("F1: this repo has no registry (absent: capabilities.json).",
+                  {"capabilities.json": "{}\n"})
+    check("PLANTED: absence claim about a file that EXISTS is refuted",
+          rc == 1 and "refuted" in out.lower(), (rc, out[:160]))
+    check("PLANTED: the refusal names the path that disproved it",
+          "capabilities.json" in out, out[:160])
+
+    # the honest negative
+    rc, out = run("F2: no dataflow config (absent: dataflow-sweeps.json).",
+                  {"capabilities.json": "{}\n"})
+    check("a TRUE absence claim verifies", rc == 0 and "absence claims: 1 \u00b7 verified 1" in out.lower(),
+          (rc, out[:160]))
+
+    # counted, never silently ignored — invisibility is the failure being fixed
+    check("absence claims are in the denominator", "absence" in out.lower(), out[:160])
+
+    # a directory counts as present (the MemStruct shape was a file, but docs/reviews/ is a dir)
+    rc, out = run("F3: no reviews here (absent: docs).", {"docs/x.md": "x\n"})
+    check("PLANTED: absence claim about an existing DIRECTORY is refuted",
+          rc == 1 and "refuted" in out.lower(), (rc, out[:160]))
+
+    # no regression: docs with only ordinary citations behave exactly as before
+    rc, out = run("Bug in `src/auth.py:3`.", {"src/auth.py": SRC})
+    check("presence-only docs are unaffected by the new form",
+          rc == 0 and "verified 1" in out, (rc, out[:160]))
 
 
 if __name__ == "__main__":

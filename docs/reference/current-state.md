@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `e03854fa9ea673904392a59ff80f872656e50ccdba7a447c95364fba6d235f0e`
 - `docs/architecture/host-parity.json` — `d68cb54d57c285a5afa3dc7b2a1c72ca3d6b49f41367b9eca681e38d19a23e21`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `3ec19df3471ee5f7b5618979c93b2146a2cebe0912891bc56fd90f575fd50578`
+- `capabilities.json` — `b1137699ae5c8db44a1c89da566b4fce444691693a2c62b3c68fa8a6a8a43179`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -74,7 +74,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 32. Owned dated integration-debt entries: 80.
+- Registered capabilities: 32. Owned dated integration-debt entries: 63.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -87,18 +87,16 @@
 - `test-lock/codex-command-agent-discovery` — CODEX COMMAND/AGENT DISCOVERY… (owner `david`, expires `2026-09-30`)
 - `capability-registry/consumer-reference-typed-schema-decision` — H2 FOLLOW-THROUGH… (owner `david`, expires `2026-11-30`)
 - `calibration-loop` — RE-DATED 2026-08-09 -> 2026-09-30 in the v1.32.0 debt sweep… (owner `david`, expires `2026-09-30`)
-- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-30`)
 - `calibration-loop` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
-- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-30`)
 - `calibration-loop` — APPLY_EDITS CREATE capability (v1.24 §6c D15 — promoted from the corpus README's 'possible future enhancement' to owned… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE)… (owner `david`, expires `2026-09-30`)
 - `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE)… (owner `david`, expires `2026-09-30`)
 - `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE)… (owner `david`, expires `2026-09-30`)
-- `calibration-loop` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F — the one substantive ite… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point)… (owner `david`, expires `2026-09-15`)
 - `calibration-loop` — PAID/VALIDATED 2026-08-16 — the D2.d live probe PASSED on the DEPLOYED 1.37.0 plugin (vacuity… (owner `david`, expires `2026-11-15`)
 - `calibration-loop` — PAID/VALIDATED 2026-08-16 - the anchor is authored and replayed… (owner `david`, expires `2026-11-15`)
+- `calibration-loop` — SUPERSEDE PROSE-ORACLE PLANTS (run-4 adjudication, 2026-08-05)… (owner `david`, expires `2026-09-15`)
 - `scoreboard-integrity` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `scoreboard-integrity` — SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 — DEFERRED, stated not dropped)… (owner `david`, expires `2026-11-15`)
 - `gate-yield` — PAID 2026-08-09 — VERIFIED, not assumed… (owner `david`, expires `2026-12-31`)
@@ -112,16 +110,6 @@
 - `dataflow-sweeps` — CHELIPED TIER-2 PILOT VERDICT… (owner `david`, expires `2026-09-15`)
 - `dataflow-sweeps` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-09-15`)
 - `dataflow-sweeps` — ARM THE TWO DARK SWEEPS (H15, v1.30)… (owner `david`, expires `2026-09-30`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
-- `gate-surface-ledger` — RE-SCOPED 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-10-05`)
 - `gate-surface-ledger` — PRE-COMMIT GATE BLIND SPOT (found live 2026-08-05)… (owner `david`, expires `2026-09-15`)
 - `gate-surface-ledger` — SELF-REFERENTIAL DENOMINATORS (H15, v1.30)… (owner `david`, expires `2026-10-31`)
 - `gate-surface-ledger` — WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -135,17 +123,12 @@
 - `release-tag-authority` — NO SIGNING KEY CONFIGURED… (owner `david`, expires `2026-09-30`)
 - `release-tag-authority` — TAG-CADENCE COUPLING IS NOW MANUAL (v1.32.0)… (owner `david`, expires `2026-10-15`)
 - `release-tag-authority` — CODEX SURFACE DIVERGENCE (stated, not discovered)… (owner `david`, expires `2026-09-30`)
-- `release-tag-authority/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `independent-gate-rerun` — PAID 2026-08-09 — first green run observed on the real runner… (owner `david`, expires `2026-11-15`)
-- `independent-gate-rerun/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
+- `independent-gate-rerun/liveness-probe-missing` — NO HEARTBEAT, and gate-run frequency CANNOT be its own probe (2026-08-18 review)… (owner `david`, expires `2026-11-15`)
 - `state-reset` — --shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0)… (owner `david`, expires `2026-10-31`)
-- `state-reset/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `vendor-uninstall` — INSTALL IS LOSSY AND UNINSTALL INHERITS IT (v1.32.0)… (owner `david`, expires `2026-10-31`)
-- `vendor-uninstall/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `advisory-guards-optin` — RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0)… (owner `david`, expires `2026-11-15`)
-- `advisory-guards-optin/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `generated-agents-md` — HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0)… (owner `david`, expires `2026-11-30`)
-- `generated-agents-md/liveness-probe-missing` — NO HEARTBEAT (anti-dark sweep, David's challenge 2026-08-13)… (owner `david`, expires `2026-10-31`)
 - `role-adversaries/observability-haiku-flakiness` — PAID 2026-08-13 on evidence, then RE-SCOPED… (owner `david`, expires `2026-09-30`)
 - `role-adversaries/role-adversaries-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
 - `role-adversaries` — codex-skill-surface-absent (adversary-accountability plan, 2026-08-17)… (owner `david`, expires `2026-11-15`)

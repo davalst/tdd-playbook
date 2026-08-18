@@ -381,7 +381,7 @@ process; it cannot, and the attempts are the documented time sink.
   `git checkout`/`stash`-reverts to restore source WILL clobber uncommitted work, silently
   (origin: a hand-rolled targeted-mutant script git-checkout'd away uncommitted work mid-pass —
   detect-after is worse than refuse-before). Gate any revert-based script on
-  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
+  `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
   tracked changes) — or use `with_snapshot.py begin`/`verify`, which RECORDS a dirty tree and
   restores it rather than blindly reverting. Committing first is the cheapest form of both.
 
@@ -719,7 +719,7 @@ green-lighting ~1k LOC of provably unreachable code on import-success):
   assembly-level test (`exercised_by`), emitted topics with NAMED consumers, and integration debt
   (owner + expiry, expired debt FAILS). Corpus rules apply: **it only grows**; registering there is
   part of a deliverable's WIRED proof. Mechanical gate:
-  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate` (BLOCKING in the release
+  `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/capability_registry.py" validate` (BLOCKING in the release
   gate) · `… doctor` prints the dark-feature inventory — every built-but-off capability WITH its
   on-switch, write-only emitters, debt aging. The doctor makes the next archaeology audit unnecessary.
 - **Version-echo — for capabilities that run ELSEWHERE (the RUNNING leg's mechanism).** Wiring rot has a
@@ -1055,15 +1055,6 @@ unverified NEGATIVE about a file it never read.)
   wired / dead" requires grepping ALL reference/assignment sites and citing the SWEEP. Citing one
   file where X *should* appear proves nothing — the refutation usually lives in a file you didn't
   open (e.g. the "unreachable" toolset that was wired via a profiles file nobody cited).
-- **An absence claim is CITABLE — cite it, or it is not a claim.** Write it as
-  `(absent: <path>)` and `verify_citations.py` RE-RUNS the check, REFUTING the finding if the
-  thing is there. Until v1.42 a positive cited `file:line` and got resolved while a negative
-  cited NOTHING, so the gate could not see the strictest claims in the discipline — doctrine
-  demanded more evidence for a negative and the mechanism supplied none. The live shape that
-  closed it: "this repo has no capability registry", inferred from unrelated missing tooling,
-  never checked; it had ten. A directory counts as present — "no `docs/reviews/`" is the same
-  claim. **Absence is the one claim it is cheapest to check and easiest to skip**, which is why
-  it is the one that ships false.
 - **Absence claims about code PARSE the code.** `assert "x" not in source` matches the very
   comment explaining the removal (4-for-4 false REDs in one cycle) and, inverted, stays green on
   a comment while the real call remains — assert on AST nodes (attribute access, calls),

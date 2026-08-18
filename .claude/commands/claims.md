@@ -25,15 +25,11 @@ MECHANICAL GATE (don't just self-report — run the check): write your draft fin
 with its `file:line` citation and — where you quote the source — the quote right after it in
 backticks, e.g. ``finding … `src/auth.py:42`: "return False"``. Then run the verifier:
 
-    python3 "${CLAUDE_PLUGIN_ROOT}/bin/verify_citations.py" <your-findings-file> --base <repo-root>
+    python3 "$CLAUDE_PROJECT_DIR/.claude/bin/verify_citations.py" <your-findings-file> --base <repo-root>
 
 Every citation it reports UNRESOLVED (file/line missing) or MISMATCH (quote not on the line)
 is fabricated or wrong evidence — DEMOTE that finding to a lead; it cannot carry a severity.
 Only publish findings whose citations the tool marks VERIFIED.
-
-Every NEGATIVE finding carries `(absent: <path>)` — the sweep made citable. `verify_citations`
-re-runs it and REFUTES the finding if the path is there, so an unchecked absence cannot pass as
-a claim. A directory counts as present.
 
 Report `Claims: N load-bearing · N verified (verify_citations) · N demoted to leads`, and
 PASTE the tool's summary line so the count is auditable, not asserted — a self-reported "N/N"

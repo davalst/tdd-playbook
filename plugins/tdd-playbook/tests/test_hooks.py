@@ -250,22 +250,28 @@ def test_exitcode():
     def ev(cmd):
         return {"tool_name": "Bash", "tool_input": {"command": cmd}}
 
-    # PLANTED — the exact shapes that bit, frozen
-    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh > /tmp/g.out 2>&1 | tail -2"))
-    check("exitcode: piped gate run is flagged", rc == 1 and "swallowed by a pipe" in e,
+    # PLANTED — the exact shapes that bit, frozen. Restated 2026-08-18 in their CONSUMPTION
+    # form: both incidents were a piped verdict whose status was then acted on (a commit
+    # chain gated on it; a runner reading it). The display-only variants of these same
+    # commands moved to the ALLOW block below under the v1.42 scope decision — the incident
+    # is what is frozen here, not the punctuation.
+    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh | tail -2 && git commit -m x"))
+    check("exitcode: piped gate gating a commit chain is flagged (the 2026-08-05 shape)",
+          rc == 1 and "swallowed by a pipe" in e, (rc, e[:120]))
+    rc, _o, e = run(s, ev(
+        "python3 plugins/tdd-playbook/tests/test_hooks.py 2>&1 | grep FAIL; rc=$?"))
+    check("exitcode: piped suite whose status is read is flagged (the 2026-08-06 shape)",
+          rc == 1 and "discarded truth" in e, (rc, e[:120]))
+    rc, _o, e = run(s, ev("pytest -q | tail -1; rc=$?"))
+    check("exitcode: piped pytest whose status is captured is flagged", rc == 1,
           (rc, e[:120]))
-    rc, _o, e = run(s, ev("python3 plugins/tdd-playbook/tests/test_hooks.py 2>&1 | grep FAIL"))
-    check("exitcode: piped suite run is flagged", rc == 1 and "discarded truth" in e,
-          (rc, e[:120]))
-    rc, _o, e = run(s, ev("pytest -q | tail -1"))
-    check("exitcode: piped pytest is flagged", rc == 1, (rc, e[:120]))
     # v1.32.0: release_verify.py left _VERIFIER with the release wall. verify_verdict.py
     # STAYS (archival reader, still a verdict-bearing exit code) — and until now it was
     # named in the pattern but never exercised, so nothing would have noticed if the
     # deletion had taken it too. A roster entry with no test is a comment (§4a).
     rc, _o, e = run(s, ev(
-        "python3 plugins/tdd-playbook/bin/verify_verdict.py --sha abc123 | tail -1"))
-    check("exitcode: piped archival verdict read is flagged", rc == 1, (rc, e[:120]))
+        "python3 plugins/tdd-playbook/bin/verify_verdict.py --sha abc123 | tail -1 && echo ok"))
+    check("exitcode: piped archival verdict CHAINED ON is flagged", rc == 1, (rc, e[:120]))
     rc, _o, e = run(s, ev("python3 scripts/release_verify.py --wait-s 60 | tail -1"))
     check("exitcode: the retired release_verify.py is no longer a verifier", rc == 0,
           (rc, e[:120]))
@@ -281,6 +287,41 @@ def test_exitcode():
     check("exitcode: piping a NON-verifier is none of its business", rc == 0, (rc, e[:120]))
     rc, _o, e = run(s, ev("git log --oneline -5 | tail -2"))
     check("exitcode: ordinary piped tooling is allowed", rc == 0, (rc, e[:120]))
+    # H15-STYLE SCOPE DECISION, 2026-08-18 — DECIDED, not drifted into. David saw the guard
+    # firing on nearly every command and called it "unsettling and non-stop". The record
+    # agreed: 701 warns / 0 blocks / 0 adjudicated false positives across 6 cycles. In six
+    # cycles it never once changed a decision, while rendering as a red "hook error" every
+    # few seconds.
+    #
+    # The guard was not wrong — it was UNDER-SPECIFIED. §4a's concern is "a RED gate reads as
+    # 0", which requires the piped status to be CONSUMED as a verdict. Piping a suite into
+    # `grep` so a human can read the output discards nothing: nobody was going to branch on
+    # that status, and the human reads the real result. So the guard now fires only where the
+    # status is actually consumed — assigned to `$?`, tested by if/while, or chained with
+    # && / ||. Both incidents it was built for are consumption shapes and still flag.
+    #
+    # Frozen as ALLOW rows so a future session that re-widens it has to confront the decision
+    # rather than drift back into wallpaper. A guard demoted for crying wolf protects nothing.
+    for cmd in ("python3 plugins/tdd-playbook/tests/test_hooks.py 2>&1 | grep FAIL",
+                "pytest -q | tail -1",
+                "python3 plugins/tdd-playbook/bin/capability_registry.py validate | tail -2",
+                "sh scripts/civerd_gate.sh 2>&1 | head -20"):
+        rc, _o, e = run(s, ev(cmd))
+        check("exitcode: DISPLAY-only pipe stays silent (v1.42 scope): " + cmd[:42],
+              rc == 0, (rc, e[:100]))
+
+    # ...and the consumption shapes MUST still fire — this is the half that keeps the guard
+    # worth having. Each is a real way a RED verdict becomes a green one.
+    for label, cmd in [
+            ("status captured after a pipe", "sh scripts/civerd_gate.sh | tail -1; rc=$?"),
+            ("piped status gates a chain", "pytest -q | tail -1 && git commit -m x"),
+            ("piped status in a conditional", "if pytest -q | grep -q FAIL; then echo bad; fi"),
+            ("piped status echoed as the verdict",
+             "python3 plugins/tdd-playbook/tests/test_hooks.py | tail -1; echo rc=$?")]:
+        rc, _o, e = run(s, ev(cmd))
+        check("exitcode: CONSUMED piped status still flagged — " + label, rc == 1,
+              (rc, e[:100]))
+
     rc, _o, _e = run(s, {"tool_name": "Edit", "tool_input": {"file_path": "x.py"}})
     check("exitcode: non-Bash events ignored", rc == 0, rc)
 

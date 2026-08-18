@@ -1,0 +1,141 @@
+{
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Edit|MultiEdit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/lock_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: test-lock guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/snapshot_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: snapshot guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/fixture_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: fixture-data guard"
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/lock_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: test-lock guard (shell)"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/snapshot_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: snapshot guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/tag_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: release-tag guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/exitcode_guard.py\""
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/fixture_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: fixture-data guard (shell)"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Edit|MultiEdit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/weakening_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: test-weakening guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/flaky_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: flaky-pattern guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/overmock_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: over-mock guard"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/red_lock.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: red-lock tracker"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/exhaustive_claim_guard.py\""
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/red_lock.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: red-lock (auto-lock on red)"
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/intent_nudge.py\"",
+                        "timeout": 10
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/capture.py\" --event UserPromptSubmit",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/build_completion_reminder.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: Tripwire reminder"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/capture.py\" --event Stop",
+                        "timeout": 15
+                    }
+                ]
+            }
+        ]
+    }
+}

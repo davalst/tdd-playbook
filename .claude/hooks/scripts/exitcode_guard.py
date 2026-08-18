@@ -44,53 +44,20 @@ _PIPEFAIL = re.compile(r"set\s+-[a-zA-Z]*o\s+pipefail|set\s+-o\s+pipefail")
 _PIPE = re.compile(r"(?<!\|)\|(?!\|)")
 
 
-# v1.42 SCOPE NARROWING (2026-08-18). This guard fired 701 times across 6 cycles with 0
-# blocks and 0 adjudicated false positives — it never once changed a decision, while
-# rendering as a red "hook error" every few seconds. It was not wrong; it was UNDER-
-# SPECIFIED. §4a's concern is "a RED gate reads as 0", and that requires the piped status to
-# be CONSUMED as a verdict. Piping a suite into `grep` so a human can read the output
-# discards nothing: nobody was going to branch on that status. Both motivating incidents
-# (2026-08-05, 2026-08-06) are consumption shapes and still flag.
-#
-# Kept deliberately narrow rather than deleted: a guard demoted for crying wolf protects
-# nothing, and this one guards the release path. Frozen in both directions at
-# tests/test_hooks.py::test_exitcode.
-_STATUS_READ = re.compile(r"\$\?")               # rc=$? / echo rc=$? — the status is read
-_COND_HEAD = re.compile(r"^\s*(?:if|while|until)\b")   # the pipeline IS the condition
-_CHAIN = ("&&", "||")                            # the next command runs on that status
-
-
 def _statements(cmd):
     """Split on statement separators, keeping pipelines intact."""
-    return [s for s, _sep in _statements_with_sep(cmd)]
-
-
-def _statements_with_sep(cmd):
-    """Statements PLUS the separator that follows each — the separator is what says whether
-    anything consumes the status (`&&`/`||` chain on it; `;` does not)."""
-    parts = re.split(r"(;|&&|\|\||\n)", cmd)
-    out = []
-    for i in range(0, len(parts), 2):
-        stmt = parts[i]
-        sep = parts[i + 1].strip() if i + 1 < len(parts) else ""
-        if stmt.strip():
-            out.append((stmt, sep))
-    return out
+    return [s for s in re.split(r";|&&|\|\||\n", cmd) if s.strip()]
 
 
 def findings(cmd):
     if not cmd or _PIPEFAIL.search(cmd):
         return []
     out = []
-    status_read_anywhere = bool(_STATUS_READ.search(cmd))
-    for stmt, sep in _statements_with_sep(cmd):
+    for stmt in _statements(cmd):
         if not _PIPE.search(stmt):
             continue
         head = _PIPE.split(stmt)[0]
         if not _VERIFIER.search(head):
-            continue
-        # THE NARROWING: a display pipe discards nothing a human was going to read anyway.
-        if not (status_read_anywhere or sep in _CHAIN or _COND_HEAD.match(stmt)):
             continue
         out.append(
             "a verifier's exit code is being swallowed by a pipe: `{}` — the status you "

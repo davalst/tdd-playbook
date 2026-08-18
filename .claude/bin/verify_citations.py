@@ -39,33 +39,6 @@ _CITE = re.compile(
 _QUOTE_AFTER = re.compile(r'^[\s:\-—–`]*["“‘](?P<q>[^"”’]+)["”’]')
 
 
-# ABSENCE CLAIMS (2026-08-18). §12 demands MORE evidence for a negative than a positive —
-# "never called / unreachable" needs an exhaustive sweep — but until now a negative cited
-# NOTHING, so this tool had nothing to resolve and could not see the claim at all. Doctrine
-# strictest, mechanism absent. The live incident that closed the gap: "MemStruct has no
-# capability registry", asserted from unrelated missing tooling, never checked; it has ten.
-#
-# `(absent: <path>)` makes the negative citable. The tool RE-RUNS the check and REFUTES the
-# finding if the path is there — the inverse of what it already does for presence, at the
-# same seam. A directory counts as present: "no docs/reviews/" is the same claim shape.
-_ABSENT = re.compile(r"\(\s*absent:\s*(?P<path>[^)\n]+?)\s*\)", re.I)
-
-
-def find_absence_claims(text):
-    for m in _ABSENT.finditer(text or ""):
-        yield {"path": m.group("path").strip().strip("`"), "raw": m.group(0)}
-
-
-def check_absence(claim, base):
-    """VERIFIED when the path is genuinely absent; REFUTED when it is right there."""
-    target = os.path.join(base, claim["path"])
-    if os.path.exists(target):
-        kind = "directory" if os.path.isdir(target) else "file"
-        return "REFUTED", "the {} EXISTS at {} — the claim of absence is disproven".format(
-            kind, claim["path"])
-    return "VERIFIED", ""
-
-
 def _norm(s):
     return re.sub(r"\s+", " ", s).strip()
 
@@ -119,16 +92,6 @@ def check(cite, base):
 
 def run(text, base, quiet=False):
     cites = list(find_citations(text))
-    absences = list(find_absence_claims(text))
-    absent_bad = []
-    for a in absences:
-        status, detail = check_absence(a, base)
-        if status == "REFUTED":
-            absent_bad.append((a, detail))
-        if not quiet:
-            mark = "✓" if status == "VERIFIED" else "✗"
-            sys.stdout.write("  {} {}{}\n".format(
-                mark, a["raw"], (" — " + detail) if detail else ""))
     counts = {"VERIFIED": 0, "UNRESOLVED": 0, "MISMATCH": 0}
     bad, weak = [], 0
     for c in cites:
@@ -142,17 +105,9 @@ def run(text, base, quiet=False):
             mark = {"VERIFIED": "✓", "UNRESOLVED": "✗", "MISMATCH": "≠"}[status]
             line = "  {} {}{}".format(mark, c["raw"], (" — " + detail) if detail else "")
             sys.stdout.write(line + "\n")
-    if absences:
-        sys.stdout.write("Absence claims: {} · verified {} · REFUTED {}\n".format(
-            len(absences), len(absences) - len(absent_bad), len(absent_bad)))
-        if absent_bad:
-            sys.stdout.write(
-                "DEMOTE these findings to leads (absence DISPROVEN — the thing is there): "
-                + ", ".join(a["path"] for a, _d in absent_bad) + "\n")
     if not cites:
-        if not absences:
-            sys.stdout.write("Citations: 0 — no `file:line` citations found to verify.\n")
-        return 1 if absent_bad else 0
+        sys.stdout.write("Citations: 0 — no `file:line` citations found to verify.\n")
+        return 0
     sys.stdout.write(
         "Citations: {} · verified {} · unresolved {} · mismatch {}{}\n".format(
             len(cites), counts["VERIFIED"], counts["UNRESOLVED"], counts["MISMATCH"],
@@ -163,7 +118,7 @@ def run(text, base, quiet=False):
             "DEMOTE these findings to leads (citation not proven): "
             + ", ".join(c["raw"] for c, _s, _d in bad) + "\n"
         )
-    return 1 if (bad or absent_bad) else 0
+    return 1 if bad else 0
 
 
 def main(argv=None):
