@@ -596,6 +596,171 @@ def test_root_resolution_vendored_and_canonical():
                 os.environ[var] = value
 
 
+
+def test_small_change_lane_cannot_be_talked_into():
+    """The SMALL-CHANGE LANE — and the reason it is safe to have one.
+
+    Origin (2026-08-18, measured): narrowing one regex cost five sequential ledger refusals,
+    two ledger-entry attempts, three doc regenerations and six full gate runs. One of those
+    five refusals caught something real (a fabricated SHA); the other four were schema
+    friction. The recording cost is FIXED while the benefit scales with change size, so the
+    same apparatus that earns its keep on a feature is pure tax on a fix. David's standing
+    rule is to avoid bureaucracy that provides little or no value.
+
+    TWO properties make the lane un-gameable, and they matter more than the lane itself:
+
+    1. ELIGIBILITY IS COMPUTED FROM THE DIFF, never declared. The agent cannot assert
+       "this is small" — `small_change_eligible` reads the changed paths and the line counts.
+       There is no flag, no env var, and deliberately no --force: an override is the thing a
+       motivated agent reaches for, so it does not exist.
+    2. THE LANE RELAXES PAPERWORK, NEVER A CHECK. Same gate, same red-first, same
+       no-weakening rules. What it removes is prose weight. So there is nothing worth
+       cheating FOR — a lie that got you in would save you a paragraph and still leave every
+       verification standing. That asymmetry, not the classifier, is the real defense."""
+    rl = load_module()
+
+    ok, why = rl.small_change_eligible(
+        ["plugins/tdd-playbook/bin/grade_from_otel.py",
+         "plugins/tdd-playbook/tests/test_grade_from_otel.py"], 20, 4)
+    check("a small edit to ordinary code WITH its test is eligible", ok, why)
+
+    # every disqualifier is a SURFACE whose change a human should read in full
+    for paths, label in [
+        (["plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"], "doctrine"),
+        (["plugins/tdd-playbook/agents/claims-verifier.md"], "an agent brief"),
+        (["plugins/tdd-playbook/commands/claims.md"], "a command"),
+        (["plugins/tdd-playbook/hooks/scripts/tag_guard.py"], "a guard"),
+        (["capabilities.json"], "the registry"),
+        (["scripts/install_into_repo.py"], "the installer"),
+        (["calibration/corpus/approved/x.json"], "the plant corpus"),
+        (["calibration/scenarios.json"], "an oracle"),
+        (["docs/plans/gated/2026-08-17-x.md"], "a gated plan"),
+        (["CLAUDE.md"], "standing instructions"),
+    ]:
+        ok, why = rl.small_change_eligible(paths, 3, 0)
+        check("DISQUALIFIED even at 3 lines — {}".format(label), not ok, (paths, why))
+        check("...and the refusal says WHICH surface: {}".format(label),
+              bool(why) and paths[0].split("/")[-1][:8] in why or "surface" in (why or ""),
+              why)
+
+    # size caps: a big diff is not small however innocent its paths
+    ok, why = rl.small_change_eligible(["src/a.py"], 400, 0)
+    check("DISQUALIFIED by size (too many lines)", not ok, why)
+    ok, why = rl.small_change_eligible(["src/%d.py" % i for i in range(12)], 10, 0)
+    check("DISQUALIFIED by breadth (too many files)", not ok, why)
+
+    # the anti-cheat itself: no override may exist anywhere in the module
+    import inspect
+    src = inspect.getsource(rl)
+    for bad in ("--force", "force=True", "SMALL_CHANGE_OVERRIDE", "TDD_PLAYBOOK_SMALL"):
+        check("no override exists for the lane: {!r}".format(bad), bad not in src)
+    sig = inspect.signature(rl.small_change_eligible)
+    check("the classifier takes only FACTS about the diff, no caller opinion",
+          list(sig.parameters) == ["changed_paths", "insertions", "deletions"],
+          list(sig.parameters))
+
+    # a mixed diff is judged by its most dangerous path, never averaged
+    ok, why = rl.small_change_eligible(
+        ["README.md", "plugins/tdd-playbook/hooks/scripts/tag_guard.py"], 5, 1)
+    check("one disqualifying path poisons an otherwise-small diff", not ok, why)
+
+    # THE LANE STILL REQUIRES TDD. It reduces recording weight; it must never become a way
+    # to land code without a test. A source change with no test alongside it is exactly the
+    # shape that must NOT get a fast path — the §1/§6 smell the telemetry grader already
+    # flags, made a precondition instead of an observation.
+    ok, why = rl.small_change_eligible(["plugins/tdd-playbook/bin/grade_from_otel.py"], 15, 2)
+    check("source-only change is REFUSED the lane (no test alongside)", not ok, why)
+    check("...and the refusal names the missing test, not just 'ineligible'",
+          "test" in (why or "").lower(), why)
+    ok, why = rl.small_change_eligible(
+        ["plugins/tdd-playbook/bin/grade_from_otel.py",
+         "plugins/tdd-playbook/tests/test_grade_from_otel.py"], 15, 2)
+    check("source + its test IS eligible (TDD preserved, paperwork reduced)", ok, why)
+    ok, why = rl.small_change_eligible(["docs/notes.md"], 5, 0)
+    check("a docs-only change needs no test to be eligible", ok, why)
+
+    # and nothing about the lane may touch verification: same gate, same suites, same rules
+    src2 = inspect.getsource(rl.small_change_eligible)
+    for forbidden in ("skip", "bypass", "disable", "--no-verify"):
+        check("the classifier never speaks of skipping anything: {!r}".format(forbidden),
+              forbidden not in src2.lower())
+
+
+def test_small_lane_still_demands_verification_and_the_right_adversaries():
+    """The lane reduces PAPERWORK. Verification and judgment are not paperwork.
+
+    David's correction while this was being built: "small change lane still needs the tdd
+    approach and other functional bits, not just shutting off the things that work" and
+    "verification is also required and potentially the appropriate adversarial agents".
+
+    So the lane carries three POSITIVE preconditions, not merely an absence of relaxations:
+      1. a test beside the source (asserted in the classifier above),
+      2. a GREEN gate on the tree being recorded — verification is never the thing traded,
+      3. the adversaries the DIFF calls for, derived from what it touches rather than
+         remembered by whoever is tired.
+
+    (3) is what keeps this from being blanket ceremony. A fix touching nothing sensitive
+    requires no adversary at all — most small changes are that. A fix touching auth or an
+    egress path requires exactly one. The cost lands on the changes that earn it, which is
+    the whole difference between a control and a tax."""
+    rl = load_module()
+
+    # DERIVED, not remembered: the diff says which lens is needed
+    for paths, expected, why in [
+        (["src/auth/session.py", "tests/test_session.py"], "security-adversary",
+         "auth is the CISO loss function"),
+        (["src/net/egress.py", "tests/test_egress.py"], "security-adversary",
+         "egress is the same"),
+        (["src/worker/retry.py", "tests/test_retry.py"], "observability-adversary",
+         "a retry path fails silently at 3am"),
+        (["scripts/verify_install.sh"], "script-adversary",
+         "an operator script can pass having tested nothing"),
+    ]:
+        got = rl.suggested_adversaries(paths)
+        check("derived adversary for {} — {}".format(paths[0], why), expected in got, got)
+
+    quiet = rl.suggested_adversaries(["plugins/tdd-playbook/bin/grade_from_otel.py",
+                                      "plugins/tdd-playbook/tests/test_grade_from_otel.py"])
+    check("an ordinary fix summons NO adversary (cost lands where it is earned)",
+          quiet == [], quiet)
+
+    # TEST-ONLY diffs earn the test-quality lens — and only those. Asking for it whenever a
+    # test changed would summon an adversary on EVERY eligible diff, because the lane
+    # requires a test beside the source: blanket ceremony, which is what this lane removes.
+    # The risk worth a second pair of eyes is a test changed with no source behind it.
+    check("a TEST-ONLY diff earns the test-quality lens (a weakening hides cheapest here)",
+          "test-quality-adversary" in rl.suggested_adversaries(["tests/test_a.py"]),
+          rl.suggested_adversaries(["tests/test_a.py"]))
+    check("source + its test does NOT — that is the healthy shape, not a risk",
+          "test-quality-adversary" not in rl.suggested_adversaries(
+              ["src/a.py", "tests/test_a.py"]),
+          rl.suggested_adversaries(["src/a.py", "tests/test_a.py"]))
+
+    # VERIFICATION IS NOT NEGOTIABLE: a record cannot claim the lane without a green gate
+    ok, why = rl.small_lane_preconditions(
+        ["src/a.py", "tests/test_a.py"], 10, 2, gate_green=False, accounted=[])
+    check("PLANTED: the lane is refused when the gate is not green", not ok, why)
+    check("...and the refusal names the gate", "gate" in (why or "").lower(), why)
+
+    ok, why = rl.small_lane_preconditions(
+        ["src/auth/session.py", "tests/test_session.py"], 10, 2,
+        gate_green=True, accounted=[])
+    check("PLANTED: a security-touching diff is refused with no adversary accounted",
+          not ok, why)
+    check("...and the refusal NAMES the adversary it wants",
+          "security-adversary" in (why or ""), why)
+
+    ok, why = rl.small_lane_preconditions(
+        ["src/auth/session.py", "tests/test_session.py"], 10, 2,
+        gate_green=True, accounted=["security-adversary"])
+    check("accounting for the derived adversary satisfies the lane", ok, why)
+
+    ok, why = rl.small_lane_preconditions(
+        ["plugins/tdd-playbook/bin/grade_from_otel.py",
+         "plugins/tdd-playbook/tests/test_grade_from_otel.py"], 10, 2,
+        gate_green=True, accounted=[])
+    check("an ordinary green fix needs nothing further — THIS is the nimbleness", ok, why)
+
 if __name__ == "__main__":
     test_unresolved_blocker_refused()
     test_false_closure_and_scope_refused()
@@ -607,6 +772,8 @@ if __name__ == "__main__":
     test_taxonomy_required_after_ship_date()
     test_reviewer_vocabulary_bound_to_roster()
     test_participation_report()
+    test_small_change_lane_cannot_be_talked_into()
+    test_small_lane_still_demands_verification_and_the_right_adversaries()
     test_recurrence_report()
     test_recurrence_verb_vacuity_and_usage_event()
     test_root_resolution_vendored_and_canonical()
