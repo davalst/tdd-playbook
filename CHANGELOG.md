@@ -3,6 +3,50 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.43.0 — 2026-08-18
+
+**The Playbook is SILENT until it has something real to say.** This release deletes the one
+obligation that fired on every single commit: the rule that every non-metadata commit be covered
+by a closed implementation review record. Its output was unconsumed — **205 findings, 57% keyed,
+12 UNBUILT-GUARD keys, and zero guards ever built from any of them.** The toll was paid on every
+change; the signal was read by nobody.
+
+**Deleted, not unwired.** `coverage_problems`, its call in `validate_repository`, and the test of
+the removed policy all go — dead tested code preserves the old rule. What remains is untouched: a
+record that IS written still gets the full schema teeth. Optional never means unchecked.
+
+**The posture, now stated in the file that ships.** The hooks always had it right — four block,
+five are off, and they speak only when something is wrong. The doctrine had the opposite posture:
+produce artifacts BEFORE you may proceed. Artifacts are now things you REACH FOR when they have
+something to say — a review record when a review actually finds something, an adversary when you
+want the second pair of eyes, a plan when the work is genuinely multi-deliverable. SKILL.md's
+three-band ceremony table gains the principle behind it, so downstream repos inherit the posture
+instead of reinventing the toll.
+
+**Stated cost, with eyes open.** `recurrence` may become sporadic or purely historical. There is
+NO replacement trigger, and that was verified rather than assumed: an earlier draft claimed the
+six authoring briefs constituted one, but their heading reads *"Review record output (when these
+findings land in `docs/reviews/`)"* — they specify FIELDS when a record is written and never
+required one. Accepted, not papered over.
+
+**History that cannot be edited to follow the code.** Deleting the policy deleted a test that two
+IMMUTABLE review records cite as closure evidence — and both of those findings were defects IN
+that policy. The retirement is therefore NAMED (`RETIRED_EVIDENCE`) with what was removed, when,
+and why. Narrow by construction: anything not named there must still resolve, and a planted
+missing target still fails.
+
+**Unchanged, deliberately:** the four blocking hooks, TEST-LOCK, planted-input tests, red-first,
+the blessed gate, rule (d) gate-surface journaling (an anti-gaming control, not bookkeeping), the
+capability registry, and the version bump itself — it is the plugin-cache shipping channel.
+
+**What was refuted and NOT done**, recorded so none is re-proposed innocently: a three-tier
+directory taxonomy (three tiering mechanisms already exist — `force_full`, `safe_rules`,
+`_DEFAULT_MODES`); a small-change lane (its classifier duplicated `gate-manifest.json`'s
+`force_full`, which already names the files it called "small"); moving the calibration lab out of
+the shipping path (it breaks `tdd.py`, four suites, and makes the kernel's own yield stream
+write-only); and turning off the warn-tier hooks (already off since v1.32.0). Full reasoning in
+`docs/plans/gated/2026-08-18-stop-requiring-paperwork.md`.
+
 ## 1.42.0 — 2026-08-17
 
 **Adversary accountability, §5b agent evals, and three claims about our own machinery that
