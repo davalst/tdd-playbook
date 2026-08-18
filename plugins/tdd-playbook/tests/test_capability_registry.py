@@ -748,11 +748,72 @@ def test_consumer_references():
 def main():
     print("capability_registry planted-input calibration")
     for fn in (test_validate, test_doctor, test_cli, test_own_registry,
-               test_probe_survivor_gaps, test_user_facing, test_consumer_references):
+               test_probe_survivor_gaps, test_user_facing, test_consumer_references,
+               test_calibration_followups_are_trigger_gated_not_date_gated):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
+
+
+
+def test_calibration_followups_are_trigger_gated_not_date_gated():
+    """A TRIGGER-gated obligation must not sit in a DATE-gated register.
+
+    Origin (2026-08-18 debt review): 21 of 80 integration_debt entries carried expiry dates
+    that their own text said were not deadlines — "Calibration is now OPT-IN AND REACTIVE —
+    there is no next scheduled cycle — so the obligation is a TRIGGER, not a date ... the
+    expiry is now a REVIEW date." A review date inside a mechanism whose only enforcement is
+    going RED on a date produces exactly one outcome: it fires, nobody can act on it, and it
+    is bulk re-dated. That had already happened twice (RE-DATED 2026-08-09, RE-SCOPED
+    2026-08-09) — the residue of the retired calibration clock, still wearing dates.
+
+    So they move to `calibration_followup`: same text, same owner, no expiry, and read by
+    `doctor` on every run. Nothing is dropped and nothing is hidden — the obligation becomes
+    visible continuously instead of loudly once. `integration_debt` keeps its teeth for what
+    it is for: things that genuinely rot by a date."""
+    print("\n[calibration follow-ups are trigger-gated]")
+    mod = load_tool()
+    repo_root = os.path.dirname(os.path.dirname(ROOT))
+    reg = mod.load_registry(mod.find_registry(repo_root))
+
+    followups = [(c["id"], f) for c in reg["capabilities"]
+                 for f in (c.get("calibration_followup") or [])]
+    # Vacuity guard, not a precise count: the point is that the family is non-empty so the
+    # checks below are exercised. 13 entries carried the trigger language. (The review that
+    # prompted this move first estimated 21 — that used a looser keyword sweep that also
+    # matched "budget"/"live model". 13 is the count that actually says TRIGGER-not-a-date;
+    # the estimate is recorded rather than quietly corrected.)
+    check("registry carries calibration follow-ups (non-vacuous)", len(followups) >= 10,
+          len(followups))
+    check("no follow-up carries an expiry (a trigger has no date)",
+          not [i for i, f in followups if f.get("expires")],
+          [i for i, f in followups if f.get("expires")])
+    check("every follow-up keeps an owner (still owed by a person)",
+          all(f.get("owner") for _i, f in followups))
+    check("every follow-up keeps its original text (nothing dropped in the move)",
+          all(len(f.get("what") or "") > 80 for _i, f in followups))
+
+    # the load-bearing half: they must be READ, or this is hiding rather than reclassifying
+    report = mod.doctor(reg)
+    check("doctor SURFACES them with a count", "calibration follow-up" in report.lower(),
+          report[:200])
+    check("doctor names the trigger, not a date",
+          "next calibration run" in report.lower(), "trigger not named in the doctor output")
+    for cid, _f in followups[:3]:
+        check("doctor names the capability carrying one: {}".format(cid), cid in report)
+
+    # PLANTED: a follow-up that smuggles an expiry back in must be detectable, or the
+    # date-gating this change removes could quietly return
+    planted = {"capabilities": [{"id": "x", "summary": "s", "surfaces": ["local"],
+                                 "activation": {"default": "on"}, "wired_by": ["a::b"],
+                                 "exercised_by": ["t::u"],
+                                 "calibration_followup": [
+                                     {"what": "w" * 90, "owner": "david",
+                                      "expires": "2026-12-31"}]}]}
+    smuggled = [f for c in planted["capabilities"]
+                for f in c["calibration_followup"] if f.get("expires")]
+    check("PLANTED: a re-dated follow-up is detectable", bool(smuggled))
 
 
 if __name__ == "__main__":

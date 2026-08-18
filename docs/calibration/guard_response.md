@@ -27,3 +27,5 @@ the first genuine guard-response cycle, and its honest reading is 0 of 7 account
 | 2026-08-12 | tagguard | 7 | 3 | 4 | 1 |
 | 2026-08-12 | testlock | 1 | 1 | 0 | 0 |
 | 2026-08-16 | testweaken | 1 | 0 | 1 | 0 |
+| 2026-08-18 | tagguard | 7 | 4 | 3 | 3 |
+| 2026-08-18 | testlock | 1 | 0 | 1 | 0 |

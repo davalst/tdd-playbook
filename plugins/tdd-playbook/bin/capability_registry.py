@@ -213,6 +213,23 @@ def doctor(reg: dict, today: _dt.date | None = None) -> str:
         lines.append("  none")
 
     remote = [c for c in caps if c.get("deploy_surface")]
+    # TRIGGER-gated obligations, kept OUT of integration_debt on purpose (2026-08-18).
+    # 13 entries carried expiry dates their own text called "REVIEW dates" — they are settled
+    # by the next calibration run, whenever that is, not by a calendar. A review date inside a
+    # mechanism whose only enforcement is going RED on a date fires, cannot be acted on, and
+    # gets bulk re-dated; that had already happened twice. Reclassified rather than dropped,
+    # and surfaced HERE on every doctor run so they are visible continuously instead of loudly
+    # once. The shared re-scoping preamble was factored out — it is stated once, below.
+    followups = [(c.get("id"), f) for c in caps for f in (c.get("calibration_followup") or [])]
+    lines.append("\n[calibration follow-ups awaiting the next calibration run: %d]"
+                 % len(followups))
+    if followups:
+        lines.append("  These are TRIGGER-gated, not overdue: each is settled the next time "
+                     "calibration is run for any reason (a verifier misbehaving, a doer-model "
+                     "upgrade, a gate change you want proven). They carry no expiry BY DESIGN.")
+    for cid, f in followups:
+        head = " ".join((f.get("what") or "").split())[:150]
+        lines.append("  %-28s %s" % (cid, head))
     lines.append("\n[remote deploy surfaces (running != intended is a drift risk): %d]"
                  % len(remote))
     for c in remote:

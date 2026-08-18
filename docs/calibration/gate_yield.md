@@ -44,3 +44,8 @@ DATED CORRECTION (v1.27, pre-fix sha 119e2de): rows on or before 2026-08-05 have
 | 2026-08-16 | testweaken | 1 | 0 | 0 | 0 | 0 |
 | 2026-08-16 | exhaustive | 0 | 0 | 0 | 2 | 0 |
 | 2026-08-16 | exitcode | 0 | 35 | 0 | 0 | 0 |
+| 2026-08-18 | exhaustive | 0 | 0 | 0 | 3 | 0 |
+| 2026-08-18 | exitcode | 0 | 222 | 0 | 3 | 0 |
+| 2026-08-18 | redlock | 0 | 0 | 0 | 1 | 0 |
+| 2026-08-18 | tagguard | 7 | 0 | 0 | 0 | 0 |
+| 2026-08-18 | testlock | 1 | 0 | 1 | 0 | 0 |
