@@ -137,25 +137,6 @@ def test_directory_consumes_records_and_rejects_duplicate_ids():
               any("duplicate finding id" in p for p in problems), problems)
 
 
-def test_preimplementation_review_cannot_cover_candidate():
-    rl = load_module()
-    plan_only = record()
-    problems = rl.coverage_problems([plan_only], "d" * 40,
-                                    lambda _base, _head: True, [])
-    check("PLANTED old plan-only review does not cover implementation candidate",
-          any("implementation review" in p for p in problems), problems)
-    implementation = record([finding("verified_closed")])
-    implementation["id"] = "implementation-review"
-    implementation["kind"] = "implementation"
-    implementation["review_range"] = {"base": "b" * 40, "head": "c" * 40}
-    control = rl.coverage_problems([implementation], "d" * 40,
-                                   lambda _base, _head: True,
-                                   ["docs/reviews/implementation.json",
-                                    "docs/reference/current-state.md"])
-    check("verified implementation review plus metadata-only tail covers candidate",
-          control == [], control)
-
-
 def test_append_only_index_refuses_deleted_record():
     rl = load_module()
     with tempfile.TemporaryDirectory() as tmp:
@@ -761,14 +742,66 @@ def test_small_lane_still_demands_verification_and_the_right_adversaries():
         gate_green=True, accounted=[])
     check("an ordinary green fix needs nothing further — THIS is the nimbleness", ok, why)
 
+
+def test_records_are_optional_evidence_not_a_per_commit_toll():
+    """Records are OPT-IN evidence. A commit without one is not a violation.
+
+    Removed 2026-08-18. `coverage_problems` required every non-metadata commit to be covered by
+    a closed implementation review whose tail touched only docs/reviews/ or current-state.md.
+    It was the single obligation that fired on EVERY commit, and its output was unconsumed: 205
+    findings, 57% keyed, 12 UNBUILT-GUARD keys, and zero guards built from any of them.
+
+    Stated cost, with eyes open: `recurrence` may become sporadic or purely historical. There is
+    no replacement trigger and this test does not pretend otherwise — the six authoring briefs
+    say "Review record output (when these findings land in docs/reviews/)", i.e. they specify
+    FIELDS when a record is written and never require one. An earlier draft of this change
+    claimed those briefs were a live trigger; that was unverified and wrong.
+
+    What is NOT relaxed, and this test's real job: a record that IS written still gets the full
+    schema teeth. Optional never means unchecked."""
+    rl = load_module()
+
+    check("the per-commit coverage rule is GONE, not merely unwired",
+          not hasattr(rl, "coverage_problems"),
+          "coverage_problems still exists — dead tested code preserves the old policy")
+
+    # the live repo: HEAD carries no covering record and that is now fine
+    problems = rl.validate_repository(REPO)
+    coverage = [p for p in problems if "not covered by a closed implementation review" in p]
+    check("an UNCOVERED HEAD is no longer a violation", coverage == [], coverage)
+    check("this repo validates clean with records optional", problems == [], problems[:3])
+
+    # ...and the schema still bites on a record that IS written
+    bad = record([finding("open", "P1")])
+    check("an INVALID opt-in record still fails (optional is not unchecked)",
+          rl.validate_record(bad, "plant.json", lambda _s: True) != [],
+          "schema teeth were lost with the toll")
+
+    # Removing the rule removed the test that proved it — and two IMMUTABLE records cite that
+    # test as closure evidence for findings that were defects IN the rule. History cannot be
+    # edited to follow the code, so the retirement is NAMED rather than tolerated generally.
+    retired = ("plugins/tdd-playbook/tests/test_review_ledger.py::"
+               "test_preimplementation_review_cannot_cover_candidate")
+    check("closed history citing the retired test stays valid",
+          rl.closure_evidence_exists(REPO, retired))
+    check("the retirement is NAMED with its reason, not a silent allowance",
+          retired in rl.RETIRED_EVIDENCE and "2026-08-18" in rl.RETIRED_EVIDENCE[retired])
+    check("PLANTED: an unnamed missing evidence target still FAILS",
+          not rl.closure_evidence_exists(REPO, "tests/test_ghost.py::test_nothing"))
+
+    # the reader survives the producer becoming optional
+    recs = rl._records(os.path.join(REPO, "docs", "reviews"))
+    check("recurrence still runs on whatever records exist",
+          any("recurrence:" in line for line in rl.recurrence_report(recs)))
+
 if __name__ == "__main__":
     test_unresolved_blocker_refused()
     test_false_closure_and_scope_refused()
     test_terminal_closure_evidence_and_range_are_executable()
     test_directory_consumes_records_and_rejects_duplicate_ids()
-    test_preimplementation_review_cannot_cover_candidate()
     test_append_only_index_refuses_deleted_record()
     test_repository_review_records_are_valid()
+    test_records_are_optional_evidence_not_a_per_commit_toll()
     test_taxonomy_required_after_ship_date()
     test_reviewer_vocabulary_bound_to_roster()
     test_participation_report()

@@ -191,6 +191,32 @@ mechanisms.
 Local-machine plugin installs update separately (no prompt needed):
 `claude plugin marketplace update david-tools && claude plugin update tdd-playbook@david-tools`
 
+## THE POSTURE — the playbook is SILENT until it has something real to say
+
+Removed 2026-08-18: the rule that every non-metadata commit be covered by a closed review
+record. It was the one obligation that fired on EVERY commit, and its output was unconsumed —
+205 findings, 57% keyed, 12 UNBUILT-GUARD keys, and zero guards built from any of them.
+
+The hooks already had the right posture: four block, five are off, and they speak only when
+something is actually wrong. The doctrine had the opposite one — produce artifacts BEFORE you
+may proceed. These are now things you REACH FOR when they have something to say, not tolls:
+
+- **A review record** — when a review actually finds something. Optional never means unchecked:
+  a record that IS written still gets the full schema (`review_ledger.py validate`).
+- **The full §0 plan** — for genuinely multi-deliverable or risky work. A one-liner is the
+  default; a plan nobody needed is not evidence of rigour.
+- **Adversary dispatch** — on request, or before a release.
+- **`index.json` / `current-state.md` bookkeeping** — follows records being optional.
+
+STATED COST, with eyes open: `recurrence` may become sporadic or purely historical. There is no
+replacement trigger — the authoring briefs specify fields *when* a record is written and never
+required one. That is accepted, not papered over.
+
+WHAT DID NOT CHANGE, and does not: the four blocking hooks, TEST-LOCK, planted-input tests,
+red-first, the blessed gate, rule (d) gate-surface journaling (an anti-gaming control, not
+bookkeeping), the capability registry, and the version bump (the plugin-cache shipping channel).
+The partner keeps watching. It just stops asking you to file proof that it did.
+
 ## Release discipline for THIS repo
 
 - Every mechanical change ships with a planted-input test (a planted violation that slips
@@ -231,12 +257,6 @@ Local-machine plugin installs update separately (no prompt needed):
      truth). `rc` must be `0`.
   2. Bump the four identity files + `CHANGELOG.md`; regenerate
      `docs/reference/current-state.md`; commit.
-  2a. **Cover the bump with the review ledger** (the v1.35.0/v1.36.0 pattern): every
-     non-metadata commit must be covered by a closed implementation review record —
-     `review_ledger.validate_repository` REDs the gate otherwise. Author/extend a record
-     in `docs/reviews/` whose `review_range.head` is the bump commit, update
-     `index.json`, regenerate `current-state.md`, and commit that metadata tail (only
-     `docs/reviews/` + `current-state.md` may follow the reviewed head).
   3. **`git push origin main` FIRST — before any tag.** The order is the point, not a
      formality: `.github/workflows/gate.yml` triggers on push, so it can only re-run the gate
      on a commit that has been pushed. Tagging first would mean the check David is told to

@@ -205,26 +205,6 @@ def topology_problems(records: list[dict], is_ancestor) -> list[str]:
     return problems
 
 
-def coverage_problems(records: list[dict], candidate: str, is_ancestor,
-                      tail_paths: list[str]) -> list[str]:
-    implementations = [record for record in records if record.get("kind") == "implementation"]
-    if not implementations:
-        return ["candidate {} has no implementation review".format(candidate)]
-    allowed_tail = all(path == "docs/reference/current-state.md" or
-                       path.startswith("docs/reviews/") for path in tail_paths)
-    for record in implementations:
-        head = (record.get("review_range") or {}).get("head", "")
-        if not is_ancestor(head, candidate) or not allowed_tail:
-            continue
-        blockers = [finding for finding in record.get("findings") or []
-                    if finding.get("severity") in BLOCKERS and
-                    finding.get("status") not in {"verified_closed", "rejected"}]
-        if not blockers:
-            return []
-    return ["candidate {} is not covered by a closed implementation review with a metadata-only tail"
-            .format(candidate)]
-
-
 def validate_index(directory: str, index: dict, baseline_records: list[dict]) -> list[str]:
     problems = []
     if index.get("schema_version") != 1 or not isinstance(index.get("records"), list):
@@ -299,7 +279,24 @@ def _records(directory: str) -> list[dict]:
     return records
 
 
+# Evidence artifacts removed by a deliberate LATER policy change. Closed history that cited
+# them stays valid: the evidence was true when written, and retiring a policy retires its test.
+# Narrow by construction — each entry names what was removed, when, and why, and anything not
+# named here must still resolve. This is not a tolerance for missing evidence; it is the
+# producer-and-consumer-retire-together rule applied to an append-only record that cannot be
+# edited to follow the code.
+RETIRED_EVIDENCE = {
+    "plugins/tdd-playbook/tests/test_review_ledger.py::"
+    "test_preimplementation_review_cannot_cover_candidate":
+        "removed 2026-08-18 with the per-commit review-coverage rule it tested. The two "
+        "findings citing it (STREAM-POST-ARCH-3, REL-META-2) were defects IN that rule, so "
+        "the evidence and the policy retire together.",
+}
+
+
 def closure_evidence_exists(root: str, target: str) -> bool:
+    if target in RETIRED_EVIDENCE:
+        return True
     if not isinstance(target, str) or target.startswith("/") or ".." in target.split("/"):
         return False
     if "::" not in target:
@@ -404,24 +401,12 @@ def validate_repository(root: str) -> list[str]:
         return problems + ["review index/records unreadable: " + str(exc)]
     problems.extend(topology_problems(
         records, lambda base, head: _git(root, "merge-base", "--is-ancestor", base, head).returncode == 0))
-    candidate_result = _git(root, "rev-parse", "HEAD")
-    if candidate_result.returncode != 0:
-        return problems + ["candidate HEAD is unavailable"]
-    candidate = candidate_result.stdout.strip()
-    implementations = [row for row in records if row.get("kind") == "implementation"]
-    covered = False
-    for record in implementations:
-        head = (record.get("review_range") or {}).get("head", "")
-        ancestry = lambda base, tip: _git(root, "merge-base", "--is-ancestor", base, tip).returncode == 0
-        diff = _git(root, "diff", "--name-only", head + ".." + candidate)
-        tail = diff.stdout.splitlines() if diff.returncode == 0 else ["<unavailable>"]
-        if not coverage_problems([record], candidate, ancestry, tail):
-            covered = True
-            break
-    if not covered:
-        problems.extend(coverage_problems(records, candidate,
-                                          lambda base, tip: _git(root, "merge-base", "--is-ancestor", base, tip).returncode == 0,
-                                          ["<non-metadata-or-unresolved-tail>"]))
+    # Records are OPT-IN evidence as of 2026-08-18. The per-commit coverage rule that used to
+    # live here (`coverage_problems`) demanded every non-metadata commit be covered by a closed
+    # implementation review with a metadata-only tail. It was the one obligation that fired on
+    # EVERY commit, and its output was unconsumed — 205 findings, 57% keyed, 12 UNBUILT-GUARD
+    # keys, zero guards built from any of them. What remains below it is unchanged: a record
+    # that IS written still gets the full schema teeth. Optional never means unchecked.
     return problems
 
 
