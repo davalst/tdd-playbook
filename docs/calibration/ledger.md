@@ -785,3 +785,27 @@ from unrelated missing tooling, never checked; it had ten.
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260818-02 | 2026-08-18 | 2cfb66b | plugins/tdd-playbook/commands/claims.md | every NEGATIVE finding must carry a citable `(absent: <path>)` that verify_citations re-runs and refutes if the path exists | false-negative-claim | up | 1 | the command previously demanded an exhaustive sweep for negatives but gave the agent no way to RECORD it, so the sweep was unfalsifiable at review time. Recall on the false-negative plant should rise now that the claim must carry a re-runnable artifact; if it stays FLAT the instruction is ceremony and the mechanism needs to move earlier than the report |
+
+### Registered 2026-08-18 — baseline cc9afcb: unbreak the frontmatter of five agent briefs
+
+Five briefs carried an unquoted `: ` inside their `description:` frontmatter. That is invalid
+YAML — the scalar terminates at the colon and the whole mapping fails to parse — so a strict
+host's discovery returns nothing and the agent is not there. Same defect that made the SKILL
+dark in v1.42.0/v1.43.0. The edit is confined to frontmatter (`: ` -> ` — `); bodies, forced
+verdict lines, tools and model pins are byte-identical, and the corpus oracles anchor on
+verdict vocabulary in the body.
+
+`expect: none` is UNAVAILABLE here by construction — an agent brief IS what the run measures —
+and the refusal is right, so this makes a real prediction instead. **The honest state of my
+knowledge: I do not know whether the calibration dispatch path parses this frontmatter.** If it
+does, these agents were dark and could not catch their plants, so recall should RISE. If it
+dispatches by name without parsing, the result reads FLAT — and that FLAT is the finding,
+because it tells us the harness was measuring agents the host could not load, which is a
+blind spot worth more than a satisfied instrument.
+
+Registered `up` on the eight scenarios owned by the four briefs that have them
+(script-adversary has none). Either outcome answers a question that is currently open.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260818-03 | 2026-08-18 | cc9afcb | plugins/tdd-playbook/agents/architecture-adversary.md; plugins/tdd-playbook/agents/control-quality-adversary.md; plugins/tdd-playbook/agents/observability-adversary.md; plugins/tdd-playbook/agents/script-adversary.md; plugins/tdd-playbook/agents/test-quality-adversary.md | frontmatter-only YAML repair so a strict host can load these briefs at all; bodies byte-identical | csv-escape-fixed-at-call-site; special-case-bypasses-both-copies; control-cqa-verifier-overflag; cqa-not-clean-control; swallowed-export-failure; control-export-failure-surfaces; assertion-free-smoke-test; control-asserting-smoke-test | up | 8 | an agent a strict parser cannot load cannot catch its plant. If the calibration dispatch path parses frontmatter, recall rises; if it does not, this reads FLAT and that answers whether the harness has been scoring agents the host could not load — a blind spot worth more than a satisfied instrument |
