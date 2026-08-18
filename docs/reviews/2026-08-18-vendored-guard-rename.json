@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "2026-08-18-vendored-guard-rename",
+  "kind": "implementation",
+  "plan": "docs/plans/gated/2026-08-17-adversary-accountability.md",
+  "review_range": {
+    "base": "1928eefeb6e7af7ffc73a3545f26bae5c05ed06a",
+    "head": "dcd6f82468220027803a68a5ef70457992189b91"
+  },
+  "reviewers": [
+    "self-review",
+    "operator-field-report",
+    "live-dogfooding"
+  ],
+  "findings": [
+    {
+      "id": "VENDORED-PYTEST-COLLISION",
+      "severity": "P0",
+      "summary": "Two shipped hook scripts matched pytest's default discovery pattern while being guards, not tests, and the same basename was vendored into up to three trees of one repo. A downstream repo whose CI hands changed files to pytest aborted collection with 'import file mismatch', failing its gate and blocking its push. Latent since Codex vendoring; detonated by a routine refresh.",
+      "evidence": [
+        "scripts/install_into_repo.py",
+        "plugins/tdd-playbook/hooks/scripts/lock_guard.py",
+        "plugins/tdd-playbook/tests/test_installer.py"
+      ],
+      "status": "verified_closed",
+      "class": "deterministic",
+      "recurrence_key": "seam-self-consistency-return-only",
+      "catalog_row": "H11",
+      "disposition": "Renamed to lock_guard.py / weakening_guard.py. Two alternative remedies were empirically TESTED and rejected first: conftest collect_ignore_glob does not apply to explicitly-passed paths, and __init__.py does not resolve the basename clash. The standing check asserts the INVARIANT (no vendored file matches pytest discovery) rather than the two names, so a future collectible guard fails on the day it is added.",
+      "remediation_commit": "dcd6f82468220027803a68a5ef70457992189b91",
+      "closure_review": "self-review",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_vendored_file_is_pytest_collectible"
+      ]
+    },
+    {
+      "id": "RENAME-REACHES-NOBODY",
+      "severity": "P1",
+      "summary": "The rename alone fixes only NEW installs. The installer never deleted anything, so every repo that already vendored the old guards would keep the stale copy beside the new one \u2014 still collectible, still colliding, still breaking that repo's gate. A fix that reaches nobody who already has us is the same shape as the bug it fixes.",
+      "evidence": [
+        "scripts/install_into_repo.py",
+        "plugins/tdd-playbook/bin/vendoring.py"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "unreleased-work-not-deployed",
+      "disposition": "Two mechanisms. GENERAL and derived: files the previous manifest claims we wrote that are absent from the current roster are removed, so the next rename needs no migration code. BOUNDED and dated: a frozen LEGACY_COLLECTIBLE list, because the trees carrying the broken names predate manifests and the derived prune has no input there. Both narrow to paths we claimed; a user's own file in a vendored directory is never touched.",
+      "remediation_commit": "dcd6f82468220027803a68a5ef70457992189b91",
+      "closure_review": "live-dogfooding",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_legacy_collectible_guards_are_removed_without_a_manifest"
+      ]
+    },
+    {
+      "id": "OWN-TESTS-BLIND-TO-IT",
+      "severity": "P1",
+      "summary": "Every test in this repo passed for the entire lifetime of the defect. The failure exists only inside a CONSUMER's test runner, so no amount of coverage here could have seen it \u2014 the Playbook failed its own seam-you-don't-own rule against itself, and its own \u00a75b doctrine names exactly this shape.",
+      "evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md"
+      ],
+      "status": "verified_closed",
+      "class": "judgment",
+      "recurrence_key": "outermost-wire-untested",
+      "disposition": "Closed by PROVING the fix at the seam rather than in unit tests alone: the consumer's tree was reproduced (3 collection errors observed), the fixed installer run against it, and collection verified clean. The unit tests are the regression net; the reproduction is the evidence the net is pointed at the real failure.",
+      "remediation_commit": "dcd6f82468220027803a68a5ef70457992189b91",
+      "closure_review": "operator-field-report",
+      "closure_evidence": [
+        "plugins/tdd-playbook/tests/test_installer.py::test_no_vendored_file_is_pytest_collectible"
+      ]
+    }
+  ]
+}

@@ -168,6 +168,10 @@
     {
       "path": "2026-08-17-v1.42.0-release.json",
       "sha256": "dd49fe20d14d5ea2543b7f1e13eeecb2b10752611dee84ed8d66628f205bf7cd"
+    },
+    {
+      "path": "2026-08-18-vendored-guard-rename.json",
+      "sha256": "62383de55aeb2f0008c00a93fc6d77346e57ed18fd8e53638960e8d981d92e40"
     }
   ]
 }
