@@ -748,20 +748,22 @@ at k/k on the first live replay, with a plant surviving to a clean verdict BLOCK
 |---|---|---|---|---|---|---|---|---|
 | L-20260817-02 | 2026-08-17 | 6509117 | plugins/tdd-playbook/agents/mutation-runner.md; calibration/corpus/approved/subprocess-only-gate-unmeasurable.json; calibration/corpus/approved/control-subprocess-with-in-process-twin.json | mutation-runner step 1 gains the ATTRIBUTION precheck (tracer maps no mutated function to a test -> UNMEASURED + name the in-process twin remedy; never chase the child process) plus roster-duplicate integrity and the rewritten-tree baseline distinction — AND the plant+control pair that measures it | subprocess-only-gate-unmeasurable; control-subprocess-with-in-process-twin | up | 3 | the brief edit L-20260817-01 declined to register without a scenario that could move. Recall should rise on the plant (the pre-edit brief carries no attribution rule, so the shape is unreachable for it) while the control stays quiet (the twin makes the target attributable; the brief names the discriminator explicitly to prevent the over-correction). First replay reads INCONCLUSIVE(no-baseline) for both; the bar is 3/3 caught and 3/3 quiet, and a plant surviving to a clean verdict is BLOCKING |
 
-## 2026-08-18 — the guard rename touches a command surface
+### Registered 2026-08-18 — baseline 1928eef: the vendored-guard rename touches a command surface
 
-The vendored-guard rename (`test_lock_guard.py` -> `lock_guard.py`) edits
-`commands/tdd-lock.md`, which names the guard by filename. This is a MECHANICAL rename of a
-path reference, not a change to what the command instructs or to any oracle: the guard's
-identity (`NAME = "testlock"`), its trigger, its blocking tier and its message are all
-untouched, and the same rename is applied to every live reference in one pass. Registered
-with `expect: none` because there is no scenario this could move — the calibration corpus
-addresses the guard's BEHAVIOUR, and behaviour is byte-identical.
+The rename that stops vendored guards matching pytest's default discovery pattern
+(`test_lock_guard.py` -> `lock_guard.py`) edits `commands/tdd-lock.md`, which names the guard
+by filename. This is a MECHANICAL path rename, not a change to what the command instructs or
+to any oracle: the guard's identity (`NAME = "testlock"`), its trigger, its blocking tier and
+its message are byte-identical, and the same rename lands on every live reference in one pass.
 
-Registering it rather than letting it pass silently is the point of rule (d)'s sibling: a
-gate surface changed with no covering entry is indistinguishable from a quiet weakening,
-and "it was only a rename" is exactly the claim an entry exists to make checkable.
+Registered with `expect: none` because no corpus scenario can move on it — the corpus
+addresses the guard's BEHAVIOUR, and behaviour did not change. Registering rather than letting
+it pass silently is the whole point: a gate surface changed with no covering entry is
+indistinguishable from a quiet weakening, and "it was only a rename" is exactly the claim an
+entry exists to make checkable. The real coverage for this change is
+`test_installer.py::test_no_vendored_file_is_pytest_collectible`, which asserts the invariant
+rather than the two names.
 
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
-| L-20260818-01 | 2026-08-18 | 1928eef | plugins/tdd-playbook/commands/tdd-lock.md | rename the guard's FILENAME reference (test_lock_guard.py -> lock_guard.py) so vendored guards stop matching pytest's default discovery pattern downstream; no instruction, tier, oracle or guard identity changed | — | none | 0 | a pure path rename with byte-identical guard behaviour; no corpus scenario can move on it, and claiming otherwise would be satisfying the instrument rather than using it. The real coverage for this change is test_installer.py::test_no_vendored_file_is_pytest_collectible, which asserts the invariant rather than the two names |
+| L-20260818-01 | 2026-08-18 | 1928eef | plugins/tdd-playbook/commands/tdd-lock.md | rename the guard FILENAME reference (test_lock_guard.py -> lock_guard.py) so vendored guards stop matching pytest discovery downstream; no instruction, tier, oracle or guard identity changed | — | none | 0 | a pure path rename with byte-identical guard behaviour; no scenario can move on it, and claiming one would be satisfying the instrument rather than using it |
