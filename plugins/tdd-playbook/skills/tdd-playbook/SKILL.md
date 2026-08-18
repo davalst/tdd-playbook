@@ -166,7 +166,7 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   prior test covered, or in a path once known-good. Never skip it or defer it to "later."
 - **TEST-LOCK — make the iron rule mechanical (default for feature/multi-deliverable work):**
   once the plan's tests are authored, RED for the right reason, and COMMITTED, lock them
-  (`/tdd-lock`) — the `test_lock_guard` hook then BLOCKS both structured EDITS and write-shaped
+  (`/tdd-lock`) — the `lock_guard` hook then BLOCKS both structured EDITS and write-shaped
   SHELL commands (`sed -i`, `> file`, `git checkout -- test`, `rm`, inline-python writes) to four
   surfaces: the locked tests, the verifier surface (conftest, test configs), the lock's OWN state
   (one versioned authority under Git's common dir; linked worktrees cannot bypass it), and the

@@ -90,9 +90,9 @@ def write(path, content):
     return {"tool_name": "Write", "tool_input": {"file_path": path, "content": content}}
 
 
-# ---------------------------------------------------------------- test_weakening_guard
+# ---------------------------------------------------------------- weakening_guard
 def test_weakening():
-    s = "test_weakening_guard.py"
+    s = "weakening_guard.py"
     tf = "tests/test_pay.py"
 
     # PLANTED: assertion removed -> must BLOCK (integrity hook defaults to block; H2)
@@ -138,7 +138,7 @@ def test_weakening():
 
 
 def test_weakening_h5_exit_calls():
-    s = "test_weakening_guard.py"
+    s = "weakening_guard.py"
     tf = "tests/test_pay.py"
 
     # PLANTED (H5): sys.exit(0) added to a test -> block (fakes a passing suite)
@@ -386,7 +386,7 @@ def test_break_glass():
     while demoted, so gate_yield's rollup shows a muzzled gate rather than a quiet one, and
     the reason string is REQUIRED — an empty break-glass is refused, because the record is
     the entire difference between an emergency and a habit."""
-    s = "test_weakening_guard.py"
+    s = "weakening_guard.py"
     tf = "tests/test_pay.py"
     weaken = edit(tf, "assert total == 5\nassert ok", "assert ok")
 
@@ -871,14 +871,14 @@ def test_red_lock():
               and "auto-locked" in p.stderr,
               (p.returncode, p.stderr[:120], journal[:120]))
 
-        # 4. the LOCKED file is now defended by test_lock_guard (end-to-end) —
+        # 4. the LOCKED file is now defended by lock_guard (end-to-end) —
         # ANY edit to a locked file is blocked, so neutral strings suffice.
         env = dict(os.environ)
         for k in list(env):
             if k.startswith("TDD_PLAYBOOK_"):
                 del env[k]
         env["CLAUDE_PROJECT_DIR"] = d
-        p = subprocess.run([sys.executable, os.path.join(HOOKS, "test_lock_guard.py")],
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, "lock_guard.py")],
                            input=json.dumps(edit(tf, "alpha", "beta")),
                            capture_output=True, text=True, cwd=d, env=env, timeout=20)
         check("redlock: guard blocks an edit to the auto-locked test",
@@ -916,7 +916,7 @@ def test_red_lock():
 
 def test_fixture_guard():
     """A (2026-08-15): warn when an EXPECTED ANSWER in a test-data file is rewritten or
-    removed — the gap test_weakening_guard (test CODE) is blind to. Scoped to answer-value
+    removed — the gap weakening_guard (test CODE) is blind to. Scoped to answer-value
     changes (David): adding cases / editing non-answer fields is SILENT, or the guard is
     noise. Bypass-oriented, both directions, INCLUDING the unparseable case (GLM residual-2:
     the size-shrink fallback is where a malformed edit can false-positive or slip)."""
@@ -1020,9 +1020,9 @@ def test_fixture_guard():
 
 def test_basename_roster_parity():
     """U1 (2026-08-15): the lock-state / verifier / guard basename rosters have ONE owner
-    (host_contract). Before this, test_lock_guard.py carried its own copies and they had
+    (host_contract). Before this, lock_guard.py carried its own copies and they had
     DIVERGED live: host_contract had `lock-transaction.lock` but not `pending-red.json`;
-    the test_lock_guard copy was the mirror image — so a `sed -i …/lock-transaction.lock`
+    the lock_guard copy was the mirror image — so a `sed -i …/lock-transaction.lock`
     slipped the Bash leg (its needles) and an Edit of `pending-red.json` slipped the Edit
     leg (host_contract._surface). Both are the lock's own state; editing either self-unlocks.
     This test pins the two modules identical AND pins each roster complete against the
@@ -1036,10 +1036,10 @@ def test_basename_roster_parity():
         return mod
 
     hc = _load("host_contract", os.path.join(PLUGIN, "bin", "host_contract.py"))
-    tlg = _load("test_lock_guard", os.path.join(HOOKS, "test_lock_guard.py"))
+    tlg = _load("lock_guard", os.path.join(HOOKS, "lock_guard.py"))
 
     # parity — the two modules can never diverge again (same objects)
-    check("lock-state roster: one owner (test_lock_guard uses host_contract's)",
+    check("lock-state roster: one owner (lock_guard uses host_contract's)",
           tlg._LOCK_STATE_BASENAMES == hc.LOCK_STATE_BASENAMES, "diverged")
     check("verifier roster: one owner", tlg._VERIFIER_BASENAMES == hc.VERIFIER_BASENAMES)
     check("guard roster: one owner", tlg._GUARD_BASENAMES == hc.GUARD_BASENAMES)
@@ -1067,12 +1067,12 @@ def test_basename_roster_parity():
 
 
 def test_lock_shell():
-    """F1 (shell channel) + F2 (lock self-protection) for test_lock_guard.py.
+    """F1 (shell channel) + F2 (lock self-protection) for lock_guard.py.
 
     A locked test the agent can rewrite with `sed -i` / `> file` / `git checkout`, or a lock
     file it can `rm`, is a lock in name only. These planted bypasses MUST block; reads and the
     sanctioned unlock MUST pass (a guard that wedges legitimate work is the adoption killer)."""
-    s = "test_lock_guard.py"
+    s = "lock_guard.py"
 
     def drive(d, event):
         env = dict(os.environ)
@@ -1125,7 +1125,7 @@ def test_lock_shell():
         allow("lock/sh: git checkout a branch is allowed", d, bash_ev("git checkout main"))
         # F1 — verifier surface + enforcement via shell
         block("lock/sh: sed -i on conftest blocks (H5)", d, bash_ev("sed -i 's/a/b/' conftest.py"))
-        block("lock/sh: rm on a guard hook blocks", d, bash_ev("rm .claude/hooks/scripts/test_lock_guard.py"))
+        block("lock/sh: rm on a guard hook blocks", d, bash_ev("rm .claude/hooks/scripts/lock_guard.py"))
         # F2 — the lock's own state cannot be removed/rewritten to self-unlock
         block("lock/sh: rm tdd-lock.json blocks (F2)", d, bash_ev("rm .claude/tdd-lock.json"))
         block("lock/sh: overwrite tdd-lock.json blocks (F2)", d, bash_ev("echo '{}' > .claude/tdd-lock.json"))
@@ -1187,7 +1187,7 @@ def test_yield_logging():
     """PLANTED (D4): every guard outcome flows through _common.emit(), so ONE logging call
     there gives the yield instrument its data — a guard silently absent from the log would
     read as zero-yield, which is a retirement trigger. Logging must never break enforcement."""
-    s = "test_weakening_guard.py"
+    s = "weakening_guard.py"
     tf = "tests/test_pay.py"
     weaken = edit(tf, "assert total == 5\nassert ok", "assert ok")
 
@@ -1377,7 +1377,7 @@ def test_guards_heartbeat():
 # a per-mode literal set would grow one set per mode and the advisory/warn ambiguity would
 # be spelled, not derived — a single dict keyed on the FACT (the mode) is the fix.
 EXPECTED_MODES = {
-    "test_weakening_guard": "block", "test_lock_guard": "block",
+    "weakening_guard": "block", "lock_guard": "block",
     "snapshot_guard": "block", "tag_guard": "block",
     "exitcode_guard": "off", "overmock_guard": "off", "exhaustive_claim_guard": "off",
     "flaky_guard": "off", "red_lock": "off",
@@ -1509,7 +1509,7 @@ def test_guard_roster_derived_and_pinned():
         check("{} guard roster matches machinery".format(name), problems == [], problems)
 
     # PLANTED fixtures — the red-first proof, frozen (a pin that cannot fail is décor)
-    good = ("...the four blocking guards (test_weakening_guard, test_lock_guard, "
+    good = ("...the four blocking guards (weakening_guard, lock_guard, "
             "snapshot_guard, tag_guard) plus the opt-in ones (exitcode_guard, "
             "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock) and the "
             "warn-by-default fixture_guard...")
@@ -1539,8 +1539,8 @@ def test_guard_roster_derived_and_pinned():
           any("stale roster count" in p
               for p in rp(five_named, bl=blocking | {"fifth_guard"}, sh=grown,
                           mt=machinery_tokens | {"fifth_guard"})))
-    claude_dialect = ("...the four blocking guards: test_weakening_guard, "
-                      "test_lock_guard, snapshot_guard, tag_guard; plus the opt-in "
+    claude_dialect = ("...the four blocking guards: weakening_guard, "
+                      "lock_guard, snapshot_guard, tag_guard; plus the opt-in "
                       "exitcode/overmock/quantum/flaky/red_lock, which ship OFF; plus "
                       "fixture_guard...")
     check("PLANTED: phantom short name inside the slash-run is caught",

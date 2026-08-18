@@ -38,7 +38,7 @@ it through a human (a test-wrong unlock).
   a private calibration run 2026-08-15 (artifact archived privately).
 - Defense: TEST-LOCK (§1 — tests read-only during implementation); weakening detection on
   code; fixture_guard (warn) on test-DATA answer changes/removals.
-- Guards: `test_weakening_guard.py` (H2), `test_lock_guard.py` (H2), `fixture_guard.py`
+- Guards: `weakening_guard.py` (H2), `lock_guard.py` (H2), `fixture_guard.py`
   (H2 — the test-DATA variant).
 
 ### H3 — Over-mock the behavior under test
@@ -47,7 +47,7 @@ mock forever, regardless of the real code. The most common weakening in the wild
 - Evidence: MSR 2026, 1.2M commits — agents add mocks in 36% of test commits vs 26% for
   humans (arXiv 2602.00409).
 - Defense: mock-delta detection + one-line justification per new mock (§1).
-- Guards: `test_weakening_guard.py` mock-delta check (H3).
+- Guards: `weakening_guard.py` mock-delta check (H3).
 
 ### H4 — Assertion-free / coverage-inflating tests
 Tests that execute code without asserting outcomes ("vibe testing"); marker/count padding;
@@ -66,7 +66,7 @@ re-approval (`-u` / `--update-snapshots`); introspecting the grader for expected
   grader introspection, monkey-patched scorers.
 - Defense: verifier surface is locked with the tests (§1 TEST-LOCK covers conftest/config);
   exit-call and snapshot-update detection; harness files owned by the harness, never the agent.
-- Guards: `test_weakening_guard.py` exit-call check (H5), `test_lock_guard.py` verifier-surface
+- Guards: `weakening_guard.py` exit-call check (H5), `lock_guard.py` verifier-surface
   lock (H5), `snapshot_guard.py` (H5). Gate-command drift variant (2026-07-28, probe run 2:
   the gate ran pytest/a diverged loop and calibration/'s 110 checks never executed —
   false-green over three modules): `scripts/civerd_gate.sh` is the ONE blessed gate
@@ -223,7 +223,7 @@ routing-around is indistinguishable from the bypass the guard exists to stop (H2
   capitalised app bundle, so running the test suite reconfigured the developer's machine for
   months; the guard's docstring, the project handoff and three later docstrings all repeated
   the false claim.
-- Evidence (allow direction): this repo, 2026-08-05 — `test_lock_guard`'s docstring promised
+- Evidence (allow direction): this repo, 2026-08-05 — `lock_guard`'s docstring promised
   "reads are always fine" and it blocked a READ of the unlock journal, because its write-verb
   list matched a Python loop variable named `ln`. Two further false-positive classes were
   found in the same read: a write verb anywhere in a quoted string, and a heredoc writing an
@@ -305,10 +305,10 @@ describes — `N of N` moves with the narrowing and cannot reveal it.
 | Entry | Mechanical guard(s) | Behavioral defense |
 |---|---|---|
 | H1 | — | §4 mutation, §2 edge, planted-error-probe |
-| H2 | test_weakening_guard, test_lock_guard, fixture_guard (test-DATA variant) | red-first-verifier |
-| H3 | test_weakening_guard (mock-delta) | §1 mock-justification review |
+| H2 | weakening_guard, lock_guard, fixture_guard (test-DATA variant) | red-first-verifier |
+| H3 | weakening_guard (mock-delta) | §1 mock-justification review |
 | H4 | — | §4 mutation score |
-| H5 | test_weakening_guard (exit-call), test_lock_guard, snapshot_guard, fixture_guard | calibration harness |
+| H5 | weakening_guard (exit-call), lock_guard, snapshot_guard, fixture_guard | calibration harness |
 | H6 | — | §6 Tripwire + reverse check, §5a probes, §3 PBT |
 | H7 | capability_registry expiry (test_own_registry, real clock) | tripwire-auditor PARKED leg + planted pair roadmap-laundering/control-parked-deferral |
 | H8 | doctor GUARDS-DARK (heartbeat vs latest commit) + run_calibration warning | engine guard_env for the adversarial variant (contracted) |

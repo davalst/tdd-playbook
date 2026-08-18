@@ -20,7 +20,7 @@ from _common import emit, read_event  # noqa: E402
 from host_contract import (ContractError, import_legacy_lock, policy_decision,  # noqa: E402
                            read_lock, record_capability_observation,
                            resolve_repository)
-from test_lock_guard import _msg, bash_findings  # noqa: E402
+from lock_guard import _msg, bash_findings  # noqa: E402
 
 NAME = "testlock"
 _PATCH_TARGET = re.compile(

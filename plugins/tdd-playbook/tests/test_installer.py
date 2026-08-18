@@ -77,10 +77,10 @@ def main():
         # the custom user hook must SURVIVE
         check("custom user hook preserved", any("my-own-hook.sh" in c for c in cmds), cmds)
         # current guards present (spot-check the newest and an old one)
-        check("current test_lock_guard installed",
-              any("test_lock_guard.py" in c for c in cmds), cmds)
+        check("current lock_guard installed",
+              any("lock_guard.py" in c for c in cmds), cmds)
         check("current weakening guard installed",
-              any("test_weakening_guard.py" in c for c in cmds), cmds)
+              any("weakening_guard.py" in c for c in cmds), cmds)
         check("portable host contract installed beside every adapter",
               os.path.isfile(os.path.join(cdir, "bin", "host_contract.py")))
         # commands rewritten to the project namespace (no raw plugin var)
@@ -107,6 +107,9 @@ def main():
     test_vendored_skill_equality()
     test_release_version_identity()
     test_no_script_creates_a_release_tag()
+    test_no_vendored_file_is_pytest_collectible()
+    test_reinstall_prunes_files_the_playbook_removed()
+    test_legacy_collectible_guards_are_removed_without_a_manifest()
     test_codex_registered_scripts_are_vendored()
     test_doctor_sees_break_glass_as_a_standing_demotion()
 
@@ -693,10 +696,10 @@ def test_codex_registered_scripts_are_vendored():
           "not the trees)", any(dep in file_srcs for dep in dependencies),
           sorted(dependencies))
 
-    # PLANTED (red-first, frozen): dropping test_lock_guard.py from CODEX_COPY_FILES
+    # PLANTED (red-first, frozen): dropping lock_guard.py from CODEX_COPY_FILES
     # must be caught — the exact drift D0 was reaching for.
-    pruned = {src for src in file_srcs if "test_lock_guard" not in src}
-    check("PLANTED: dropping test_lock_guard from CODEX_COPY_FILES is caught",
+    pruned = {src for src in file_srcs if "lock_guard" not in src}
+    check("PLANTED: dropping lock_guard from CODEX_COPY_FILES is caught",
           any(not vendored(dep, pruned) for dep in dependencies), sorted(dependencies))
 
 
@@ -879,5 +882,167 @@ def test_no_script_creates_a_release_tag():
             check("PLANTED CI mutation is detected: " + label, checks[label](text), label)
 
 
+
+def test_no_vendored_file_is_pytest_collectible():
+    """A vendored file must never match pytest's DEFAULT discovery patterns.
+
+    Origin (2026-08-17, cheliped): the Playbook shipped two hook scripts whose names match
+    `python_files = test_*.py`. They are guards, not tests — but any downstream repo whose
+    CI hands CHANGED FILES to pytest collects them, and the same basename lands in up to
+    three trees of one repo (.claude/hooks/scripts/, .codex/hooks/scripts/,
+    .codex/tdd-playbook/hooks/scripts/). pytest cannot import two modules with one
+    basename: `import file mismatch`, collection aborts, the consumer's gate fails, their
+    push is blocked. Latent from the day Codex vendoring shipped; detonated by a routine
+    refresh months later.
+
+    This is the §1 seam we do not own, at its most literal: every test in THIS repo passed
+    throughout, because the failure exists only inside a consumer's test runner. So the
+    check asserts the INVARIANT — no vendored file may be collectible — rather than the two
+    filenames, so a future guard named test_anything.py fails on the day it is ADDED
+    instead of on the day it breaks somebody's push.
+
+    Ignore-file remedies were TESTED and rejected before choosing the rename: a conftest.py
+    carrying collect_ignore_glob does NOT apply when the path is passed explicitly, and
+    adding __init__.py does not resolve the basename clash. Renaming is the only fix that
+    holds inside a consumer's CI, which we cannot see or configure."""
+    import fnmatch
+    print("\n[vendored files are not pytest-collectible]")
+    installer = load_installer()
+    patterns = ("test_*.py", "*_test.py")
+
+    vendored = []
+    trees = list(installer.COPY_TREES) + list(installer.CODEX_COPY_TREES)
+    for src, _dest in trees:
+        root = os.path.join(installer.PLUGIN, src)
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                vendored.append(os.path.relpath(os.path.join(dirpath, name),
+                                                installer.PLUGIN))
+    for src, _dest in list(getattr(installer, "CODEX_COPY_FILES", [])):
+        vendored.append(src)
+
+    check("vendor roster is non-vacuous (an empty walk must not pass green)",
+          len(vendored) > 20, len(vendored))
+
+    collectible = sorted(path for path in vendored
+                         if any(fnmatch.fnmatch(os.path.basename(path), pat)
+                                for pat in patterns))
+    check("no vendored file matches pytest's default discovery patterns",
+          not collectible, collectible)
+
+    # PLANTED (§13 calibrate-the-checker): the detector must SEE a collectible name, or it
+    # is theater. The plant is the real pre-fix filename, assembled so this file's own text
+    # does not reintroduce the string the roster is checked against.
+    planted = "test_" + "lock_guard.py"
+    check("PLANTED: the pre-fix filename is detected as collectible",
+          any(fnmatch.fnmatch(planted, pat) for pat in patterns), planted)
+    check("PLANTED: the renamed guard is NOT flagged",
+          not any(fnmatch.fnmatch("lock_guard.py", pat) for pat in patterns))
+
+
+
+def test_reinstall_prunes_files_the_playbook_removed():
+    """A file the Playbook RENAMED or DELETED must disappear from an existing vendored tree.
+
+    Origin (2026-08-17, cheliped): renaming the two pytest-collectible guards fixes new
+    installs, but the installer only ever COPIES. An existing downstream repo would keep the
+    old guard sitting beside the new one — still matching pytest's discovery pattern, still
+    colliding on basename, still breaking that repo's gate. The rename alone would have
+    fixed nobody who already had us.
+
+    The manifest already records what each install wrote (vendoring.write_manifest), so the
+    reconcile is DERIVABLE rather than a hand-kept removal list: anything the PREVIOUS
+    manifest claims we wrote that is absent from the CURRENT roster was removed upstream and
+    must go. That generalises past this incident — the next rename needs no migration code.
+
+    Deliberately narrow: only paths the previous manifest claims are eligible, so a user's
+    own file sitting in a vendored directory is never touched."""
+    print("\n[reinstall prunes upstream-removed files]")
+    with tempfile.TemporaryDirectory() as target:
+        first = subprocess.run([sys.executable, INSTALLER, target],
+                               capture_output=True, text=True, timeout=120)
+        check("prune: first install succeeds", first.returncode == 0, first.stderr[-200:])
+
+        manifest_path = os.path.join(target, ".claude", ".tdd-playbook-manifest.json")
+        check("prune: the install wrote a manifest", os.path.isfile(manifest_path))
+        with open(manifest_path) as fh:
+            manifest = json.load(fh)
+
+        stale_rel = ".claude/hooks/scripts/" + "test_" + "lock_guard.py"
+        stale_abs = os.path.join(target, *stale_rel.split("/"))
+        os.makedirs(os.path.dirname(stale_abs), exist_ok=True)
+        with open(stale_abs, "w") as fh:
+            fh.write("# a guard the Playbook renamed away\n")
+        manifest["files"] = sorted(set(manifest["files"]) | {stale_rel})
+        with open(manifest_path, "w") as fh:
+            json.dump(manifest, fh, indent=2)
+
+        second = subprocess.run([sys.executable, INSTALLER, target],
+                                capture_output=True, text=True, timeout=120)
+        check("prune: re-install succeeds", second.returncode == 0, second.stderr[-200:])
+        check("prune: the upstream-removed file is GONE from the vendored tree",
+              not os.path.exists(stale_abs), stale_abs)
+        check("prune: the renamed replacement is still present",
+              os.path.isfile(os.path.join(target, ".claude", "hooks", "scripts",
+                                          "lock_guard.py")))
+
+        theirs = os.path.join(target, ".claude", "hooks", "scripts", "their_own_hook.py")
+        with open(theirs, "w") as fh:
+            fh.write("# the user's own hook\n")
+        third = subprocess.run([sys.executable, INSTALLER, target],
+                               capture_output=True, text=True, timeout=120)
+        check("prune: third install succeeds", third.returncode == 0, third.stderr[-200:])
+        check("prune: a file the manifest never claimed is PRESERVED",
+              os.path.isfile(theirs), theirs)
+
+
+
+def test_legacy_collectible_guards_are_removed_without_a_manifest():
+    """The manifest-driven prune cannot reach a tree that predates manifests — and those are
+    exactly the trees carrying the broken names.
+
+    cheliped's `.codex/` was vendored before manifests existed, so `_previous_manifest`
+    returns nothing and the derived prune has no input. Its two stale copies of the old
+    guard would survive every future install and keep colliding on basename with each other.
+    A fix that only reaches repos with a manifest fixes nobody who already has us — the same
+    shape as the bug it is fixing.
+
+    So LEGACY_COLLECTIBLE is a deliberately BOUNDED exception: a frozen list of the exact
+    basenames the Playbook shipped that pytest would collect, removed from vendored hook
+    directories whether or not a manifest exists. It is a dated migration aid, not a general
+    mechanism — the manifest remains the general mechanism, and nothing should be ADDED here
+    (the invariant test above is what stops another collectible name ever shipping)."""
+    print("\n[legacy collectible guards are removed]")
+    installer = load_installer()
+    check("legacy list names both shipped guards",
+          set(installer.LEGACY_COLLECTIBLE) == {"test_" + "lock_guard.py",
+                                                "test_" + "weakening_guard.py"},
+          sorted(installer.LEGACY_COLLECTIBLE))
+
+    with tempfile.TemporaryDirectory() as target:
+        # a manifest-LESS tree, exactly cheliped's shape: two copies under .codex
+        for rel in (".codex/hooks/scripts", ".codex/tdd-playbook/hooks/scripts"):
+            os.makedirs(os.path.join(target, *rel.split("/")), exist_ok=True)
+            with open(os.path.join(target, *rel.split("/"),
+                                   "test_" + "lock_guard.py"), "w") as fh:
+                fh.write("# legacy vendored guard\n")
+        keep = os.path.join(target, ".codex", "hooks", "scripts", "mine.py")
+        with open(keep, "w") as fh:
+            fh.write("# the user's own file\n")
+
+        proc = subprocess.run([sys.executable, INSTALLER, target],
+                              capture_output=True, text=True, timeout=120)
+        check("legacy: install succeeds on a manifest-less tree",
+              proc.returncode == 0, proc.stderr[-200:])
+        survivors = []
+        for dirpath, _d, files in os.walk(target):
+            survivors += [os.path.join(dirpath, f) for f in files
+                          if f in installer.LEGACY_COLLECTIBLE]
+        check("legacy: every collectible copy is removed, including under .codex",
+              not survivors, survivors)
+        check("legacy: a neighbouring user file is untouched", os.path.isfile(keep))
+
+
 if __name__ == "__main__":
     main()
+

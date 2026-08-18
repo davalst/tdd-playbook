@@ -2,7 +2,7 @@
 """PreToolUse — warn when an EXPECTED ANSWER in a test-data file is rewritten or removed.
 
 The gap this closes (observed in a private calibration run, 2026-08-15; artifact archived
-privately): test_weakening_guard watches test CODE (assert/skip/tautology counts) and is
+privately): weakening_guard watches test CODE (assert/skip/tautology counts) and is
 structurally blind to test DATA — a `test_cases.json` / fixtures / golden file. An agent
 under pressure can rewrite an expected value, or delete a failing case, to green a suite
 without touching code. TEST-LOCK covers it only when a human named the file; default
@@ -20,7 +20,7 @@ no guard. Mode: WARN (advisory; promote to block on yield evidence, retire on si
     heuristic so an unparseable value-removal still warns while a malformed-legit-reformat
     stays silent.
   - Bash: delete / overwrite / move / rename / copy-over / `git rm` / `git mv` of an
-    existing test-data file — reusing test_lock_guard's cd-aware `segments` + FP-calibrated
+    existing test-data file — reusing lock_guard's cd-aware `segments` + FP-calibrated
     `_seg_writes`, plus git rm/mv (not a revert, so not covered there).
 """
 import json
@@ -31,7 +31,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import read_event, emit, file_path_of, edit_pairs, is_test_file  # noqa: E402
 from snapshot_guard import snapshot_path  # noqa: E402  (its territory; do not double-warn)
-from test_lock_guard import segments, _seg_writes  # noqa: E402  (FP-calibrated shell writes)
+from lock_guard import segments, _seg_writes  # noqa: E402  (FP-calibrated shell writes)
 
 NAME = "fixtureguard"
 

@@ -57,7 +57,7 @@ CODEX_COPY_TREES = [
 ]
 CODEX_COPY_FILES = [
     ("hooks/scripts/_common.py", "hooks/scripts/_common.py"),
-    ("hooks/scripts/test_lock_guard.py", "hooks/scripts/test_lock_guard.py"),
+    ("hooks/scripts/lock_guard.py", "hooks/scripts/lock_guard.py"),
 ]
 # files whose body references ${CLAUDE_PLUGIN_ROOT} and must be rewritten on copy
 REWRITE_EXT = {".md", ".py", ".json", ".sh"}
@@ -363,19 +363,108 @@ def _merge_claude_gitignore(claude_dir: str) -> None:
                 fh.write(ln + "\n")
 
 
-def _write_install_manifest(target, host):
+# BOUNDED legacy migration (2026-08-17). The manifest-driven prune below cannot reach a
+# tree vendored before manifests existed — and those are exactly the trees carrying these
+# names. cheliped's `.codex/` is one: two copies of the same basename, colliding with each
+# other, surviving every future install. A fix that only reaches repos with a manifest
+# fixes nobody who already has us, which is the same shape as the bug being fixed.
+#
+# These basenames match pytest's default discovery (`test_*.py`) while being GUARDS, not
+# tests, so a downstream CI that hands changed files to pytest aborts collection on
+# `import file mismatch`. Removed from vendored hook directories whether or not a manifest
+# exists. NOTHING SHOULD BE ADDED HERE: this is a dated migration aid, and
+# test_no_vendored_file_is_pytest_collectible is what stops another such name ever
+# shipping. The manifest stays the general mechanism.
+LEGACY_COLLECTIBLE = ("test_lock_guard.py", "test_weakening_guard.py")
+
+
+def _remove_legacy_collectible(target):
+    """Delete legacy pytest-collectible guard copies anywhere under a vendored tree."""
+    removed = 0
+    for vendor_rel in (".claude", ".codex"):
+        base = os.path.join(target, vendor_rel)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, _dirs, files in os.walk(base):
+            if os.path.basename(dirpath) != "scripts":
+                continue
+            for name in files:
+                if name in LEGACY_COLLECTIBLE:
+                    os.remove(os.path.join(dirpath, name))
+                    removed += 1
+    if removed:
+        print("Removed {} legacy pytest-collectible guard file(s) "
+              "(renamed upstream; they break downstream pytest collection)".format(removed))
+    return removed
+
+
+def _prune_upstream_removals(target, host, previous):
+    """Delete files a PREVIOUS install wrote that the CURRENT roster no longer contains.
+
+    The installer only ever copied, so a file the Playbook renamed or deleted upstream sat
+    in every existing downstream tree forever. That is not cosmetic: renaming the two
+    pytest-collectible guards (2026-08-17, cheliped) fixes new installs and fixes NOBODY who
+    already had us — the stale copy keeps matching pytest's discovery pattern and keeps
+    colliding on basename, so the consumer's gate stays broken by a file we abandoned.
+
+    Derived from the manifest, never a hand-kept removal list, so the next rename needs no
+    migration code. Deliberately narrow in two ways: only paths the PREVIOUS manifest claims
+    we wrote are eligible (a user's own file in a vendored directory is never ours to
+    delete), and a path that escapes the target is refused outright."""
+    try:
+        sys.path.insert(0, os.path.join(PLUGIN, "bin"))
+        import vendoring
+        current = set(vendoring._paths_from_source(_repo_root(), target, host))
+    except Exception as exc:
+        print("manifest: could not resolve the current roster, skipping prune: {}".format(exc))
+        return 0
+    if not current:
+        return 0
+    removed = 0
+    root = os.path.realpath(target)
+    for rel in sorted(set(previous) - current):
+        path = os.path.realpath(os.path.join(target, *rel.split("/")))
+        if not path.startswith(root + os.sep):
+            continue
+        if os.path.isfile(path):
+            os.remove(path)
+            removed += 1
+    if removed:
+        print("Pruned {} file(s) the Playbook removed upstream".format(removed))
+    return removed
+
+
+def _previous_manifest(target, host):
+    rel = ".codex/.tdd-playbook-manifest.json" if host == "codex" \
+        else ".claude/.tdd-playbook-manifest.json"
+    path = os.path.join(target, *rel.split("/"))
+    try:
+        with open(path) as fh:
+            return list(json.load(fh).get("files") or [])
+    except (OSError, ValueError):
+        return []
+
+
+def _repo_root():
+    return (REPO if "REPO" in globals()
+            else os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _write_install_manifest(target, host, previous=()):
     """Record what we wrote, IN the target, so uninstall does not need the source clone."""
     try:
         sys.path.insert(0, os.path.join(PLUGIN, "bin"))
         import vendoring
-        vendoring.write_manifest(REPO if "REPO" in globals() else
-                                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                 target, host)
+        vendoring.write_manifest(_repo_root(), target, host)
     except Exception as exc:
         print("manifest: could not record the install roster: {}".format(exc))
+        return
+    if previous:
+        _prune_upstream_removals(target, host, previous)
 
 
 def _install_claude(target: str) -> None:
+    previous = _previous_manifest(target, "claude")
     claude_dir = os.path.join(target, ".claude")
     os.makedirs(claude_dir, exist_ok=True)
     total = 0
@@ -385,7 +474,8 @@ def _install_claude(target: str) -> None:
             total += _copy_tree(src, os.path.join(claude_dir, dest_rel))
     hooks_added = _merge_hooks(claude_dir)
     _merge_claude_gitignore(claude_dir)
-    _write_install_manifest(target, "claude")
+    _remove_legacy_collectible(target)
+    _write_install_manifest(target, "claude", previous)
     with open(os.path.join(target, _STAMP_REL), "w") as fh:
         fh.write(_canonical_version() + "\n")
     print(f"Vendored {total} file(s) into {claude_dir}")

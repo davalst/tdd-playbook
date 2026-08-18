@@ -11,7 +11,7 @@ PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = os.path.join(PLUGIN, "bin")
 HOOKS = os.path.join(PLUGIN, "hooks", "scripts")
 RED_LOCK = os.path.join(HOOKS, "red_lock.py")
-GUARD = os.path.join(HOOKS, "test_lock_guard.py")
+GUARD = os.path.join(HOOKS, "lock_guard.py")
 sys.path.insert(0, BIN)
 
 _results = {"pass": 0, "fail": 0}

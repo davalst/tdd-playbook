@@ -69,6 +69,33 @@ per-type breakdown has no supplier and is not built. A fixture written around "T
 have passed forever while production counted zero. `grade_from_otel` now reports `unmeasured`,
 never `0`, when an export carries no tool events: a zero and a blind spot are different facts.
 
+**The guards stopped breaking downstream pytest.** The Playbook shipped two hook scripts
+named to match pytest's default discovery pattern. They are guards, not tests — but any
+downstream repo whose CI hands CHANGED FILES to pytest collects them, and the same basename
+lands in up to three trees of one repo, so pytest aborts with `import file mismatch` and the
+consumer's push is blocked. Latent from the day Codex vendoring shipped; detonated by a
+routine refresh into cheliped, where every test in THIS repo stayed green throughout because
+the failure only exists inside a consumer's test runner — §1's seam-you-don't-own, at its
+most literal. Renamed to `lock_guard.py` / `weakening_guard.py`.
+
+Two remedies were TESTED and rejected before choosing the rename: a `conftest.py` carrying
+`collect_ignore_glob` does not apply when the path is passed explicitly, and `__init__.py`
+does not resolve the basename clash. Renaming is the only fix that holds inside a CI we
+cannot see.
+
+The rename alone would have fixed nobody who already had us, because the installer only ever
+COPIED — so two mechanisms ship with it. The general one is manifest-driven: anything the
+PREVIOUS install's manifest claims we wrote that is absent from the CURRENT roster is
+removed, so the next rename needs no migration code. The bounded one is a frozen
+`LEGACY_COLLECTIBLE` list, because the trees carrying the broken names predate manifests and
+the derived prune has no input there — cheliped's `.codex/` is exactly that case. Both are
+narrow by construction: only paths we claimed are eligible, and a user's own file in a
+vendored directory is never touched. Proven at the seam that broke, not only in unit tests:
+cheliped's tree was reproduced (3 collection errors), the fixed installer run against it, and
+collection came back clean. The standing invariant —
+`test_no_vendored_file_is_pytest_collectible` — asserts the CLASS rather than the two names,
+so a future guard called `test_anything.py` fails on the day it is added.
+
 **`tag_guard` stopped blocking reads.** It fired on a read-only tag LISTING, then blocked
 `guard_note.py` RECORDING that block because the note quoted the command — making §12's
 accounting mechanism unusable for the one gate most likely to need it. Root cause was the

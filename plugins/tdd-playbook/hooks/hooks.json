@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/test_lock_guard.py\"",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/lock_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: test-lock guard"
           },
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/test_lock_guard.py\"",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/lock_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: test-lock guard (shell)"
           },
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/test_weakening_guard.py\"",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/weakening_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: test-weakening guard"
           },

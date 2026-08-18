@@ -56,7 +56,7 @@
     },
     {
       "id": "fixture-data-guard",
-      "summary": "fixture_guard (WARN by default) \u2014 warns when an expected answer in a test-DATA file (test_cases.json, fixtures, golden) is rewritten or a case removed, the gap test_weakening_guard (test CODE) is blind to. Scoped to answer-value changes: adding a case or editing a non-answer field is silent, so the signal stays rare. Observed in a private calibration run, 2026-08-15; artifact archived privately. Switch: TDD_PLAYBOOK_HOOK_FIXTUREGUARD=off|block.",
+      "summary": "fixture_guard (WARN by default) \u2014 warns when an expected answer in a test-DATA file (test_cases.json, fixtures, golden) is rewritten or a case removed, the gap weakening_guard (test CODE) is blind to. Scoped to answer-value changes: adding a case or editing a non-answer field is silent, so the signal stays rare. Observed in a private calibration run, 2026-08-15; artifact archived privately. Switch: TDD_PLAYBOOK_HOOK_FIXTUREGUARD=off|block.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -138,7 +138,7 @@
       "integration_debt": [
         {
           "id": "test-lock-deadlock-fix-version-echo",
-          "what": "DOWNSTREAM VERSION-ECHO for the TEST-LOCK cross-session deadlock fix (cheliped 2026-08-16, integration-adversary Finding 5). D1 (unified owner + env-less unlock rides the worktree check), D2 (unlock --force for dead/foreign/corrupt locks) and D4 (version-skew out-of-root DoS + actionable message) fix the deadlock at SOURCE and reach downstream via install_into_repo vendoring. BUT a wedged downstream repo running an OLD vendored guard (e.g. 1.30.0) cannot tell whether its copy HAS the fix or IS the wedging version: there is no per-file/semantic version marker in tdd_lock.py/test_lock_guard.py and no doctor line echoing it (install_into_repo --doctor checks commit-date liveness, not this fix's presence). By expiry: add a version stamp the vendored guard exposes and --doctor prints (running-vs-intended, the H8/version-echo shape) so a downstream operator can answer 'does my guard have the deadlock fix?', OR re-date with a decision that the refresh-prompt + commit-date heartbeat suffice.",
+          "what": "DOWNSTREAM VERSION-ECHO for the TEST-LOCK cross-session deadlock fix (cheliped 2026-08-16, integration-adversary Finding 5). D1 (unified owner + env-less unlock rides the worktree check), D2 (unlock --force for dead/foreign/corrupt locks) and D4 (version-skew out-of-root DoS + actionable message) fix the deadlock at SOURCE and reach downstream via install_into_repo vendoring. BUT a wedged downstream repo running an OLD vendored guard (e.g. 1.30.0) cannot tell whether its copy HAS the fix or IS the wedging version: there is no per-file/semantic version marker in tdd_lock.py/lock_guard.py and no doctor line echoing it (install_into_repo --doctor checks commit-date liveness, not this fix's presence). By expiry: add a version stamp the vendored guard exposes and --doctor prints (running-vs-intended, the H8/version-echo shape) so a downstream operator can answer 'does my guard have the deadlock fix?', OR re-date with a decision that the refresh-prompt + commit-date heartbeat suffice.",
           "owner": "david",
           "expires": "2026-11-15"
         },
@@ -1121,7 +1121,7 @@
           "expires": "2026-10-15"
         },
         {
-          "what": "CODEX SURFACE DIVERGENCE (stated, not discovered): tag_guard.py is BLOCKING on the Claude host but `unavailable` on Codex - host-parity-policy.json's codex guards default, debt_ref test-lock/codex-guard-family-parity. Only test_lock_guard has a Codex adapter today. So on Codex the SESSION half of release-tag authority is absent and only the tracked-script scanner applies. By expiry: a Codex adapter for tag_guard, or an explicit decision that Codex sessions do not cut releases in this repo.",
+          "what": "CODEX SURFACE DIVERGENCE (stated, not discovered): tag_guard.py is BLOCKING on the Claude host but `unavailable` on Codex - host-parity-policy.json's codex guards default, debt_ref test-lock/codex-guard-family-parity. Only lock_guard has a Codex adapter today. So on Codex the SESSION half of release-tag authority is absent and only the tracked-script scanner applies. By expiry: a Codex adapter for tag_guard, or an explicit decision that Codex sessions do not cut releases in this repo.",
           "owner": "david",
           "expires": "2026-09-30"
         },
@@ -1335,7 +1335,7 @@
       },
       "integration_debt": [
         {
-          "what": "HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0). The doctrine body cannot drift \u2014 it is CLAUDE.md verbatim \u2014 but the curated host-differences header can: nothing checks that its claims about Codex are still true. It currently asserts that only test_lock_guard has a Codex adapter, which is true today and is exactly the sort of fact that changes without anyone re-reading a header. By expiry: derive the guard list from docs/architecture/host-parity-policy.json instead of restating it, or a test that the two agree.",
+          "what": "HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0). The doctrine body cannot drift \u2014 it is CLAUDE.md verbatim \u2014 but the curated host-differences header can: nothing checks that its claims about Codex are still true. It currently asserts that only lock_guard has a Codex adapter, which is true today and is exactly the sort of fact that changes without anyone re-reading a header. By expiry: derive the guard list from docs/architecture/host-parity-policy.json instead of restating it, or a test that the two agree.",
           "owner": "david",
           "expires": "2026-11-30"
         },

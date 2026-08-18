@@ -14,7 +14,7 @@ workflows. It cannot cover the way tags are actually cut in this repo: a session
 into a single Bash call. No file scan can ever observe that — the population it inspects
 (tracked .py/.sh/.yml) is disjoint from the population that cuts tags. Two fresh-context
 adversaries found this independently on the v1.32.0 diff, and both named the same fix: this
-repo already owns the action-time seam (test_lock_guard, snapshot_guard, exitcode_guard all
+repo already owns the action-time seam (lock_guard, snapshot_guard, exitcode_guard all
 match PreToolUse/Bash), and a sibling guard belongs there. `git for-each-ref` confirms the
 concern is not hypothetical — v1.29.0/v1.30.0/v1.31.0 were all created through ordinary
 Bash on 2026-08-09, and no artifact distinguishes David's `git tag` from the model's.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Planted-input calibration for the TEST-LOCK (bin/tdd_lock.py + test_lock_guard.py).
+"""Planted-input calibration for the TEST-LOCK (bin/tdd_lock.py + lock_guard.py).
 
 The lock is the mechanical form of §1's iron rule (HACK_CATALOG H2/H5) — so the planted
 attack here is the documented one: while a lock is active, an edit to the locked test (or
@@ -15,7 +15,7 @@ import tempfile
 
 PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCK_BIN = os.path.join(PLUGIN, "bin", "tdd_lock.py")
-GUARD = os.path.join(PLUGIN, "hooks", "scripts", "test_lock_guard.py")
+GUARD = os.path.join(PLUGIN, "hooks", "scripts", "lock_guard.py")
 
 _results = {"pass": 0, "fail": 0}
 
@@ -172,7 +172,7 @@ def test_out_of_root_jurisdiction():
 
 def test_cross_session_recovery():
     """cheliped field report (2026-08-16, SECOND live repro): an auto-lock the GUARD imported was
-    stamped with the fallback owner 'claude-hook' (test_lock_guard.py), which the unlock CLI's
+    stamped with the fallback owner 'claude-hook' (lock_guard.py), which the unlock CLI's
     ownership check can NEVER match — its fallback is 'local-worktree-<hash>' — so clear_lock
     REFUSED for every session and the only escape was `rm .git/tdd-playbook/active-lock.json`.
     §13 replay of the exact wedged-lock shape (guard-imported legacy lock, foreign owner).

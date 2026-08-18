@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "acknowledged_inventory_sha256": "86a3e10591e2b9d683b80bb012c6dbb4770b9f92a9acba905b1aaf363d99de52",
+  "acknowledged_inventory_sha256": "4f70b1e21f620cf9c0bf89205e5a33e9d6fdf56ac81620609657ea8b533b5261",
   "defaults": {
     "claude": {
       "commands": {
@@ -49,7 +49,7 @@
   "overrides": {
     "codex": {
       "guards": {
-        "test_lock_guard": {
+        "lock_guard": {
           "status": "supported",
           "producer": "plugins/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
           "installed_target": ".codex/tdd-playbook/adapters/codex/pre_tool_test_lock.py",

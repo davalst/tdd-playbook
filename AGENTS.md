@@ -14,7 +14,7 @@ the host is Codex rather than Claude Code.
   `.claude/`. Install with `python3 scripts/install_into_repo.py --host codex <repo>`, or
   `--host all` for a repo used from both.
 - **Guard coverage is PARTIAL and that is deliberate, not an oversight.** Only
-  `test_lock_guard` has a Codex adapter (`adapters/codex/pre_tool_test_lock.py`). Every other
+  `lock_guard` has a Codex adapter (`adapters/codex/pre_tool_test_lock.py`). Every other
   guard — including `tag_guard`, which reserves release tags for the owner — is `unavailable`
   on Codex per `docs/architecture/host-parity-policy.json`, tracked as dated debt on the
   `test-lock` capability. So on Codex the session-side half of release-tag authority is
@@ -102,7 +102,7 @@ mechanisms.
 1. REFRESH: Clone https://github.com/davalst/tdd-playbook (shallow is fine) to a temp
    directory and run: python3 <clone>/scripts/install_into_repo.py <this repo's root>
    The installer is reconciling: it prunes stale playbook hooks from .claude/settings.json
-   and adds current ones (the four BLOCKING guards: test_weakening_guard, test_lock_guard,
+   and adds current ones (the four BLOCKING guards: weakening_guard, lock_guard,
    snapshot_guard, tag_guard; plus the opt-in exitcode/overmock/exhaustive/flaky/red_lock,
    which ship OFF since v1.32.0 on 31 warns / 0 blocks; plus the warn-by-default
    fixture_guard, which warns when an expected answer in a test-data file is rewritten or a

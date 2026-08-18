@@ -13,7 +13,7 @@ the same upgrade `/claims` got from `verify_citations`.
    assertion — dispatch `red-first-verifier` if there's any doubt), and are COMMITTED.
    Never lock uncommitted tests — the commit is the tamper-evident baseline.
 2. **Lock:** `python3 "${CLAUDE_PLUGIN_ROOT}/bin/tdd_lock.py" lock <test files...>`
-   Include every test file authored from the current plan. The `test_lock_guard` hook now
+   Include every test file authored from the current plan. The `lock_guard` hook now
    BLOCKS edits to those files AND to the verifier surface (conftest.py, pytest/jest/vitest
    configs) until unlock.
 3. **Implement to green** — source edits only. If a locked test blocks you, that is the

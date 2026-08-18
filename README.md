@@ -71,7 +71,7 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 `grade_from_otel`, `capability_registry`, `verify_citations`) into the repo's `.claude/`, rewriting
 `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude`. The installer is **reconciling**: it prunes
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
-four blocking guards (`test_weakening_guard`, `test_lock_guard`, `snapshot_guard`,
+four blocking guards (`weakening_guard`, `lock_guard`, `snapshot_guard`,
 `tag_guard`) plus the opt-in ones (`exitcode_guard`, `exhaustive_claim_guard`, `overmock_guard`,
 `flaky_guard`, `red_lock`) plus the warn-by-default `fixture_guard` — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are
@@ -167,7 +167,7 @@ classed `gate-wrong`.
 
 **WARN by default** — `_FIXTUREGUARD` (`fixture_guard`). Warns when an expected answer in a
 test-data file (`test_cases.json`, fixtures, golden) is rewritten or a case removed — the gap
-`test_weakening_guard` (test code) is blind to. Scoped to answer-value changes: adding a case
+`weakening_guard` (test code) is blind to. Scoped to answer-value changes: adding a case
 or editing a non-answer field is silent, so the signal stays rare. Set `_FIXTUREGUARD=block`
 to enforce or `=off` to silence.
 

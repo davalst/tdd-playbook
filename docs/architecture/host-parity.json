@@ -583,6 +583,25 @@
           "status": "unavailable"
         }
       },
+      "lock_guard": {
+        "claude": {
+          "activation_prerequisite": "Claude project trust and enabled hook configuration",
+          "binding": "hook:lock_guard.py",
+          "installed_target": ".claude/hooks/scripts/lock_guard.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/hooks/scripts/lock_guard.py",
+          "status": "supported"
+        },
+        "codex": {
+          "activation_prerequisite": "Codex project trust and explicit hook-definition trust",
+          "binding": "hook:pre_tool_test_lock.py",
+          "debt_ref": "test-lock/codex-guard-family-parity",
+          "installed_target": ".codex/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
+          "status": "supported"
+        }
+      },
       "overmock_guard": {
         "claude": {
           "activation_prerequisite": "Claude project trust and enabled hook configuration",
@@ -651,38 +670,19 @@
           "status": "unavailable"
         }
       },
-      "test_lock_guard": {
+      "weakening_guard": {
         "claude": {
           "activation_prerequisite": "Claude project trust and enabled hook configuration",
-          "binding": "hook:test_lock_guard.py",
-          "installed_target": ".claude/hooks/scripts/test_lock_guard.py",
+          "binding": "hook:weakening_guard.py",
+          "installed_target": ".claude/hooks/scripts/weakening_guard.py",
           "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
-          "producer": "plugins/tdd-playbook/hooks/scripts/test_lock_guard.py",
-          "status": "supported"
-        },
-        "codex": {
-          "activation_prerequisite": "Codex project trust and explicit hook-definition trust",
-          "binding": "hook:pre_tool_test_lock.py",
-          "debt_ref": "test-lock/codex-guard-family-parity",
-          "installed_target": ".codex/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
-          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
-          "producer": "plugins/tdd-playbook/adapters/codex/pre_tool_test_lock.py",
-          "status": "supported"
-        }
-      },
-      "test_weakening_guard": {
-        "claude": {
-          "activation_prerequisite": "Claude project trust and enabled hook configuration",
-          "binding": "hook:test_weakening_guard.py",
-          "installed_target": ".claude/hooks/scripts/test_weakening_guard.py",
-          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
-          "producer": "plugins/tdd-playbook/hooks/scripts/test_weakening_guard.py",
+          "producer": "plugins/tdd-playbook/hooks/scripts/weakening_guard.py",
           "status": "supported"
         },
         "codex": {
           "debt_ref": "test-lock/codex-guard-family-parity",
           "expires": "2026-09-30",
-          "installed_target": ".codex/tdd-playbook/hooks/scripts/test_weakening_guard.py",
+          "installed_target": ".codex/tdd-playbook/hooks/scripts/weakening_guard.py",
           "owner": "david",
           "status": "unavailable"
         }
@@ -690,6 +690,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "86a3e10591e2b9d683b80bb012c6dbb4770b9f92a9acba905b1aaf363d99de52",
+  "inventory_sha256": "4f70b1e21f620cf9c0bf89205e5a33e9d6fdf56ac81620609657ea8b533b5261",
   "schema_version": 2
 }

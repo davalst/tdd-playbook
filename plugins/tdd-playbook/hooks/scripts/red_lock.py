@@ -222,12 +222,12 @@ def main():
         if locked:
             # THE ANNOUNCEMENT IS UNCONDITIONAL, and that is not a style choice. This hook is
             # a PRODUCER, not a warner: apply_run_outcome has already written active-lock.json
-            # by the time we get here, and the still-BLOCKING test_lock_guard will hard-stop
+            # by the time we get here, and the still-BLOCKING lock_guard will hard-stop
             # the next edit to those files. Routing the announcement through emit() made it
             # obey this hook's mode — so when redlock moved to default-off in v1.32.0 the
             # lock was still created and the agent was never told, turning "you were told,
             # then blocked" into "blocked out of nowhere." Measured in a scratch repo: zero
-            # stderr, a real lock on disk, then test_lock_guard exit 2. A gate may be demoted;
+            # stderr, a real lock on disk, then lock_guard exit 2. A gate may be demoted;
             # the state change it performs may not become invisible with it.
             sys.stderr.write(
                 "⚠️  TDD Playbook · {} · AUTO-LOCK\n"

@@ -4,7 +4,7 @@
 The strongest validated defense against agent test-gaming is making tests READ-ONLY to the
 implementing agent: commit the failing tests, lock them, implement to green, unlock with a
 stated reason if (and only if) the test itself turns out to be wrong. Prompts don't stop
-test-editing; this does — `test_lock_guard.py` (PreToolUse) BLOCKS edits to locked files
+test-editing; this does — `lock_guard.py` (PreToolUse) BLOCKS edits to locked files
 while a lock is active, and to the verifier surface (conftest.py, test configs) wholesale.
 
     tdd_lock.py lock <file> [...]     # record path + sha256 of each test file
@@ -51,7 +51,7 @@ FEEDS_RETIREMENT = "gate-wrong"
 
 # ONE owner for the invocation every guard prints. Six copies existed and only one was
 # updated when --class became required in v1.32.0, so the most-seen instruction in the
-# product (test_lock_guard's block message, 16 blocks) taught a command that now exits 2.
+# product (lock_guard's block message, 16 blocks) taught a command that now exits 2.
 UNLOCK_HINT = ('python3 <plugin>/bin/tdd_lock.py unlock --reason "why" '
                '--class phase|feature-end|test-wrong|gate-wrong')
 GATE_WRONG_MIN = 30
