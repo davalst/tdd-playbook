@@ -60,6 +60,17 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    a duplicate makes mutmut 3.6 abort after stats collection and names the cause NOWHERE in its
    output, so the symptom you would otherwise chase is the wrong one; and every entry must
    resolve to a real file.
+   **RUN THE PASS THROUGH `python3 "${CLAUDE_PLUGIN_ROOT}/bin/mutation_run.py" --scope <module>
+   --suite-args "<pytest args>" --max-minutes N`.** Its preflight is on the EXECUTION path, so it
+   cannot be skipped: it refuses a RED baseline, refuses zero-or-unknown collection, and refuses a
+   scope whose projection (mutants x the MEASURED baseline) exceeds the budget — all before a
+   mutant exists. pytest + mutmut only; another stack is refused, never guessed. It covers the
+   collection and green-baseline checks MECHANICALLY; roster integrity and tracer attribution
+   remain yours to assert and are unchanged below. Origin (2026-08-18): four runs produced one
+   score in a single downstream session — one died on a red baseline, one timed out at 1800s
+   because the baseline had grown and the timeout had not. Both conditions were already written
+   in three places, and reached for in none; §10's rule is that a gate which relies on being
+   remembered is the honor-system seam.
    **Baseline green means green in the TOOL'S REWRITTEN TREE, not just at HEAD** — different
    facts. Mutation tools run the suite against an instrumented copy, so a suite green at HEAD can
    be RED there and produce the identical generate-but-never-execute false green. The usual cause

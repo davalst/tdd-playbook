@@ -4,7 +4,7 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `c2882586e27a5ab32ce6444452baab83a2a28dc406de88e1e61361e16e43eb73`
+- `gate-manifest.json` — `67f0be15a52961262626416eae94ca36409319394f205db961d42f432c80a78c`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `e03854fa9ea673904392a59ff80f872656e50ccdba7a447c95364fba6d235f0e`
 - `docs/architecture/host-parity.json` — `d68cb54d57c285a5afa3dc7b2a1c72ca3d6b49f41367b9eca681e38d19a23e21`
@@ -60,11 +60,11 @@
 
 - `sh scripts/civerd_gate.sh` — **AUTHORIZING** complete local gate and CIVerd suite command.
 - `sh scripts/civerd_gate.sh affected --base <revision>` — **NON-AUTHORIZING** diagnostic subset; ambiguous scope falls back to full.
-- Discovered suites: 27. Fixed stages: 4. Total stages: 31.
-- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_holdout_confinement`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
+- Discovered suites: 28. Fixed stages: 4. Total stages: 32.
+- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_holdout_confinement`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_mutation_preflight`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
-- Acknowledged roster digest: `6239dbea0fcb7fb6e01227fd5d0b1e74999deef8b1b24d9dbce0a5d7f1be79bb`
-- Acknowledged execution-manifest digest: `4bfd3e672c92d0f32eead8d39bcadb2a68f71065d5a4903f47454eff439d634e`
+- Acknowledged roster digest: `4c226b0f56b69590b4861efcc95ab79f39fea2de0aebe1d48bcdc9c47d4878ce`
+- Acknowledged execution-manifest digest: `50de29dcae2b21f758014178bcb646e7cf4b4f904a5d554bf599c9f67577095c`
 
 ## Host parity
 

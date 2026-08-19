@@ -497,8 +497,20 @@ nothing. These are the documented false-green modes — each has bitten a real g
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
   the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
   shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
+- **SIZE THE TIMEOUT FROM THE MEASURED BASELINE — every time the baseline changes.** A budget is
+  a constant; a suite is not. One reported run died at 1800s because four suites had been added
+  and the timeout had not moved: the pass measured nothing and cost thirty minutes to say so.
+  Project it — `mutants x measured baseline x safety` — and refuse an unaffordable scope BEFORE
+  starting, naming the number. `bin/mutation_run.py` does this; a constant you last tuned against
+  a smaller suite is a guess wearing a unit.
+- **When the surviving mutants are ALREADY KNOWN, hand-plant them.** Re-running a full pass to
+  re-observe survivors you have already identified buys the same evidence for two hours instead
+  of seconds. Apply them directly, run the killing tests, and label the broad pass UNMEASURED if
+  you did not re-run it — the honest label costs nothing and the re-run costs the afternoon.
 - **PREFLIGHT the cheap checks BEFORE the expensive pass — the same assertions, seconds instead of
-  an hour.** Every rule above reads "before trusting a pass," which invites running them post-hoc,
+  an hour.** Checks (b) COLLECTION and (c) GREEN BASELINE are MECHANICAL now — run the pass
+  through `bin/mutation_run.py` and they cannot be skipped, because running the pass is running
+  them. (a) and (d) remain the operator's. Every rule above reads "before trusting a pass," which invites running them post-hoc,
   after you have already spent the 40 minutes you must then discard. Run them FIRST, in this order,
   and REFUSE the pass on any failure: (1) roster integrity — no DUPLICATE entries (a duplicated
   `paths_to_mutate` path makes mutmut 3.6 abort after stats collection, with the cause named nowhere
@@ -981,6 +993,11 @@ enumeration unprompted — the flow table in §0 is where it lands.
   plus a serialised session (felt, on a developer machine, as heat and a blocked laptop).
   Reaching for the full suite to ask "did I break anything else?" is the victim-sweep question
   (§1): answer it statically, then run the affected slice.
+- **One chained waiter per long job — never repeated polling.** A loop of `sleep 30; check`
+  spends tokens and wall-clock to learn nothing, and its cost scales with the job it is watching.
+  Start the job, wait on it once, and let completion wake you. (Written after doing the opposite
+  four times in one session while waiting on CI.) The same rule retires orphaned duplicates: one
+  waiter means one job, so a second copy left running is visible rather than silently billed.
 - **Trust gates must fire AUTOMATICALLY on the diffs that can break them** — "remember to run it" is the
   honor-system seam §13 calls gameable (a regression sits green-on-`main` until someone remembers). The
   PRINCIPLE is auto-on-risky-diff; the MECHANISM scales to need:

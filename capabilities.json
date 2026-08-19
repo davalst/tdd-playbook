@@ -1557,6 +1557,35 @@
           ]
         }
       ]
+    },
+    {
+      "id": "mutation-preflight",
+      "summary": "Runs a scoped mutation pass with its preflight ON the execution path: refuses a red baseline, zero-or-unknown collection, and an unaffordable projection before any mutant exists.",
+      "user_facing": false,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "python3 <plugin>/bin/mutation_run.py --scope <module> --suite-args \"<pytest args>\" --max-minutes N; it IS the documented path for /mutate step 2 (b)+(c), so there is nothing to turn on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/commands/mutate.md",
+        "plugins/tdd-playbook/agents/mutation-runner.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_preflight_refuses_red_baseline_and_empty_collection"
+      ],
+      "liveness": {
+        "probe": "gate-run frequency IS the probe, stated rather than assumed: bin/mutation_run.py is a force_full path and tests/test_mutation_preflight.py runs on every gate, so a wrapper that stopped refusing fails the next push. What the gate CANNOT see is whether an operator invoked mutmut directly instead \u2014 that is the residual, and it is why the command and brief name this as the path rather than merely recommending it."
+      },
+      "integration_debt": [
+        {
+          "what": "CODEX PARITY, stated not assumed: bin/ ships to Codex (CODEX_COPY_TREES), so mutation_run.py is directly runnable there \u2014 but BOTH of its documented consumers (commands/mutate.md, agents/mutation-runner.md) are Claude-only by the deliberate 2026-08-07 decision that Codex-shaped commands/agents are undiscoverable and become integration islands. So on Codex the mechanism exists with nothing pointing at it, which is the dark-by-default shape this registry exists to surface. Done = a native Codex consumer names it (adapters/codex), or a recorded decision that Codex operators reach it through the vendored bin/ path and why that is sufficient.",
+          "owner": "david",
+          "expires": "2026-11-15"
+        }
+      ]
     }
   ]
 }

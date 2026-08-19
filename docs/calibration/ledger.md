@@ -809,3 +809,22 @@ Registered `up` on the eight scenarios owned by the four briefs that have them
 | id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
 |---|---|---|---|---|---|---|---|---|
 | L-20260818-03 | 2026-08-18 | cc9afcb | plugins/tdd-playbook/agents/architecture-adversary.md; plugins/tdd-playbook/agents/control-quality-adversary.md; plugins/tdd-playbook/agents/observability-adversary.md; plugins/tdd-playbook/agents/script-adversary.md; plugins/tdd-playbook/agents/test-quality-adversary.md | frontmatter-only YAML repair so a strict host can load these briefs at all; bodies byte-identical | csv-escape-fixed-at-call-site; special-case-bypasses-both-copies; control-cqa-verifier-overflag; cqa-not-clean-control; swallowed-export-failure; control-export-failure-surfaces; assertion-free-smoke-test; control-asserting-smoke-test | up | 8 | an agent a strict parser cannot load cannot catch its plant. If the calibration dispatch path parses frontmatter, recall rises; if it does not, this reads FLAT and that answers whether the harness has been scoring agents the host could not load — a blind spot worth more than a satisfied instrument |
+
+### Registered 2026-08-19 — baseline 10e804d: the mutation preflight moves onto the execution path
+
+`bin/mutation_run.py` runs the pass, so §4's collection and green-baseline checks cannot be
+skipped — running the pass IS running them. Roster integrity and tracer attribution stay in the
+brief, unchanged: this ADDS a mechanism and replaces no rule.
+
+Registered against three surfaces because all three are ledger surfaces. `SKILL.md` and
+`commands/` are deliberately NOT effectful (the 2026-08-14 decision that doctrine yield is
+unmeasured), so they take `expect: none`. `agents/mutation-runner.md` IS effectful and takes a
+real prediction — and the prediction is the point: `red-baseline-false-green` plants exactly the
+condition step 1 now refuses mechanically, so recall on it should RISE. If it reads FLAT, the
+mechanism did not reach the agent's dispatch path, and that is a finding worth more than a
+satisfied instrument.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260819-01 | 2026-08-19 | 10e804d | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md; plugins/tdd-playbook/commands/mutate.md | §4 gains timeout-sizing and hand-planting rules; §10 gains one-waiter; /mutate names mutation_run.py for checks (b) and (c) while (a) and (d) stay as written | — | none | 0 | doctrine yield is deliberately unmeasured here (2026-08-14 decision); the mechanism's effect is registered on the agent brief row below, where it can actually move |
+| L-20260819-02 | 2026-08-19 | 10e804d | plugins/tdd-playbook/agents/mutation-runner.md | the brief names mutation_run.py as the path for the collection and green-baseline checks, so the preflight rides the execution path instead of the agent's memory | red-baseline-false-green | up | 1 | the plant IS a red baseline, and the wrapper refuses one before any mutant exists. If recall does not move, the wrapper is not on the path the agent actually takes — which is the more valuable answer |

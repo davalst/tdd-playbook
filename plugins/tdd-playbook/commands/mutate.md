@@ -27,8 +27,14 @@ check across one). Steps:
    **Precondition for a REVERT-BASED script** (one that `git checkout`s to restore source):
    commit/stash first, or gate it on `with_snapshot.py preflight` — a bare checkout silently
    clobbers uncommitted work.
-2. **PREFLIGHT BEFORE THE EXPENSIVE PASS — seconds, not the 40 minutes you'd then discard.** In
-   order, refusing on any failure: (a) roster integrity — no DUPLICATE `paths_to_mutate` entries
+2. **PREFLIGHT BEFORE THE EXPENSIVE PASS — seconds, not the 40 minutes you'd then discard.**
+   **Checks (b) and (c) are MECHANICAL — run the pass through
+   `python3 "${CLAUDE_PLUGIN_ROOT}/bin/mutation_run.py" --scope <module> --suite-args "<pytest
+   args>" --max-minutes N` and they cannot be skipped, because running the pass IS running them.**
+   It refuses a RED baseline, refuses zero-or-unknown collection, and refuses a scope whose
+   projection (mutants x the MEASURED baseline) exceeds the budget — before any mutant exists.
+   pytest + mutmut only; another stack is refused rather than guessed. (a) and (d) remain YOURS:
+   in order, refusing on any failure: (a) roster integrity — no DUPLICATE `paths_to_mutate` entries
    (a duplicate makes mutmut 3.6 abort after stats collection and names the cause nowhere), every
    entry resolves, every entry is in a gate invocation; (b) the kill tests are COLLECTED by the
    configured killing suite, exact count asserted; (c) that suite is GREEN **against the tool's
