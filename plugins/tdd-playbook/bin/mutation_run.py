@@ -49,7 +49,7 @@ _COLLECTED = re.compile(r"collected (\d+) item")
 # The OUTCOME, not the collection. "5 passed", "3 failed, 2 passed", "no tests ran".
 _PASSED = re.compile(r"(\d+) passed")
 _FAILED = re.compile(r"(\d+) (?:failed|error)")
-_NO_TESTS = re.compile(r"no tests ran", re.I)
+_NO_TESTS = re.compile(r"no tests ran", re.IGNORECASE)
 # A summary that exists but reports no passes — "700 skipped in 1s" — is ZERO passed, which is a
 # different (and more useful) refusal than "I could not read the summary".
 _OTHER_OUTCOME = re.compile(r"\d+ (?:skipped|deselected|xfailed|xpassed|warning)")
@@ -84,12 +84,12 @@ def forbidden_composition(suite_args):
     try:
         parts = shlex.split(suite_args or "")
     except ValueError as exc:
-        return "cannot parse --suite-args ({}); quote it as you would for a shell".format(exc)
+        return f"cannot parse --suite-args ({exc}); quote it as you would for a shell"
     for part in parts:
         if part in _NON_EXECUTING:
-            return ("refusing `{}` in --suite-args: it collects without executing, so a GREEN "
+            return (f"refusing `{part}` in --suite-args: it collects without executing, so a GREEN "
                     "baseline would prove nothing and the measured time would make any scope "
-                    "look affordable".format(part))
+                    "look affordable")
     return None
 
 
@@ -102,10 +102,10 @@ def projection_problem(mutants, baseline_seconds, max_minutes, factor=1.0):
     two refusals are what keep this number honest; the projection alone cannot police itself."""
     projected = (mutants * baseline_seconds * factor) / 60.0
     if projected > max_minutes:
-        return ("refusing before the expensive pass: {} mutants x {:.1f}s measured baseline "
-                "projects ~{} minutes, over the {}-minute budget. Raise --max-minutes, narrow "
+        return (f"refusing before the expensive pass: {mutants} mutants x {baseline_seconds:.1f}s measured baseline "
+                f"projects ~{round(projected)} minutes, over the {max_minutes}-minute budget. Raise --max-minutes, narrow "
                 "--scope, or speed the suite — but know the number first"
-                .format(mutants, baseline_seconds, round(projected), max_minutes))
+                )
     return None
 
 
@@ -137,38 +137,38 @@ def baseline(suite_argv, run=None, timeout=None):
     try:
         proc = run_bounded(suite_argv, timeout, run=run)
     except subprocess.TimeoutExpired:
-        return False, ("baseline exceeded its {}s bound — UNMEASURED, never assumed green "
-                       "(child process group killed)".format(timeout)), time.time() - started, None
+        return False, (f"baseline exceeded its {timeout}s bound — UNMEASURED, never assumed green "
+                       "(child process group killed)"), time.time() - started, None
     except (OSError, ValueError) as exc:
-        return False, "baseline suite could not be run: {}".format(exc), 0.0, None
+        return False, f"baseline suite could not be run: {exc}", 0.0, None
     seconds = time.time() - started
     text = (proc.stdout or "") + (proc.stderr or "")
     tail = text.strip()[-1200:]
     if proc.returncode != 0:
         failed = _FAILED.search(text)
-        cause = ("the suite is RED ({} failing) — a mutation score measured against it is "
-                 "meaningless (the `red-baseline-false-green` plant)".format(failed.group(1))
+        cause = (f"the suite is RED ({failed.group(1)} failing) — a mutation score measured against it is "
+                 "meaningless (the `red-baseline-false-green` plant)"
                  if failed else
-                 "pytest exited {} — that is NOT necessarily a red suite (2=interrupted, "
-                 "3=internal, 4=usage/ini, 5=no tests). What pytest said:".format(proc.returncode))
-        return False, "baseline refused — {}\n{}".format(cause, tail), seconds, None
+                 f"pytest exited {proc.returncode} — that is NOT necessarily a red suite (2=interrupted, "
+                 "3=internal, 4=usage/ini, 5=no tests). What pytest said:")
+        return False, f"baseline refused — {cause}\n{tail}", seconds, None
     collected = parse_collected(text)
     if collected is None:
         return False, ("UNKNOWN collection — no pytest `collected N items` line. This wrapper "
                        "supports pytest + mutmut only and fails closed rather than guessing a "
-                       "denominator. Output was:\n{}".format(tail)), seconds, None
+                       f"denominator. Output was:\n{tail}"), seconds, None
     if collected == 0:
         return False, ("zero tests collected — a vacuous killing suite reports 0 survivors and "
                        "sails every guard (§4: `generated > 0 != measured`)"), seconds, 0
     passed = parse_passed(text)
     if passed is None:
-        return False, ("UNKNOWN outcome — {} collected but no `N passed` summary, so nothing "
-                       "proves a test EXECUTED. Output was:\n{}".format(collected, tail)), \
+        return False, (f"UNKNOWN outcome — {collected} collected but no `N passed` summary, so nothing "
+                       f"proves a test EXECUTED. Output was:\n{tail}"), \
             seconds, collected
     if passed == 0:
-        return False, ("{} collected but ZERO passed — a suite that executes nothing is green "
+        return False, (f"{collected} collected but ZERO passed — a suite that executes nothing is green "
                        "and measures nothing (all-skipped is the common shape). UNMEASURED, "
-                       "never green".format(collected)), seconds, collected
+                       "never green"), seconds, collected
     return True, "", seconds, collected
 
 
@@ -192,7 +192,7 @@ def mutmut_config_scope(root="."):
         try:
             parser.read(path)
         except configparser.Error as exc:
-            return None, "{} is unparseable: {}".format(name, exc)
+            return None, f"{name} is unparseable: {exc}"
         if parser.has_section("mutmut"):
             for key in ("source_paths", "paths_to_mutate"):
                 if parser.has_option("mutmut", key):
@@ -244,9 +244,9 @@ def main(argv=None, run=None):
     suite_argv = [sys.executable, "-m", "pytest"] + shlex.split(args.suite_args)
     ok, why, seconds, collected = baseline(suite_argv, run=run, timeout=bound)
     if not ok:
-        print("mutation_run: REFUSED — {}".format(why), file=sys.stderr)
+        print(f"mutation_run: REFUSED — {why}", file=sys.stderr)
         return 1
-    print("mutation_run: baseline GREEN — {} collected, {:.1f}s measured".format(collected, seconds))
+    print(f"mutation_run: baseline GREEN — {collected} collected, {seconds:.1f}s measured")
 
     if args.expected_mutants is not None:
         proj = projection_problem(args.expected_mutants, seconds, args.max_minutes, args.factor)
@@ -255,7 +255,7 @@ def main(argv=None, run=None):
             return 1
     else:
         print("mutation_run: projection SKIPPED (no --expected-mutants) — unmeasured, not "
-              "assumed affordable; the {}-minute hard bound still applies".format(args.max_minutes))
+              f"assumed affordable; the {args.max_minutes}-minute hard bound still applies")
     if args.dry_run:
         return 0
 
@@ -264,22 +264,22 @@ def main(argv=None, run=None):
         print("mutation_run: REFUSED — " + problem, file=sys.stderr)
         return 1
     if args.scope not in configured:
-        print("mutation_run: REFUSED — --scope {!r} is not what mutmut will mutate; its config "
-              "says {!r}. Mutating a different tree than the one you asked about is a score "
+        print(f"mutation_run: REFUSED — --scope {args.scope!r} is not what mutmut will mutate; its config "
+              f"says {configured!r}. Mutating a different tree than the one you asked about is a score "
               "about the wrong code, which is worse than no score."
-              .format(args.scope, configured), file=sys.stderr)
+              , file=sys.stderr)
         return 1
     mut = mutmut_argv(args.max_children)
-    print("mutation_run: invoking " + " ".join(mut) + " (scope from config: {})".format(configured))
+    print("mutation_run: invoking " + " ".join(mut) + f" (scope from config: {configured})")
     try:
         proc = run_bounded(mut, args.max_minutes * 60, run=run)
     except subprocess.TimeoutExpired:
-        print("mutation_run: mutation pass exceeded {} minutes — UNMEASURED; process group "
-              "killed, no orphans".format(args.max_minutes), file=sys.stderr)
+        print(f"mutation_run: mutation pass exceeded {args.max_minutes} minutes — UNMEASURED; process group "
+              "killed, no orphans", file=sys.stderr)
         return 1
     except OSError as exc:
-        print("mutation_run: mutmut could not be run ({}) — refusing rather than reporting a "
-              "score nothing produced".format(exc), file=sys.stderr)
+        print(f"mutation_run: mutmut could not be run ({exc}) — refusing rather than reporting a "
+              "score nothing produced", file=sys.stderr)
         return 1
     sys.stdout.write(proc.stdout or "")
     return proc.returncode

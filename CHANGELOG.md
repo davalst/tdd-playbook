@@ -3,6 +3,27 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.44.1 — 2026-08-19
+
+**Vendored code should not add lint noise to the repo it lands in.** Refreshing a downstream repo
+to 1.44.0 turned its lint gate red: `bin/mutation_run.py` tripped 19 `UP032` (f-string) and one
+`FURB167` under an ordinary ruff ruleset. All twenty are fixed. The Playbook ships INTO other
+people's repos, so its own files carrying avoidable violations is an adoption cost it has no
+right to impose — the host was not wrong to lint what landed in its tree.
+
+**A flaky test of mine, caught by the fix and removed rather than retried.** The projection
+assertion depended on `baseline()` measuring a non-zero wall-clock, but the injected double
+returns instantly and can elapse 0.0 on a coarse clock — making everything look affordable. It
+passed until it didn't. §7 allows no retry-into-green, so the double now has a deliberate 10ms
+floor: the measurement stays real, the timing stops deciding the outcome. Verified stable across
+three consecutive runs.
+
+**Stated, not fixed here:** the same downstream repo lints the ENTIRE vendored tree — 310 ruff
+errors across `.claude/bin/`, of which mine were 19. That is a host configuration question
+(vendored third-party code is usually excluded, like `site-packages`), and it is the host's call,
+not the Playbook's. Fixing one file does not make the other 291 the Playbook's business to
+change under someone else's ruleset.
+
 ## 1.44.0 — 2026-08-19
 
 **The mutation preflight moves onto the execution path.** SKILL §4 has required a preflight for

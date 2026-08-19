@@ -27,6 +27,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 PLUGIN = os.path.dirname(HERE)
@@ -195,8 +196,14 @@ def test_main_actually_invokes_mutmut():
 
     def rec(argv, **kw):
         seen.append(list(argv))
-        out = ("collected 5 items\n5 passed in 1s\n" if "pytest" in " ".join(argv)
-               else "mutmut done\n")
+        # A DELIBERATE 10ms floor. baseline() measures real wall-clock, and an instantly
+        # returning double can elapse 0.0 on a coarse clock — which made the projection
+        # assertion below depend on timer granularity. It flaked exactly once, which is once
+        # more than §7 allows: a test that passes on timing is not a test. The sleep makes the
+        # measured baseline deterministic without faking the measurement itself.
+        time.sleep(0.01)
+        seen_pytest = "pytest" in " ".join(argv)
+        out = "collected 5 items\n5 passed in 1s\n" if seen_pytest else "mutmut done\n"
         return subprocess.CompletedProcess(argv, 0, out, "")
 
     root = tempfile.mkdtemp()
