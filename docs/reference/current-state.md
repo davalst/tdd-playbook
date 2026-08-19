@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `e03854fa9ea673904392a59ff80f872656e50ccdba7a447c95364fba6d235f0e`
 - `docs/architecture/host-parity.json` — `d68cb54d57c285a5afa3dc7b2a1c72ca3d6b49f41367b9eca681e38d19a23e21`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `b1137699ae5c8db44a1c89da566b4fce444691693a2c62b3c68fa8a6a8a43179`
+- `capabilities.json` — `b676656b6181f1038e0c416994a29dfcc9091410f82df9ccb11095902f3b69c1`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -75,7 +75,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 32. Owned dated integration-debt entries: 63.
+- Registered capabilities: 33. Owned dated integration-debt entries: 64.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -139,6 +139,7 @@
 - `holdout-control-validation/dev-calibration-validate-item-reuse` — The PUBLIC dev corpus likely has the same disease (controls approved without a verifier run)… (owner `david`, expires `2026-11-15`)
 - `holdout-control-validation/holdout-corpus-remediation-sweep` — THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16… (owner `david`, expires `2026-09-30`)
 - `holdout-control-validation/population-snapshot-consumers` — integration-adversary ISLAND2 + arch-F7 (2026-08-16)… (owner `david`, expires `2026-11-15`)
+- `mutation-preflight` — CODEX PARITY, stated not assumed… (owner `david`, expires `2026-11-15`)
 
 ## Adversarial review records
 
