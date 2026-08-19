@@ -172,8 +172,13 @@ def test_cli_is_the_real_seam():
 def test_main_actually_invokes_mutmut():
     """THE finding that made the first draft UNSAFE: main() printed advice and returned 0 while
     four documents said the pass "cannot be skipped, because running the pass IS running the
-    preflight". A wrapper that only prints is the failure its own docstring indicts. This test
-    fails on that draft, which is the point — it asserts the mutation tool is EXECUTED."""
+    preflight". A wrapper that only prints is the failure its own docstring indicts.
+
+    Note what this test needs that the first version did not: a real `[mutmut]` config. mutmut
+    3.x takes no --paths-to-mutate flag, so an unconfigured repo is REFUSED before invocation —
+    which is why this must set up the same conditions production requires, rather than mocking
+    them away."""
+    import tempfile
     m = load()
     seen = []
 
@@ -183,25 +188,91 @@ def test_main_actually_invokes_mutmut():
                else "mutmut done\n")
         return subprocess.CompletedProcess(argv, 0, out, "")
 
-    rc = m.main(["--scope", "app/x.py", "--suite-args", "tests/", "--max-minutes", "30"], run=rec)
-    check("main() exits 0 on a clean pass", rc == 0, rc)
-    check("main() ACTUALLY INVOKES mutmut (not a print)",
-          any(a and a[0] == "mutmut" for a in seen), seen)
-    check("the mutation argv carries the --scope through",
-          any("app/x.py" in a for a in seen if a and a[0] == "mutmut"), seen)
+    root = tempfile.mkdtemp()
+    with open(os.path.join(root, "setup.cfg"), "w") as fh:
+        fh.write("[mutmut]\nsource_paths=app/\n")
+    cwd = os.getcwd()
+    try:
+        os.chdir(root)
+        rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec)
+        check("main() exits 0 on a clean pass", rc == 0, rc)
+        check("main() ACTUALLY INVOKES mutmut (not a print)",
+              any(a and a[0] == "mutmut" for a in seen), seen)
+        check("the invoked argv is mutmut 3.x's REAL shape (no 2.x flags)",
+              all("--paths-to-mutate" not in a and "--runner" not in a
+                  for a in seen if a and a[0] == "mutmut"), seen)
 
-    # the projection is WIRED, not merely unit-tested
-    seen.clear()
-    # --factor is large because the injected baseline returns instantly; the point of THIS test
-    # is that the projection is WIRED into main(), not that the arithmetic is right (that is
-    # tested directly above). The near-zero-baseline weakness is stated in projection_problem's
-    # docstring — a fast suite makes everything look affordable, which is why --collect-only and
-    # zero-passed are refused upstream.
-    rc = m.main(["--scope", "app/x.py", "--suite-args", "tests/", "--max-minutes", "1",
-                 "--expected-mutants", "5000", "--factor", "1000000"], run=rec)
-    check("an unaffordable projection REFUSES before invoking mutmut", rc == 1, rc)
-    check("...and mutmut was never reached",
-          not any(a and a[0] == "mutmut" for a in seen), seen)
+        # a scope that disagrees with mutmut's config is refused: mutating a different tree
+        # than the one asked about is a score about the wrong code
+        seen.clear()
+        rc = m.main(["--scope", "other/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec)
+        check("PLANTED: --scope disagreeing with mutmut's config is REFUSED", rc == 1, rc)
+        check("...and mutmut was never reached", not any(a and a[0] == "mutmut" for a in seen), seen)
+
+        # the projection is WIRED, not merely unit-tested
+        seen.clear()
+        rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "1",
+                     "--expected-mutants", "5000", "--factor", "1000000"], run=rec)
+        check("an unaffordable projection REFUSES before invoking mutmut", rc == 1, rc)
+        check("...and mutmut was never reached",
+              not any(a and a[0] == "mutmut" for a in seen), seen)
+    finally:
+        os.chdir(cwd)
+
+
+def test_against_REAL_mutmut_not_a_mock():
+    """The seam I do not own. Everything above injects `run`, and an injected double accepts any
+    argv — which is exactly how the first draft shipped mutmut 2.x flags (`--paths-to-mutate`,
+    `--runner`) that the installed 3.x binary rejects outright. H9: a double must never supply a
+    seam production lacks. So this drives the REAL tool end to end.
+
+    Skips only if mutmut is genuinely absent, and says so rather than passing quietly."""
+    import shutil, tempfile, textwrap
+    m = load()
+    if shutil.which("mutmut") is None:
+        check("REAL mutmut unavailable — this check is UNMEASURED, not passed", False,
+              "install mutmut to exercise the seam this wrapper actually talks to")
+        return
+
+    root = tempfile.mkdtemp()
+    os.makedirs(os.path.join(root, "app")); os.makedirs(os.path.join(root, "tests"))
+    with open(os.path.join(root, "app", "calc.py"), "w") as fh:
+        fh.write("def add(a, b):\n    return a + b\n")
+    with open(os.path.join(root, "tests", "test_calc.py"), "w") as fh:
+        fh.write(textwrap.dedent("""
+            from app.calc import add
+            def test_add():
+                assert add(2, 2) == 4
+                assert add(-1, 1) == 0
+        """))
+
+    # 1. NO config -> refuse, naming the fix. This is the real first-run failure: with no
+    #    [mutmut] section even `mutmut --version` dies "Could not figure out where the code is".
+    scope, problem = m.mutmut_config_scope(root)
+    check("REAL: unconfigured mutmut is REFUSED, not invoked", scope is None and problem)
+    check("...and the refusal hands over the exact fix",
+          problem and "source_paths" in problem, problem)
+
+    # 2. configured -> the scope comes from config, because 3.x has no flag for it
+    with open(os.path.join(root, "setup.cfg"), "w") as fh:
+        fh.write("[mutmut]\nsource_paths=app/\n")
+    scope, problem = m.mutmut_config_scope(root)
+    check("REAL: configured scope is read from mutmut's own config",
+          scope == "app/" and problem is None, (scope, problem))
+
+    # 3. the argv we build is one the REAL binary accepts (2.x flags would fail here)
+    argv = m.mutmut_argv(max_children=2)
+    proc = subprocess.run(argv + ["--help"], cwd=root, capture_output=True, text=True, timeout=120)
+    check("REAL: our argv shape is accepted by the installed mutmut", proc.returncode == 0,
+          (proc.returncode, (proc.stdout + proc.stderr)[-200:]))
+
+    # 4. end to end: the real tool runs and reports a killed mutant
+    proc = subprocess.run(argv, cwd=root, capture_output=True, text=True, timeout=300)
+    out = proc.stdout + proc.stderr
+    check("REAL: mutmut actually ran to completion", proc.returncode == 0,
+          (proc.returncode, out[-200:]))
+    check("REAL: it reports mutation results (a killed mutant), not just a clean exit",
+          "mutations/second" in out or "1/1" in out, out[-200:])
 
 
 def main():
@@ -209,7 +280,8 @@ def main():
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
                test_projection_refuses_before_the_expensive_pass,
                test_preflight_refuses_red_baseline_and_empty_collection,
-               test_cli_is_the_real_seam, test_main_actually_invokes_mutmut):
+               test_cli_is_the_real_seam, test_main_actually_invokes_mutmut,
+               test_against_REAL_mutmut_not_a_mock):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))

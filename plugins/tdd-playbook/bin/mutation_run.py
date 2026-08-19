@@ -172,9 +172,44 @@ def baseline(suite_argv, run=None, timeout=None):
     return True, "", seconds, collected
 
 
-def mutmut_argv(scope, suite_args):
-    return ["mutmut", "run", "--paths-to-mutate", scope, "--runner",
-            "python -m pytest -x -q " + suite_args]
+def mutmut_config_scope(root="."):
+    """(scope, problem) — what mutmut will ACTUALLY mutate, read from its own config.
+
+    mutmut 3.x takes NO --paths-to-mutate/--runner flags; those are 2.x. Scope lives in
+    `setup.cfg [mutmut] source_paths` (`paths_to_mutate` is accepted but deprecated). Verified
+    against the installed binary: with no config, even `mutmut --version` dies with
+    "Could not figure out where the code to mutate is."
+
+    The first draft of this file constructed 2.x flags and proved them against an INJECTED
+    mock, which accepted anything. Real mutmut rejects them. That is H9 — a double supplying a
+    seam production lacks — so this reads the real config instead of asserting a CLI shape."""
+    import configparser
+    for name in ("setup.cfg", "tox.ini"):
+        path = os.path.join(root, name)
+        if not os.path.isfile(path):
+            continue
+        parser = configparser.ConfigParser()
+        try:
+            parser.read(path)
+        except configparser.Error as exc:
+            return None, "{} is unparseable: {}".format(name, exc)
+        if parser.has_section("mutmut"):
+            for key in ("source_paths", "paths_to_mutate"):
+                if parser.has_option("mutmut", key):
+                    return parser.get("mutmut", key).strip(), None
+    return None, ("mutmut is NOT CONFIGURED — it takes no --paths-to-mutate flag (that is 2.x) "
+                  "and cannot guess. Add to setup.cfg:\n\n    [mutmut]\n    source_paths=<dir>\n\n"
+                  "Refusing rather than invoking a tool that will die on its own config")
+
+
+def mutmut_argv(max_children=None):
+    """The REAL mutmut 3.x contract, verified against the installed binary: `mutmut run`, with
+    scope and runner coming from config. Accepted flags are --all/--max-children/--rootdir/
+    --show-killed/--tb; anything else is a 2.x memory."""
+    argv = ["mutmut", "run"]
+    if max_children:
+        argv += ["--max-children", str(max_children)]
+    return argv
 
 
 def main(argv=None, run=None):
@@ -192,6 +227,7 @@ def main(argv=None, run=None):
     parser.add_argument("--expected-mutants", type=int, default=None,
                         help="enables the projection; without it the hard bound still applies")
     parser.add_argument("--factor", type=float, default=1.0)
+    parser.add_argument("--max-children", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true", help="preflight only")
     args = parser.parse_args(argv)
 
@@ -223,8 +259,18 @@ def main(argv=None, run=None):
     if args.dry_run:
         return 0
 
-    mut = mutmut_argv(args.scope, args.suite_args)
-    print("mutation_run: invoking " + " ".join(mut))
+    configured, problem = mutmut_config_scope()
+    if problem:
+        print("mutation_run: REFUSED — " + problem, file=sys.stderr)
+        return 1
+    if args.scope not in configured:
+        print("mutation_run: REFUSED — --scope {!r} is not what mutmut will mutate; its config "
+              "says {!r}. Mutating a different tree than the one you asked about is a score "
+              "about the wrong code, which is worse than no score."
+              .format(args.scope, configured), file=sys.stderr)
+        return 1
+    mut = mutmut_argv(args.max_children)
+    print("mutation_run: invoking " + " ".join(mut) + " (scope from config: {})".format(configured))
     try:
         proc = run_bounded(mut, args.max_minutes * 60, run=run)
     except subprocess.TimeoutExpired:
