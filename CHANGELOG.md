@@ -3,6 +3,65 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.44.0 — 2026-08-19
+
+**The mutation preflight moves onto the execution path.** SKILL §4 has required a preflight for
+months, stated in three places. A downstream three-hour session skipped it anyway: four mutation
+runs produced ONE score — one died on a RED baseline, one timed out at 1800s because the baseline
+had grown by four suites and the timeout never moved. ~1.5 of 3 hours, to two checks costing
+thirty seconds. §10 already said why a fourth written copy would not help: *"'remember to run it'
+is the honor-system seam §13 calls gameable."*
+
+`bin/mutation_run.py` therefore INVOKES mutmut. The preflight cannot be skipped because running
+the pass is running it. It covers §4's (b) collection and (c) green baseline; roster integrity
+and tracer attribution remain the operator's, unchanged. This ADDS a mechanism and replaces no
+rule.
+
+**A script-adversary returned UNSAFE(9) on the first draft, and every finding is now a test.**
+The draft never invoked mutmut at all — it printed advice and exited 0 beneath four documents
+saying the pass "cannot be skipped": a wrapper that only prints, which is the exact failure its
+own docstring indicted. Further findings, each corrected and pinned:
+
+- **Collection is not execution.** `rc==0 + collected>0` proves nothing ran — 700 skipped tests
+  are green, collected, and measure nothing, and `--collect-only` defeats both checks at once
+  while collapsing the measured baseline so any scope looks affordable. The outcome line is
+  parsed now and `--collect-only` is refused.
+- **Guessed diagnostics.** Every non-zero pytest exit was reported as "RED baseline" citing a
+  named plant, discarding what pytest actually said. rc 2/3/4/5 are not red suites — proved by
+  having `.split()` shred a quoted `-k` into a usage error reported as a red suite, sending the
+  operator to debug a green one.
+- **A blocklist defending against a shell that is never used**, while refusing the real node id
+  `test_p[<lambda>0]` and missing the one arg that actually breaks the check.
+- **stdin inheritance and orphaned children.** `subprocess.run`'s timeout kills only the direct
+  child; xdist workers survive — the origin session's 15-minute cost, reproduced by construction
+  in the fix for it. New session, DEVNULL stdin, process-group kill, and the cheap baseline gets
+  its own small bound instead of the whole mutation budget.
+- **Two tests that could not fail:** `exit == 1` read as "refused" (a crash exits 1 too), and
+  `--help` grepped for the word "mutmut" — §1's own *"a grep matches your own docstring."*
+
+**Then the fix reintroduced the same class, and that is worth recording.** The corrected wrapper
+invoked mutmut — but was proven only against an INJECTED double, and a double accepts any argv.
+The installed mutmut is **3.x**: it takes no `--paths-to-mutate` and no `--runner` (those are 2.x
+flags written from memory), its real flags are `--all/--max-children/--rootdir/--show-killed/
+--tb`, and scope comes from `setup.cfg`'s `[mutmut]` section. That is H9 — a double supplying a
+seam production lacks — committed inside the fix for a review that had just flagged it. The
+wrapper now reads mutmut's own config, refuses an unconfigured repo while handing over the exact
+stanza, refuses a `--scope` that disagrees with what mutmut will actually mutate, and is exercised
+end-to-end against the **real binary** in a temp fixture — reporting UNMEASURED, never a pass, if
+mutmut is absent.
+
+**Also new (§4, §10), each traceable to a measured loss:** size the timeout from the MEASURED
+baseline whenever the baseline changes · hand-plant known survivors instead of re-running for the
+same evidence · one chained waiter per long job, never repeated polling.
+
+**Stated limit, not papered over:** the projection is only as good as the measured baseline — a
+near-instant suite makes every scope look affordable. The `--collect-only` and zero-passed
+refusals are what keep that number honest; the projection cannot police itself.
+
+**Codex parity, registered as dated debt:** `bin/` ships to Codex so the wrapper runs there, but
+both documented consumers are Claude-only by the 2026-08-07 decision — the mechanism would exist
+with nothing pointing at it.
+
 ## 1.43.1 — 2026-08-18
 
 **THE SKILL WAS DARK IN 1.42.0 AND 1.43.0. Update immediately.** The v1.42.0 description trim
