@@ -50,6 +50,14 @@ stanza, refuses a `--scope` that disagrees with what mutmut will actually mutate
 end-to-end against the **real binary** in a temp fixture — reporting UNMEASURED, never a pass, if
 mutmut is absent.
 
+**A third test state, because pass/fail could not tell the truth here.** CI installs nothing —
+these suites are stdlib-only by design — so the real-mutmut checks are unreachable there.
+Counting an unreachable seam as PASS is the vacuous green this repo exists to refuse; counting it
+as FAIL makes the gate permanently red for lacking a third-party tool. It is now reported as
+**UNMEASURED** in its own column, with the summary stating plainly that green does not mean the
+mutmut contract was verified. The seam IS exercised wherever mutmut exists — run the suite
+locally before trusting a change to `mutmut_argv` or `mutmut_config_scope`.
+
 **Also new (§4, §10), each traceable to a measured loss:** size the timeout from the MEASURED
 baseline whenever the baseline changes · hand-plant known survivors instead of re-running for the
 same evidence · one chained waiter per long job, never repeated polling.

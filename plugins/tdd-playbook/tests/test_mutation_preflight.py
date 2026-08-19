@@ -31,7 +31,18 @@ import sys
 HERE = os.path.dirname(os.path.realpath(__file__))
 PLUGIN = os.path.dirname(HERE)
 BIN = os.path.join(PLUGIN, "bin", "mutation_run.py")
-_r = {"pass": 0, "fail": 0}
+_r = {"pass": 0, "fail": 0, "unmeasured": 0}
+
+
+def unmeasured(name, why):
+    """A third state, because pass/fail cannot express 'the seam was not reachable here'.
+
+    Counting an unreachable seam as a PASS is the vacuous green this repo exists to refuse;
+    counting it as a FAIL makes the gate permanently red on a runner that legitimately lacks a
+    third-party tool (CI here installs nothing — the suites are stdlib-only by design). So it is
+    neither: it is reported loudly, in its own column, and the summary line carries it."""
+    _r["unmeasured"] += 1
+    print("  UNMEASURED - {}  ({})".format(name, why))
 
 
 def check(name, cond, detail=""):
@@ -230,8 +241,10 @@ def test_against_REAL_mutmut_not_a_mock():
     import shutil, tempfile, textwrap
     m = load()
     if shutil.which("mutmut") is None:
-        check("REAL mutmut unavailable — this check is UNMEASURED, not passed", False,
-              "install mutmut to exercise the seam this wrapper actually talks to")
+        unmeasured("real-mutmut seam (argv shape, config contract, end-to-end run)",
+                   "mutmut is not installed here; this suite is stdlib-only and CI installs "
+                   "nothing. The seam IS exercised wherever mutmut exists — run this locally "
+                   "before trusting a change to mutmut_argv/mutmut_config_scope")
         return
 
     root = tempfile.mkdtemp()
@@ -284,7 +297,11 @@ def main():
                test_against_REAL_mutmut_not_a_mock):
         print("\n[{}]".format(fn.__name__))
         fn()
-    print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
+    tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
+    print("\n{} passed, {} failed{}".format(_r["pass"], _r["fail"], tail))
+    if _r["unmeasured"]:
+        print("UNMEASURED is not passed: the real-tool seam was not reachable in this "
+              "environment. Green here does NOT mean the mutmut contract was verified.")
     sys.exit(1 if _r["fail"] else 0)
 
 
