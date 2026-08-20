@@ -794,6 +794,132 @@ def test_records_are_optional_evidence_not_a_per_commit_toll():
     check("recurrence still runs on whatever records exist",
           any("recurrence:" in line for line in rl.recurrence_report(recs)))
 
+
+# ------------------------------------- D1: the epoch reset + the forward guard answer (2026-08-20)
+
+def _guarded(fid, cls, key, guard, status="incorporated"):
+    row = _keyed(fid, cls, key, status=status)
+    if guard is not None:
+        row["guard"] = guard
+    return row
+
+
+def test_recurrence_epoch_retires_the_old_list():
+    """PLANTED (v1.45, 2026-08-20): the recurrence list could not see a guard that had been
+    BUILT, so it nagged forever; one of its keys was a junk drawer of five unrelated
+    findings; and the field linking a defect to its check was present on 6 of 205 findings,
+    two of the three load-bearing ones pointing at the wrong catalog row.
+
+    Retroactively classifying that history needs judgment nobody can supply honestly
+    (David is non-technical; the agent cannot invent what an old defect meant). So the
+    history is RETIRED WHOLESALE at an epoch and the answer moves to authoring time.
+
+    The records are NOT deleted -- they are the evidence that produced this diagnosis.
+    They stop driving the verdict, which is a different thing, and the difference is what
+    the historical summary line below exists to keep visible."""
+    rl = load_module()
+    check("the epoch is a named constant, not a literal buried in a branch",
+          getattr(rl, "RECURRENCE_EPOCH", None) == "2026-08-20",
+          getattr(rl, "RECURRENCE_EPOCH", None))
+
+    pre = [_dated_record("2026-08-15-first", [_keyed("A-1", "deterministic", "old-key")]),
+           _dated_record("2026-08-16-second", [_keyed("B-1", "deterministic", "old-key")])]
+    lines = rl.recurrence_report(pre)
+    check("PLANTED: two PRE-epoch findings on one key are no longer counted",
+          not any("UNBUILT" in l for l in lines), lines)
+    check("...but history is REPORTED, not silently dropped (silence reads as 'no history')",
+          any(l.startswith("historical:") and "2" in l for l in lines), lines)
+    check("...and the historical line points at where the records still live",
+          any("docs/reviews" in l for l in lines if l.startswith("historical:")), lines)
+
+
+def test_guard_answer_required_and_resolved_after_the_epoch():
+    """The forward rule that makes the tracker self-resolving: a finding recorded on/after
+    the epoch must answer WHAT WOULD HAVE CAUGHT THIS -- a hook, a test, or an explicit
+    `none` with a reason. Asked of the AUTHOR while they still know, never of a reader
+    months later. `none` is a first-class answer; the BLANK was what poisoned the list."""
+    rl = load_module()
+    check("the answer vocabulary has ONE machine owner",
+          getattr(rl, "GUARD_KINDS", None) == ("hook", "test", "none"),
+          getattr(rl, "GUARD_KINDS", None))
+
+    def problems(record_id, guard):
+        rec = _dated_record(record_id, [_guarded("A-1", "deterministic", "k", guard)])
+        return rl.validate_record(rec, "t.json", lambda _s: True,
+                                  plan_exists=lambda _p: True)
+
+    check("PLANTED: a POST-epoch finding with no guard answer is REFUSED",
+          any("guard" in p for p in problems("2026-08-20-x", None)),
+          problems("2026-08-20-x", None))
+    check("...and a PRE-epoch finding without one is untouched (the epoch IS the difference)",
+          not any("guard" in p for p in problems("2026-08-19-x", None)),
+          problems("2026-08-19-x", None))
+    check("`none` is accepted when it carries a reason",
+          not any("guard" in p for p in
+                  problems("2026-08-20-x", {"kind": "none", "why": "needed a mind"})),
+          problems("2026-08-20-x", {"kind": "none", "why": "needed a mind"}))
+    check("PLANTED: bare `none` with no reason is REFUSED -- an unexplained 'nothing "
+          "guards this' is the blank we just retired, wearing a label",
+          any("guard" in p for p in problems("2026-08-20-x", {"kind": "none"})),
+          problems("2026-08-20-x", {"kind": "none"}))
+    check("PLANTED: an unknown kind is REFUSED",
+          any("guard" in p for p in problems("2026-08-20-x", {"kind": "vibes"})))
+    check("PLANTED: a hook ref naming no registered hook is REFUSED (loud, never a silent "
+          "GUARDED)",
+          any("guard" in p for p in
+              problems("2026-08-20-x", {"kind": "hook", "ref": "no_such_guard"})),
+          problems("2026-08-20-x", {"kind": "hook", "ref": "no_such_guard"}))
+    check("a hook ref naming a REAL registered hook resolves",
+          not any("guard" in p for p in
+                  problems("2026-08-20-x", {"kind": "hook", "ref": "testweaken"})),
+          problems("2026-08-20-x", {"kind": "hook", "ref": "testweaken"}))
+
+
+def test_guard_state_is_computed_from_shipped_defaults():
+    """The verdict, computed rather than curated -- and computed from the SHIPPED default,
+    never from resolve_mode(). resolve_mode reads per-hook env vars, the global env var and
+    break-glass state, and this inventory is rendered into a COMMITTED file whose test
+    asserts committed == rendered. Keyed on resolve_mode, the same tree would render
+    differently on two machines and fail the gate for whoever had a var set."""
+    rl = load_module()
+
+    def two(guard_a, guard_b):
+        return [_dated_record("2026-08-20-first", [_guarded("A-1", "deterministic", "k", guard_a)]),
+                _dated_record("2026-08-21-second", [_guarded("B-1", "deterministic", "k", guard_b)])]
+
+    none_a = {"kind": "none", "why": "needed a mind"}
+    lines = rl.recurrence_report(two(none_a, dict(none_a)))
+    check("NEGATIVE CONTROL: two post-epoch findings that BOTH answer `none` still print "
+          "UNBUILT -- a reset that merely silenced the report is the same defect, sign flipped",
+          any("UNBUILT" in l and "k" in l for l in lines), lines)
+
+    live = rl.recurrence_report(two({"kind": "hook", "ref": "testweaken"}, dict(none_a)))
+    check("a member naming a LIVE hook -> GUARDED, never UNBUILT",
+          any("GUARDED" in l for l in live) and not any("UNBUILT" in l for l in live), live)
+
+    dark = rl.recurrence_report(two({"kind": "hook", "ref": "overmock"}, dict(none_a)))
+    check("PLANTED: a hook that SHIPS OFF is GUARD DARK, not GUARDED -- file-existence "
+          "would have called overmock_guard built while it ships off",
+          any("GUARD DARK" in l for l in dark), dark)
+
+    # purity: the committed inventory must be a pure function of the tree
+    import os as _os
+    saved = {k: _os.environ.get(k) for k in ("TDD_PLAYBOOK_HOOK_OVERMOCK",
+                                             "TDD_PLAYBOOK_HOOK_MODE")}
+    try:
+        _os.environ["TDD_PLAYBOOK_HOOK_OVERMOCK"] = "block"
+        _os.environ["TDD_PLAYBOOK_HOOK_MODE"] = "block"
+        again = rl.recurrence_report(two({"kind": "hook", "ref": "overmock"}, dict(none_a)))
+        check("PURITY: an env override does NOT change the report (a generated artifact is "
+              "a pure function of the tree)", again == dark, (dark, again))
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                _os.environ.pop(key, None)
+            else:
+                _os.environ[key] = value
+
+
 if __name__ == "__main__":
     test_unresolved_blocker_refused()
     test_false_closure_and_scope_refused()
@@ -810,5 +936,8 @@ if __name__ == "__main__":
     test_recurrence_report()
     test_recurrence_verb_vacuity_and_usage_event()
     test_root_resolution_vendored_and_canonical()
+    test_recurrence_epoch_retires_the_old_list()
+    test_guard_answer_required_and_resolved_after_the_epoch()
+    test_guard_state_is_computed_from_shipped_defaults()
     print("\nResult: {}/{} passed".format(PASSED, TOTAL))
     raise SystemExit(0 if PASSED == TOTAL else 1)
