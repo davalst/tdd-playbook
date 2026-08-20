@@ -3,6 +3,67 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.45.0 — 2026-08-20
+
+**The recurrence tracker was telling you to build checks that already existed.** It printed
+twelve `UNBUILT GUARD` lines — "a deterministic key in ≥2 records = a guard nobody built" —
+and the claim did not survive measurement. It had no way to see a guard that HAD been built:
+four of its items were guards misfiring, and `tag_guard` was fixed here in v1.42, so it
+nagged forever. One key held five unrelated findings, two of them already fixed. And
+`catalog_row`, the field linking a defect to its check, was present on **6 of 205** findings,
+with two of the three load-bearing ones naming the wrong row.
+
+**Retired wholesale at an epoch, because the alternative was a debt nobody could pay.**
+Reclassifying that history needs judgment about what each old defect meant — which the owner
+cannot supply and the agent cannot honestly invent. So findings before `RECURRENCE_EPOCH`
+(2026-08-20) are HISTORICAL: readable, reported as a count, never counted toward a verdict.
+**The records are not deleted.** They are the evidence that produced this diagnosis; they stop
+DRIVING the verdict, which is a different thing, and the historical line keeps that difference
+visible — silence would read as "no history exists" (H15).
+
+**The answer moved to authoring time, which is what stops it recurring.** Every finding dated
+on/after the epoch must answer *what would have caught this*: `guard: {kind: hook|test|none,
+ref, why}`. `validate` REFUSES the finding otherwise, and the ref is **resolved** — a hook must
+name a registered hook, a test must name a defined test. The old design asked a READER to infer
+this months later, which is how the blanks accumulated. `none` is a first-class answer; the
+BLANK was the problem.
+
+State is computed from the **shipped default** mode, never `resolve_mode()` — which reads env
+vars and break-glass state, and would make a committed generated file render differently on two
+machines. A purity test pins it.
+
+**Blocking guards must now prove BOTH directions, family-wide (H13).** Four recorded findings
+are guards firing outside their jurisdiction — including the one that surfaced as a user
+complaint about constant hook errors. All four blocking guards already satisfied the bar by
+their author's diligence, and **nothing required it of the next one**. A §6c family parity
+sweep enumerates the blocking-by-default roster from the real registry and requires a
+must-block and a must-stay-silent row per member, with ONE shared out-of-jurisdiction corpus
+supplying the allow direction for every guard — a per-guard clean-list is bounded by the same
+imagination that wrote the guard. Both directions execute; `parity_problems` is pure, so a
+planted fabricated guard REDs the sweep.
+
+**The report got a reader that runs.** `recurrence`'s only code consumer is the opt-in
+calibration run, so a fixed report would still have been dark. `render_reference.py` now renders
+the inventory into `docs/reference/current-state.md`, which regenerates at every release, and
+`PROVENANCE_INPUTS` gains the two sources the new facts derive from.
+
+**The record-output contract has one home.** It lived as six byte-identical hand-maintained
+copies in the adversary briefs (verified identical by sha before consolidating), so a vocabulary
+change had to land six times and would silently rot five. It is now generated from the constants
+that define it, rendered by `render_agents.py`, and pinned by a vacuity-guarded parity sweep over
+the real directory.
+
+**Two live false positives were hit while building this and recorded through `guard_note`**, both
+the same shape: a guard acting on a trigger phrase inside a QUOTED argument — prose, not an
+action. `lock_guard` blocked the tool recording its own block; `snapshot_guard` blocked the file
+that calibrates it. `tag_guard` had the identical defect and was fixed in v1.42 by parsing command
+position instead of grepping. **Two guards still grep, and that fix is NOT in this release.**
+
+**Not done, stated rather than implied:** the behavioural calibration run for the six edited briefs
+(one plant + control, pre/post, ~12 headless runs) was planned and is not included. The briefs are
+verified deterministically — generated from one source and pinned — but no agent was measured
+against the new instruction.
+
 ## 1.44.1 — 2026-08-19
 
 **Vendored code should not add lint noise to the repo it lands in.** Refreshing a downstream repo
