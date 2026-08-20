@@ -259,12 +259,19 @@ def test_recurrence_report():
     """A recurrence_key in >=2 DISTINCT records at class deterministic is an UNBUILT
     GUARD — a machine could have caught it twice and none exists. Recurring judgment is
     not a missing guard. Output feeds the HACK_CATALOG Guard <-> entry map, never a
-    parallel list."""
+    parallel list.
+
+    Fixtures re-dated past RECURRENCE_EPOCH on 2026-08-20 (journaled unlock, class
+    test-wrong). The INTENT pinned here — 2 distinct records trigger, 1 does not, judgment
+    never counts as a missing guard, the denominator spans all findings — is unchanged; only
+    the dates were stale, because the epoch now reads 2026-08-15 as history. The pre/post
+    boundary itself is pinned separately by test_recurrence_epoch_retires_the_old_list, so
+    the old dates are not merely swapped out of sight."""
     rl = load_module()
     twice = [
-        _dated_record("2026-08-15-first", [_keyed("A-1", "deterministic",
+        _dated_record("2026-08-20-first", [_keyed("A-1", "deterministic",
                                                   "grep-counts-docstrings")]),
-        _dated_record("2026-08-16-second", [_keyed("B-1", "deterministic",
+        _dated_record("2026-08-21-second", [_keyed("B-1", "deterministic",
                                                    "grep-counts-docstrings")]),
     ]
     lines = rl.recurrence_report(twice)
@@ -275,32 +282,32 @@ def test_recurrence_report():
           "propose" in unbuilt[0], unbuilt)
 
     judgment = [
-        _dated_record("2026-08-15-first", [_keyed("A-1", "judgment", "scope-taste")]),
-        _dated_record("2026-08-16-second", [_keyed("B-1", "judgment", "scope-taste")]),
+        _dated_record("2026-08-20-first", [_keyed("A-1", "judgment", "scope-taste")]),
+        _dated_record("2026-08-21-second", [_keyed("B-1", "judgment", "scope-taste")]),
     ]
     check("judgment key in 2 records -> NO unbuilt-guard line (recurring judgment is not a missing guard)",
           not any("UNBUILT GUARD" in l for l in rl.recurrence_report(judgment)),
           rl.recurrence_report(judgment))
 
-    single = [_dated_record("2026-08-15-first", [_keyed("A-1", "deterministic", "once-only")])]
+    single = [_dated_record("2026-08-20-first", [_keyed("A-1", "deterministic", "once-only")])]
     check("single occurrence -> silent", not any("once-only" in l and "UNBUILT" in l
                                                  for l in rl.recurrence_report(single)))
 
-    same_record = [_dated_record("2026-08-15-first", [
+    same_record = [_dated_record("2026-08-20-first", [
         _keyed("A-1", "deterministic", "same-rec-key"),
         _keyed("A-2", "deterministic", "same-rec-key")])]
     check("same key twice in ONE record counts as one record -> no unbuilt-guard",
           not any("UNBUILT GUARD" in l for l in rl.recurrence_report(same_record)),
           rl.recurrence_report(same_record))
 
-    mixed = twice + [_dated_record("2026-08-17-third", [_keyed("C-1", "judgment",
+    mixed = twice + [_dated_record("2026-08-22-third", [_keyed("C-1", "judgment",
                                                                "grep-counts-docstrings")])]
     check("mixed classes: the deterministic leg alone triggers",
           any("UNBUILT GUARD" in l for l in rl.recurrence_report(mixed)))
 
     rowed = [
-        _dated_record("2026-08-15-first", [_keyed("A-1", "deterministic", "k-two", "H11")]),
-        _dated_record("2026-08-16-second", [_keyed("B-1", "deterministic", "k-two")]),
+        _dated_record("2026-08-20-first", [_keyed("A-1", "deterministic", "k-two", "H11")]),
+        _dated_record("2026-08-21-second", [_keyed("B-1", "deterministic", "k-two")]),
     ]
     check("a catalog_row in the group is surfaced on the UNBUILT GUARD line",
           any("UNBUILT GUARD" in l and "H11" in l for l in rl.recurrence_report(rowed)),
@@ -335,10 +342,13 @@ def test_recurrence_verb_vacuity_and_usage_event():
         check("zero records -> exit 3 vacuous refusal, stated", p.returncode == 3
               and "VACUOUS" in (p.stderr + p.stdout).upper(), (p.returncode, p.stderr))
 
+        # post-epoch dates: pre-epoch records are HISTORICAL by design and would print the
+        # historical line instead, which is a different contract (pinned in
+        # test_recurrence_epoch_retires_the_old_list). This test is about the VERB.
         for name, rec in (("one.json", _dated_record(
-                "2026-08-15-first", [_keyed("A-1", "deterministic", "k-live")])),
+                "2026-08-20-first", [_keyed("A-1", "deterministic", "k-live")])),
                           ("two.json", _dated_record(
-                "2026-08-16-second", [_keyed("B-1", "deterministic", "k-live")]))):
+                "2026-08-21-second", [_keyed("B-1", "deterministic", "k-live")]))):
             with open(os.path.join(tmp, "docs", "reviews", name), "w") as fh:
                 json.dump(rec, fh)
         ylog = os.path.join(tmp, "yield.jsonl")
