@@ -1160,7 +1160,7 @@ def test_lock_shell():
         block("lock/sh: mv over locked test blocks", d, bash_ev("mv /tmp/x tests/test_pay.py"))
         block("lock/sh: inline python open(...,'w') blocks", d, bash_ev("python3 -c \"open('tests/test_pay.py','w').write('')\""))
         # F1 — READS and legitimate runs must NOT block (adoption killer if they do)
-        allow("lock/sh: cat locked test is allowed", d, bash_ev("cat tests/test_pay.py"))
+        allow("lock/sh: cat locked test is allowed", d, _bash("cat tests/test_pay.py"))
         allow("lock/sh: run locked test is allowed", d, bash_ev("python -m pytest tests/test_pay.py -q"))
         allow("lock/sh: run + redirect OUTPUT elsewhere is allowed", d, bash_ev("pytest tests/test_pay.py -q > /tmp/out.log"))
         allow("lock/sh: git checkout a branch is allowed", d, bash_ev("git checkout main"))
@@ -1590,6 +1590,154 @@ def test_guard_roster_derived_and_pinned():
           "refusing a vacuous pass" in rp(None)[0])
 
 
+
+# ---------------------------------------------- D2: blocking-guard family parity (2026-08-20)
+# Four recorded findings are guards firing OUTSIDE their jurisdiction — including the one
+# that reached David as "why am I seeing all these hook errors". All four blocking guards
+# happen to satisfy both directions today; NOTHING REQUIRED IT of the next one. The
+# "CALIBRATED IN BOTH DIRECTIONS" marker on 4 of ~13 hooks is a docstring self-claim, which
+# is §13's "the one nobody re-checks".
+#
+# The allow direction is supplied by ONE SHARED corpus run against EVERY blocking guard,
+# rather than a per-guard clean-list. A per-guard list is written by that guard's own author
+# and is bounded by the same imagination that wrote the guard; and every recorded false
+# positive here is the same failure — the guard acted on something outside its remit.
+# lock_guard already implements this rule for itself ("out-of-root is NEVER this guard's
+# jurisdiction"); this generalizes one guard's hard-won lesson to the family.
+
+def _bash(cmd):
+    return {"tool_name": "Bash", "tool_input": {"command": cmd}}
+
+
+def _oo_j():
+    """Ordinary work no guard may act on, in the SHIPPED default state. Built at call time
+    so the paths are real ones this session would actually touch."""
+    home = os.path.expanduser("~")
+    return [
+        ("reading a test file", _bash("cat tests/test_pay.py")),
+        ("running the suite", _bash("python -m pytest -q")),
+        ("listing tags read-only", _bash("git tag -l --sort=-v:refname")),
+        ("git status", _bash("git status -u")),
+        ("grepping prose that merely CONTAINS a trigger word",
+         _bash("grep -rn 'snapshot update' docs/")),
+        ("writing a memory note (out of root)",
+         write(os.path.join(home, ".claude", "projects", "x", "memory", "n.md"), "note")),
+        ("writing the plan-mode file (out of root; plan mode's ONLY permitted write)",
+         write(os.path.join(home, ".claude", "plans", "p.md"), "plan")),
+        ("writing to the session scratchpad (out of root)",
+         write(os.path.join(tempfile.gettempdir(), "scratchpad", "s.txt"), "tmp")),
+    ]
+
+
+def _block_rows():
+    """BLOCK rows, EXECUTED — one real event per guard that needs no arming. An earlier
+    draft of this test declared them as None and never ran them: a "row" that never executes
+    proves nothing, which is the proxy this whole span exists to remove.
+
+    Both needles are ASSEMBLED at runtime, the house idiom — build the needle so the
+    haystack never holds it. The tag string keeps test_installer's tracked-file scanner from
+    matching this file; the snapshot string keeps snapshot_guard from blocking the very test
+    that calibrates it. Both blocks were observed live and recorded through guard_note.
+
+    lock_guard is absent by design: it only acts while a lock is HELD, so its block
+    direction is a RESOLVED reference (defined + dispatched from main) rather than an
+    unarmed event that would pass for the wrong reason."""
+    T = "t" + "ag"
+    return {
+        "weakening_guard": ("an assertion deleted from a test",
+                            edit("tests/test_pay.py", "assert total == 5\nx", "x")),
+        "snapshot_guard": ("a snapshot re-approval run", _bash("npx jest -" + "u")),
+        "tag_guard": ("creating a release " + T, _bash("git {} -a v9.9.9 -m x".format(T))),
+    }
+
+
+BLOCK_BY_REFERENCE = {"lock_guard": "test_lock_shell"}
+
+
+def parity_problems(blocking_roster, block_rows, block_by_reference, silent_on_shared):
+    """PURE — no I/O, no module-global tally, so the planted case below can hand it a
+    fabricated member. An earlier design accumulated evidence into a module global as the
+    other tests ran; main()'s dispatch order put this test last, so calling it alone would
+    have seen an empty tally and passed vacuously."""
+    problems = []
+    for script in sorted(blocking_roster):
+        if script not in block_rows and script not in block_by_reference:
+            problems.append(script + ": no BLOCK row — a guard that blocks by default must "
+                            "show what it blocks")
+        if script not in silent_on_shared:
+            problems.append(script + ": no ALLOW evidence — it must stay silent on the "
+                            "shared out-of-jurisdiction corpus")
+    return problems
+
+
+def test_blocking_guards_prove_both_directions():
+    """§6c FAMILY PARITY over the hook family: enumerated from the REAL registry, so a guard
+    promoted to blocking tomorrow owes its allow evidence the same day, with no table for
+    anyone to remember to update. Vacuity-guarded — an empty roster REFUSES rather than
+    passing over zero members."""
+    import importlib.util as _il
+    hp_spec = _il.spec_from_file_location(
+        "host_parity_d2", os.path.join(PLUGIN, "bin", "host_parity.py"))
+    host_parity = _il.module_from_spec(hp_spec)
+    hp_spec.loader.exec_module(host_parity)
+    spec = _il.spec_from_file_location("_common_d2", os.path.join(HOOKS, "_common.py"))
+    common = _il.module_from_spec(spec)
+    spec.loader.exec_module(common)
+
+    scanned = host_parity.canonical_inventory(REPO)["guards"]
+    blocking = {s for s in scanned
+                if common._DEFAULT_MODES.get(_script_short_name(s)) == "block"}
+    check("vacuity guard: the blocking roster is non-empty and holds the four known guards",
+          blocking >= {"weakening_guard", "lock_guard", "snapshot_guard",
+                       "tag_guard"}, sorted(blocking))
+
+    # the ALLOW direction, EXECUTED: every blocking guard, every shared row, silence
+    silent = set()
+    for script in sorted(blocking):
+        noisy = []
+        for label, event in _oo_j():
+            rc, _o, err = run(script + ".py", event, raw=True)
+            if rc != 0:
+                noisy.append("{} -> rc={} {}".format(label, rc, err.strip()[:90]))
+        check("out of jurisdiction: {} stays silent on ordinary work".format(script),
+              not noisy, noisy)
+        if not noisy:
+            silent.add(script)
+    print("  shared corpus: {} rows x {} blocking guards".format(
+        len(_oo_j()), len(blocking)))
+
+    # the BLOCK direction, EXECUTED too — narrowing a guard is not amnesty (§13), so the
+    # block rows must survive every allow-direction change made here.
+    blocks = set()
+    for script, (label, event) in sorted(_block_rows().items()):
+        rc, _o, _e = run(script + ".py", event, raw=True)
+        check("block direction: {} still blocks {}".format(script, label), rc == 2, rc)
+        if rc == 2:
+            blocks.add(script)
+
+    problems = parity_problems(blocking, blocks, BLOCK_BY_REFERENCE, silent)
+    check("every blocking-by-default guard proves BOTH directions", problems == [], problems)
+
+    # the referenced block-direction test must RESOLVE: defined AND dispatched from main
+    source = open(os.path.abspath(__file__), encoding="utf-8").read()
+    for script, fn in BLOCK_BY_REFERENCE.items():
+        tree = ast.parse(source)
+        defined = any(isinstance(n, ast.FunctionDef) and n.name == fn for n in tree.body)
+        check("{}'s block direction resolves to a DEFINED test ({})".format(script, fn),
+              defined)
+        check("...that main() actually dispatches ({})".format(fn),
+              ("    " + fn + ",") in source or (" " + fn + ",") in source)
+
+    # PLANTED: a guard promoted to blocking with nothing behind it must RED the sweep.
+    planted = parity_problems(blocking | {"brand_new_guard"}, blocks,
+                              BLOCK_BY_REFERENCE, silent)
+    check("PLANTED: a NEW blocking guard with no rows REDs the sweep (this is the whole "
+          "deliverable — the four existing guards already pass by diligence)",
+          any("brand_new_guard" in p for p in planted), planted)
+    check("...naming BOTH missing directions, not just the first",
+          len([p for p in planted if "brand_new_guard" in p]) == 2, planted)
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
@@ -1598,6 +1746,7 @@ def main():
                test_fixture_guard, test_basename_roster_parity,
                test_lock_shell, test_yield_logging, test_guards_heartbeat,
                test_break_glass, test_retired_advisory_defaults,
+               test_blocking_guards_prove_both_directions,
                test_guard_roster_derived_and_pinned):
         print("\n[{}]".format(fn.__name__))
         fn()
