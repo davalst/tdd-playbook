@@ -916,10 +916,10 @@
           ]
         },
         {
-          "topic": "recurrence report (UNBUILT GUARD lines + keyed-of-total coverage ratio, `review_ledger.py recurrence`)",
+          "topic": "recurrence report (per-key guard state \u2014 UNBUILT GUARD / GUARDED / GUARD DARK / historical \u2014 plus the keyed-of-total coverage ratio, `review_ledger.py recurrence`)",
           "consumers": [
             {
-              "ref": "David reads UNBUILT GUARD lines in the calibration cycle output and turns each into a HACK_CATALOG Guard \u2194 entry map row (docs/HACK_CATALOG.md)",
+              "ref": "rendered into docs/reference/current-state.md by render_reference.py at every release (v1.45: the verb's only code reader is the opt-in calibration run, so the report was dark in exactly the case it exists to show); David turns an UNBUILT GUARD line into a HACK_CATALOG Guard <-> entry map row",
               "kind": "human"
             },
             {

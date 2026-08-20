@@ -274,11 +274,28 @@ The partner keeps watching. It just stops asking you to file proof that it did.
   `class: deterministic|judgment` (could a machine have caught it?) and a short-kebab
   `recurrence_key` (REUSE keys when the same defect shape recurs), optional
   `catalog_row: H<n>` membership-checked against `docs/HACK_CATALOG.md`'s Guard ↔ entry
-  map. `python3 plugins/tdd-playbook/bin/review_ledger.py recurrence` prints the
-  UNBUILT GUARD lines (a deterministic key in ≥2 records = a guard nobody built — turn
-  it into a catalog row + guard), the keyed-of-total ratio, and logs one machine usage
-  event; the calibration cycle block is its scheduled reader. The six authoring briefs
-  carry the contract, needle-pinned to `review_ledger.FINDING_CLASSES`.
+  map.
+
+  **The recurrence epoch, v1.45 (2026-08-20).** The old list claimed twelve unbuilt
+  guards and could not be trusted: it had no way to see a guard that had been BUILT (four
+  of its items were guards misfiring, and `tag_guard` was fixed here in v1.42, so it
+  nagged forever); one key held five unrelated findings; and `catalog_row` was present on
+  6 of 205 findings, two of the three load-bearing ones naming the wrong row. Retroactively
+  sorting that needs judgment nobody can supply honestly, so it was **retired wholesale**:
+  findings before `RECURRENCE_EPOCH` are HISTORICAL — readable, reported as a count, never
+  counted toward a verdict. **The records are not deleted**; they stop DRIVING the verdict,
+  which is a different thing.
+
+  Forward, the answer moves to authoring time: every finding on/after the epoch must say
+  **what would have caught this** — `guard: {kind: hook|test|none, ref, why}` — and
+  `validate` REFUSES it otherwise. `none` is a first-class answer; the BLANK was the
+  problem. The ref is RESOLVED, not merely non-empty. `recurrence` then prints
+  `UNBUILT GUARD` / `GUARDED` / `GUARD DARK` computed from the SHIPPED default mode (never
+  `resolve_mode`, which reads env vars and would make the rendered file machine-dependent),
+  and `render_reference.py` renders the inventory into `docs/reference/current-state.md`
+  — because `recurrence`'s only code reader is the opt-in calibration run, so a report
+  fixed only there would still be dark. The six authoring briefs carry the contract,
+  needle-pinned to `review_ledger.FINDING_CLASSES`.
 - **Historical verdicts stay readable.** `plugins/tdd-playbook/bin/verify_verdict.py` (+
   `_ed25519_verify.py`) is KEPT and DELIBERATELY UNWIRED: stdlib-only, no caller, the sole way
   to check a pre-v1.32 signed CIVerd bundle —

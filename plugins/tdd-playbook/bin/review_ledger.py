@@ -859,9 +859,17 @@ def main(argv=None) -> int:
                                       record_authoring_briefs(root))
         for line in lines:
             print(line)
+        # D1 (2026-08-20): `unbuilt_guards` KEEPS its name and its meaning — the count of
+        # keys nothing guards — but the epoch changes what it is counted over, so its series
+        # STEP-CHANGES here rather than drifting. The sibling counters are added beside it
+        # instead of quietly redefining the old one: a metric that silently changes what it
+        # measures is worse than a metric that stops.
         _log_usage("recurrence", {
             "records": len(records),
             "unbuilt_guards": sum(1 for line in lines if line.startswith("UNBUILT GUARD")),
+            "guarded": sum(1 for line in lines if line.startswith("GUARDED:")),
+            "guard_dark": sum(1 for line in lines if line.startswith("GUARD DARK:")),
+            "historical": sum(1 for line in lines if line.startswith("historical:")),
         })
         return 0
     problems = validate_repository(root)

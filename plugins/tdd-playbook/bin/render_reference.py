@@ -10,7 +10,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from review_ledger import (VALID_STATUS as VALID_REVIEW_STATUS,  # noqa: E402  (sibling; the one status-vocabulary owner)
-                           participation_report, record_authoring_briefs)
+                           participation_report, record_authoring_briefs,
+                           recurrence_report)
 from host_parity import agents_roster  # noqa: E402  (sibling; vendored together)
 
 
@@ -25,6 +26,11 @@ PROVENANCE_INPUTS = (
     "docs/architecture/host-parity.json",
     "plugins/tdd-playbook/bin/host_parity.py",
     "capabilities.json",
+    # D3 (recurrence-epoch plan, 2026-08-20): the guard-state inventory below is derived
+    # from the catalog rows and from each hook's SHIPPED default mode, so both are named
+    # here. A rendered fact whose source is unlisted is a fact with no provenance.
+    "docs/HACK_CATALOG.md",
+    "plugins/tdd-playbook/hooks/scripts/_common.py",
 )
 OUTPUT = "docs/reference/current-state.md"
 
@@ -92,6 +98,16 @@ def review_section(reviews: list[dict], root: str | None = None) -> list[str]:
         for line in participation_report(reviews, agents_roster(root),
                                          record_authoring_briefs(root)):
             lines.append("- " + line.strip() if line.startswith("  ") else line)
+    # D3 (recurrence-epoch plan, 2026-08-20): the guard-state inventory lands here for the
+    # SAME reason participation does — `recurrence`'s only code consumer is run_calibration,
+    # which CLAUDE.md declares unscheduled and opt-in, so a report fixed there would still
+    # be dark. This file regenerates at every release, so the inventory is READ.
+    #
+    # Safe to render because every state is a pure function of the tree: the epoch is a
+    # constant, and hook liveness is the SHIPPED default, never resolve_mode() — which reads
+    # env vars and break-glass state and would make this committed file machine-dependent.
+    lines.append("")
+    lines.extend(recurrence_report(reviews))
     return lines
 
 

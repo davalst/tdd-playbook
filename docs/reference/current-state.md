@@ -9,7 +9,9 @@
 - `docs/architecture/host-parity-policy.json` — `e03854fa9ea673904392a59ff80f872656e50ccdba7a447c95364fba6d235f0e`
 - `docs/architecture/host-parity.json` — `d68cb54d57c285a5afa3dc7b2a1c72ca3d6b49f41367b9eca681e38d19a23e21`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `b676656b6181f1038e0c416994a29dfcc9091410f82df9ccb11095902f3b69c1`
+- `capabilities.json` — `8bd890b311c795d8268c21dd7c2e10ed8f8a925e14b52b611306e80c38706827`
+- `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
+- `plugins/tdd-playbook/hooks/scripts/_common.py` — `6bb1cc0c703d5c5e9ea2804fba04cf1de6482ebc360e2de423d8bf75277e702c`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -165,3 +167,6 @@ participation: what the 44 indexed records RECORDED — `reviewers` is written b
 - test-quality-adversary — 2
 - tripwire-auditor · authors records — 11
 - ux-probe-calibrator — not named in any indexed review
+
+recurrence: records 44 · findings 205 · keyed 117 of 205 (57%)
+historical: 117 keyed findings in 29 records before 2026-08-20 — not counted (they remain readable in docs/reviews/)
