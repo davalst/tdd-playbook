@@ -12,6 +12,7 @@ live model. THIS file checks the invariants that hold without one:
 Per §13, the checker itself is calibrated: planted-bad fixtures must FAIL the checks.
 Self-contained, no pytest. Run: python3 tests/test_agents.py
 """
+import glob
 import json
 import os
 import re
@@ -1255,6 +1256,50 @@ def _check_frontmatter(label, raw):
           ": " in v and not (v[0] == v[-1] and v[0] in "'\""))
 
 
+
+# --------------------------------------- D6a: the record-output block has ONE home (2026-08-20)
+
+def test_record_output_block_is_generated_not_copied():
+    """§6c FAMILY PARITY over the authoring briefs. The record-output contract lived as SIX
+    byte-identical hand-maintained copies (verified identical by sha at authoring time), so
+    a vocabulary change had to be made six times and would silently rot five of them. That
+    is `constant-second-home` / `unpinned-prose-constant`, two shapes this repo's own ledger
+    already carries records of.
+
+    The block is now DERIVED from the constants that define the vocabulary — FINDING_CLASSES,
+    GUARD_KINDS, RECURRENCE_EPOCH — so a brief cannot describe a state that no longer exists.
+    That is the actual fix for this defect class; a tidier copy-paste is not.
+
+    Roster enumerated from the REAL directory and vacuity-guarded: a seventh brief that
+    carries the section is covered the day it lands, with no list for anyone to update."""
+    import importlib.util as _il
+    spec = _il.spec_from_file_location(
+        "review_ledger_d6", os.path.join(ROOT, "bin", "review_ledger.py"))
+    rl = _il.module_from_spec(spec)
+    spec.loader.exec_module(rl)
+
+    block = rl.record_output_block()
+    check("the block names the finding classes from their ONE owner",
+          all(c in block for c in rl.FINDING_CLASSES), rl.FINDING_CLASSES)
+    check("the block names the guard-answer kinds from their ONE owner",
+          all(k in block for k in rl.GUARD_KINDS), rl.GUARD_KINDS)
+    check("the block names the epoch", rl.RECURRENCE_EPOCH in block)
+    check("PLANTED: the retired equivalence is GONE — a recurring deterministic key is no "
+          "longer 'an UNBUILT GUARD' unconditionally; that is now computed from the answer",
+          "is an UNBUILT GUARD" not in block, block[:200])
+
+    briefs = sorted(glob.glob(os.path.join(AGENTS, "*.md")))
+    carriers = [b for b in briefs if "## Review record output" in open(b, encoding="utf-8").read()]
+    check("vacuity guard: the carrier roster is non-empty and holds the six known briefs",
+          len(carriers) >= 6, [os.path.basename(b) for b in carriers])
+    stale = []
+    for path in carriers:
+        if block not in open(path, encoding="utf-8").read():
+            stale.append(os.path.basename(path))
+    check("every carrier brief holds the CURRENT generated block", not stale, stale)
+    print("  record-output block: {} carriers, {} chars".format(len(carriers), len(block)))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1272,7 +1317,8 @@ def main():
                test_v125_planted_fixtures, test_v126_seam_contract_pins,
                test_v142_agent_eval_doctrine, test_v142_planted_fixtures,
                test_review_record_producing_seam,
-               test_skill_frontmatter_is_valid_yaml_to_a_real_parser):
+               test_skill_frontmatter_is_valid_yaml_to_a_real_parser,
+               test_record_output_block_is_generated_not_copied):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

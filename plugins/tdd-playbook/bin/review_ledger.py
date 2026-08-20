@@ -722,6 +722,57 @@ def small_lane_preconditions(changed_paths, insertions, deletions,
     return True, ""
 
 
+RECORD_OUTPUT_MARKER = "## Review record output (when these findings land in `docs/reviews/`)"
+
+
+def record_output_block() -> str:
+    """The record-authoring contract, DERIVED from the constants that define it.
+
+    It lived as six byte-identical hand-maintained copies in the authoring briefs, so a
+    vocabulary change had to land six times and would silently rot five of them —
+    `constant-second-home` / `unpinned-prose-constant`, two shapes this repo's own ledger
+    carries records of. Deriving it from FINDING_CLASSES / GUARD_KINDS / RECURRENCE_EPOCH
+    means a brief can never describe a state that no longer exists; a tidier copy-paste
+    would not have fixed that.
+
+    Rendered between sentinels by render_agents.py; committed == render() is pinned by
+    test_agents.py, enumerated from the real directory and vacuity-guarded."""
+    return """{marker}
+
+When this review's findings are recorded in the adversarial-review ledger, each finding
+carries `class: {classes}` — `deterministic` means a mechanical check could have caught
+it, `judgment` means it needed a mind — plus a short-kebab `recurrence_key`, REUSED when
+the same defect shape recurs (`python3 plugins/tdd-playbook/bin/review_ledger.py
+recurrence` lists the keys already seen), and an optional `catalog_row` (`H<n>`) naming the
+`docs/HACK_CATALOG.md` Guard ↔ entry map row the recurrence feeds. Records dated on/after
+{taxonomy} are REFUSED by `validate` without the class and key; earlier history is
+untouched.
+
+**Answer what would have caught it.** Records dated on/after {epoch} carry, per finding,
+`guard: {{"kind": "{kinds}", "ref": ..., "why": ...}}` — the hook or test that would have
+caught this, or an explicit `none` WITH a reason. `validate` REFUSES the finding otherwise,
+and the ref is RESOLVED, not merely non-empty: a hook must name a registered hook, a test
+must name a defined test. `none` is a first-class answer; the BLANK was the problem. This
+is asked of YOU, now, while you still know — the previous design asked a reader to infer it
+months later, and the recurrence list it produced had to be retired wholesale at {epoch}
+because nobody could honestly reconstruct the answers.
+
+The record's `reviewers` list is BOUND, not free text: every entry is a
+**canonical agent id** — a basename in `agents/`, which are stable ids and are not
+renamed — or one of the non-agent reviewer kinds: {reviewers}. Records dated on/after {vocab} are REFUSED by
+`validate` with an unrecognised name, so write the id exactly; a plausible-looking variant
+is a refusal, not a silent miss. Name every reviewer that actually contributed — the
+ledger's participation report reads this field, and it can only ever show what was
+RECORDED, never who ran.""".format(
+        marker=RECORD_OUTPUT_MARKER,
+        classes="|".join(FINDING_CLASSES),
+        kinds="|".join(GUARD_KINDS),
+        taxonomy=TAXONOMY_SHIP_DATE,
+        epoch=RECURRENCE_EPOCH,
+        vocab=REVIEWER_VOCAB_SHIP_DATE,
+        reviewers=", ".join(NON_AGENT_REVIEWERS))
+
+
 def _record_date(record_id: str) -> str:
     """The YYYY-MM-DD prefix of a record id, or "" — which sorts BEFORE any real date, so
     an unparseable id lands in history rather than silently claiming a current verdict."""
