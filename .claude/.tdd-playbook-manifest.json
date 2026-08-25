@@ -34,6 +34,7 @@
     ".claude/bin/guard_note.py",
     ".claude/bin/host_contract.py",
     ".claude/bin/host_parity.py",
+    ".claude/bin/mutation_run.py",
     ".claude/bin/readable_surface.py",
     ".claude/bin/render_agents.py",
     ".claude/bin/render_reference.py",

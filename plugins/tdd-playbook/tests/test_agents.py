@@ -1300,6 +1300,111 @@ def test_record_output_block_is_generated_not_copied():
     print("  record-output block: {} carriers, {} chars".format(len(carriers), len(block)))
 
 
+def test_v146_cheliped_audit_doctrine():
+    """v1.46 — seven amendments from a downstream build-and-audit day (Cheliped 2026-08-24/25),
+    one defect class: a component that CANNOT measure reports a confident value, indistinguishable
+    from one that measured and found nothing.
+
+    (1) §1 fixture-SCENARIO trap — the sibling of the fixture-VALUE trap: the setup never ENTERS
+    the state under test, so red-first + green-after proves nothing (seven instances, one day).
+    (2) §1 UNMEASURED-is-not-ZERO + destructive actions need POSITIVE observation.
+    (3) §4a a guard is only real where its signal can be SEEN — trace the landing before building.
+    (4) §10 affected-tests-green is not gates-green; a BLOCKED push is a full sweep nobody chose.
+    (5) §12 parse-don't-grep governs INVENTORIES, not only absence claims.
+    (6) §13 after naming a defect class, run the class's own question against the FIX.
+    (7) §0 a long-lived LOCAL process (menu-bar/tray/editor extension) is a deploy surface.
+
+    Pinned because each amendment's value is in the CONCRETE tell, which is exactly what a later
+    paraphrase back toward the abstraction would drop."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in V146_NEEDLES:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    # The scenario trap must NOT be sold as covered by mutation — its own origin says otherwise.
+    check("SKILL §1: scenario trap states the §4 backstop is WEAKER (no false reassurance)",
+          "backstop\n  is WEAKER here than for the value trap" in text
+          or "is WEAKER here than for the value trap" in text)
+    # Amendments are amendments: no new top-level section was opened for any of them.
+    check("SKILL: still 22 top-level sections (amended, not appended)",
+          len([ln for ln in text.splitlines() if ln.startswith("## ")]) == 22,
+          len([ln for ln in text.splitlines() if ln.startswith("## ")]))
+
+
+V146_NEEDLES = [
+    # (1) §1 fixture-SCENARIO trap
+    ("SKILL §1: fixture-SCENARIO trap subsection", "the fixture-SCENARIO trap"),
+    ("SKILL §1: red-first does not prove REACHABILITY",
+     "it does not prove the fixture can REACH the failure"),
+    ("SKILL §1: the adversary check", "who is the ADVERSARY in this scenario, and is it in"),
+    ("SKILL §1: concurrency tell (one actor)", "CONCURRENCY \u2192 the fixture has ONE actor"),
+    ("SKILL §1: exhaustiveness tell (denominator)",
+     "EXHAUSTIVENESS \u2192 nothing asserts the DENOMINATOR"),
+    ("SKILL §1: negative-property tell (one instance)",
+     "NEGATIVE (never / cannot / always) \u2192 exactly ONE instance is exercised"),
+    ("SKILL §1: convenient-vs-stubborn double failure mode", "the CONVENIENT one"),
+    ("SKILL §1: targeted plant is the cheap catch", "TARGETED\n  plant"),
+    # (2) §1 unmeasured is not zero
+    ("SKILL §1: UNMEASURED is not ZERO", "UNMEASURED is not ZERO"),
+    ("SKILL §1: the OR'd-emptiness grep tell", "if rc != 0 or not x: return None/False/0"),
+    ("SKILL §1: destructive actions need positive observation",
+     "DESTRUCTIVE action\n  requires POSITIVE OBSERVATION"),
+    # (3) §4a guard signal visibility
+    ("SKILL §4a: a guard is only real where its signal can be seen",
+     "only real where its SIGNAL can be SEEN"),
+    ("SKILL §4a: enumerate consumers between the raise and a human",
+     "ENUMERATE the consumers between the raise and a human"),
+    ("SKILL §4a: exit-code suppression of DELIVERY", "suppresses DELIVERY"),
+    ("SKILL §4a: silent precisely when it fired", "silent precisely when it\n  fired"),
+    # (4) §10 gates-green
+    ("SKILL §10: affected-green is not gates-green", "AFFECTED-TESTS-GREEN is not GATES-GREEN"),
+    ("SKILL §10: a blocked push is a sweep nobody decided to run",
+     "it is a sweep nobody\n  decided to run"),
+    ("SKILL §10: know the hook's escalation BOUND", "escalation BOUND"),
+    # (5) §12 parse governs inventories
+    ("SKILL §12: parse-don't-grep governs INVENTORIES",
+     "governs INVENTORIES, not only absence claims"),
+    ("SKILL §12: the scanner that registered a table named \"on\"",
+     "registered a table named \"on\""),
+    # (6) §13 fix-the-class
+    ("SKILL §13: run the class's own question against the FIX",
+     "run the class's OWN question against the FIX"),
+    ("SKILL §13: the fix contained the very bug", "contained that very bug, twice"),
+    # (7) §0 local deploy surface
+    ("SKILL §0: a long-lived LOCAL process is a deploy surface",
+     "A LONG-LIVED LOCAL process is a deploy surface"),
+    ("SKILL §0: enumerate deploy surfaces by RESTART MECHANISM",
+     "by RESTART MECHANISM, not by remoteness"),
+]
+
+
+def test_v146_planted_fixtures():
+    """The v1.46 pins must be able to FAIL — doctrine paraphrased back to the abstraction is
+    flagged. The planted text is the SHAPE these amendments were written against: prose that
+    sounds like the rule and contains none of its concrete tells."""
+    paraphrase = (
+        "Write tests that can actually fail. Make sure guards are useful. Run the gates before "
+        "pushing. Parse source instead of grepping it. Learn from each defect class. Name where "
+        "each deliverable runs.\n"
+    )
+    missed = [label for label, needle in V146_NEEDLES if needle in paraphrase]
+    check("planted: a plausible paraphrase satisfies NONE of the v1.46 needles",
+          not missed, missed)
+    # And the pins must PASS on text that genuinely carries the amendments (no needle is
+    # unsatisfiable — a needle nothing can satisfy is a test that cannot fail, §1).
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        real = fh.read()
+    unsatisfied = [label for label, needle in V146_NEEDLES if needle not in real]
+    check("planted: every v1.46 needle is satisfied by the real SKILL (needles are reachable)",
+          not unsatisfied, unsatisfied)
+    # Vacuity guard on the pin roster itself (§4a): a roster that silently emptied would pass
+    # both checks above.
+    check("planted: the v1.46 needle roster is non-empty and complete",
+          len(V146_NEEDLES) == 24, len(V146_NEEDLES))
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1318,7 +1423,8 @@ def main():
                test_v142_agent_eval_doctrine, test_v142_planted_fixtures,
                test_review_record_producing_seam,
                test_skill_frontmatter_is_valid_yaml_to_a_real_parser,
-               test_record_output_block_is_generated_not_copied):
+               test_record_output_block_is_generated_not_copied,
+               test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

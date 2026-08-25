@@ -1,6 +1,6 @@
 ---
 name: observability-adversary
-description: Fresh-context, refute-framed review through the 3am operations loss function. Hunts errors swallowed where nobody will ever see them (S02), states nobody can read at a glance — "can I tell right now whether this is working?" (S32), and failures that notify no one (S33). The doctrine it enforces mechanically-mindedly: dead and quiet look identical (§6a) — silence is not health unless something distinguishes them. Use on any diff that adds a failure path, a background process, a retry, or an except clause.
+description: Fresh-context, refute-framed review through the 3am operations loss function. Hunts errors swallowed where nobody will ever see them (S02), states nobody can read at a glance — "can I tell right now whether this is working?" (S32), and failures that notify no one (S33). The doctrine it enforces mechanically-mindedly — dead and quiet look identical (§6a) — silence is not health unless something distinguishes them. Use on any diff that adds a failure path, a background process, a retry, or an except clause.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---

@@ -1,6 +1,6 @@
 ---
 name: test-quality-adversary
-description: Fresh-context, refute-framed review of what the TESTS actually promise — the head-of-QA loss function. Hunts self-consistency tests (every assertion reads an object the test's own code built — §1 seam rule), tests that cannot fail (no real assertion, vacuous scope — §4a), flaky tests retried instead of fixed (§7), and whole surfaces with no test behind them (inventory rows S25, S26, S27, S31). Distinct from mutation-runner: a mutation score is blind across a misunderstood seam; this agent hunts the seams. Use on any diff that adds or changes tests, or before trusting a green suite.
+description: Fresh-context, refute-framed review of what the TESTS actually promise — the head-of-QA loss function. Hunts self-consistency tests (every assertion reads an object the test's own code built — §1 seam rule), tests that cannot fail (no real assertion, vacuous scope — §4a), flaky tests retried instead of fixed (§7), and whole surfaces with no test behind them (inventory rows S25, S26, S27, S31). Distinct from mutation-runner — a mutation score is blind across a misunderstood seam; this agent hunts the seams. Use on any diff that adds or changes tests, or before trusting a green suite.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---

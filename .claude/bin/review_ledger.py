@@ -52,6 +52,25 @@ NON_AGENT_REVIEWERS = ("self-review", "release-gate", "operator-field-report",
 # Verified at authoring time: all 39 existing records use exactly 8 agent names + the 8
 # tokens above, so the rollout binds today's records at zero cost.
 REVIEWER_VOCAB_SHIP_DATE = "2026-08-17"
+# D1 (recurrence-epoch plan, 2026-08-20): the recurrence list was RETIRED WHOLESALE here.
+# It could not see a guard that had been BUILT — four of its items were guards misfiring and
+# tag_guard was fixed in v1.42.0 by this repo, so it nagged forever; one of its keys held
+# five unrelated findings; and `catalog_row`, the field linking a defect to its check, was
+# present on 6 of 205 findings with two of the three load-bearing ones naming the wrong row.
+# Reclassifying that history needs judgment nobody can supply honestly, so it is not
+# attempted: findings dated before this are HISTORICAL — readable, reported as a count,
+# never counted toward a verdict.
+#
+# The records are NOT deleted. They are the evidence that produced this diagnosis; they stop
+# DRIVING the verdict, which is a different thing, and the historical line in
+# recurrence_report exists to keep that difference visible (silence would read as "no
+# history exists" — the H15 shape).
+RECURRENCE_EPOCH = "2026-08-20"
+# ...and the answer moves to AUTHORING time, where the author still knows it. The old design
+# asked a READER to infer, months later, whether a defect had been guarded — which is how
+# the blanks accumulated. `none` is a first-class answer; the BLANK was the problem.
+# The ONE machine owner of the vocabulary, on the FINDING_CLASSES rule above.
+GUARD_KINDS = ("hook", "test", "none")
 RECURRENCE_KEY = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 CATALOG_ROW = re.compile(r"^H\d+$")
 RECORD_ID_DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})-")
@@ -77,6 +96,102 @@ def _strings(value) -> bool:
     return isinstance(value, list) and bool(value) and all(isinstance(x, str) and x for x in value)
 
 
+def hook_default_modes() -> dict | None:
+    """The SHIPPED default mode of every hook, or None where the hook tree is not vendored
+    (Codex carries adapters + bin only) — the caller then degrades to shape-only, stated
+    here rather than silently.
+
+    Deliberately the SHIPPED default and never `_common.resolve_mode()`. resolve_mode reads
+    the per-hook env var, the global env var and break-glass state; this table is rendered
+    into a COMMITTED file whose test asserts committed == rendered, so keying on it would
+    make the same tree render differently on two machines and fail the gate for whoever
+    happened to have a var set. A generated artifact is a pure function of the tree.
+
+    AST-parsed rather than imported: reading a literal cannot execute anything, and it is
+    the same idiom test_hooks uses to read each guard's NAME constant."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "hooks", "scripts", "_common.py")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+    except (OSError, SyntaxError):
+        return None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == "_DEFAULT_MODES":
+                try:
+                    value = ast.literal_eval(node.value)
+                except ValueError:
+                    return None
+                return value if isinstance(value, dict) else None
+    return None
+
+
+def guard_problems(guard, label: str, evidence_exists) -> list[str]:
+    """Validate one finding's `guard` answer — shape AND resolution.
+
+    A check that only confirmed the field was non-empty is precisely the weakness this
+    replaces: the capability registry's own `wired_by`/`exercised_by` are unresolved strings
+    to this day, so a capability naming a test that does not exist validates clean."""
+    if not isinstance(guard, dict):
+        return [label + ".guard must be an object {kind, ref, why}"]
+    problems = []
+    kind = guard.get("kind")
+    if kind not in GUARD_KINDS:
+        return [label + ".guard.kind must be one of " + "|".join(GUARD_KINDS)]
+    ref = guard.get("ref")
+    if kind == "none":
+        # An unexplained "nothing guards this" is the BLANK the epoch just retired, wearing
+        # a label. The reason is the entire difference between the two.
+        if not (isinstance(guard.get("why"), str) and guard["why"].strip()):
+            problems.append(label + ".guard.why is required when kind is none — an "
+                                    "unexplained 'nothing guards this' is the blank the "
+                                    "recurrence epoch retired")
+        if ref:
+            problems.append(label + ".guard.ref must be absent when kind is none")
+        return problems
+    if not (isinstance(ref, str) and ref.strip()):
+        return [label + ".guard.ref is required when kind is " + kind]
+    if kind == "hook":
+        modes = hook_default_modes()
+        if modes is not None and ref not in modes:
+            problems.append(label + ".guard.ref '" + ref + "' names no registered hook — "
+                            "expected one of: " + ", ".join(sorted(modes)))
+    elif kind == "test" and not evidence_exists(ref):
+        problems.append(label + ".guard.ref '" + ref + "' does not resolve to a defined "
+                        "test — a guard nobody can run is not a guard")
+    return problems
+
+
+def guard_state(answers: list[dict]) -> tuple[str, str]:
+    """(state, detail) for one recurrence key, computed from the answers its findings gave.
+
+    A key is GUARDED when ANY finding names a live mechanism — something guards it now, even
+    if an earlier sighting predated that guard. GUARD DARK only when the only mechanisms
+    named are hooks that SHIP off; UNBUILT when nothing was named at all."""
+    modes = hook_default_modes()
+    dark = []
+    for answer in answers:
+        kind, ref = answer.get("kind"), answer.get("ref")
+        if kind == "test":
+            return "GUARDED", ref
+        if kind == "hook":
+            if modes is None:
+                return "GUARDED", ref + " (shipped mode unverifiable in this layout)"
+            mode = modes.get(ref)
+            if mode and mode != "off":
+                return "GUARDED", "{} ships {}".format(ref, mode)
+            dark.append(ref)
+    if dark:
+        return "GUARD DARK", ("{} ships off — doctrine, not a live mechanism"
+                              .format(", ".join(sorted(set(dark)))))
+    return "UNBUILT GUARD", "no finding named a mechanism"
+
+
 def validate_record(record: dict, source: str, exists, evidence_exists=lambda _target: True,
                     plan_exists=lambda _p: True,
                     catalog_exists=lambda _row: True,
@@ -97,6 +212,7 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
             problems.append(prefix + "id must begin YYYY-MM-DD (the taxonomy requirement "
                                      "is keyed on the record date)")
     taxonomy_required = record_date is not None and record_date >= TAXONOMY_SHIP_DATE
+    guard_required = record_date is not None and record_date >= RECURRENCE_EPOCH
     # v1.32.0: the plan path must RESOLVE, not merely be a non-empty string. `plan_block.py
     # validate` was the only reader of docs/plans/gated/*.md and it was deleted with the CIVerd
     # engine, leaving the directory write-only. A review record citing a plan that does not
@@ -158,6 +274,15 @@ def validate_record(record: dict, source: str, exists, evidence_exists=lambda _t
         if key is not None and (not isinstance(key, str) or not RECURRENCE_KEY.fullmatch(key)):
             problems.append(label + ".recurrence_key must be short-kebab "
                                     "([a-z0-9]+(-[a-z0-9]+)*) — keys reach report lines")
+        # D1 (2026-08-20): what would have caught this? Asked of the AUTHOR, while they
+        # still know — never of a reader months later, which is how the blanks accumulated.
+        guard = finding.get("guard")
+        if guard_required and guard is None:
+            problems.append(label + ".guard is required for records dated on/after "
+                            + RECURRENCE_EPOCH + " — answer what would have caught this: "
+                            '{"kind": "hook|test|none", "ref": ..., "why": ...}')
+        if guard is not None:
+            problems.extend(guard_problems(guard, label, evidence_exists))
         catalog = finding.get("catalog_row")
         if catalog is not None and (not isinstance(catalog, str)
                                     or not CATALOG_ROW.fullmatch(catalog)):
@@ -597,6 +722,64 @@ def small_lane_preconditions(changed_paths, insertions, deletions,
     return True, ""
 
 
+RECORD_OUTPUT_MARKER = "## Review record output (when these findings land in `docs/reviews/`)"
+
+
+def record_output_block() -> str:
+    """The record-authoring contract, DERIVED from the constants that define it.
+
+    It lived as six byte-identical hand-maintained copies in the authoring briefs, so a
+    vocabulary change had to land six times and would silently rot five of them —
+    `constant-second-home` / `unpinned-prose-constant`, two shapes this repo's own ledger
+    carries records of. Deriving it from FINDING_CLASSES / GUARD_KINDS / RECURRENCE_EPOCH
+    means a brief can never describe a state that no longer exists; a tidier copy-paste
+    would not have fixed that.
+
+    Rendered between sentinels by render_agents.py; committed == render() is pinned by
+    test_agents.py, enumerated from the real directory and vacuity-guarded."""
+    return """{marker}
+
+When this review's findings are recorded in the adversarial-review ledger, each finding
+carries `class: {classes}` — `deterministic` means a mechanical check could have caught
+it, `judgment` means it needed a mind — plus a short-kebab `recurrence_key`, REUSED when
+the same defect shape recurs (`python3 plugins/tdd-playbook/bin/review_ledger.py
+recurrence` lists the keys already seen), and an optional `catalog_row` (`H<n>`) naming the
+`docs/HACK_CATALOG.md` Guard ↔ entry map row the recurrence feeds. Records dated on/after
+{taxonomy} are REFUSED by `validate` without the class and key; earlier history is
+untouched.
+
+**Answer what would have caught it.** Records dated on/after {epoch} carry, per finding,
+`guard: {{"kind": "{kinds}", "ref": ..., "why": ...}}` — the hook or test that would have
+caught this, or an explicit `none` WITH a reason. `validate` REFUSES the finding otherwise,
+and the ref is RESOLVED, not merely non-empty: a hook must name a registered hook, a test
+must name a defined test. `none` is a first-class answer; the BLANK was the problem. This
+is asked of YOU, now, while you still know — the previous design asked a reader to infer it
+months later, and the recurrence list it produced had to be retired wholesale at {epoch}
+because nobody could honestly reconstruct the answers.
+
+The record's `reviewers` list is BOUND, not free text: every entry is a
+**canonical agent id** — a basename in `agents/`, which are stable ids and are not
+renamed — or one of the non-agent reviewer kinds: {reviewers}. Records dated on/after {vocab} are REFUSED by
+`validate` with an unrecognised name, so write the id exactly; a plausible-looking variant
+is a refusal, not a silent miss. Name every reviewer that actually contributed — the
+ledger's participation report reads this field, and it can only ever show what was
+RECORDED, never who ran.""".format(
+        marker=RECORD_OUTPUT_MARKER,
+        classes="|".join(FINDING_CLASSES),
+        kinds="|".join(GUARD_KINDS),
+        taxonomy=TAXONOMY_SHIP_DATE,
+        epoch=RECURRENCE_EPOCH,
+        vocab=REVIEWER_VOCAB_SHIP_DATE,
+        reviewers=", ".join(NON_AGENT_REVIEWERS))
+
+
+def _record_date(record_id: str) -> str:
+    """The YYYY-MM-DD prefix of a record id, or "" — which sorts BEFORE any real date, so
+    an unparseable id lands in history rather than silently claiming a current verdict."""
+    match = RECORD_ID_DATE.match(record_id or "")
+    return match.group(1) if match else ""
+
+
 def recurrence_report(records: list[dict]) -> list[str]:
     """The judgment surface speaking back: a recurrence_key appearing in >=2 DISTINCT
     records at class `deterministic` is an UNBUILT GUARD — a machine could have caught
@@ -612,8 +795,20 @@ def recurrence_report(records: list[dict]) -> list[str]:
     percent = 100 * len(keyed) // len(rows) if rows else 0
     lines = ["recurrence: records {} · findings {} · keyed {} of {} ({}%)".format(
         len(records), len(rows), len(keyed), len(rows), percent)]
+    # The EPOCH split. Pre-epoch findings are historical: never counted toward a verdict,
+    # never classified — but REPORTED, because silence would read as "no history exists",
+    # which is the H15 narrowed-scope-reported-as-the-whole shape. The keyed-of-total
+    # denominator above deliberately still spans ALL findings (A7): the epoch retires the
+    # verdict, not the coverage ratio, and re-keying must never shrink that denominator.
+    historical = [(rid, f) for rid, f in keyed if _record_date(rid) < RECURRENCE_EPOCH]
+    current = [(rid, f) for rid, f in keyed if _record_date(rid) >= RECURRENCE_EPOCH]
+    if historical:
+        lines.append("historical: {} keyed findings in {} records before {} — not counted "
+                     "(they remain readable in docs/reviews/)".format(
+                         len(historical), len({rid for rid, _f in historical}),
+                         RECURRENCE_EPOCH))
     groups: dict[str, list] = {}
-    for rid, finding in keyed:
+    for rid, finding in current:
         groups.setdefault(finding["recurrence_key"], []).append((rid, finding))
     for key in sorted(groups):
         members = groups[key]
@@ -621,10 +816,22 @@ def recurrence_report(records: list[dict]) -> list[str]:
         everywhere = {rid for rid, _f in members}
         catalog = sorted({f.get("catalog_row") for _rid, f in members if f.get("catalog_row")})
         if len(deterministic) >= 2:
-            target = (", ".join(catalog) if catalog else
-                      "no matching row — propose one (docs/HACK_CATALOG.md Guard ↔ entry map)")
-            lines.append("UNBUILT GUARD: {} ({} records) — HACK_CATALOG: {}".format(
-                key, len(deterministic), target))
+            state, detail = guard_state([f.get("guard") or {} for _rid, f in members])
+            # catalog_row is HUMAN CONTEXT and never decides state: H13's cell names both a
+            # live mechanism and the default-off exitcode_guard, so no row-level rule can
+            # classify it. The mechanism the findings NAMED is the fact.
+            if catalog:
+                row = " — HACK_CATALOG: " + ", ".join(catalog)
+            elif state == "UNBUILT GUARD":
+                # An UNBUILT line that names the problem and not the NEXT STEP is the
+                # adoption failure this repo's own briefs hunt (S40). Only UNBUILT needs it:
+                # a GUARDED key has nothing to propose.
+                row = (" — no matching row: propose one (docs/HACK_CATALOG.md "
+                       "Guard ↔ entry map)")
+            else:
+                row = ""
+            lines.append("{}: {} ({} records) — {}{}".format(
+                state, key, len(deterministic), detail, row))
         elif len(everywhere) >= 2:
             lines.append("recurring judgment: {} ({} records) — not a missing guard".format(
                 key, len(everywhere)))
@@ -703,9 +910,17 @@ def main(argv=None) -> int:
                                       record_authoring_briefs(root))
         for line in lines:
             print(line)
+        # D1 (2026-08-20): `unbuilt_guards` KEEPS its name and its meaning — the count of
+        # keys nothing guards — but the epoch changes what it is counted over, so its series
+        # STEP-CHANGES here rather than drifting. The sibling counters are added beside it
+        # instead of quietly redefining the old one: a metric that silently changes what it
+        # measures is worse than a metric that stops.
         _log_usage("recurrence", {
             "records": len(records),
             "unbuilt_guards": sum(1 for line in lines if line.startswith("UNBUILT GUARD")),
+            "guarded": sum(1 for line in lines if line.startswith("GUARDED:")),
+            "guard_dark": sum(1 for line in lines if line.startswith("GUARD DARK:")),
+            "historical": sum(1 for line in lines if line.startswith("historical:")),
         })
         return 0
     problems = validate_repository(root)

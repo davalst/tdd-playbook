@@ -3,6 +3,81 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.46.0 — 2026-08-25
+
+**Seven amendments from one downstream audit day, all of one defect class.** Cheliped, 2026-08-24/25:
+seven commits, and a single shape underneath them — *a component that cannot measure something reports
+a confident value, indistinguishable from one that measured and found nothing.* An external reviewer
+out-found three of that session's own fresh-context adversary subagents, and the reason is the first
+amendment. Nothing here is a new section; every one lands inside a section that already existed.
+
+**§1 — the fixture-SCENARIO trap, the sibling of the fixture-VALUE trap.** The value trap picks values
+where the correct and the mutated code agree. This one never ENTERS the state under test: the assertion
+is right and the SETUP cannot reach the failure. Seven instances in one audited day, **every one
+red-first and green-after** — which is the load-bearing correction to §1's red-first paragraph. Red-first
+proves a test fails without the FIX; it does not prove the fixture can REACH the failure. The tells are
+mechanical and grep-able at review time: a CONCURRENCY property with one actor in the fixture · an
+EXHAUSTIVENESS property with nothing asserting the denominator · a REAL-CONSUMER property whose only
+consumer is a double you wrote · a NEGATIVE ("never/cannot/always") with exactly one instance exercised ·
+a double whose failure mode is the CONVENIENT one (the thing VANISHES, the call succeeds, the state is
+already correct) rather than the STUBBORN one the property is about. The check is one line: **who is the
+ADVERSARY in this scenario, and is it in my fixture?** And the section says plainly that §4 is a WEAKER
+backstop here than for the value trap — a broad pass scores the code the fixture DOES reach and is blind
+across the seam it never crosses. What caught all seven was a hand-planted TARGETED mutant, ~30 seconds
+each, and an external reviewer.
+
+**§1 — UNMEASURED is not ZERO.** §6a's "dead and quiet look identical" applied to a single return value.
+The tell is an error condition OR'd into an emptiness condition — `if rc != 0 or not x: return
+None/False/0`. In the origin, `running_image()` returned the same `None` for "the `docker ps` query
+FAILED" and "nothing is running"; `is_running()` collapsed it to False, `stop()` treated that as proof,
+and `uninstall()` deleted a config file out from under a still-serving process. Hence: **a DESTRUCTIVE
+action requires POSITIVE OBSERVATION, never the absence of a positive.**
+
+**§4a — a guard is only real where its SIGNAL can be SEEN.** Before adding a check that raises, enumerate
+the consumers between the raise and a human. The origin guard was proven INERT before it was built: every
+consumer wrapped the call in `except Exception: return None`, so a programming error would have reached
+the user as "measurement unavailable"; and the scheduler delivered a job's output only on exit code ZERO,
+so an UNCAUGHT exception reached nobody at all. The guard would have been silent precisely when it fired.
+Generalises "report-only mutation is theater" to every guard, and mirrors "a discarded exit code is a
+discarded truth" — there a non-zero exit was thrown away, here a non-zero exit throws the OUTPUT away.
+
+**§10 — AFFECTED-TESTS-GREEN is not GATES-GREEN, and the push is usually the real gate.** A pre-push hook
+that escalates to the full suite past a bound means a BLOCKED push spends a full sweep — one nobody
+decided to run. Four full-suite runs (~40 min each) in one day, by someone who believed they were obeying
+the one-sweep rule; every blocker was findable locally in seconds (a linter, a registration check, a
+scanner tripped by the author's own comment). Run the gates the HOOK will run, locally, before pushing —
+and know your hook's escalation bound, or you cannot tell a cheap push from an expensive one until you
+have paid.
+
+**§13 — after naming a defect CLASS, run the class's own question against the FIX.** Twice in one day the
+fix for the cannot-measure class contained that very bug. §12's recall-at-authoring-time rule with the
+fix's own author as the subject: the class was just named, so recall is at its one moment of being free.
+
+**§12 — parse-don't-grep governs INVENTORIES, not only absence claims.** A schema scanner read
+`CREATE TABLE IF NOT EXISTS on every call` out of a PROSE COMMENT and registered a table named `"on"`; a
+call sweep matched an example inside a docstring. Both false positives, both against prose the author had
+written minutes earlier. The rule earns its keep against your own comments, not just against clever code.
+
+**§0 — a long-lived LOCAL process is a deploy surface.** A menu-bar/tray app, an editor extension, a
+user-level daemon: no server deploy and no container restart touches it, so it keeps serving the code it
+loaded at launch — on the machine you are editing. One was found running 20-day-old code immediately
+after a deploy verified end-to-end on the repo's other two surfaces. Enumerate deploy surfaces by RESTART
+MECHANISM, not by remoteness. (Filed here rather than in §5's driver table, which lists UX DRIVERS — how a
+test drives an interface — not deploy targets; a tray app's driver is unchanged, its restart is not.)
+
+**Pinned, and replayed.** `test_agents.py::test_v146_cheliped_audit_doctrine` pins 24 needles on the
+concrete tells — the part a later paraphrase back toward the abstraction would drop — and
+`test_v146_planted_fixtures` proves the roster can fail (a plausible paraphrase satisfies none of them),
+that every needle is reachable in the real text, and that the roster has not silently emptied. Per §13's
+guard-calibration rule the pins were REPLAYED against the pre-amendment SKILL at `HEAD`: **0 of 24
+survived** — they fail on the motivating artifact, not merely in principle.
+
+**What was checked and NOT folded in.** Two proposals were already covered and adding them would have
+been duplication: the "no real consumer present" tell is §1's existing seam rule (v1.26), reached here as
+a cross-reference rather than a restatement; and the parse-don't-grep evidence about one's own prose is
+already the recorded origin of §12's absence rule ("matches the very comment explaining the removal") —
+only the INVENTORY direction was a genuine scope gap, and only that was added.
+
 ## 1.45.0 — 2026-08-20
 
 **The recurrence tracker was telling you to build checks that already existed.** It printed

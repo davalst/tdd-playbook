@@ -85,7 +85,12 @@ Only for feature/multi-deliverable/risky work. Terse, SCANNABLE, plain chat (not
   you built — because in a laptop-only repo commit-and-push IS the deploy, and that reflex quietly
   breaks the moment a remote runtime exists. Four mandatory answers (they populate the §6a
   `deploy_surface` registry field and the §6 RUNNING leg):
-  - *Runs where:* the actual host/process, NAMED.
+  - *Runs where:* the actual host/process, NAMED. A LONG-LIVED LOCAL process is a deploy surface
+    too — a menu-bar/tray app, an editor extension, a user-level daemon: no server deploy and no
+    container restart touches it, so it keeps serving the code it loaded at launch, on the very
+    machine you are editing (origin: Cheliped 2026-08 — a tray app found running 20-day-old code
+    immediately after a deploy verified end-to-end on the repo's other two surfaces). Enumerate
+    deploy surfaces by RESTART MECHANISM, not by remoteness; "it's on my laptop" is not an answer.
   - *Gets there how:* the specific deploy mechanism. If the answer is "I'll paste files," that is a
     FINDING, not a plan — hand-patching produces a running state no checkout matches.
   - *Verified how:* how a session proves the RUNNING version equals the intended one (a version echo
@@ -167,6 +172,18 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   `except Exception: pass` around a capability check swallowed a `TypeError` from a missing
   constructor argument — a security classification silently never applied; the same
   silence-over-error class as §6c's silent-default boundaries).
+- **UNMEASURED is not ZERO, and "I did not see it" is not "it is not there."** §6a's doctrine —
+  dead and quiet look identical — applied to a single RETURN VALUE: a component that CANNOT measure
+  must return something a caller can tell apart from one that measured and found nothing. The
+  grep-able tell is an error condition OR'd into an emptiness condition —
+  `if rc != 0 or not x: return None/False/0`. (Origin: Cheliped 2026-08-25 — `running_image()`
+  returned the same `None` for "the `docker ps` query FAILED" and "nothing is running";
+  `is_running()` collapsed it to False, `stop()` treated that as proof, and `uninstall()` deleted a
+  config file out from under a still-serving process.) Hence the hard rule: **a DESTRUCTIVE action
+  requires POSITIVE OBSERVATION, never the absence of a positive** — observe the stopped/absent
+  state, or REFUSE and name the check that could not be made. Kin of the swallow rule above (a
+  failure wearing the costume of a result) and of §6c's silent-default boundaries (a missing key
+  wearing the costume of a value); §13's fix-the-class rule is where it gets caught in the FIX.
 - **Built ≠ wired-in ≠ usable.** Verify the user-visible outcome AND reachability (nav/button/CLI/tool)
   AND second-order effects (what list it leaves/joins; consistency across surfaces). Report "route
   exists + unit-tested" separately from "reachable + behaviorally verified." Don't round up.
@@ -270,6 +287,35 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   — `a > b` is satisfied by a dozen wrong implementations; `w == (h + 0.35*20)/(n + 20)` by one.
   This is the strongest argument for §4 as an OUTCOME gate, not a ritual: the mutation score is the
   only thing that reliably catches this whole class.
+- **Tests that cannot fail — the fixture-SCENARIO trap.** The sibling above picks VALUES where the
+  correct and the mutated code agree; this one never ENTERS the state under test. The assertion is
+  right and the SETUP cannot reach the failure, so the test is a DEMONSTRATION wearing a property's
+  name. The opening sentence above escalates one step: red-first proves a test fails without the
+  FIX; it does not prove the fixture can REACH the failure. (Origin: Cheliped 2026-08-24/25 — seven
+  in one audited day, every one red-first and green-after; an external reviewer out-found three of
+  the author's own fresh-context adversary subagents, and what actually caught them was hand-planted
+  TARGETED mutants, ~30 seconds each.) The tells are MECHANICAL — read the property's own words,
+  then read the fixture:
+  - the property is about CONCURRENCY → the fixture has ONE actor. "One connection = one snapshot"
+    with no competing writer is indistinguishable from two snapshots.
+  - the property is about EXHAUSTIVENESS → nothing asserts the DENOMINATOR. "Never runs DDL on a
+    read" checked ONE table while the connect ran the whole schema; "no probe forges a zero" passes
+    when enumeration comes back empty. §12's scope rule and §4a's vacuity guard are this tell at
+    the gate level; §12's exhaustiveness rule is the one-line answer it demands.
+  - the property names a REAL consumer → the only consumer present is a double you wrote. That is
+    the seam rule above, seen in the SETUP instead of in the assertion.
+  - the property is a NEGATIVE (never / cannot / always) → exactly ONE instance is exercised.
+  - the double's failure mode is the CONVENIENT one — the thing VANISHES, the call succeeds, the
+    state is already correct — rather than the STUBBORN one the property is about ("stop fails if
+    it survives", with a fake that made the process disappear: the exact opposite of the case under
+    test). Distinct from seam-fabrication, which governs what a double may SUPPLY; this governs how
+    it may FAIL.
+  The check, and it is answerable in one line: **who is the ADVERSARY in this scenario, and is it in
+  my fixture?** If the property is "X cannot happen", the setup must CONTAIN the thing that makes X
+  happen; if you cannot name the adversary, you are demonstrating, not testing. And note the backstop
+  is WEAKER here than for the value trap, so do not bank on §4: a broad mutation pass scores the code
+  the fixture does reach and is blind across the seam it never crosses. The cheap catch is a TARGETED
+  plant — mutate the line the property is ABOUT and watch THIS test.
 
 ## 2. Edge cases — a never-skipped category (`@pytest.mark.edge`)
 Run each deliverable methodically through this checklist; write tests for the ones that genuinely apply:
@@ -497,8 +543,20 @@ nothing. These are the documented false-green modes — each has bitten a real g
   suite — the gate then measures the WRONG suite (red, or worse, vacuously green). Shim/star-import
   the real suites into the killing suite and assert the collected count MECHANICALLY (a star-import
   shadowing silently drops a test; a docstring claiming "collision-checked" is narration).
+- **SIZE THE TIMEOUT FROM THE MEASURED BASELINE — every time the baseline changes.** A budget is
+  a constant; a suite is not. One reported run died at 1800s because four suites had been added
+  and the timeout had not moved: the pass measured nothing and cost thirty minutes to say so.
+  Project it — `mutants x measured baseline x safety` — and refuse an unaffordable scope BEFORE
+  starting, naming the number. `bin/mutation_run.py` does this; a constant you last tuned against
+  a smaller suite is a guess wearing a unit.
+- **When the surviving mutants are ALREADY KNOWN, hand-plant them.** Re-running a full pass to
+  re-observe survivors you have already identified buys the same evidence for two hours instead
+  of seconds. Apply them directly, run the killing tests, and label the broad pass UNMEASURED if
+  you did not re-run it — the honest label costs nothing and the re-run costs the afternoon.
 - **PREFLIGHT the cheap checks BEFORE the expensive pass — the same assertions, seconds instead of
-  an hour.** Every rule above reads "before trusting a pass," which invites running them post-hoc,
+  an hour.** Checks (b) COLLECTION and (c) GREEN BASELINE are MECHANICAL now — run the pass
+  through `bin/mutation_run.py` and they cannot be skipped, because running the pass is running
+  them. (a) and (d) remain the operator's. Every rule above reads "before trusting a pass," which invites running them post-hoc,
   after you have already spent the 40 minutes you must then discard. Run them FIRST, in this order,
   and REFUSE the pass on any failure: (1) roster integrity — no DUPLICATE entries (a duplicated
   `paths_to_mutate` path makes mutmut 3.6 abort after stats collection, with the cause named nowhere
@@ -517,6 +575,21 @@ nothing. These are the documented false-green modes — each has bitten a real g
   refusal message carries the failing assertion/path, and the same condition is mirrored by a
   cheap test in the fast suite, so the breakage surfaces in seconds instead of on the next
   slow-gate run.
+- **A guard is only real where its SIGNAL can be SEEN — trace the landing BEFORE you build it.**
+  The report-only-mutation line above generalises to every guard: before adding a check that raises,
+  ENUMERATE the consumers between the raise and a human. (Origin: Cheliped 2026-08 — a runtime guard
+  on invalid input, proven INERT before it was built. Every consumer wrapped the call in
+  `except Exception: return None`, so a PROGRAMMING error surfaced to the user as "measurement
+  unavailable"; and the scheduler delivered a job's output only when its exit code was ZERO, so an
+  UNCAUGHT exception reached nobody at all. The guard would have been silent precisely when it
+  fired.) If every path between the raise and a human swallows it, or the process's failure path
+  suppresses DELIVERY, the guard is theatre — move the enforcement to a seam where the signal is
+  visible (a static sweep in the suite, a gate, CI), where a violation is a red test on the
+  developer's own machine. The delivery half mirrors "a discarded exit code is a discarded truth":
+  there a non-zero exit was thrown away, here a non-zero exit throws the OUTPUT away. §1's swallow
+  rule is this same defect from the CONSUMER's side; this is the rule for the guard's AUTHOR, and it
+  is only cheap at design time — after the guard ships, its silence is indistinguishable from
+  compliance.
 
 ## 5. UX journeys — `@pytest.mark.ux` — interface-agnostic
 A UX journey drives the REAL interface a user touches and asserts the user-visible outcome + the persisted
@@ -981,6 +1054,23 @@ enumeration unprompted — the flow table in §0 is where it lands.
   plus a serialised session (felt, on a developer machine, as heat and a blocked laptop).
   Reaching for the full suite to ask "did I break anything else?" is the victim-sweep question
   (§1): answer it statically, then run the affected slice.
+- **AFFECTED-TESTS-GREEN is not GATES-GREEN — and the PUSH is usually the real gate.** The selection
+  rule above speeds the inner loop and says nothing about the OTHER checks a push triggers: lint,
+  registration/parity checks, scanners, and the hook's own escalation to the FULL suite once the
+  affected set exceeds a bound. So a BLOCKED push spends a full sweep — and it is a sweep nobody
+  decided to run, which is why the one-sweep rule can be violated four times in a day by someone who
+  believes they are obeying it (origin: Cheliped 2026-08-24/25 — four full-suite runs, ~40 min each,
+  every blocker findable locally in seconds: a linter, a registration check, and a scanner tripped by
+  the author's own comment). So before pushing, run the gates the HOOK will run, locally and cheaply,
+  and read them TOGETHER — one harvest, one fix pass, one targeted re-run, then push. The tell that
+  you are about to break the rule: you are about to push a fix without having run the gate's OWN
+  checks. Know your hook's escalation BOUND — an unknown bound means you cannot tell a cheap push
+  from an expensive one until you have already paid.
+- **One chained waiter per long job — never repeated polling.** A loop of `sleep 30; check`
+  spends tokens and wall-clock to learn nothing, and its cost scales with the job it is watching.
+  Start the job, wait on it once, and let completion wake you. (Written after doing the opposite
+  four times in one session while waiting on CI.) The same rule retires orphaned duplicates: one
+  waiter means one job, so a second copy left running is visible rather than silently billed.
 - **Trust gates must fire AUTOMATICALLY on the diffs that can break them** — "remember to run it" is the
   honor-system seam §13 calls gameable (a regression sits green-on-`main` until someone remembers). The
   PRINCIPLE is auto-on-risky-diff; the MECHANISM scales to need:
@@ -1079,6 +1169,13 @@ unverified NEGATIVE about a file it never read.)
   a comment while the real call remains — assert on AST nodes (attribute access, calls),
   excluding docstrings. The sweep above says WHERE to look; this is the instrument it must use —
   the general parse-over-grep rule (§1, §6's EXERCISED leg) applied to the absence direction.
+  **And the instrument governs INVENTORIES, not only absence claims** — any sweep that builds a list
+  FROM SOURCE (which tables exist, who calls this, what is registered) parses or it fabricates.
+  (Origin: Cheliped 2026-08 — a schema scanner read `CREATE TABLE IF NOT EXISTS on every call` out of
+  a PROSE COMMENT and registered a table named "on"; a call sweep matched an example written inside a
+  docstring. Two false positives in one day, both against prose the author had written minutes
+  earlier — the rule earns its keep against your OWN comments, not just against clever code, and a
+  fabricated row is worse than a missed one because it arrives wearing a denominator.)
 - **Evidence you cannot RE-READ is not evidence — a long run's output must outlive the session.**
   Write the COMPLETE log to a FILE (`… > run.log 2>&1`), never a `tail` you keep INSTEAD of the log,
   and record the run/process identifier in continuation state. An agent's context gets summarized;
@@ -1208,6 +1305,15 @@ visible — never "trust the agent more."
   across cycles means its standing mechanism ISN'T REAL YET — the class row, not the instance
   fix, is what the next retro acts on (the origin excavation's twelve escapes collapsed to seven
   classes, five of them from one migration — one mechanism gap, not twelve bugs).
+- **After naming a defect CLASS, run the class's OWN question against the FIX.** The rule above acts
+  on the class row at the next retro; this acts one step earlier, on the diff that is supposed to
+  retire it. (Origin: Cheliped 2026-08-25 — the fix for "a component that cannot measure reports a
+  confident value" contained that very bug, twice, in one day's commits; §1's UNMEASURED-is-not-ZERO
+  rule carries the shape and the damage.) A class you have just named is the class you are most
+  likely to write while fixing it — §12's recall-at-authoring-time rule with the FIX's author as the
+  subject — so the class's question becomes a checklist item on its own diff, and where the class has
+  a grep-able tell, that tell is RUN over the diff before it ships. Cheap, same-session, and it needs
+  no new mechanism: the class was just named, so recall is at its one moment of being free.
 - **Grader independent of doer:** fresh context, refute-framing, a different (cheap) model.
 - **Planted-error calibration is the ungameable anchor** — mutation testing for the verification
   loop itself. Two layers, different rot: (a) deterministic planted-false-claim / planted-wasteful-

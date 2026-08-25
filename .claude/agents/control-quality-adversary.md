@@ -1,6 +1,6 @@
 ---
 name: control-quality-adversary
-description: Fresh-context judge of a FLAGGED calibration control — is the control genuinely clean, is its oracle fair, or did the verifier truly over-flag? Advisory only; emits a forced closed-vocabulary verdict (REJECT / FIX-ORACLE / KEEP) that a human confirms before anything irreversible happens. Born from the 2026-08-16 holdout diagnose finding: FP 10/10 was measuring control-AUTHORING quality, not verifier quality.
+description: Fresh-context judge of a FLAGGED calibration control — is the control genuinely clean, is its oracle fair, or did the verifier truly over-flag? Advisory only; emits a forced closed-vocabulary verdict (REJECT / FIX-ORACLE / KEEP) that a human confirms before anything irreversible happens. Born from the 2026-08-16 holdout diagnose finding — FP 10/10 was measuring control-AUTHORING quality, not verifier quality.
 tools: Read, Grep, Glob
 model: opus
 ---

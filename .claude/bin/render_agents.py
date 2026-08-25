@@ -19,13 +19,19 @@ deliberately, right here, where they are visible.
 The invariant a test pins: committed AGENTS.md == render(). Edit CLAUDE.md or HOST_NOTES,
 then re-render. A hand edit to AGENTS.md is a gate failure, not a merge conflict later.
 """
+import glob
 import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from review_ledger import (RECORD_OUTPUT_MARKER,  # noqa: E402  (sibling; owns the vocabulary)
+                           record_output_block)
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 SOURCE = os.path.join(REPO, "CLAUDE.md")
 TARGET = os.path.join(REPO, "AGENTS.md")
+BRIEFS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agents")
 
 BANNER = (
     "<!-- GENERATED FILE — do not edit by hand.\n"
@@ -80,6 +86,46 @@ def render():
     return BANNER + HOST_NOTES + "".join(lines)
 
 
+def brief_carriers():
+    """Briefs carrying the record-output section, enumerated from the REAL directory — so a
+    seventh brief is covered the day it lands, with no list for anyone to remember."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(BRIEFS, "*.md"))):
+        with open(path, encoding="utf-8") as fh:
+            if RECORD_OUTPUT_MARKER in fh.read():
+                out.append(path)
+    return out
+
+
+def _replace_block(text, block):
+    """Swap the record-output section for the generated one. The section runs from its
+    marker to the next `## ` heading, so everything else in the brief stays hand-written."""
+    start = text.index(RECORD_OUTPUT_MARKER)
+    end = text.find("\n## ", start + len(RECORD_OUTPUT_MARKER))
+    return text[:start] + block + (text[end:] if end != -1 else "\n")
+
+
+def brief_problems():
+    """Carriers whose record-output section is not the current generated block."""
+    block = record_output_block()
+    return [os.path.basename(p) for p in brief_carriers()
+            if block not in open(p, encoding="utf-8").read()]
+
+
+def render_briefs():
+    block = record_output_block()
+    written = []
+    for path in brief_carriers():
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        new = _replace_block(text, block)
+        if new != text:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(new)
+            written.append(os.path.basename(path))
+    return written
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     cmd = argv[0] if argv else "check"
@@ -89,9 +135,24 @@ def main(argv=None):
         with open(TARGET, "w") as fh:
             fh.write(want)
         print("AGENTS.md: rendered from CLAUDE.md ({} bytes)".format(len(want)))
+        written = render_briefs()
+        print("record-output block: {} of {} briefs rewritten".format(
+            len(written), len(brief_carriers())))
         return 0
+    stale_briefs = brief_problems()
+    if stale_briefs:
+        sys.stderr.write(
+            "record-output block: STALE in {} — it no longer equals "
+            "review_ledger.record_output_block().\n"
+            "  Regenerate: python3 plugins/tdd-playbook/bin/render_agents.py render\n"
+            "  (Edit the block in review_ledger.py, never in a brief: it lived as six\n"
+            "   hand-maintained copies and a vocabulary change rotted five of them.)\n"
+            .format(", ".join(stale_briefs)))
+        return 1
     if have == want:
         print("AGENTS.md: PASS — generated file matches CLAUDE.md + HOST_NOTES")
+        print("record-output block: PASS — {} briefs carry the generated block".format(
+            len(brief_carriers())))
         return 0
     sys.stderr.write(
         "AGENTS.md: STALE — it no longer equals CLAUDE.md + HOST_NOTES.\n"
