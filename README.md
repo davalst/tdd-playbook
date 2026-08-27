@@ -73,7 +73,7 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
 four blocking guards (`weakening_guard`, `lock_guard`, `snapshot_guard`,
 `tag_guard`) plus the opt-in ones (`exitcode_guard`, `exhaustive_claim_guard`, `overmock_guard`,
-`flaky_guard`, `red_lock`) plus the warn-by-default `fixture_guard` — so a refresh
+`flaky_guard`, `red_lock`, `cite_guard`) plus the warn-by-default `fixture_guard` — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are
 preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
 marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code

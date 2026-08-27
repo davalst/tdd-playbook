@@ -56,6 +56,13 @@ _DEFAULT_MODES = {
     # adding cases / editing non-answer fields is silent. Promote to block, or retire, on
     # committed yield evidence (the dated trigger on the fixture-data-guard capability).
     "fixtureguard": "warn",
+    # OPT-IN (v1.46.0, the analysis-turn seam). Ships OFF deliberately, not timidly:
+    # `emit`'s exit contract routes warn(1) to the USER and block(2) back to CLAUDE, so this
+    # guard's remedy ("open the file") cannot reach the actor at warn; and v1.32.0 retired
+    # five guards on 31 warnings / zero blocks, so a sixth warn-default guard shipped before
+    # the instrument that can distinguish a useful warning from wallpaper is the same
+    # mistake. Promote on a measured false-positive budget, never on fire count alone.
+    "cite": "off",
 }
 
 

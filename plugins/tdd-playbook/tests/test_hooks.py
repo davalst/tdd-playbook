@@ -1423,6 +1423,9 @@ EXPECTED_MODES = {
     "exitcode_guard": "off", "overmock_guard": "off", "exhaustive_claim_guard": "off",
     "flaky_guard": "off", "red_lock": "off",
     "fixture_guard": "warn",
+    # v1.46.0 — the analysis-turn seam. OFF by the same evidence-first rule that retired the
+    # five above: at warn its remedy is routed to the user, not the agent it addresses.
+    "cite_guard": "off",
 }
 EXPECTED_ADVISORY = {"build_completion_reminder", "capture", "intent_nudge"}
 
@@ -1552,8 +1555,8 @@ def test_guard_roster_derived_and_pinned():
     # PLANTED fixtures — the red-first proof, frozen (a pin that cannot fail is décor)
     good = ("...the four blocking guards (weakening_guard, lock_guard, "
             "snapshot_guard, tag_guard) plus the opt-in ones (exitcode_guard, "
-            "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock) and the "
-            "warn-by-default fixture_guard...")
+            "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock, "
+            "cite_guard) and the warn-by-default fixture_guard...")
     def rp(chunk, bl=None, op=None, wn=None, sh=None, mt=None):
         return _roster_problems(chunk, bl if bl is not None else blocking,
                                 op if op is not None else optin,
@@ -1569,7 +1572,7 @@ def test_guard_roster_derived_and_pinned():
               for p in rp(good.replace(" and the warn-by-default fixture_guard", ""))))
     check("PLANTED: phantom guard in prose is caught",
           any("phantom" in p and "quantum_guard" in p
-              for p in rp(good.replace("red_lock)", "red_lock, quantum_guard)"))))
+              for p in rp(good.replace("cite_guard)", "cite_guard, quantum_guard)"))))
     grown = dict(shorts, new_guard="newguard")
     check("PLANTED: newly-registered guard absent from prose is caught",
           any("missing opt-in guard" in p and "new_guard" in p
@@ -1738,6 +1741,345 @@ def test_blocking_guards_prove_both_directions():
           len([p for p in planted if "brand_new_guard" in p]) == 2, planted)
 
 
+# ── D0/D1: the analysis-turn seam ────────────────────────────────────────────
+# The house bar is calibration in BOTH directions, and here that is sharpened by the
+# TWIN RULE: no "stays silent" row is admissible unless its own one-field-mutated twin
+# FIRES, from the same fixture builder, asserted in the same check. Rationale (review
+# finding, 2026-08-27): every silent row asserts exit-0-and-no-output, which is the
+# guard's DEFAULT behaviour — a fixture that never reaches the detector satisfies all of
+# them. The motivating near-miss: `doctor.py` does not exist in this repo and `run()`
+# sets no cwd, so E2/E4/E5/E11 would all have gone green on the file-does-not-exist
+# branch with the citation logic never executed.
+
+def _tl(**kw):
+    """One transcript line."""
+    return json.dumps(kw)
+
+
+def _assistant_text(text):
+    return _tl(type="assistant", message={"content": [{"type": "text", "text": text}]})
+
+
+def _tool_use(name, inp, tid=None):
+    blk = {"type": "tool_use", "name": name, "input": inp}
+    if tid:
+        blk["id"] = tid
+    return _tl(type="assistant", message={"content": [blk]})
+
+
+def _tool_error(tid):
+    return _tl(type="user", message={"content": [
+        {"type": "tool_result", "tool_use_id": tid, "is_error": True}]})
+
+
+def _user(text):
+    return _tl(type="user", message={"content": text})
+
+
+def _tool_result(tid):
+    return _tl(type="user", message={"content": [
+        {"type": "tool_result", "tool_use_id": tid, "content": "ok"}]})
+
+
+def _write_transcript(d, lines, name="t.jsonl"):
+    tp = os.path.join(d, name)
+    with open(tp, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+    return tp
+
+
+def _cite_run(d, lines, env_extra=None, name="t.jsonl"):
+    """Drive cite_guard as a subprocess against a crafted transcript, with the temp dir as
+    the project root so file-existence resolves against the FIXTURE tree, not this repo."""
+    tp = _write_transcript(d, lines, name)
+    env = dict(os.environ)
+    for k in list(env):
+        if k.startswith("TDD_PLAYBOOK_"):
+            del env[k]
+    env["TDD_PLAYBOOK_YIELD_LOG"] = os.path.join(_YIELD_TMP, "cite-yield.jsonl")
+    env["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
+    env["CLAUDE_PROJECT_DIR"] = d
+    env["TDD_PLAYBOOK_HOOK_CITE"] = "warn"     # opt in: SHIPPED default is off
+    if env_extra:
+        env.update(env_extra)
+    p = subprocess.run([sys.executable, os.path.join(HOOKS, "cite_guard.py")],
+                       input=json.dumps({"transcript_path": tp}),
+                       capture_output=True, text=True, env=env, timeout=20, cwd=d)
+    return p.returncode, p.stderr
+
+
+def _twin(d, label, silent_lines, flag_lines, expect_in_msg=None):
+    """The twin rule: assert the pair together so a fixture that stops reaching the
+    detector kills its twin and REDs the suite."""
+    src, _ = _cite_run(d, silent_lines)
+    frc, fstderr = _cite_run(d, flag_lines)
+    ok = (src == 0 and frc == 1)
+    if ok and expect_in_msg:
+        ok = expect_in_msg in fstderr
+    check("twin[{}]: silent stays silent AND its mutated twin FIRES".format(label),
+          ok, (label, src, frc, fstderr[:240]))
+
+
+def test_transcript_module():
+    """D0: the shared reader and the ONE tool vocabulary."""
+    import importlib.util as _il
+    spec = _il.spec_from_file_location("transcript", os.path.join(HOOKS, "transcript.py"))
+    tr = _il.module_from_spec(spec)
+    spec.loader.exec_module(tr)
+
+    # The vocabulary disagreement this module exists to end.
+    check("D0: NotebookEdit is an edit (the three hook-side copies omitted it)",
+          "NotebookEdit" in tr.EDIT_TOOLS, sorted(tr.EDIT_TOOLS))
+    check("D0: a search is NOT a read — the distinction the whole guard rests on",
+          not (tr.SEARCH_TOOLS & tr.READ_TOOLS), (tr.SEARCH_TOOLS, tr.READ_TOOLS))
+    # PINNED AGAINST REAL CAPTURES, both hosts. docs/telemetry.md:31 records the cost of
+    # getting this wrong once; 47/47 real CC dispatches are `Agent`, and Cheliped's
+    # transcript_tool_event emits `Task`. A guard keyed to either alone goes dark on the other.
+    check("D0: BOTH hosts' dispatch names are recognised (Agent=CC, Task=Cheliped)",
+          {"Agent", "Task"} <= tr.DISPATCH_TOOLS, sorted(tr.DISPATCH_TOOLS))
+    check("D0: namespaced subagent_type is stripped to the roster stem",
+          tr.normalize_agent_name("tdd-playbook:architecture-adversary")
+          == "architecture-adversary"
+          and tr.normalize_agent_name("architecture-adversary") == "architecture-adversary",
+          tr.normalize_agent_name("tdd-playbook:architecture-adversary"))
+
+    with tempfile.TemporaryDirectory() as d:
+        # TURN BOUNDARY. Tool results are `type:"user"` records too (measured: 39 of 52 in a
+        # real transcript), so "since the last user line" would cut the window to one tool
+        # result and flag everything. Only a user line carrying TEXT starts a turn.
+        lines = [_user("first ask"),
+                 _tool_use("Read", {"file_path": os.path.join(d, "old.py")}, "t1"),
+                 _tool_result("t1"),
+                 _user("second ask"),
+                 _tool_use("Read", {"file_path": os.path.join(d, "new.py")}, "t2"),
+                 _tool_result("t2"),
+                 _assistant_text("done")]
+        for n in ("old.py", "new.py"):
+            open(os.path.join(d, n), "w").write("x = 1\n")
+        turn = tr.current_turn(_write_transcript(d, lines))
+        reads = tr.read_paths(turn.records, root=d)
+        check("D0: current_turn excludes the PREVIOUS turn's read",
+              os.path.realpath(os.path.join(d, "new.py")) in reads
+              and os.path.realpath(os.path.join(d, "old.py")) not in reads, sorted(reads))
+        check("D0: a tool_result (type=user) does NOT start a turn",
+              turn.status == tr.COMPLETE and len(reads) == 1, (turn.status, sorted(reads)))
+
+        # A DENIED read is not a read. The permission system said no; the guard must not
+        # certify a claim on evidence that was refused.
+        lines = [_user("ask"),
+                 _tool_use("Read", {"file_path": os.path.join(d, "new.py")}, "e1"),
+                 _tool_error("e1"), _assistant_text("done")]
+        turn = tr.current_turn(_write_transcript(d, lines, "err.jsonl"))
+        check("D0: a denied/errored read is NOT counted as a read",
+              tr.read_paths(turn.records, root=d) == set(),
+              sorted(tr.read_paths(turn.records, root=d)))
+
+        # Shell reads count; a heredoc WRITE beginning with `cat` must not.
+        open(os.path.join(d, "shell.py"), "w").write("y = 2\n")
+        lines = [_user("ask"), _tool_use("Bash", {"command": "cat shell.py"}, "b1"),
+                 _assistant_text("x")]
+        turn = tr.current_turn(_write_transcript(d, lines, "sh.jsonl"))
+        check("D0: `cat f` is a read",
+              os.path.realpath(os.path.join(d, "shell.py"))
+              in tr.read_paths(turn.records, root=d), None)
+        lines = [_user("ask"),
+                 _tool_use("Bash", {"command": "cat > shell.py <<'EOF'"}, "b2"),
+                 _assistant_text("x")]
+        turn = tr.current_turn(_write_transcript(d, lines, "sh2.jsonl"))
+        check("D0: a heredoc WRITE starting with `cat` is NOT a read (it clobbered the file)",
+              tr.read_paths(turn.records, root=d) == set(),
+              sorted(tr.read_paths(turn.records, root=d)))
+
+        # CAP: env-tunable so this costs milliseconds, not a 50 MB write inside a 15s hook
+        # timeout (the capture.py precedent). A cap hit must be CAPPED, never a silent partial.
+        big = [_user("ask")] + [_assistant_text("filler " * 50) for _ in range(200)]
+        tp = _write_transcript(d, big, "big.jsonl")
+        turn = tr.current_turn(tp, cap=512)
+        check("D0: a cap hit reports CAPPED, never a silent partial verdict",
+              turn.status == tr.CAPPED, turn.status)
+
+        check("D0: a missing transcript is UNREADABLE, not empty",
+              tr.current_turn(os.path.join(d, "nope.jsonl")).status == tr.UNREADABLE, None)
+
+
+def test_transcript_real_capture():
+    """§1 seam rule: ONE input this repo did not author.
+
+    Every other transcript fixture in this suite is written by the suite itself, on BOTH
+    sides of the seam — so a drift in the host's wire format would move the fixtures with
+    it and fail SILENT (exit 0, 'clean'). This pins the reader against a real Claude Code
+    transcript when one is present on the machine.
+    """
+    import glob
+    import importlib.util as _il
+    spec = _il.spec_from_file_location("transcript", os.path.join(HOOKS, "transcript.py"))
+    tr = _il.module_from_spec(spec)
+    spec.loader.exec_module(tr)
+
+    real = sorted(glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")),
+                  key=lambda f: os.path.getmtime(f), reverse=True)[:12]
+    if not real:
+        print("  skip - no real transcript on this machine (CI): seam unpinned here")
+        return
+    parsed = seen_dispatch = 0
+    for f in real:
+        try:
+            with open(f, errors="replace") as fh:
+                for ln in fh:
+                    obj = tr.parse_line(ln)
+                    if obj is None:
+                        continue
+                    parsed += 1
+                    for tu in tr.tool_uses([obj]):
+                        if tu["name"] in tr.DISPATCH_TOOLS and \
+                                tu["input"].get("subagent_type"):
+                            seen_dispatch += 1
+        except OSError:
+            continue
+    # VACUITY (§4a): a seam test that parsed nothing proves nothing.
+    check("seam: the reader parses records from a REAL transcript (vacuity-guarded)",
+          parsed > 0, parsed)
+    check("seam: real dispatch records are recognised by the shipped vocabulary "
+          "(this is the check that would have caught the `Task` assumption)",
+          seen_dispatch > 0, (seen_dispatch, parsed))
+
+
+def test_cite_guard():
+    """D1, both directions, every silent row paired with a firing twin."""
+    import importlib.util as _il
+    spec = _il.spec_from_file_location("cite_guard", os.path.join(HOOKS, "cite_guard.py"))
+    cg = _il.module_from_spec(spec)
+    spec.loader.exec_module(cg)
+
+    with tempfile.TemporaryDirectory() as d:
+        doctor = os.path.join(d, "doctor.py")
+        open(doctor, "w").write("# Human-readable output\n# Machine-readable JSON\n")
+        open(os.path.join(d, "other.py"), "w").write("z = 3\n")
+
+        claim = "doctor.py reads the `readable` field."
+        read_doctor = _tool_use("Read", {"file_path": doctor}, "r1")
+        grep_only = _tool_use("Grep", {"pattern": "readable", "path": doctor}, "g1")
+
+        # E1 — THE MOTIVATING CASE. Searched, never opened.
+        rc, err = _cite_run(d, [_user("audit"), grep_only, _assistant_text(claim)])
+        check("E1: a property claim about a file this turn only GREPPED fires",
+              rc == 1 and "doctor.py" in err, (rc, err[:200]))
+        # ...and names the SPECIFIC file, not merely "found something".
+        check("E1: the message names the specific file",
+              "doctor.py" in err and "other.py" not in err, err[:200])
+
+        # VACUITY (§4a), three legs — proving the fixtures REACH the detector, so the
+        # silent rows below cannot pass for the wrong reason.
+        turn = cg.tr.current_turn(_write_transcript(
+            d, [_user("a"), read_doctor, _assistant_text(claim)], "v.jsonl"))
+        reads = cg.tr.read_paths(turn.records, root=d)
+        check("vacuity-1: the positive twin's READ-SET is non-empty and holds the target",
+              os.path.realpath(doctor) in reads, sorted(reads))
+        check("vacuity-2: CLAIM EXTRACTION finds the claim in the output text",
+              any("doctor.py" in c[0] for c in cg.claims_in(claim, d)),
+              cg.claims_in(claim, d))
+        check("vacuity-3: the target file EXISTS in the fixture tree "
+              "(else every silent row greens on the not-found branch)",
+              os.path.isfile(doctor), doctor)
+
+        # ── the twin rule ──
+        _twin(d, "E2 read-then-claim",
+              [_user("a"), read_doctor, _assistant_text(claim)],
+              [_user("a"), grep_only, _assistant_text(claim)], "doctor.py")
+        _twin(d, "E3 edited-implies-known",
+              [_user("a"), _tool_use("Edit", {"file_path": doctor}, "e1"),
+               _assistant_text(claim)],
+              [_user("a"), _assistant_text(claim)], "doctor.py")
+        _twin(d, "E4 nonexistent-file",
+              [_user("a"), _assistant_text("ghost.py reads the readable field.")],
+              [_user("a"), _assistant_text(claim)], "doctor.py")
+        _twin(d, "E5 bare-mention-no-property",
+              [_user("a"), _assistant_text("See also doctor.py for context.")],
+              [_user("a"), _assistant_text(claim)], "doctor.py")
+        _twin(d, "E11 fenced-code-block",
+              [_user("a"), _assistant_text("```\n" + claim + "\n```")],
+              [_user("a"), _assistant_text(claim)], "doctor.py")
+        _twin(d, "E7 shell-read-counts",
+              [_user("a"), _tool_use("Bash", {"command": "sed -n '1,5p' doctor.py"}, "b1"),
+               _assistant_text(claim)],
+              [_user("a"), _tool_use("Bash", {"command": "grep readable doctor.py"}, "b2"),
+               _assistant_text(claim)], "doctor.py")
+
+        # ── Rule B: a FALSE loop-closure self-report ──
+        # Keyed on the token the commands already mandate, not on "plan shape": a
+        # §0-marker detector would flag every review turn, every quoted plan, and
+        # /readable — whose contract FORBIDS the remedy it would demand.
+        loop = "Loop closed: yes (integration-adversary — none; architecture-adversary — clean)"
+        dispatch_cc = _tool_use("Agent", {"subagent_type": "tdd-playbook:architecture-adversary",
+                                          "description": "review"}, "a1")
+        dispatch_cheli = _tool_use("Task", {"subagent_type": "architecture-adversary",
+                                            "description": "review"}, "a2")
+        _twin(d, "E13/E17 loop-closed-with-no-dispatch",
+              [_user("a"), dispatch_cc, _assistant_text(loop)],
+              [_user("a"), _assistant_text(loop)], "Loop closed")
+        # HOST PARITY: the Cheliped spelling must silence it too, or the guard is dark there.
+        rc, err = _cite_run(d, [_user("a"), dispatch_cheli, _assistant_text(loop)])
+        check("host parity: a Cheliped-shaped dispatch (Task) silences Rule B",
+              rc == 0, (rc, err[:200]))
+        # E15: ordinary prose containing the words must NOT fire.
+        rc, err = _cite_run(d, [_user("a"), _assistant_text(
+            "We should close the loop with an adversary before shipping.")])
+        check("E15: prose about closing the loop is not a self-report", rc == 0, err[:200])
+
+        # ── honesty events: absent data is UNMEASURED, never zero ──
+        yl = os.path.join(_YIELD_TMP, "cite-honesty.jsonl")
+        env = {"TDD_PLAYBOOK_YIELD_LOG": yl}
+        rc, _ = _cite_run(d, [_user("a"), _assistant_text(claim)],
+                          env_extra=dict(env, TDD_PLAYBOOK_TRANSCRIPT_SCAN_CAP="1"))
+        rows = [json.loads(l) for l in open(yl)] if os.path.exists(yl) else []
+        check("E10: a cap hit exits 0 AND leaves a `capped` row — never a silent partial",
+              rc == 0 and any(r.get("event") == "capped" for r in rows),
+              [r.get("event") for r in rows])
+
+        # BLIND HOST: an Edit-only transcript with no assistant text cannot answer. It must
+        # say so, not report clean. (The pre-C1 Cheliped shim was exactly this shape, and
+        # `transcript_path` there is READABLE — so an absent-file fallback never fires.)
+        yl2 = os.path.join(_YIELD_TMP, "cite-blind.jsonl")
+        rc, _ = _cite_run(d, [_tool_use("Edit", {"file_path": doctor}, "x1")],
+                          env_extra={"TDD_PLAYBOOK_YIELD_LOG": yl2}, name="blind.jsonl")
+        rows = [json.loads(l) for l in open(yl2)] if os.path.exists(yl2) else []
+        check("blind-host: an Edit-only transcript yields `blind`, NOT a clean verdict",
+              rc == 0 and any(r.get("event") == "blind" for r in rows),
+              [r.get("event") for r in rows])
+
+        # Re-entry: both existing Stop hooks guard this; a Stop guard without it can loop,
+        # and this guard's own finding text names a file and asserts a property of it.
+        env2 = dict(os.environ)
+        for k in list(env2):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env2[k]
+        env2.update({"CLAUDE_PROJECT_DIR": d, "TDD_PLAYBOOK_HOOK_CITE": "warn",
+                     "TDD_PLAYBOOK_YIELD_LOG": os.path.join(_YIELD_TMP, "reentry.jsonl"),
+                     "TDD_PLAYBOOK_HEARTBEAT": os.path.join(_YIELD_TMP, "heartbeat")})
+        tp = _write_transcript(d, [_user("a"), grep_only, _assistant_text(claim)], "re.jsonl")
+        p = subprocess.run([sys.executable, os.path.join(HOOKS, "cite_guard.py")],
+                           input=json.dumps({"transcript_path": tp, "stop_hook_active": True}),
+                           capture_output=True, text=True, env=env2, timeout=20, cwd=d)
+        check("re-entry: stop_hook_active exits 0 immediately (no Stop loop)",
+              p.returncode == 0 and not p.stderr.strip(), (p.returncode, p.stderr[:120]))
+
+        # DETERMINISM: both rules subtract SETS; nothing in this repo pins hash ordering.
+        outs = []
+        for seed in ("0", "1"):
+            _, e = _cite_run(d, [_user("a"), grep_only, _assistant_text(
+                "doctor.py reads the readable field. other.py never calls it.")],
+                env_extra={"PYTHONHASHSEED": seed})
+            outs.append(e)
+        check("determinism: identical stderr under PYTHONHASHSEED 0 and 1",
+              outs[0] == outs[1], outs)
+
+        # The SHIPPED default is off — opt-in is what the rest of this suite does.
+        rc, err = _cite_run(d, [_user("a"), grep_only, _assistant_text(claim)],
+                            env_extra={"TDD_PLAYBOOK_HOOK_CITE": ""})
+        check("shipped default is OFF: no findings surfaced without opt-in",
+              rc == 0 and not err.strip(), (rc, err[:120]))
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
@@ -1747,7 +2089,9 @@ def main():
                test_lock_shell, test_yield_logging, test_guards_heartbeat,
                test_break_glass, test_retired_advisory_defaults,
                test_blocking_guards_prove_both_directions,
-               test_guard_roster_derived_and_pinned):
+               test_guard_roster_derived_and_pinned,
+               test_transcript_module, test_transcript_real_capture,
+               test_cite_guard):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
