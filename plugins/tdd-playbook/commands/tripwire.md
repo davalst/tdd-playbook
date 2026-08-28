@@ -27,6 +27,24 @@ For EACH deliverable, verify and report four things separately (don't round up):
       python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate
 
   and paste the summary line (a FAIL here is a RED deliverable).
+- **MEANS** — did the implementation use what the plan SAID it would use? The four legs above
+  ask whether each DELIVERABLE exists and is wired; this asks whether the plan's stated
+  *means* were the ones actually used. They are different questions, and only the first was
+  ever checked: on 2026-08-28 an auditor returned a clean-looking `3/5` on work whose approved
+  plan said "refounded on `bin/verify_citations.py`" while the shipped code referenced it zero
+  times. Nothing owned that gap, because a means is not a deliverable.
+  Enumerate the plan's NORMATIVE means — the files, functions and mechanisms it committed to
+  building on. For each, report `honoured`, `acknowledged` (deliberately not used, with the
+  reason), or `drift` (silently not used). A file the plan merely MENTIONS is not a means;
+  current-state descriptions, examples and rejected alternatives are not commitments.
+  Report the forced line:
+
+      Means: <H> honoured · <A> acknowledged · <D> drift
+
+  A nonzero `drift` is not automatically RED — a deviation can be right — but it must be
+  named, because the failure this catches is the silent kind: the plan said X, the code did
+  Y, and no one noticed the difference existed.
+
 - **EXERCISED** — point at a specific `file::test_name` (or this repo's equivalent) and
   confirm it is DEFINED and NOT skip-marked. A grep proving a *reference* is not enough;
   a hollow button or a skipped test must TRIP the Tripwire.

@@ -21,6 +21,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AGENTS = os.path.join(ROOT, "agents")
 COMMANDS = os.path.join(ROOT, "commands")
+SKILL = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
 
 _results = {"pass": 0, "fail": 0}
 
@@ -64,7 +65,12 @@ def has_forced_recommendation(text):
 # agent -> (may_hold_Edit, forced_line_regexes)
 AGENT_CONTRACTS = {
     "red-first-verifier": (False, [r"RED-FIRST: VERIFIED", r"NOT VERIFIED"]),
-    "tripwire-auditor": (False, [r"Recommendation:"]),
+    # `Means:` (2026-08-28) — the FREE version of the drift detector. Three reviews
+    # rejected building a tool that infers a plan's promises from prose; the untested
+    # cheaper alternative is to make the auditor answer the question. If it honours
+    # this line, no tool is needed; if it walks past it, THAT is the evidence that
+    # justifies mechanism. Forced, because an optional line is the honour-system seam.
+    "tripwire-auditor": (False, [r"Recommendation:", r"Means:"]),
     "claims-verifier": (False, [r"Recommendation:"]),
     # v1.22 (lift/ratchet D0): verdict lines are HOUSE contracts, never task-invented —
     # calibration oracles anchor on these, so a scenario-local format would be a second,
@@ -1405,6 +1411,39 @@ def test_v146_planted_fixtures():
           len(V146_NEEDLES) == 24, len(V146_NEEDLES))
 
 
+def test_means_line_and_prior_art_sweep():
+    """The free version of the drift detector, plus the rule that stopped three builds.
+
+    2026-08-28: an agent stated a decision and shipped the opposite FOUR times in one day.
+    Nothing checked whether a plan's stated MEANS were used — /tripwire checks that each
+    DELIVERABLE is built and wired, which is a different question, and the auditor returned
+    3/5 that day without noticing an approved plan's "refound on X" had been ignored.
+
+    The tool proposed to close that was rejected by three independent reviews (its prose
+    extraction caught 1 of the 3 real failures). This is the cheaper thing nobody had tried.
+    """
+    with open(os.path.join(COMMANDS, "tripwire.md")) as fh:
+        cmd = fh.read()
+    check("/tripwire: demands the Means line (plan promises kept, acknowledged, or drifted)",
+          "Means:" in cmd, None)
+    check("/tripwire: the Means line names all three dispositions",
+          all(w in cmd for w in ("honoured", "acknowledged", "drift")), None)
+    with open(os.path.join(AGENTS, "tripwire-auditor.md")) as fh:
+        aud = fh.read()
+    check("tripwire-auditor: carries the same forced Means line", "Means:" in aud, None)
+
+    # The doctrine change that generalises today: "nothing already does this" is a NEGATIVE
+    # claim, and SS12 already governs negatives — the plan format just never asked for it.
+    with open(os.path.join(SKILL)) as fh:
+        skill = fh.read()
+    check("SKILL SS0: a plan must cite a PRIOR-ART SWEEP before proposing to build",
+          "Prior art:" in skill, None)
+    check("SKILL SS0: the sweep is bound to SS12's exhaustive-negative rule, not a vibe",
+          "Prior art:" in skill
+          and "exhaustive" in skill.split("Prior art:")[1][:600].lower()
+          and "negative claim" in skill.split("Prior art:")[1][:600].lower(), None)
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1424,7 +1463,8 @@ def main():
                test_review_record_producing_seam,
                test_skill_frontmatter_is_valid_yaml_to_a_real_parser,
                test_record_output_block_is_generated_not_copied,
-               test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures):
+               test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures,
+               test_means_line_and_prior_art_sweep):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
