@@ -175,6 +175,17 @@ to enforce or `=off` to silence.
 31 warnings and zero blocks across all recorded history, so they ship off. Nothing was deleted:
 turn any of them back on with `TDD_PLAYBOOK_HOOK_<NAME>=warn` and its yield rows resume.
 
+**OPT-IN, awaiting its own evidence** — `_CITE` (`cite_guard`, v1.46.0). The ANALYSIS-turn
+seam: 14 of the 18 hook bindings sit behind a write or a shell command, so an audit, a
+diagnosis or a plan written as prose passed through every one of them untouched. It flags a
+property claim about a file the turn never OPENED (a grep is not a read) and a `Loop closed:`
+self-report with no adversary dispatch in the transcript. Turn it on with
+`TDD_PLAYBOOK_HOOK_CITE=warn`. It ships off for a different reason than the five above — not
+measured-zero yield, but *unmeasured* yield: it is a new detector whose false-positive rate on
+real analysis turns is unknown, and at `warn` its remedy ("open the file") is routed to the
+human rather than the agent it addresses. `bin/gate_yield.py rollup` now prints a
+`coverage: cite · saw N turn(s)` line so that rate can actually be read before it is promoted.
+
 **Break-glass** — `TDD_PLAYBOOK_BREAK_GLASS="<reason>"` demotes **every** blocking gate to warn
 for the session. The reason is required (empty does not demote) and is recorded in the yield log
 alongside the block it demoted, so a bypass stays visible rather than becoming a clean record.

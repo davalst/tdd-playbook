@@ -169,29 +169,28 @@ def last_assistant_text(path, cap=None):
     2026-07-30 case: tool_use-only assistant lines concatenate to "" and are not a final.
     """
     cap = scan_cap() if cap is None else cap
-    try:
-        size = os.path.getsize(path)
-    except OSError:
-        return None, False
+    # RAISES on a missing/unreadable path, deliberately — `capture._run` relies on the
+    # OSError propagating so a missing transcript lands in its sidecar error log instead of
+    # vanishing. Swallowing it here turned "capture could not read the transcript" into
+    # "there was nothing to capture", which its own suite caught. `current_turn` guards with
+    # os.path.isfile and returns UNREADABLE instead; the two callers want different things.
+    size = os.path.getsize(path)
     buf = b""
     pos = size
-    try:
-        with open(path, "rb") as fh:
-            while pos > 0 and len(buf) < cap:
-                step = min(_CHUNK, pos, cap - len(buf))
-                pos -= step
-                fh.seek(pos)
-                buf = fh.read(step) + buf
-                lines = buf.split(b"\n")
-                complete = lines if pos == 0 else lines[1:]
-                for ln in reversed(complete):
-                    if not ln.strip():
-                        continue
-                    text = assistant_text_of(ln)
-                    if text:
-                        return text, False
-    except OSError:
-        return None, False
+    with open(path, "rb") as fh:
+        while pos > 0 and len(buf) < cap:
+            step = min(_CHUNK, pos, cap - len(buf))
+            pos -= step
+            fh.seek(pos)
+            buf = fh.read(step) + buf
+            lines = buf.split(b"\n")
+            complete = lines if pos == 0 else lines[1:]
+            for ln in reversed(complete):
+                if not ln.strip():
+                    continue
+                text = assistant_text_of(ln)
+                if text:
+                    return text, False
     if pos == 0:
         return None, False
     return buf.decode("utf-8", errors="replace"), True
