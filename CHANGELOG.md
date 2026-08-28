@@ -3,7 +3,7 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
-## 1.46.1 — 2026-08-28
+## 1.46.2 — 2026-08-28
 
 **Two doctrine changes, and no new tool — the day's most useful result.**
 
@@ -33,6 +33,8 @@ All notable changes to the TDD Playbook plugin. Versions are the plugin `version
   committed file, and a detector whose real fix was one clause of §0. Treat *"I should build
   something"* as the hypothesis to DISPROVE first; and when the answer is a rule rather than a
   tool, that is a RESULT, not a failure.
+
+## 1.46.1 — 2026-08-28
 
 **Guard fixes found by USING the plugin, plus two defects the fixes themselves introduced.**
 Every item was verified in this repo before it was accepted — a secondhand report is an
