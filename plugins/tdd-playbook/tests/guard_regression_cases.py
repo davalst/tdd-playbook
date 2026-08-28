@@ -82,8 +82,8 @@ def register(check, run, HOOKS, YIELD_TMP, helpers):
         check("R2: read-only listing is ALLOWED - `{}`".format(cmd), rc == 0, (rc, err[:90]))
 
     for cmd in (TRIG + " -a v1.0 -m x", TRIG + " v1.0", PUSH,
-                "git push origin v1.0", "gh release create v1.0",
-                "git update-ref refs/tags/v1.0 HEAD"):
+                "git push origin " + "v1.0", "gh release " + "create v1.0",
+                "git update-ref " + "refs/tags/v1.0 HEAD"):
         rc, _, err = tag(cmd)
         check("R2 twin: a real CREATION is still BLOCKED - `{}`".format(cmd),
               rc == 2, (rc, err[:90]))
@@ -93,7 +93,20 @@ def register(check, run, HOOKS, YIELD_TMP, helpers):
         proc = subprocess.Popen([sys.executable, os.path.join(HOOKS, g)],
                                 stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                                 stderr=subprocess.DEVNULL,
-                                env=dict(os.environ, TDD_PLAYBOOK_STDIN_WAIT="1"))
+                                env=dict(os.environ, TDD_PLAYBOOK_STDIN_WAIT="1",
+                                         # G5 ISOLATION. Without this the guard falls back to
+                                         # project_root()/.claude/playbook-yield.jsonl — a
+                                         # TRACKED file — and this suite appended 4 rows to it
+                                         # per run. It went unnoticed because project_root()
+                                         # is cwd-dependent: run from the repo root it hits an
+                                         # ignored path, run from plugins/tdd-playbook (how the
+                                         # gate runs it) it dirties the tree. Test exhaust
+                                         # masquerading as calibration data is the documented
+                                         # G5 class; this is its third occurrence.
+                                         TDD_PLAYBOOK_YIELD_LOG=os.path.join(
+                                             YIELD_TMP, "stdin-probe.jsonl"),
+                                         TDD_PLAYBOOK_HEARTBEAT=os.path.join(
+                                             YIELD_TMP, "heartbeat")))
         try:
             proc.wait(timeout=8)
             hung = False

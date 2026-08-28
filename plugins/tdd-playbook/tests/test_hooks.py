@@ -28,6 +28,21 @@ _results = {"pass": 0, "fail": 0}
 # G5 isolation: every hook invocation in this suite writes its yield event to a temp file,
 # never to <repo>/.claude/playbook-yield.jsonl — a test run must not dirty the tree CIVerd's
 # diff-integrity watches.
+def _tracked_dirty():
+    """TRACKED paths git currently reports as modified. Baselined at import so the G5 check
+    measures what THIS RUN dirtied, not what the working tree already carried."""
+    try:
+        import subprocess as _sp
+        r = _sp.run(["git", "status", "--porcelain"], cwd=REPO,
+                    capture_output=True, text=True, timeout=30)
+        return None if r.returncode else {ln[3:] for ln in r.stdout.splitlines()
+                                          if ln[:2] != "??"}
+    except Exception:
+        return None
+
+
+_DIRTY_AT_IMPORT = _tracked_dirty()
+
 _YIELD_TMP = tempfile.mkdtemp(prefix="hook-yield-")
 _YIELD_DEFAULT = os.path.join(_YIELD_TMP, "yield.jsonl")
 
@@ -2289,6 +2304,28 @@ def test_host_truncation_and_tag_guard_regressions():
                  (_user, _tool_use, _assistant_text, _write_transcript, _cite_run))
 
 
+def test_suite_does_not_dirty_tracked_files():
+    """G5, standing: this suite must not modify any TRACKED file by running.
+
+    Third occurrence of the class (2026-07-28 twice; 2026-08-28 here): a hook invocation
+    without TDD_PLAYBOOK_YIELD_LOG falls back to project_root()/.claude/playbook-yield.jsonl,
+    which is TRACKED — so the suite appended 4 rows to the real record on every run. It hid
+    because project_root() is CWD-DEPENDENT: from the repo root it lands on an ignored path;
+    from plugins/tdd-playbook, which is how the gate invokes it, it dirties the tree.
+
+    Asserts the DELTA, not cleanliness — a developer's own uncommitted edits are not this
+    suite's exhaust, and a check that cannot run on a dirty tree is a check nobody keeps.
+    """
+    after = _tracked_dirty()
+    if _DIRTY_AT_IMPORT is None or after is None:
+        print("  skip - not a git tree")
+        return
+    caused = sorted(after - _DIRTY_AT_IMPORT)
+    check("G5: the suite dirtied no TRACKED file by running "
+          "(test exhaust posing as calibration data is the documented class)",
+          caused == [], caused)
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
@@ -2302,7 +2339,8 @@ def main():
                test_transcript_module, test_transcript_real_capture,
                test_cite_guard, test_tripwire_read_only_turn_misattribution,
                test_yield_instrument_carries_session_and_coverage,
-               test_host_truncation_and_tag_guard_regressions):
+               test_host_truncation_and_tag_guard_regressions,
+               test_suite_does_not_dirty_tracked_files):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
