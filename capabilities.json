@@ -1587,6 +1587,47 @@
           "expires": "2026-11-15"
         }
       ]
+    },
+    {
+      "id": "analysis-turn-seam",
+      "summary": "cite_guard (Stop) \u2014 the ANALYSIS-turn seam. 14 of the plugin's 18 hook bindings attach to Edit|MultiEdit|Write or Bash, and the one Stop guard that could fire keys on `git status --porcelain`, empty on a read-only turn \u2014 so an audit, a diagnosis or a plan written as prose passed through every binding untouched, while \u00a712's claims discipline is entirely about that kind of turn. Two rules, one transcript pass: (A) a property claim about a file THIS TURN never opened (a search is not a read); (B) a `Loop closed:` self-report with no dispatch in the transcript. Rests on hooks/scripts/transcript.py, the ONE transcript reader and the ONE tool vocabulary \u2014 which replaced FOUR disagreeing in-code tool-name sets and TWO parsers.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "off",
+        "switch": "TDD_PLAYBOOK_HOOK_CITE=warn|block (documented in README's Hook controls). OFF is deliberate and evidence-first, not timid: `emit`'s exit contract routes warn(1) to the USER and block(2) back to CLAUDE, so this guard's remedy ('open the file') cannot reach the agent it addresses at warn; and the original promotion condition ('a false claim caught BEFORE publication') is unsatisfiable at warn, where the claim is always already published."
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "plugins/tdd-playbook/hooks/scripts/_common.py::_DEFAULT_MODES"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_cite_guard",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_transcript_module",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_transcript_real_capture"
+      ],
+      "emits": [
+        {
+          "topic": "hook.coverage_events",
+          "consumers": [
+            "plugins/tdd-playbook/bin/gate_yield.py::cmd_rollup \u2014 COVERAGE_EVENTS mints the per_coverage table and prints the `coverage: <gate> \u00b7 saw N turn(s)` line (the denominator that did not exist before v1.46.0)"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 120,
+        "probe": "The guard ships OFF, so ABSENT rows are the expected steady state and prove nothing \u2014 read this only against an opted-in operator. Then: bin/gate_yield.py rollup prints `coverage: cite \u00b7 saw N turn(s)`, which is the denominator that did not exist before v1.46.0. A `blind` count that is nonzero and rising means the host cannot supply what the guard reads (the pre-C1 Cheliped shape) and the guard is reporting UNMEASURED rather than clean \u2014 which is the correct behaviour, not a fault."
+      },
+      "integration_debt": [
+        {
+          "what": "DECIDE THE MODE ON MEASURED EVIDENCE, or delete the guard. It ships `off`, which means by default it is DARK and nothing populates its own denominator \u2014 the \u00a76b trap, entered knowingly because the alternative (warn) routes its remedy to the wrong reader and cannot generate promotion evidence either. By expiry, run it opted-in over real turns and settle three numbers: the false-positive rate of Rule A on genuine analysis turns; whether Rule B ever fires on a turn that HAD closed its loop in an earlier turn (the cross-turn case, deliberately not special-cased); and whether `blind` dominates on any host in use. Then promote to warn with a stated FP budget, or delete it. Leaving it off and unmeasured is the one outcome this entry refuses \u2014 that is how the five opt-in guards became unmaintained. NOTE the known bypass that blocks promotion to `block` regardless: `Read(f, offset=1, limit=1)` or `cat f > /dev/null` silences Rule A at a one-line cost, and a blocking gate must not carry a one-line bypass.",
+          "owner": "david",
+          "expires": "2026-11-30"
+        }
+      ],
+      "notes": "Built 2026-08-27 from a build plan that was itself reviewed by four Playbook adversaries and an independent Codex panel; three deliverables of that plan were dropped or restructured on their findings. The plan's own D2 detection rule (a tool_use named `Task` with an exact-match subagent_type) was measurably FALSE \u2014 47 of 47 real dispatches are named `Agent` and most carry a `tdd-playbook:` prefix \u2014 which is the same assumption docs/telemetry.md:31 already records as having cost this repo a dark instrument once. Cheliped's shim emits `Task`, so BOTH names are accepted and that is what host parity means here."
     }
   ]
 }

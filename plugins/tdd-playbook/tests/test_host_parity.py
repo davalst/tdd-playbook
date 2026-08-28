@@ -220,15 +220,19 @@ def test_agents_roster():
 def test_compact_parity_output():
     proc = subprocess.run([sys.executable, BIN, "check"], cwd=REPO,
                           capture_output=True, text=True, timeout=30)
-    # 40 assets / 80 dispositions (trustworthy-holdout-controls D2, 2026-08-16) —
-    # agents/control-quality-adversary.md joined the agent family (supported on Claude,
-    # `unavailable` on Codex under the standing codex agent-discovery debt). Previously
-    # 39/78 (fixture_guard, 2026-08-15). The numbers are hand-pinned ON PURPOSE: a
-    # self-derived count would move with the roster and could never reveal an accidental
-    # asset loss (§12 — a self-referential N of N cannot reveal its own narrowing).
+    # 41 assets / 82 dispositions (analysis-turn seam, 2026-08-27) —
+    # hooks/scripts/cite_guard.py joined the guard family: supported on Claude,
+    # `unavailable` on Codex under the standing codex guard-family-parity debt, which is
+    # the correct disposition (docs/architecture/portable-host-contracts.md lists the Stop
+    # route as not migrated there). ONE asset, TWO dispositions — if either number moved by
+    # anything else, something entered or left the roster unnoticed. Previously 40/80
+    # (control-quality-adversary, 2026-08-16), 39/78 (fixture_guard, 2026-08-15). The
+    # numbers are hand-pinned ON PURPOSE: a self-derived count would move with the roster
+    # and could never reveal an accidental asset loss (§12 — a self-referential N of N
+    # cannot reveal its own narrowing).
     check("parity output: success is compact and denominator-bearing",
           proc.returncode == 0 and len(proc.stdout.splitlines()) <= 2
-          and "40 assets" in proc.stdout and "80 dispositions" in proc.stdout,
+          and "41 assets" in proc.stdout and "82 dispositions" in proc.stdout,
           (proc.returncode, proc.stdout, proc.stderr))
 
 

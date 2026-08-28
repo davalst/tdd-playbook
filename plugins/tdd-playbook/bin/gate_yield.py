@@ -162,6 +162,15 @@ RESPONSE_MD_HEADER = (
 GATE_EVENTS = ("block", "warn", "override", "suppressed", "response")
 USAGE_EVENTS = ("usage", "usage-note")
 
+#: COVERAGE events (v1.46.0) — what a guard SAW, as opposed to what it found. They exist
+#: because `emit(NAME, [])` exits before logging, so a clean run leaves NO row: a blind
+#: host, a missing transcript, a hook killed by its timeout and a genuinely-verified turn
+#: were all byte-identical in this record, namely absent. A decay contract computed over
+#: that cannot tell a useful warning from wallpaper, which is the one question it exists to
+#: answer. Kept OUT of GATE_EVENTS deliberately: these are denominators, not findings, and
+#: minting warn/block rows from them would corrupt the retirement arithmetic above.
+COVERAGE_EVENTS = ("verified", "capped", "blind", "unmeasured")
+
 USAGE_SCHEMA = 1
 USAGE_MD_HEADER = (
     "# Readable-surface usage record (v1.34.0 D5 — the R&D instrument)\n\n"
@@ -324,7 +333,7 @@ def cmd_rollup(args):
     if not raw:
         print("yield: unmeasured this cycle (no event log at {})".format(args.log))
         return 0
-    per_gate, per_scenario = {}, {}
+    per_gate, per_scenario, per_coverage = {}, {}, {}
     for row in raw:
         ev = row.get("event")
         # ROSTER decision first (v1.34.0 D5): only the closed gate vocabulary may mint a
@@ -342,6 +351,11 @@ def cmd_rollup(args):
                     c["dispatched"] += 1
                 if str(row.get("changed_a_decision") or "").lower() == "yes":
                     c["changed"] += 1
+            continue
+        if ev in COVERAGE_EVENTS:
+            gate = str(row.get("gate") or "unknown")
+            cov = per_coverage.setdefault(gate, dict.fromkeys(COVERAGE_EVENTS, 0))
+            cov[ev] += 1
             continue
         if ev not in GATE_EVENTS:
             continue
@@ -386,6 +400,17 @@ def cmd_rollup(args):
         print(ln)
     for ln in usage_lines:
         print(ln)
+    # COVERAGE — the denominator, printed rather than filed. A gate row says what a guard
+    # FOUND; these say what it SAW, so "quiet" and "blind" stop reading identically.
+    # Deliberately stdout-only: the committed md tables are append-only and integrity-
+    # checked against the previous release tag, and a new column there is a format change,
+    # not a measurement.
+    for gate in sorted(per_coverage):
+        c = per_coverage[gate]
+        total = sum(c.values())
+        print("coverage: {} · saw {} turn(s) — verified {} · capped {} · blind {} · "
+              "unmeasured {}".format(gate, total, c["verified"], c["capped"], c["blind"],
+                                     c["unmeasured"]))
     return 0
 
 

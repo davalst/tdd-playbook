@@ -6,12 +6,12 @@
 
 - `gate-manifest.json` — `67f0be15a52961262626416eae94ca36409319394f205db961d42f432c80a78c`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
-- `docs/architecture/host-parity-policy.json` — `e03854fa9ea673904392a59ff80f872656e50ccdba7a447c95364fba6d235f0e`
-- `docs/architecture/host-parity.json` — `d68cb54d57c285a5afa3dc7b2a1c72ca3d6b49f41367b9eca681e38d19a23e21`
+- `docs/architecture/host-parity-policy.json` — `a63c34d4293f2f7fdeef8552fe2a759e4722f6a234d97da0dc809df2ae80df5b`
+- `docs/architecture/host-parity.json` — `e4eb00bb142578c0efe186489849988fb16bf62f8e65a49deb3a442f8f8a2ece`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `8bd890b311c795d8268c21dd7c2e10ed8f8a925e14b52b611306e80c38706827`
+- `capabilities.json` — `ae16ba021b8e24c1cd2a737bd34c7c60d3250c77a5b8e6c581efff38e4733fed`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
-- `plugins/tdd-playbook/hooks/scripts/_common.py` — `6bb1cc0c703d5c5e9ea2804fba04cf1de6482ebc360e2de423d8bf75277e702c`
+- `plugins/tdd-playbook/hooks/scripts/_common.py` — `35a4dd25d329f7f68945dd938086bcb459182d43afce4ef2f0328a81bc46ba01`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -70,14 +70,14 @@
 
 ## Host parity
 
-- Canonical assets: 40. Exact host dispositions: 80.
-- Claude: 40 supported, 0 unavailable, 0 debt.
-- Codex: 1 supported, 39 unavailable, 0 debt.
-- Acknowledged inventory digest: `4f70b1e21f620cf9c0bf89205e5a33e9d6fdf56ac81620609657ea8b533b5261`
+- Canonical assets: 41. Exact host dispositions: 82.
+- Claude: 41 supported, 0 unavailable, 0 debt.
+- Codex: 1 supported, 40 unavailable, 0 debt.
+- Acknowledged inventory digest: `a6854bd4e4fdbb5df0f9a0426f2f8d59ff3a05e70ada3a067efff26d89d3fedd`
 
 ## Capability registry
 
-- Registered capabilities: 33. Owned dated integration-debt entries: 64.
+- Registered capabilities: 34. Owned dated integration-debt entries: 65.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -142,6 +142,7 @@
 - `holdout-control-validation/holdout-corpus-remediation-sweep` — THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16… (owner `david`, expires `2026-09-30`)
 - `holdout-control-validation/population-snapshot-consumers` — integration-adversary ISLAND2 + arch-F7 (2026-08-16)… (owner `david`, expires `2026-11-15`)
 - `mutation-preflight` — CODEX PARITY, stated not assumed… (owner `david`, expires `2026-11-15`)
+- `analysis-turn-seam` — DECIDE THE MODE ON MEASURED EVIDENCE, or delete the guard… (owner `david`, expires `2026-11-30`)
 
 ## Adversarial review records
 

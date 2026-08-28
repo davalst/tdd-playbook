@@ -92,14 +92,26 @@ def note_hook_fired(marker="hook"):
         pass
 
 
+#: The session id of the event this process is handling, stashed by read_event so
+#: log_yield_event can stamp it WITHOUT a signature change to emit(). Without it the yield
+#: row is {ts, source, host, gate, event, findings} — no session, no turn — and the decay
+#: contract's named metric ("how many fires were followed by a corrective read in the NEXT
+#: turn") has no supplier at all. A metric no instrument can compute is prose.
+_SESSION_ID = None
+
+
 def read_event():
     """Read and parse the hook's stdin JSON. Returns {} on any problem."""
+    global _SESSION_ID
     note_hook_fired("read_event")
     try:
         raw = sys.stdin.read()
-        return json.loads(raw) if raw.strip() else {}
+        event = json.loads(raw) if raw.strip() else {}
     except Exception:
         return {}
+    if isinstance(event, dict) and event.get("session_id"):
+        _SESSION_ID = str(event["session_id"])
+    return event
 
 
 # Every env var that can weaken the guard layer. Exported so the ONE owner of the env
@@ -323,6 +335,8 @@ def log_yield_event(gate, event, extra=None, source="hook"):
         row = {"ts": datetime.datetime.now(datetime.timezone.utc)
                                      .isoformat(timespec="seconds"),
                "source": source, "host": runtime_host(), "gate": gate, "event": event}
+        if _SESSION_ID:
+            row["session_id"] = _SESSION_ID
         row.update(extra or {})
         with open(path, "a") as fh:
             fh.write(json.dumps(row) + "\n")

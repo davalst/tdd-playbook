@@ -2080,6 +2080,158 @@ def test_cite_guard():
               rc == 0 and not err.strip(), (rc, err[:120]))
 
 
+def test_tripwire_read_only_turn_misattribution():
+    """REGRESSION (found in review, 2026-08-27): a READ-ONLY turn must not be told it
+    changed source.
+
+    `session_edited_paths` returned `paths or None`, which collapses two different facts
+    into one value: "this turn edited nothing" and "there is no transcript". A read-only
+    turn therefore returned None, the session narrowing at `main()` was SKIPPED, and the
+    hook fell through to whole-tree `git status` — reporting *"source changed with NO test
+    change **this turn**"* on a turn that changed nothing, whenever the tree was dirty from
+    earlier work. The message names "this turn"; the evidence was the whole tree.
+
+    This is also the correction to the build plan's headline: an analysis turn passes
+    through 17 of 18 bindings untouched, and through the 18th untouched only on a CLEAN
+    tree.
+    """
+    s = "build_completion_reminder.py"
+    with tempfile.TemporaryDirectory() as d:
+        def git(*a):
+            subprocess.run(["git", *a], cwd=d, capture_output=True, text=True)
+        git("init", "-q")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 1\n")
+        git("add", "-A")
+        git("commit", "-qm", "init")
+        # tree is DIRTY from an earlier turn: source changed, no test change
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 2\n")
+
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["TDD_PLAYBOOK_YIELD_LOG"] = os.path.join(_YIELD_TMP, "misattrib.jsonl")
+        env["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
+
+        def run_with(lines, name):
+            tp = os.path.join(d, name)
+            with open(tp, "w") as fh:
+                fh.write("\n".join(lines) + "\n")
+            return subprocess.run(
+                [sys.executable, os.path.join(HOOKS, s)],
+                input=json.dumps({"transcript_path": tp}),
+                capture_output=True, text=True, cwd=d, env=env, timeout=20)
+
+        # A READ-ONLY turn: the transcript is readable and shows searches, no edits.
+        read_only = [
+            json.dumps({"type": "user", "message": {"content": "audit this"}}),
+            json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Grep",
+                 "input": {"pattern": "f", "path": "app.py"}}]}}),
+            json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "text", "text": "here is the audit"}]}}),
+        ]
+        p = run_with(read_only, "ro.jsonl")
+        check("misattribution: a READ-ONLY turn on a dirty tree is SILENT "
+              "(it did not change source 'this turn')",
+              p.returncode == 0, (p.returncode, p.stderr[:200]))
+
+        # TWIN — the guard must still fire when THIS turn really did edit source, or the
+        # fix above would be indistinguishable from disabling the hook.
+        edited = [
+            json.dumps({"type": "user", "message": {"content": "fix it"}}),
+            json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Edit",
+                 "input": {"file_path": os.path.join(d, "app.py")}}]}}),
+        ]
+        p = run_with(edited, "ed.jsonl")
+        check("misattribution twin: a turn that DID edit source still warns",
+              p.returncode == 1 and "no test" in p.stderr.lower(),
+              (p.returncode, p.stderr[:200]))
+
+        # An UNREADABLE transcript keeps the old whole-tree fallback — absence of evidence
+        # is not evidence of a read-only turn (§12: UNMEASURED, never zero).
+        p = subprocess.run(
+            [sys.executable, os.path.join(HOOKS, s)],
+            input=json.dumps({"transcript_path": os.path.join(d, "nope.jsonl")}),
+            capture_output=True, text=True, cwd=d, env=env, timeout=20)
+        check("misattribution: an UNREADABLE transcript still falls back to whole-tree",
+              p.returncode == 1, (p.returncode, p.stderr[:200]))
+
+
+def test_yield_instrument_carries_session_and_coverage():
+    """D2: the record the decay contract is computed from must be able to answer it.
+
+    Two defects, both found in review (2026-08-27):
+      - `log_yield_event` wrote {ts, source, host, gate, event, findings} with NO session
+        id, so §0.5's named metric ("how many fires were followed by a corrective read in
+        the NEXT turn") had no supplier — the contract was prose describing an instrument
+        that could not compute it.
+      - `gate_yield.GATE_EVENTS` is a CLOSED roster and anything else is dropped without a
+        row, so the guard's own honesty events (`capped`, `blind`) would have been written
+        and silently discarded by their named consumer. §0.4 claimed gate_yield as that
+        consumer; at field granularity it was not one.
+    """
+    import importlib.util as _il
+    with tempfile.TemporaryDirectory() as d:
+        yl = os.path.join(d, "yield.jsonl")
+        # a guard invocation carrying a session_id must stamp it on the row
+        env = {"TDD_PLAYBOOK_YIELD_LOG": yl, "CLAUDE_PROJECT_DIR": d,
+               "TDD_PLAYBOOK_HOOK_CITE": "warn"}
+        e = dict(os.environ)
+        for k in list(e):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del e[k]
+        e.update(env)
+        e["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
+        tp = os.path.join(d, "t.jsonl")
+        open(tp, "w").write(json.dumps({"type": "user", "message": {"content": "hi"}})
+                            + "\n" + json.dumps({"type": "assistant", "message": {
+                                "content": [{"type": "text", "text": "nothing claimed"}]}})
+                            + "\n")
+        subprocess.run([sys.executable, os.path.join(HOOKS, "cite_guard.py")],
+                       input=json.dumps({"transcript_path": tp, "session_id": "sess-42"}),
+                       capture_output=True, text=True, env=e, timeout=20, cwd=d)
+        rows = [json.loads(l) for l in open(yl)] if os.path.exists(yl) else []
+        check("D2: the yield row carries the session id",
+              any(r.get("session_id") == "sess-42" for r in rows), rows)
+        # VACUITY: a clean turn must still leave a row, or there is no denominator at all.
+        check("D2: a CLEAN turn leaves a `verified` row (the denominator)",
+              any(r.get("event") == "verified" for r in rows),
+              [r.get("event") for r in rows])
+
+        # the rollup must COUNT the honesty events, not drop them
+        spec = _il.spec_from_file_location("gate_yield",
+                                           os.path.join(PLUGIN, "bin", "gate_yield.py"))
+        gy = _il.module_from_spec(spec)
+        spec.loader.exec_module(gy)
+        check("D2: coverage events are a distinct vocabulary from gate events",
+              set(gy.COVERAGE_EVENTS).isdisjoint(gy.GATE_EVENTS),
+              (gy.COVERAGE_EVENTS, gy.GATE_EVENTS))
+        for ev in ("capped", "blind"):
+            check("D2: `{}` is an accepted coverage event (was silently dropped)".format(ev),
+                  ev in gy.COVERAGE_EVENTS, gy.COVERAGE_EVENTS)
+
+        log2 = os.path.join(d, "roll.jsonl")
+        with open(log2, "w") as fh:
+            for ev in ("verified", "verified", "blind", "capped"):
+                fh.write(json.dumps({"gate": "cite", "event": ev, "source": "hook"}) + "\n")
+        import argparse
+        args = argparse.Namespace(log=log2, md=os.path.join(d, "y.md"), date="2026-08-27",
+                                  response_md=os.path.join(d, "r.md"),
+                                  usage_md=os.path.join(d, "u.md"))
+        import io as _io
+        import contextlib as _ctx
+        buf = _io.StringIO()
+        with _ctx.redirect_stdout(buf):
+            gy.cmd_rollup(args)
+        out = buf.getvalue()
+        check("D2: the rollup PRINTS coverage — the numbers have a reader, not just a writer",
+              "coverage: cite" in out and "verified 2" in out and "blind 1" in out, out)
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
@@ -2091,7 +2243,8 @@ def main():
                test_blocking_guards_prove_both_directions,
                test_guard_roster_derived_and_pinned,
                test_transcript_module, test_transcript_real_capture,
-               test_cite_guard):
+               test_cite_guard, test_tripwire_read_only_turn_misattribution,
+               test_yield_instrument_carries_session_and_coverage):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

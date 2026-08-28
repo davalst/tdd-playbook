@@ -104,7 +104,10 @@ mechanisms.
    The installer is reconciling: it prunes stale playbook hooks from .claude/settings.json
    and adds current ones (the four BLOCKING guards: weakening_guard, lock_guard,
    snapshot_guard, tag_guard; plus the opt-in exitcode/overmock/exhaustive/flaky/red_lock,
-   which ship OFF since v1.32.0 on 31 warns / 0 blocks; plus the warn-by-default
+   which ship OFF since v1.32.0 on 31 warns / 0 blocks, and cite_guard, the analysis-turn
+   seam (v1.46.0), which ships OFF for its OWN reason — it is a new detector whose
+   false-positive rate is unmeasured, and warn routes its remedy to the human rather than
+   the agent it addresses; plus the warn-by-default
    fixture_guard, which warns when an expected answer in a test-data file is rewritten or a
    case removed). My own non-playbook hooks must survive — verify that before committing.
 
