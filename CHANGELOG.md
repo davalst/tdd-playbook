@@ -5,6 +5,47 @@ All notable changes to the TDD Playbook plugin. Versions are the plugin `version
 
 ## 1.46.0 — 2026-08-25
 
+**The ANALYSIS-turn seam — `cite_guard`, `transcript.py`, and a reminder that stops
+misattributing (added 2026-08-27).** Fourteen of the plugin's eighteen hook bindings attach to
+`Edit|MultiEdit|Write` or `Bash`, and the one `Stop` guard that could fire keys on `git status
+--porcelain`, which is empty on a read-only turn. So an audit, a diagnosis, or a plan written as
+prose passed through every binding untouched — the Playbook policed how you CHANGE code and not
+how you REASON about it, while §12 is entirely about the latter.
+
+- **`hooks/scripts/transcript.py`** — ONE transcript reader and ONE tool vocabulary. The repo held
+  FOUR in-code tool-name sets that already disagreed (`grade_from_otel` carried `NotebookEdit`;
+  three hook-side copies did not) and TWO parsers. `current_turn()` is the turn-boundary primitive
+  that did not exist: both prior readers were session-scoped, so one `Read` at hour zero would have
+  silenced a citation guard for a ten-hour session. Tool RESULTS are `type:"user"` records too
+  (39 of 52 in a real transcript), so a turn starts at a user line carrying TEXT.
+- **Dispatch recognition accepts BOTH `Agent` and `Task`**, prefix-stripped. Measured: 47 of 47 real
+  Claude Code dispatches are `Agent`, zero are `Task`, and most carry a `tdd-playbook:` prefix;
+  Cheliped's ccbridge shim emits `Task`. The build plan this work came from specified `Task` with an
+  exact match — the identical assumption `docs/telemetry.md:31` already records this repo paying for
+  once. `red_lock`, `fixture_guard` (as the newly NAMED `EDIT_PAIR_TOOLS`, a different concept that
+  was never a disagreement), `build_completion_reminder`, `capture` and `grade_from_otel` all now
+  import from the one owner.
+- **`cite_guard` (Stop, ships `off`)** — two rules, one pass: a property claim about a file THIS TURN
+  never opened (a grep is not a read), and a `Loop closed:` self-report that outruns the transcript.
+  Rule B compares what the line DECLARES against what was SENT, and treats the blessed
+  `Loop closed: NO — <why>` as a closed loop. It ships OFF for its own reason, not v1.32.0's:
+  `emit`'s exit contract routes warn to the USER and block to CLAUDE, so its remedy cannot reach the
+  agent it addresses, and the obvious promotion condition is unsatisfiable at warn.
+- **The yield record can now answer the contract computed from it** — `session_id` on every row (with
+  a reader: turns across distinct sessions), and `COVERAGE_EVENTS`, deliberately disjoint from
+  `GATE_EVENTS`, so `verified`/`capped`/`blind` are denominators rather than findings. Before this a
+  blind host, a missing transcript and a genuinely-verified turn were byte-identical in the record,
+  namely absent.
+- **A live misattribution bug, fixed red-first.** `build_completion_reminder` reported *"source
+  changed with NO test change THIS TURN"* on a turn that changed nothing, whenever the tree was dirty
+  from earlier work: `session_edited_paths` returned `paths or None`, collapsing "edited nothing" into
+  "no transcript". The honest headline is therefore **17 of 18** bindings untouched on an analysis
+  turn, and the 18th only on a clean tree.
+
+Reviewed before building by four Playbook adversaries and an independent Codex panel (three
+deliverables dropped or restructured on their findings), and again on the DIFF — which caught the
+guard firing on `Loop closed: NO`, i.e. punishing the doctrine it enforces.
+
 **Seven amendments from one downstream audit day, all of one defect class.** Cheliped, 2026-08-24/25:
 seven commits, and a single shape underneath them — *a component that cannot measure something reports
 a confident value, indistinguishable from one that measured and found nothing.* An external reviewer
