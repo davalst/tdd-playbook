@@ -2273,6 +2273,22 @@ def test_yield_instrument_carries_session_and_coverage():
               "3 turn(s) across 2 session(s)" in out3, out3)
 
 
+def test_host_truncation_and_tag_guard_regressions():
+    """Three defects found by USING the plugin (Cheliped, 2026-08-27). Bodies live in
+    tests/guard_regression_cases.py: their fixtures must quote tag-creation commands
+    verbatim, and authoring that file through a shell heredoc is blocked by the very
+    defect they pin (R3). Assembling the strings there keeps the authoring step clean."""
+    import importlib.util as _il
+    spec = _il.spec_from_file_location(
+        "guard_regression_cases",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                     "guard_regression_cases.py"))
+    mod = _il.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.register(check, run, HOOKS, _YIELD_TMP,
+                 (_user, _tool_use, _assistant_text, _write_transcript, _cite_run))
+
+
 def main():
     print("TDD Playbook hook calibration")
     for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
@@ -2285,7 +2301,8 @@ def main():
                test_guard_roster_derived_and_pinned,
                test_transcript_module, test_transcript_real_capture,
                test_cite_guard, test_tripwire_read_only_turn_misattribution,
-               test_yield_instrument_carries_session_and_coverage):
+               test_yield_instrument_carries_session_and_coverage,
+               test_host_truncation_and_tag_guard_regressions):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))

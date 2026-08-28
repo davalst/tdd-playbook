@@ -1,0 +1,3 @@
+{"ts": "2026-08-28T03:45:20+00:00", "source": "hook", "host": "unknown", "gate": "tagguard", "event": "block", "findings": 3}
+{"ts": "2026-08-28T03:45:21+00:00", "source": "hook", "host": "unknown", "gate": "tagguard", "event": "block", "findings": 3}
+{"ts": "2026-08-28T03:53:00+00:00", "source": "hook", "host": "unknown", "gate": "tagguard", "event": "block", "findings": 3}

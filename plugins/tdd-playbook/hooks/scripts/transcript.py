@@ -36,11 +36,26 @@ transcripts: 47 of 47 dispatch records are `Agent`; ZERO are `Task`. And `subage
 namespaced in the majority (`tdd-playbook:architecture-adversary`), so an exact-match against
 `agents/*.md` stems silently misses most traffic.
 
-`Task` is nonetheless retained, because a real host emits it: Cheliped's
-`ccbridge/hook_bridge.py::transcript_tool_event` maps its native `ask_<slug>` dispatch to
-`("Task", {"subagent_type": <un-slugified bare name>})`. So the two hosts genuinely disagree
-on BOTH the tool name and the namespacing, and a guard keyed to either one alone goes dark on
-the other. Accept both; that is what host parity MEANS here.
+`Task` IS RETAINED, AND DO NOT "TIDY" IT AWAY. Stated at length because the next session to
+read this will be tempted to collapse two names into one, and that would take a live host dark.
+
+`Task` is not a Claude Code tool name and never was. It is Cheliped's own INVENTED spelling,
+chosen by its author when writing `ccbridge/hook_bridge.py::transcript_tool_event`, which maps
+its native `ask_<slug>` dispatch to `("Task", {"subagent_type": <un-slugified bare name>})`.
+So accepting both names is not backward compatibility with an older convention — there is no
+such convention. It is compatibility with one host's arbitrary choice, which is a weaker and
+more forgettable reason, which is exactly why it is written down here rather than left to be
+re-derived.
+
+Two independent measurements agree that Claude Code emits ONLY `Agent`: 47 of 47 dispatches
+across 40 transcripts (this repo, 2026-08-27) and 49 of 49 across 50 sessions (Cheliped's
+operator, same window). The original build plan asserted `Task` for Claude Code; that was
+wrong, and its author has since confirmed the error.
+
+Net: `Agent` is the real Claude Code name, `Task` is Cheliped's chosen name, the namespacing
+differs too, and a guard narrowed to either one alone goes dark on the other host. Any
+Cheliped image still in service emits `Task`. `test_hooks.py::test_cite_guard` pins BOTH
+spellings, so collapsing this set REDs the suite rather than silently darkening a host.
 
 Scope stated (§12): this reads what the host wrote. It classifies a transcript; it does not
 defend against a hand-edited one, any more than the yield log defends against an editor.
@@ -276,7 +291,14 @@ def current_turn(path, cap=None):
             continue
         records.append(obj)
 
-    status = CAPPED if (hit_cap and pos != 0) else COMPLETE
+    # The HOST may have truncated before we ever read a byte. Cheliped's shim caps at 400
+    # tool records and says so with {"type":"system","subtype":"truncated"}; treating that
+    # as a complete read is the silent partial verdict CAPPED exists to refuse — and it
+    # would make the citation guard flag a claim whose read record the HOST dropped. Our own
+    # byte cap and the host's record cap are two ways to see less than everything.
+    host_truncated = any(r.get("type") == "system" and r.get("subtype") == "truncated"
+                         for r in records)
+    status = CAPPED if ((hit_cap and pos != 0) or host_truncated) else COMPLETE
     # Fill `text` HERE. It used to be an out-param the consumer filled, so any caller
     # writing the obvious `looks_blind(current_turn(p))` got text=None and every edit-only
     # turn read BLIND — the one reader delegating its own discriminator's input back out.

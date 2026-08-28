@@ -13,7 +13,9 @@ Exit-code contract (Claude Code):
 import datetime
 import json
 import os
+import select
 import sys
+import time
 
 # Global default + per-hook override.
 #   TDD_PLAYBOOK_HOOK_MODE=warn|block         (global default)
@@ -100,12 +102,65 @@ def note_hook_fired(marker="hook"):
 _SESSION_ID = None
 
 
+#: Seconds to wait for the hook payload before failing OPEN. Well under the 15s hook
+#: timeout in hooks.json, so the guard decides its own outcome instead of being killed.
+STDIN_WAIT_ENV = "TDD_PLAYBOOK_STDIN_WAIT"
+_DEFAULT_STDIN_WAIT = 8.0
+
+
+def _read_stdin_bounded():
+    """The hook payload, or None if stdin never delivers one.
+
+    `sys.stdin.read()` blocks until EOF. A hook invocation whose stdin is an OPEN pipe
+    carrying no data therefore waits forever and is killed as hook_cancelled/timedOut —
+    measured live on PreToolUse Bash guards (Cheliped, 2026-08-27: 3 cancellations across
+    50 sessions / 4.8 days at timeoutMs 15000), where it blocks the user's loop on every
+    Bash call it fires on. The guards are not slow; each runs in 35-90ms.
+
+    Failing open FAST is strictly better than hanging, and is not a weakening: a hook killed
+    at the timeout did not block the tool either — it just cost 15 seconds first. What is new
+    is that the shortfall is now VISIBLE (an `unmeasured` yield row) instead of surfacing as
+    a cancelled hook nobody attributes to a guard.
+    """
+    try:
+        wait = float(os.environ.get(STDIN_WAIT_ENV) or _DEFAULT_STDIN_WAIT)
+    except (TypeError, ValueError):
+        wait = _DEFAULT_STDIN_WAIT
+    deadline = time.monotonic() + wait
+    chunks = []
+    try:
+        fd = sys.stdin.fileno()
+    except Exception:
+        return sys.stdin.read()          # not a real fd (a StringIO in tests): read directly
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None                  # never delivered — fail open, and say so
+        try:
+            ready, _, _ = select.select([fd], [], [], remaining)
+        except Exception:
+            return sys.stdin.read()      # select unavailable on this fd: old behaviour
+        if not ready:
+            return None
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            break
+        if not data:
+            break                        # EOF: the payload is complete
+        chunks.append(data)
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
 def read_event():
     """Read and parse the hook's stdin JSON. Returns {} on any problem."""
     global _SESSION_ID
     note_hook_fired("read_event")
     try:
-        raw = sys.stdin.read()
+        raw = _read_stdin_bounded()
+        if raw is None:
+            log_yield_event("stdin", "unmeasured", {"reason": "stdin-never-delivered"})
+            return {}
         event = json.loads(raw) if raw.strip() else {}
     except Exception:
         return {}

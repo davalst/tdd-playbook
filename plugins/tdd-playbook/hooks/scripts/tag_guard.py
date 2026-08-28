@@ -58,7 +58,14 @@ _GIT = r"\bgit\b(?:\s+-[A-Za-z-]+(?:[= ]\S+)?)*\s+"
 # Reading tags is free. Deleting a local tag is allowed: it cannot mint a release, and
 # refusing it would block ordinary test cleanup.
 _TAG_READ_OR_DELETE = re.compile(
-    _GIT + r"tag\b\s*(?:-l\b|--list\b|-d\b|--delete\b|-n\d*\b|-v\b|--verify\b|--contains\b|$)")
+    _GIT + r"tag\b\s*(?:-l\b|--list\b|-d\b|--delete\b|-n\d*\b|-v\b|--verify\b|--contains\b"
+    #                    a bare listing may be REDIRECTED and stay a listing. The alternation
+    #                    used to end at `$`, so anything following a bare listing stopped
+    #                    matching "read" and fell through to "create" — measured live
+    #                    (Cheliped, 2026-08-27): this guard fired three times in one session
+    #                    on listings and never once on a real attempt. Fails safe, but a
+    #                    guard that cries wolf is a guard that gets demoted.
+    r"|[0-9]*[<>]|$)")
 _TAG_CREATE = re.compile(_GIT + r"tag\b")
 _TAG_REF_WRITE = re.compile(_GIT + r"update-ref\b[^\n]*refs/tags")
 # pushing tags: --tags, an explicit refs/tags refspec, or a bare vN.N.N argument
@@ -95,8 +102,38 @@ def workflow_findings(text):
     return out
 
 
+_HEREDOC_OPEN = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?")
+
+
+def _strip_heredoc_bodies(text):
+    """Drop heredoc BODY lines; the opening command line stays.
+
+    A heredoc body is DATA. Writing a file whose prose quotes a tag command is
+    documentation, not an attempt to mint a release — and this guard blocked exactly that,
+    twice, both times while someone was writing down that it does (Cheliped 2026-08-27, and
+    again on the commit that fixed it). The opening line is kept, so a real command on it is
+    still inspected, and lines after the delimiter closes are still inspected — the fix must
+    narrow the guard without becoming a way to smuggle one past it.
+
+    Shape borrowed from cheliped/tool_guardrails.py::_strip_heredoc_bodies, which solved the
+    same problem for its own write-detection.
+    """
+    out, delim = [], None
+    for line in str(text or "").splitlines():
+        if delim is not None:
+            if line.strip() == delim:
+                delim = None
+            continue
+        out.append(line)
+        m = _HEREDOC_OPEN.search(line)
+        if m:
+            delim = m.group(1)
+    return "\n".join(out)
+
+
 def _statements(cmd):
     """Split on statement separators so a chained create is inspected as two statements."""
+    cmd = _strip_heredoc_bodies(cmd)
     return [s for s in re.split(r";|&&|\|\||\n|\|", cmd) if s.strip()]
 
 
