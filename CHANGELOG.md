@@ -5,6 +5,35 @@ All notable changes to the TDD Playbook plugin. Versions are the plugin `version
 
 ## 1.46.1 — 2026-08-28
 
+**Two doctrine changes, and no new tool — the day's most useful result.**
+
+- **The `Means:` line.** `/tripwire` and `tripwire-auditor` now report the plan's stated MEANS
+  as `honoured · acknowledged · drift`. The four Tripwire legs ask whether each DELIVERABLE is
+  built and wired; nothing asked whether the implementation used what the plan said it would.
+  The proof that these differ: on 2026-08-28 the auditor ran on this very work, returned a
+  healthy-looking `3/5`, and never noticed an approved plan said *"refounded on
+  `bin/verify_citations.py`"* while the shipped code referenced it zero times. A means is not a
+  deliverable, so no leg owned it. A file the plan merely MENTIONS is not a means, and
+  `0 · 0 · 0` is a real answer only when the plan named none — otherwise `Means: NOT CHECKED`,
+  because a fabricated denominator is worse than an admitted gap.
+
+  This is deliberately the cheap half. A tool to infer a plan's promises from prose was
+  designed and rejected by three independent reviews: its extraction found 1 of the 3 real
+  failures, its frozen fixtures pinned commits reachable from no ref (a rebase had rewritten
+  them, so CI could never fetch them), and it broke on the Codex host. If the forced line is
+  honoured, no tool is needed; if it is walked past, that is the evidence that justifies one.
+
+- **§0 now requires a PRIOR-ART SWEEP before proposing to build.** *What already does this, and
+  what happens if we do nothing?* — naming the sweep and citing what it found. The binding is
+  the point: *"nothing already does this"* is a NEGATIVE CLAIM, and §12 already governs
+  negatives (exhaustive sweep, cited, never a recollection). That rule existed all along and was
+  never pointed at the most expensive decision in the process, because the plan format never
+  asked. Origin: three build proposals died in one day — a guard whose job
+  `bin/verify_citations.py` already did, a replay engine computing numbers already sitting in a
+  committed file, and a detector whose real fix was one clause of §0. Treat *"I should build
+  something"* as the hypothesis to DISPROVE first; and when the answer is a rule rather than a
+  tool, that is a RESULT, not a failure.
+
 **Guard fixes found by USING the plugin, plus two defects the fixes themselves introduced.**
 Every item was verified in this repo before it was accepted — a secondhand report is an
 unverified claim — and each is pinned red-first with a TWIN, because all of them NARROW a

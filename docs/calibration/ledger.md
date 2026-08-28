@@ -828,3 +828,31 @@ satisfied instrument.
 |---|---|---|---|---|---|---|---|---|
 | L-20260819-01 | 2026-08-19 | 10e804d | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md; plugins/tdd-playbook/commands/mutate.md | §4 gains timeout-sizing and hand-planting rules; §10 gains one-waiter; /mutate names mutation_run.py for checks (b) and (c) while (a) and (d) stay as written | — | none | 0 | doctrine yield is deliberately unmeasured here (2026-08-14 decision); the mechanism's effect is registered on the agent brief row below, where it can actually move |
 | L-20260819-02 | 2026-08-19 | 10e804d | plugins/tdd-playbook/agents/mutation-runner.md | the brief names mutation_run.py as the path for the collection and green-baseline checks, so the preflight rides the execution path instead of the agent's memory | red-baseline-false-green | up | 1 | the plant IS a red baseline, and the wrapper refuses one before any mutant exists. If recall does not move, the wrapper is not on the path the agent actually takes — which is the more valuable answer |
+
+### Registered 2026-08-28 — baseline e24d49b: the `Means:` line, and the prior-art sweep
+
+An agent stated a decision and shipped the opposite FOUR times in one day. `/tripwire`'s four
+legs ask whether each DELIVERABLE is built, wired, activated and exercised; nothing asked
+whether the implementation used the MEANS the plan named. The proof that these are different
+questions: `tripwire-auditor` ran on that very work, returned a healthy-looking `3/5`, and
+never noticed an approved plan said *"refounded on `bin/verify_citations.py`"* while the
+shipped code referenced it zero times.
+
+This registers the CHEAP half deliberately. A tool to infer a plan's promises from prose was
+designed and rejected by three independent reviews (its extraction found 1 of the 3 real
+failures; its fixtures pinned commits reachable from no ref; it broke on the Codex host). The
+forced line is the untested alternative, and the prediction below is the whole point: if the
+auditor honours it, no tool is needed; if this reads FLAT, the line was walked past, and THAT
+is the evidence that justifies mechanism.
+
+`SKILL.md` and `commands/` stay NOT effectful (the 2026-08-14 decision that doctrine yield is
+unmeasured), so they take `expect: none`. The prediction is stated on `unwired-deliverable`
+and `roadmap-laundering` because both plant a deliverable whose stated intent and shipped
+reality diverge — the shape a means check is aimed at. The two controls must NOT move: a
+`Means:` line that turns a clean control dark is an over-fire, and that is the failure mode
+this whole day was spent learning to fear.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260828-01 | 2026-08-28 | e24d49b | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md; plugins/tdd-playbook/commands/tripwire.md | §0 gains a PRIOR-ART SWEEP requirement bound to §12's exhaustive-negative rule ("nothing already does this" is a negative claim); /tripwire gains the forced `Means:` line | — | none | 0 | doctrine yield is deliberately unmeasured here (2026-08-14 decision); the effect is registered on the agent brief row below, where it can actually move |
+| L-20260828-02 | 2026-08-28 | e24d49b | plugins/tdd-playbook/agents/tripwire-auditor.md | a fourth forced line, `Means: H honoured · A acknowledged · D drift`, asking whether the plan's stated means were used — a means is not a deliverable, so no existing leg owned it | unwired-deliverable; roadmap-laundering; control-parked-deferral; control-export-wired | up | 2 | both plants ship a deliverable whose stated intent and shipped reality diverge, which is exactly what a means check reads; if recall does not move, the forced line is being satisfied rather than used, and that answer is worth more than a satisfied instrument. The two controls must stay clean — an over-firing Means line is the failure this line exists to avoid repeating |
