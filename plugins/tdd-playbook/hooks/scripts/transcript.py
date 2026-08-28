@@ -6,8 +6,20 @@ Before this module the repo held FOUR in-code tool-name sets that already DISAGR
 `red_lock` and `fixture_guard` did not — plus TWO independent transcript parsers
 (`build_completion_reminder.session_edited_paths`, a forward whole-file tool_use walk, and
 `capture.last_assistant_text`, a bounded backward assistant-text scan). A plan proposing two
-new transcript consumers would have made that five and four. This module is the one owner;
-every other site imports from here.
+new transcript consumers would have made that five and four.
+
+WHAT IS ACTUALLY CONVERTED, stated precisely because the first draft of this docstring said
+"every other site imports from here" and that was FALSE — a claim about files, in the module
+underneath the guard built to catch claims about files:
+  - `build_completion_reminder.py`  -> imports (parser + EDIT_TOOLS)
+  - `capture.py`                    -> imports (assistant-text parser; re-exports it)
+  - `red_lock.py`                   -> imports EDIT_TOOLS (this is what fixed its missing
+                                       NotebookEdit: a notebook edit to a test file was
+                                       invisible to the red-lock recorder)
+  - `bin/grade_from_otel.py`        -> imports READ/SEARCH/EDIT via the same sys.path shim
+                                       `bin/guard_note.py` already uses
+  - `fixture_guard.py`              -> imports EDIT_PAIR_TOOLS, which is a DIFFERENT
+                                       concept and was never a disagreement (below)
 
 WHY A SIBLING AND NOT `_common.py`: `_common` is the mode/emit layer. `host_contract.py`
 states the layering rule this obeys — *"It does not know Claude/Codex event JSON ... those are
@@ -48,6 +60,12 @@ EDIT_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
 
 #: Tools that OPEN a file's contents.
 READ_TOOLS = frozenset({"Read", "NotebookRead"})
+
+#: Tools whose input carries EDIT PAIRS (old_string/new_string) rather than whole content.
+#: NOT a narrower EDIT_TOOLS and never was: `fixture_guard` reconstructs the post-edit text
+#: and must branch, because `Write` carries `content` instead. Naming it stops a real
+#: distinction from reading like drift the next time someone unifies these sets.
+EDIT_PAIR_TOOLS = frozenset({"Edit", "MultiEdit"})
 
 #: Tools that SEARCH without showing a body. Explicitly NOT reads — that distinction is the
 #: whole point of the citation guard, and it already existed in `grade_from_otel.SEARCH_TOOLS`.
@@ -103,10 +121,6 @@ class Turn(object):
         self.status = status
         self.text = text
 
-    @property
-    def usable(self):
-        return self.status in (COMPLETE, CAPPED)
-
     def __repr__(self):  # pragma: no cover - diagnostics only
         return "Turn(records={}, status={!r})".format(len(self.records), self.status)
 
@@ -147,11 +161,15 @@ def is_user_turn_start(obj):
     return False
 
 
-def assistant_text_of(line):
-    """The concatenated text blocks of one assistant line, or None if not an assistant
-    message. Moved from `capture.py`, which now imports it from here."""
-    obj = parse_line(line)
-    if obj is None or obj.get("type") != "assistant":
+def assistant_text_of_record(obj):
+    """The concatenated text blocks of one PARSED assistant record, or None.
+
+    The record-level half, so `assistant_text_of` (line-level), `current_turn` (filling
+    Turn.text) and any guard all share ONE extractor. Splitting these was how a third copy
+    of this concat appeared in cite_guard while this module's thesis was that two parsers
+    had become one.
+    """
+    if not isinstance(obj, dict) or obj.get("type") != "assistant":
         return None
     content = (obj.get("message") or {}).get("content")
     if isinstance(content, str):
@@ -160,6 +178,12 @@ def assistant_text_of(line):
         return "".join(b.get("text", "") for b in content
                        if isinstance(b, dict) and b.get("type") == "text")
     return None
+
+
+def assistant_text_of(line):
+    """The concatenated text blocks of one assistant LINE, or None. Moved from `capture.py`,
+    which imports it from here."""
+    return assistant_text_of_record(parse_line(line))
 
 
 def last_assistant_text(path, cap=None):
@@ -253,7 +277,11 @@ def current_turn(path, cap=None):
         records.append(obj)
 
     status = CAPPED if (hit_cap and pos != 0) else COMPLETE
-    return Turn(records, status)
+    # Fill `text` HERE. It used to be an out-param the consumer filled, so any caller
+    # writing the obvious `looks_blind(current_turn(p))` got text=None and every edit-only
+    # turn read BLIND — the one reader delegating its own discriminator's input back out.
+    text = "\n".join(x for x in (assistant_text_of_record(r) for r in records) if x)
+    return Turn(records, status, text or None)
 
 
 def tool_uses(records):
@@ -440,5 +468,5 @@ def looks_blind(turn):
         return True
     if turn.text and turn.text.strip():
         return False
-    return all(tu["name"] in EDIT_TOOLS for tu in tool_uses(turn.records)) or \
-        not tool_uses(turn.records)
+    # `all([])` is already True, so the old trailing `or not tool_uses(...)` was unreachable.
+    return all(tu["name"] in EDIT_TOOLS for tu in tool_uses(turn.records))

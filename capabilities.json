@@ -1618,7 +1618,7 @@
       ],
       "liveness": {
         "max_quiet_days": 120,
-        "probe": "The guard ships OFF, so ABSENT rows are the expected steady state and prove nothing \u2014 read this only against an opted-in operator. Then: bin/gate_yield.py rollup prints `coverage: cite \u00b7 saw N turn(s)`, which is the denominator that did not exist before v1.46.0. A `blind` count that is nonzero and rising means the host cannot supply what the guard reads (the pre-C1 Cheliped shape) and the guard is reporting UNMEASURED rather than clean \u2014 which is the correct behaviour, not a fault."
+        "probe": "The guard ships OFF, so ABSENT rows are the expected steady state and prove nothing \u2014 read this only against an opted-in operator. Then: bin/gate_yield.py rollup prints `coverage: cite \u00b7 saw N turn(s)`, which is the denominator that did not exist before v1.46.0. A `blind` count that is nonzero and rising means the guard could not see: read the row's `reason` field, do not infer the cause. `no-transcript` is a host that supplied nothing; `no-text-edit-only` is a turn with no assistant text and only edit records \u2014 usually the pre-C1 Cheliped shape, but a genuine Claude turn can take it too (capture.py records a live-found 2026-07-30 case), which is why the row names the shape and not the culprit. Either way the guard reports UNMEASURED rather than clean, which is correct behaviour, not a fault."
       },
       "integration_debt": [
         {

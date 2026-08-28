@@ -75,8 +75,19 @@ _CLAIM_RE = re.compile(r"\b(?:" + "|".join(_CLAIM_VERBS) + r")\b", re.I)
 _FILE_RE = re.compile(r"(?<![\w/.-])((?:[\w.-]+/)*[\w.-]+\.[A-Za-z][A-Za-z0-9]{0,5})"
                       r"(?::\d+)?(?![\w/])")
 
-#: The declared loop-closure token the commands mandate.
-_LOOP_RE = re.compile(r"^\s*(?:[-*>#\s]*)?\**\s*Loop\s+closed\s*:", re.I | re.M)
+#: The declared loop-closure token the commands mandate, capturing what was DECLARED after
+#: the colon — the guard compares that against what the transcript shows was actually sent.
+_LOOP_RE = re.compile(r"^\s*(?:[-*>#\s]*)?\**\s*Loop\s+closed:?\**\s*:?\s*(?P<rest>.*)$",
+                      re.I | re.M)
+
+#: `Loop closed: NO — <why>` is BLESSED doctrine in five commands (edge.md:32, probe.md:48,
+#: mutate.md:86, tdd-plan.md:67, integration-audit.md:89) — "a skipped adversary pass is a
+#: visible decision, never a default". Firing on it would punish the exact behaviour the
+#: doctrine rewards, with a remedy that is a non-sequitur. A declared NO is a closed loop.
+_DECLINED_RE = re.compile(r"^\**\s*(no|none|n/a)\b", re.I)
+
+#: Agent-shaped names inside the declaration, e.g. `integration-adversary`.
+_AGENT_NAME_RE = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)+")
 
 _FENCE_RE = re.compile(r"```.*?```", re.S)
 _QUOTE_RE = re.compile(r"^\s*>.*$", re.M)
@@ -141,21 +152,6 @@ def claims_in(text, root):
     return out
 
 
-def turn_text(turn):
-    """All assistant text in this turn, concatenated."""
-    parts = []
-    for rec in turn.records:
-        if rec.get("type") != "assistant":
-            continue
-        content = (rec.get("message") or {}).get("content")
-        if isinstance(content, str):
-            parts.append(content)
-        elif isinstance(content, list):
-            parts.extend(b.get("text", "") for b in content
-                         if isinstance(b, dict) and b.get("type") == "text")
-    return "\n".join(p for p in parts if p)
-
-
 def main():
     event = read_event()
     if event.get("stop_hook_active"):
@@ -171,7 +167,6 @@ def main():
     if turn.status == tr.UNREADABLE:
         log_yield_event(NAME, "unmeasured", {"reason": "no-transcript"})
         sys.exit(0)
-    turn.text = turn_text(turn)
     if turn.status == tr.CAPPED:
         log_yield_event(NAME, "capped", {"records": len(turn.records)})
         sys.exit(0)
@@ -179,14 +174,15 @@ def main():
         # The pre-C1 Cheliped shim produced exactly this: a READABLE transcript of only
         # hard-coded Edit records. An absent-file fallback never fires there, so without
         # this the guard would report CLEAN on a host it cannot see — a false green.
-        log_yield_event(NAME, "blind", {"records": len(turn.records)})
+        log_yield_event(NAME, "blind", {"records": len(turn.records),
+                                        "reason": "no-text-edit-only"})
         sys.exit(0)
 
     findings = []
 
     # ── Rule A: a property claim about a file this turn never opened ──
     known = tr.read_paths(turn.records, root=root) | tr.edited_paths(turn.records, root=root)
-    for ref, resolved, sentence in claims_in(turn.text, root):
+    for ref, resolved, sentence in claims_in(turn.text or "", root):
         if resolved in known:
             continue
         findings.append(
@@ -194,24 +190,36 @@ def main():
             'but did not open it. A grep matches your own docstring; open the file, or mark '
             'the claim inherited.'.format(ref, sentence[:160]))
 
-    # ── Rule B: a loop-closure self-report with no dispatch ──
-    if _LOOP_RE.search(strip_quoted(turn.text)):
-        sent = tr.dispatches(turn.records)
-        if not sent:
-            roster = tr.agents_roster(os.path.join(os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "agents"))
-            hint = ""
-            if roster:
-                want = sorted(roster & {"integration-adversary", "architecture-adversary"})
-                if want:
-                    hint = " The commands name {}.".format(" and ".join(
-                        "`" + w + "`" for w in want))
-            findings.append(
-                'reports "Loop closed" but this turn dispatched no adversary — announced is '
-                'not executed.{} Dispatch them, or name the earlier turn that did.'
-                .format(hint))
+    # ── Rule B: a loop-closure self-report that outruns the transcript ──
+    m = _LOOP_RE.search(strip_quoted(turn.text))
+    if m:
+        declared_text = (m.group("rest") or "").strip()
+        if _DECLINED_RE.match(declared_text):
+            pass  # a declared NO is a closed loop — see _DECLINED_RE
+        else:
+            sent = tr.dispatches(turn.records)
+            roster = tr.agents_roster(os.path.join(os.path.dirname(os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__)))), "agents")) or set()
+            # Compare what the line CLAIMS against what the transcript shows. The earlier
+            # predicate was `len(sent) >= 1`, a proxy: a report naming two adversaries went
+            # silent when ONE ran, or when one unrelated search subagent ran — a half-done
+            # closure is the same "announced is not executed" defect the rule exists to catch.
+            declared = {n for n in _AGENT_NAME_RE.findall(declared_text) if n in roster}
+            missing = sorted(declared - sent)
+            if missing:
+                findings.append(
+                    'reports "Loop closed" naming {} — but this turn dispatched {} — announced '
+                    'is not executed. Dispatch the missing one(s), or name the earlier turn '
+                    'that did.'.format(", ".join("`" + n + "`" for n in missing),
+                                       ", ".join(sorted("`" + n + "`" for n in sent))
+                                       or "no adversary"))
+            elif not declared and not sent:
+                findings.append(
+                    'reports "Loop closed" but this turn dispatched no adversary — announced '
+                    'is not executed. Dispatch the adversaries the command names, or record '
+                    '`Loop closed: NO — <why>`, which is a blessed answer.')
 
-    log_yield_event(NAME, "verified", {"claims": len(claims_in(turn.text, root)),
+    log_yield_event(NAME, "verified", {"claims": len(claims_in(turn.text or "", root)),
                                        "findings": len(findings)})
     emit(NAME, findings)
 

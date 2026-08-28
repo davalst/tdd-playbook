@@ -29,6 +29,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import transcript as tr  # noqa: E402
 from _common import read_event, emit, file_path_of, edit_pairs, is_test_file  # noqa: E402
 from snapshot_guard import snapshot_path  # noqa: E402  (its territory; do not double-warn)
 from lock_guard import segments, _seg_writes  # noqa: E402  (FP-calibrated shell writes)
@@ -152,7 +153,7 @@ def main():
     if not old_text:                         # new file (creation) or unreadable -> silent
         emit(NAME, [])
         return
-    if tool in ("Edit", "MultiEdit"):
+    if tool in tr.EDIT_PAIR_TOOLS:
         new_text = old_text
         for old_s, new_s in edit_pairs(event):
             new_text = new_text.replace(old_s, new_s, 1)

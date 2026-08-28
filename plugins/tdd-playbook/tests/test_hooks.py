@@ -2009,18 +2009,42 @@ def test_cite_guard():
         # Keyed on the token the commands already mandate, not on "plan shape": a
         # §0-marker detector would flag every review turn, every quoted plan, and
         # /readable — whose contract FORBIDS the remedy it would demand.
-        loop = "Loop closed: yes (integration-adversary — none; architecture-adversary — clean)"
+        one = "Loop closed: yes (architecture-adversary — clean)"
+        both = ("Loop closed: yes (integration-adversary — none; "
+                "architecture-adversary — clean)")
         dispatch_cc = _tool_use("Agent", {"subagent_type": "tdd-playbook:architecture-adversary",
                                           "description": "review"}, "a1")
+        dispatch_int = _tool_use("Agent", {"subagent_type": "integration-adversary",
+                                           "description": "review"}, "a3")
         dispatch_cheli = _tool_use("Task", {"subagent_type": "architecture-adversary",
                                             "description": "review"}, "a2")
         _twin(d, "E13/E17 loop-closed-with-no-dispatch",
-              [_user("a"), dispatch_cc, _assistant_text(loop)],
-              [_user("a"), _assistant_text(loop)], "Loop closed")
+              [_user("a"), dispatch_cc, _assistant_text(one)],
+              [_user("a"), _assistant_text(one)], "Loop closed")
         # HOST PARITY: the Cheliped spelling must silence it too, or the guard is dark there.
-        rc, err = _cite_run(d, [_user("a"), dispatch_cheli, _assistant_text(loop)])
+        rc, err = _cite_run(d, [_user("a"), dispatch_cheli, _assistant_text(one)])
         check("host parity: a Cheliped-shaped dispatch (Task) silences Rule B",
               rc == 0, (rc, err[:200]))
+
+        # DECLARED vs SENT, not "any dispatch at all". The earlier predicate was
+        # len(dispatches) >= 1, a proxy: a report naming TWO adversaries went silent when
+        # one ran — a half-done closure is the same "announced is not executed" defect.
+        rc, err = _cite_run(d, [_user("a"), dispatch_cc, _assistant_text(both)])
+        check("Rule B: declaring two adversaries while dispatching ONE fires, naming the "
+              "missing one", rc == 1 and "integration-adversary" in err, (rc, err[:220]))
+        rc, err = _cite_run(d, [_user("a"), dispatch_cc, dispatch_int,
+                                _assistant_text(both)])
+        check("Rule B: declaring two and dispatching BOTH is silent", rc == 0, (rc, err[:200]))
+
+        # `Loop closed: NO — <why>` is BLESSED in five commands as "a visible decision,
+        # never a default" (edge.md:32, probe.md:48, mutate.md:86, tdd-plan.md:67,
+        # integration-audit.md:89). Firing on it punished the behaviour the doctrine
+        # rewards, with a remedy that is a non-sequitur. Found by architecture-adversary.
+        for declined in ("Loop closed: NO — budget exhausted, skipped deliberately",
+                         "**Loop closed:** NO — no plan-shaped work this turn"):
+            rc, err = _cite_run(d, [_user("a"), _assistant_text(declined)])
+            check("Rule B: a declared `Loop closed: NO` is a CLOSED loop, not a finding",
+                  rc == 0, (declined[:40], rc, err[:160]))
         # E15: ordinary prose containing the words must NOT fire.
         rc, err = _cite_run(d, [_user("a"), _assistant_text(
             "We should close the loop with an adversary before shipping.")])
@@ -2230,6 +2254,23 @@ def test_yield_instrument_carries_session_and_coverage():
         out = buf.getvalue()
         check("D2: the rollup PRINTS coverage — the numbers have a reader, not just a writer",
               "coverage: cite" in out and "verified 2" in out and "blind 1" in out, out)
+
+        # `session_id` must have a READER, or it is a write-only field justified by prose —
+        # the T2 defect this repo names, and a tripwire audit flagged exactly that here.
+        log3 = os.path.join(d, "sess.jsonl")
+        with open(log3, "w") as fh:
+            for sid in ("s1", "s1", "s2"):
+                fh.write(json.dumps({"gate": "cite", "event": "verified",
+                                     "source": "hook", "session_id": sid}) + "\n")
+        args3 = argparse.Namespace(log=log3, md=os.path.join(d, "y3.md"),
+                                   date="2026-08-27", response_md=os.path.join(d, "r3.md"),
+                                   usage_md=os.path.join(d, "u3.md"))
+        buf3 = _io.StringIO()
+        with _ctx.redirect_stdout(buf3):
+            gy.cmd_rollup(args3)
+        out3 = buf3.getvalue()
+        check("D2: session_id HAS a consumer — 3 turns are reported across 2 sessions",
+              "3 turn(s) across 2 session(s)" in out3, out3)
 
 
 def main():

@@ -164,8 +164,13 @@ USAGE_EVENTS = ("usage", "usage-note")
 
 #: COVERAGE events (v1.46.0) — what a guard SAW, as opposed to what it found. They exist
 #: because `emit(NAME, [])` exits before logging, so a clean run leaves NO row: a blind
-#: host, a missing transcript, a hook killed by its timeout and a genuinely-verified turn
-#: were all byte-identical in this record, namely absent. A decay contract computed over
+#: host, a missing transcript and a genuinely-verified turn were all byte-identical in this
+#: record, namely absent. SCOPE, stated because the fix is narrower than the diagnosis
+#: (§12 — a result carries its denominator): only `cite` writes these rows, from its own
+#: main(); `emit`'s contract is unchanged and the other ten guards still have no
+#: denominator, because a row per clean run of every PostToolUse guard is genuinely high
+#: volume. And a hook KILLED BY ITS TIMEOUT still leaves nothing at all — every row here is
+#: written at the end of main(), so that fourth case remains outside this instrument. A decay contract computed over
 #: that cannot tell a useful warning from wallpaper, which is the one question it exists to
 #: answer. Kept OUT of GATE_EVENTS deliberately: these are denominators, not findings, and
 #: minting warn/block rows from them would corrupt the retirement arithmetic above.
@@ -354,8 +359,16 @@ def cmd_rollup(args):
             continue
         if ev in COVERAGE_EVENTS:
             gate = str(row.get("gate") or "unknown")
-            cov = per_coverage.setdefault(gate, dict.fromkeys(COVERAGE_EVENTS, 0))
+            cov = per_coverage.setdefault(
+                gate, dict(dict.fromkeys(COVERAGE_EVENTS, 0), sessions=set()))
             cov[ev] += 1
+            # The READER of `session_id` (v1.46.0). Turns-per-session is what makes the
+            # coverage number a rate rather than a tally: 40 turns across 1 session is one
+            # operator's afternoon, 40 across 20 is a signal. Without a consumer the field
+            # was write-only — the T2 defect this repo names — and its justifying comment
+            # named a metric nothing computed.
+            if row.get("session_id"):
+                cov["sessions"].add(str(row["session_id"]))
             continue
         if ev not in GATE_EVENTS:
             continue
@@ -407,10 +420,11 @@ def cmd_rollup(args):
     # not a measurement.
     for gate in sorted(per_coverage):
         c = per_coverage[gate]
-        total = sum(c.values())
-        print("coverage: {} · saw {} turn(s) — verified {} · capped {} · blind {} · "
-              "unmeasured {}".format(gate, total, c["verified"], c["capped"], c["blind"],
-                                     c["unmeasured"]))
+        total = sum(c[e] for e in COVERAGE_EVENTS)
+        print("coverage: {} · saw {} turn(s) across {} session(s) — verified {} · "
+              "capped {} · blind {} · unmeasured {}".format(
+                  gate, total, len(c["sessions"]) or "?", c["verified"], c["capped"],
+                  c["blind"], c["unmeasured"]))
     return 0
 
 

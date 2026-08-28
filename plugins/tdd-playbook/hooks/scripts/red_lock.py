@@ -28,6 +28,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import transcript as tr  # noqa: E402
 from _common import read_event, emit, file_path_of, is_test_file  # noqa: E402
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                 "..", "..", "bin")))
@@ -205,7 +206,8 @@ def main():
     root = project_root()
     tool = event.get("tool_name") or ""
 
-    if tool in ("Edit", "MultiEdit", "Write"):
+    if tool in tr.EDIT_TOOLS:   # incl. NotebookEdit — a notebook edit to a test
+                                # file was invisible to this recorder before v1.46.0
         path = file_path_of(event)
         if is_test_file(path):
             record_pending(root, path)
