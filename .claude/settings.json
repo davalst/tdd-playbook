@@ -133,6 +133,12 @@
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/capture.py\" --event Stop",
                         "timeout": 15
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/cite_guard.py\"",
+                        "timeout": 15,
+                        "statusMessage": "TDD: claim/evidence check"
                     }
                 ]
             }

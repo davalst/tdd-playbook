@@ -25,9 +25,14 @@ import sys
 TOOL_EVENT_NAMES = {"claude_code.tool_result", "claude_code.tool_decision", "tool_result",
                     "tool_decision"}
 API_EVENT_NAMES = {"claude_code.api_request", "api_request"}
-READ_TOOLS = {"Read"}
-SEARCH_TOOLS = {"Grep", "Glob"}
-EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
+# The ONE tool vocabulary lives in hooks/scripts/transcript.py. Reached by the same
+# sys.path shim bin/guard_note.py uses — same layout in the plugin and in vendored .claude/.
+# Before v1.46.0 this file's EDIT_TOOLS carried NotebookEdit while three hook-side copies did
+# not, so "an edit" meant different things in the instrument and in the guards.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                "hooks", "scripts"))
+from transcript import (READ_TOOLS, SEARCH_TOOLS, EDIT_TOOLS,  # noqa: E402
+                        DISPATCH_TOOLS)  # noqa: F401
 
 
 def _flatten_otlp_attrs(attrs):
@@ -135,7 +140,7 @@ def analyze(lines):
                 m["records"] += 1
                 m["tool_events_seen"] = True
                 fp = rec.get("file_path") or ""
-                if tool == "Agent":
+                if tool in DISPATCH_TOOLS:   # `Task` too: Cheliped's shim emits it
                     if name.endswith("tool_decision"):
                         m["subagent_dispatches"] += 1
                     continue

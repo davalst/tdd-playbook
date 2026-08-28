@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import transcript as tr  # noqa: E402
 from _common import read_event, emit, is_test_file  # noqa: E402
 from fixture_guard import is_fixture_data  # noqa: E402  (one predicate, not a copy)
 
@@ -71,39 +72,36 @@ def classify(paths):
 
 
 def session_edited_paths(event):
-    """Paths this session actually edited, mined from the transcript. None = unavailable."""
+    """Paths this session edited, mined from the transcript.
+
+    Returns a SET (possibly EMPTY) when the transcript is readable, and None ONLY when it
+    is not. That distinction is the whole fix: this used to `return paths or None`, which
+    collapsed "this turn edited nothing" into "there is no transcript" — so a READ-ONLY
+    turn skipped the session narrowing in main(), fell through to whole-tree `git status`,
+    and reported *"source changed with NO test change THIS TURN"* on a turn that changed
+    nothing, whenever the tree was dirty from earlier work. Absent evidence and zero
+    evidence are different facts (§12), and here they had the same representation.
+
+    The walk itself now comes from `transcript.py`, the one reader — this was one of TWO
+    parsers and FOUR disagreeing tool-name sets before that module existed.
+    """
     tp = event.get("transcript_path")
     if not tp or not os.path.isfile(tp):
         return None
-    paths = set()
+    records = []
     try:
         with open(tp, errors="replace") as fh:
             for line in fh:
-                line = line.strip()
-                if not line or '"tool_use"' not in line:
+                if '"tool_use"' not in line:
                     continue
-                try:
-                    obj = json.loads(line)
-                except ValueError:
-                    continue
-                stack = [obj]
-                while stack:
-                    cur = stack.pop()
-                    if isinstance(cur, dict):
-                        if (cur.get("type") == "tool_use"
-                                and cur.get("name") in ("Edit", "Write", "MultiEdit")):
-                            fp = (cur.get("input") or {}).get("file_path")
-                            if fp:
-                                # realpath, not abspath: macOS tempdirs are symlinked
-                                # (/var -> /private/var), and a mismatch here silently
-                                # empties the session intersection below
-                                paths.add(os.path.realpath(fp))
-                        stack.extend(cur.values())
-                    elif isinstance(cur, list):
-                        stack.extend(cur)
+                obj = tr.parse_line(line)
+                if obj is not None:
+                    records.append(obj)
     except OSError:
         return None
-    return paths or None
+    # realpath, not abspath — macOS tempdirs are symlinked (/var -> /private/var) and a
+    # mismatch silently empties the session intersection in main(). Owned by transcript.py.
+    return tr.edited_paths(records)
 
 
 def main():

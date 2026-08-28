@@ -3,6 +3,82 @@
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
 `plugins/tdd-playbook/.claude-plugin/plugin.json` (and the matching marketplace entry).
 
+## 1.46.1 — 2026-08-28
+
+**Guard fixes found by USING the plugin, plus two defects the fixes themselves introduced.**
+Every item was verified in this repo before it was accepted — a secondhand report is an
+unverified claim — and each is pinned red-first with a TWIN, because all of them NARROW a
+guard, and narrowing is not amnesty: the half that must survive is the half that still blocks.
+
+**Why this is a patch and not a note in 1.46.0:** the fixes below landed *after* `v1.46.0` was
+tagged, so no released version carries them. `/plugin` correctly reported "already at the
+latest version" while the running guards still over-blocked — committed, pushed, and still not
+running, three layers deep. That is the doctrine's own case study and it cost two of this
+session's blocks to see.
+
+- **The HOST's truncation marker was ignored.** `transcript.py` had a `capped` status for its
+  OWN byte cap and was blind to a host saying "I truncated": Cheliped's shim caps at 400 tool
+  records and emits `{"type":"system","subtype":"truncated"}`. A partial transcript therefore
+  read COMPLETE, so a claim whose read record the HOST had dropped would be flagged as unread —
+  a false positive AND the silent partial verdict `capped` exists to refuse. Our byte cap and a
+  host's record cap are two different ways of seeing less than everything.
+
+- **`tag_guard` blocked a read-only listing** as soon as anything followed it: the
+  read-allowance alternation ended at an end-of-string anchor, so a bare listing with a
+  redirect stopped matching "read" and fell through to "create". Measured live: it fired three
+  times in one session on listings and never once on a real attempt. Fails safe, so annoyance
+  rather than exposure — but a guard that cries wolf is a guard that gets demoted.
+  *Scope:* the reporter's table also listed the piped form as blocked; verified NOT to block
+  end-to-end, and they have since confirmed they asserted on the regex rather than on the
+  guard. Only the redirect form is pinned.
+
+- **`tag_guard` matched inside HEREDOC BODIES**, so writing a file whose prose merely quotes
+  release commands was blocked. Found three times, every time by the guard blocking the act of
+  documenting it — including twice while preparing this release. Body lines are data; the
+  opening line and anything after the delimiter closes are still inspected, so the narrowing
+  cannot become a smuggling route. Shape borrowed from `cheliped/tool_guardrails.py`.
+
+- **PreToolUse Bash guards HUNG to the 15-second hook timeout.** Root cause was not slowness —
+  every guard runs in 35–90 ms. `read_event` called `sys.stdin.read()`, which blocks until EOF,
+  so an invocation whose stdin is an open pipe carrying no data waits forever and is killed as
+  `hook_cancelled`, blocking the loop on every Bash call it fires on. Raising the timeout would
+  have treated the symptom. Now bounded by `select()` with a deadline well under 15 s. Failing
+  open FAST is not a weakening — a cancelled hook did not block either, it just cost 15 seconds
+  first — and the shortfall is now VISIBLE as an `unmeasured` yield row instead of surfacing as
+  a cancelled hook nobody attributes to a guard.
+
+- **The suite was dirtying a TRACKED record (G5, third occurrence).** The stdin test spawned
+  guards with a custom env that omitted `TDD_PLAYBOOK_YIELD_LOG`, so they fell back to
+  `project_root()/.claude/playbook-yield.jsonl` — tracked — and appended four rows per run. It
+  hid because `project_root()` is CWD-DEPENDENT: from the repo root it lands on an ignored
+  path; from `plugins/tdd-playbook`, which is how the gate invokes it, it dirties the tree.
+  Test exhaust masquerading as calibration data is the class documented at
+  `test_harness.py:24-30`, and per-test discipline has now missed it three times — so the fix
+  is a STANDING check (`test_suite_does_not_dirty_tracked_files`) asserting the DELTA, not
+  cleanliness, because a check that cannot run on a tree with edits in it is one nobody keeps.
+
+- **A latent gate failure shipped in `01a6af0`.** `test_no_script_creates_a_release_tag` derives
+  its roster from `git ls-files`, so a new fixture file was INVISIBLE to it when the gate ran —
+  the file was still untracked at that moment. A gate run before `git add` measures a different
+  tree than the commit; both halves of "green" have to be about the same state. The fixture
+  strings are now assembled at runtime like their siblings.
+
+- **The `Agent`/`Task` rationale is now durable in `transcript.py`.** `Task` is not a Claude
+  Code tool name and never was — it is Cheliped's own invented spelling, confirmed by its
+  author. Two independent measurements agree Claude Code emits only `Agent` (47/47 here, 49/49
+  there). Written down at length because the next session will be tempted to collapse the two
+  names, and that would take a live host dark; `test_cite_guard` pins both spellings, so
+  collapsing them REDs the suite rather than silently darkening a host.
+
+**NOT reproduced, and therefore not fixed:** a reported over-match on release-shaped strings
+appearing as shell loop DATA. Neither the pre-fix nor the fixed guard blocks it. Fixing a defect
+that cannot be reproduced is guessing; the exact payload is needed.
+
+**Unchanged:** `cite_guard` remains `off`. Its provenance redesign was abandoned on the evidence
+of three fresh-context reviews and an external prior-art survey — the approach reconstructs
+whether a file was READ when the file itself is on disk and directly checkable, which is a proxy
+for an observable fact. The `analysis-turn-seam` debt (expires 2026-11-30) stands.
+
 ## 1.46.0 — 2026-08-25
 
 **The ANALYSIS-turn seam — `cite_guard`, `transcript.py`, and a reminder that stops

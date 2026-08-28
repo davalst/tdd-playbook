@@ -58,9 +58,11 @@
     ".claude/commands/tdd-plan.md",
     ".claude/commands/tdd-unlock.md",
     ".claude/commands/tripwire.md",
+    ".claude/hooks/scripts/.claude/playbook-yield.jsonl",
     ".claude/hooks/scripts/_common.py",
     ".claude/hooks/scripts/build_completion_reminder.py",
     ".claude/hooks/scripts/capture.py",
+    ".claude/hooks/scripts/cite_guard.py",
     ".claude/hooks/scripts/exhaustive_claim_guard.py",
     ".claude/hooks/scripts/exitcode_guard.py",
     ".claude/hooks/scripts/fixture_guard.py",
@@ -71,6 +73,7 @@
     ".claude/hooks/scripts/red_lock.py",
     ".claude/hooks/scripts/snapshot_guard.py",
     ".claude/hooks/scripts/tag_guard.py",
+    ".claude/hooks/scripts/transcript.py",
     ".claude/hooks/scripts/weakening_guard.py",
     ".claude/skills/tdd-playbook/SKILL.md"
   ]

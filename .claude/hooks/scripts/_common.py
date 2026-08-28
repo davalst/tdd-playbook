@@ -13,7 +13,9 @@ Exit-code contract (Claude Code):
 import datetime
 import json
 import os
+import select
 import sys
+import time
 
 # Global default + per-hook override.
 #   TDD_PLAYBOOK_HOOK_MODE=warn|block         (global default)
@@ -56,6 +58,13 @@ _DEFAULT_MODES = {
     # adding cases / editing non-answer fields is silent. Promote to block, or retire, on
     # committed yield evidence (the dated trigger on the fixture-data-guard capability).
     "fixtureguard": "warn",
+    # OPT-IN (v1.46.0, the analysis-turn seam). Ships OFF deliberately, not timidly:
+    # `emit`'s exit contract routes warn(1) to the USER and block(2) back to CLAUDE, so this
+    # guard's remedy ("open the file") cannot reach the actor at warn; and v1.32.0 retired
+    # five guards on 31 warnings / zero blocks, so a sixth warn-default guard shipped before
+    # the instrument that can distinguish a useful warning from wallpaper is the same
+    # mistake. Promote on a measured false-positive budget, never on fire count alone.
+    "cite": "off",
 }
 
 
@@ -85,14 +94,79 @@ def note_hook_fired(marker="hook"):
         pass
 
 
+#: The session id of the event this process is handling, stashed by read_event so
+#: log_yield_event can stamp it WITHOUT a signature change to emit(). Without it the yield
+#: row is {ts, source, host, gate, event, findings} — no session, no turn — and the decay
+#: contract's named metric ("how many fires were followed by a corrective read in the NEXT
+#: turn") has no supplier at all. A metric no instrument can compute is prose.
+_SESSION_ID = None
+
+
+#: Seconds to wait for the hook payload before failing OPEN. Well under the 15s hook
+#: timeout in hooks.json, so the guard decides its own outcome instead of being killed.
+STDIN_WAIT_ENV = "TDD_PLAYBOOK_STDIN_WAIT"
+_DEFAULT_STDIN_WAIT = 8.0
+
+
+def _read_stdin_bounded():
+    """The hook payload, or None if stdin never delivers one.
+
+    `sys.stdin.read()` blocks until EOF. A hook invocation whose stdin is an OPEN pipe
+    carrying no data therefore waits forever and is killed as hook_cancelled/timedOut —
+    measured live on PreToolUse Bash guards (Cheliped, 2026-08-27: 3 cancellations across
+    50 sessions / 4.8 days at timeoutMs 15000), where it blocks the user's loop on every
+    Bash call it fires on. The guards are not slow; each runs in 35-90ms.
+
+    Failing open FAST is strictly better than hanging, and is not a weakening: a hook killed
+    at the timeout did not block the tool either — it just cost 15 seconds first. What is new
+    is that the shortfall is now VISIBLE (an `unmeasured` yield row) instead of surfacing as
+    a cancelled hook nobody attributes to a guard.
+    """
+    try:
+        wait = float(os.environ.get(STDIN_WAIT_ENV) or _DEFAULT_STDIN_WAIT)
+    except (TypeError, ValueError):
+        wait = _DEFAULT_STDIN_WAIT
+    deadline = time.monotonic() + wait
+    chunks = []
+    try:
+        fd = sys.stdin.fileno()
+    except Exception:
+        return sys.stdin.read()          # not a real fd (a StringIO in tests): read directly
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None                  # never delivered — fail open, and say so
+        try:
+            ready, _, _ = select.select([fd], [], [], remaining)
+        except Exception:
+            return sys.stdin.read()      # select unavailable on this fd: old behaviour
+        if not ready:
+            return None
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            break
+        if not data:
+            break                        # EOF: the payload is complete
+        chunks.append(data)
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
 def read_event():
     """Read and parse the hook's stdin JSON. Returns {} on any problem."""
+    global _SESSION_ID
     note_hook_fired("read_event")
     try:
-        raw = sys.stdin.read()
-        return json.loads(raw) if raw.strip() else {}
+        raw = _read_stdin_bounded()
+        if raw is None:
+            log_yield_event("stdin", "unmeasured", {"reason": "stdin-never-delivered"})
+            return {}
+        event = json.loads(raw) if raw.strip() else {}
     except Exception:
         return {}
+    if isinstance(event, dict) and event.get("session_id"):
+        _SESSION_ID = str(event["session_id"])
+    return event
 
 
 # Every env var that can weaken the guard layer. Exported so the ONE owner of the env
@@ -316,6 +390,8 @@ def log_yield_event(gate, event, extra=None, source="hook"):
         row = {"ts": datetime.datetime.now(datetime.timezone.utc)
                                      .isoformat(timespec="seconds"),
                "source": source, "host": runtime_host(), "gate": gate, "event": event}
+        if _SESSION_ID:
+            row["session_id"] = _SESSION_ID
         row.update(extra or {})
         with open(path, "a") as fh:
             fh.write(json.dumps(row) + "\n")

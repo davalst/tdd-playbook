@@ -44,6 +44,9 @@ import sys
 import time
 import traceback
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import transcript as _tr  # noqa: E402  (the ONE transcript reader; ships beside this file)
+
 SCHEMA = 1
 DEDUPE_TTL_S = 30.0
 CHUNK = 65536
@@ -189,51 +192,14 @@ def _git_info(cwd):
         return None, None
 
 
-def _assistant_text_of(line_bytes):
-    """The concatenated text blocks of one transcript line, or None if it is not an
-    assistant message line."""
-    try:
-        obj = json.loads(line_bytes.decode("utf-8", errors="replace"))
-    except (ValueError, UnicodeDecodeError):
-        return None
-    if not isinstance(obj, dict) or obj.get("type") != "assistant":
-        return None
-    content = (obj.get("message") or {}).get("content")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return "".join(b.get("text", "") for b in content
-                       if isinstance(b, dict) and b.get("type") == "text")
-    return None
-
-
-def last_assistant_text(path, cap):
-    """Backward chunked scan for the LAST COMPLETE assistant line. Returns (text,
-    truncated). Cap hit before a complete assistant line -> the decoded tail flagged
-    truncated=True; whole file scanned with no assistant line -> (None, False)."""
-    size = os.path.getsize(path)
-    buf = b""
-    pos = size
-    with open(path, "rb") as fh:
-        while pos > 0 and len(buf) < cap:
-            step = min(CHUNK, pos, cap - len(buf))
-            pos -= step
-            fh.seek(pos)
-            buf = fh.read(step) + buf
-            lines = buf.split(b"\n")
-            # lines[0] may be missing its head unless we reached file start
-            complete = lines if pos == 0 else lines[1:]
-            for ln in reversed(complete):
-                if not ln.strip():
-                    continue
-                text = _assistant_text_of(ln)
-                # tool_use-only assistant lines concat to "" — not a final (live-found
-                # 2026-07-30: a Stop mid-tool-turn stored an empty-string "final")
-                if text:
-                    return text, False
-    if pos == 0:
-        return None, False  # whole file scanned: genuinely no assistant line
-    return buf.decode("utf-8", errors="replace"), True
+# `_assistant_text_of` and `last_assistant_text` MOVED to transcript.py (v1.46.0), the one
+# transcript reader. They are re-exported here because this module's own tests and the
+# vendored copies import them from `capture`; the BODY lives in exactly one place now. Keeping
+# a second copy was the duplication D0 exists to end — and transcript.py's docstring already
+# claimed this import existed, which made it a false claim of the precise kind cite_guard
+# flags. Fixed by making the claim true, not by softening the sentence.
+_assistant_text_of = _tr.assistant_text_of
+last_assistant_text = _tr.last_assistant_text
 
 
 def _run(argv):
