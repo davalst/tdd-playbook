@@ -124,6 +124,22 @@ And ONCE per plan, BEFORE the deliverables — **spec integrity**. Everything do
 rigorously verifies what the PLAN says; a wrong reading of the request here passes every gate. So:
 - **Assumptions stated explicitly.** If the request supports multiple readings, present them and say
   which one the plan follows — never pick silently.
+- **Prior art: cite the sweep, or the plan does not ship.** Before proposing to BUILD anything,
+  answer in the plan: *what already does this, and what happens if we do nothing?* Name the
+  sweep you ran — the directories and the pattern — and cite what it found. "Nothing already
+  does this" is a NEGATIVE CLAIM, and §12 already governs negatives: they need an EXHAUSTIVE
+  sweep, cited, not a recollection. The plan format simply never asked, so the strongest rule
+  in the Playbook was never pointed at the most expensive decision in it.
+  Origin, 2026-08-28: three build proposals died in one day, and every one died the same way —
+  a Stop-guard whose job `bin/verify_citations.py` already did; an offline replay engine
+  computing numbers already sitting in a committed file; and a drift detector whose extraction
+  found 1 of the 3 defects it was built for, when the real fix was one clause of this section.
+  In all three the reuse sweep was skipped and an adversary ran it afterwards, at review cost.
+  **Treat "I should build something" as the hypothesis to DISPROVE first, not the conclusion to
+  defend.** The cheapest disproof is a sweep and it takes minutes; the expensive one is a
+  fresh-context adversary telling you the tool exists after you have designed it. And when the
+  answer turns out to be a rule rather than a tool, that is a RESULT, not a failure: doctrine
+  that fires at plan time beats a detector that fires after the diff.
 - **If a materially simpler approach would satisfy the request, say so** and let the review choose —
   don't build the bigger one by default.
 - **Deferral needs a TRIGGER, not a roadmap (H7).** Moving work to "later / the roadmap / a

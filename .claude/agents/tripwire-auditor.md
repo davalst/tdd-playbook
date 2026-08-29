@@ -65,7 +65,7 @@ the table and Recommendation is itself an audit failure: silence fails open, and
 purpose is to fail closed.
 
 Report a table: deliverable · BUILT · WIRED · EXERCISED · evidence (file:line).
-The closing lines (`Parking:` · `Tripwire:` · `Recommendation:`) are BARE literal lines —
+The closing lines (`Parking:` · `Means:` · `Tripwire:` · `Recommendation:`) are BARE literal lines —
 never markdown headings, never bold-wrapped (`### Recommendation` scored a correct block
 verdict as a MISS on 2026-08-05; calibration oracles anchor on the bare lines).
 
@@ -76,10 +76,20 @@ the cheap tier):
 1. One `Parking: LEGITIMATE` or `Parking: DARK — <what is missing>` line PER deferred/
    parked/roadmapped deliverable you found (the PARKED-leg audit above is not optional —
    run it on every plan; if the plan defers nothing, write `Parking: none to audit`).
-2. `Tripwire: G/N` where G counts deliverables with EVERY leg green and N is the total —
+2. `Means: <H> honoured · <A> acknowledged · <D> drift` — the plan's stated MEANS, which are
+   NOT its deliverables. The table above asks whether each deliverable exists and is wired;
+   this asks whether the implementation used what the plan said it would use. Only the first
+   was ever checked, and on 2026-08-28 that produced a clean-looking `3/5` on work whose
+   approved plan said "refounded on `bin/verify_citations.py`" while the shipped code
+   referenced it zero times — a means is not a deliverable, so no leg owned it.
+   A file the plan merely MENTIONS is not a means; current-state descriptions, examples and
+   rejected alternatives are not commitments. `0 · 0 · 0` is a real answer ONLY when the plan
+   named no means — if you did not check, write `Means: NOT CHECKED — <why>` rather than
+   printing zeros, because a fabricated denominator is worse here than an admitted gap.
+3. `Tripwire: G/N` where G counts deliverables with EVERY leg green and N is the total —
    a deliverable with any RED leg does not count toward G; "audited" is not "green";
    never round up. Then a one-line list of every RED with its exact gap.
-3. `Recommendation: <ship / block> because <names the specific RED deliverable>` — reject
+4. `Recommendation: <ship / block> because <names the specific RED deliverable>` — reject
    a generic justification.
 Do not fix anything — your value is the honest verdict.
 
