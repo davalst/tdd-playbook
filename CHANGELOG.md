@@ -1,3 +1,43 @@
+## 1.48.0 — 2026-08-29
+
+**Two doctrine changes, both from measured failure in one session.**
+
+**§0 — verify the problem BEFORE a solution exists.** §12 already said *no claim before
+resolving evidence*, scoped to audit work where the deliverable IS claims. A build plan's
+opening paragraph is equally a claim and nothing pointed the rule at it. Measured: eight
+consecutive self-initiated build proposals rejected by review, against eleven commits that
+fixed *verified* defects and all stuck. The discriminator is not care — it is whether the
+evidence preceded the solution. Each of the eight was killable by ONE cheap measurement
+available before any plan existed; under an hour total, against a day spent, ~20 adversary
+dispatches and 6 Codex runs.
+
+Three verifications, in order, because the middle is the one skipped: does it EXIST · is my
+MODEL of it right · is it WORTH solving. **And a verified fact BINDS** — this is not "verify
+more", which would not have helped: the worst of the eight had confirmed the disproving fact
+that morning and contradicted it that afternoon.
+
+**Both halves get the same rigour.** Internal prior art is mechanical here (HACK_CATALOG,
+`recurrence_key`, the corpus). External literature is searched BEFORE designing — the day's
+evidence being a prior-art review that returned KNOWN DEAD END with citations and was run
+LAST, the single most decisive input of the day. Alternatives weighed in the open, including
+do-nothing and use-what-exists. Proportioned deliberately: a one-line fix gets no literature
+review, because an unbounded research obligation is a tax and taxes get skipped.
+
+**A written plan LANDS IN THE REPO — restored after an 8-day silent lapse.**
+`commands/tdd-plan.md` never stopped requiring it. But the 2026-08-18 change about REVIEW
+RECORDS swept the §0 plan into the same "reach for it" sentence, nothing checked either
+surface, and it went to zero: **no plan committed across 18 commits, 2026-08-21 → 2026-08-29**,
+including a multi-deliverable feature, a new adversary and two guard deletions. The two halves
+are now separated — whether to WRITE a plan stays proportionate; whether a written plan LANDS
+was never optional.
+
+A doctrine change that softens one obligation can silently void a neighbouring one when they
+share a sentence and nothing checks either. Nobody deleted anything; the rewording did it.
+
+Four plans from that window are recovered into `docs/plans/gated/`, three named `-REJECTED` —
+a rejected plan is the more valuable record: what was proposed, what killed it, and the
+measurement that did the killing.
+
 ## 1.47.0 — 2026-08-29
 
 **Two guards DELETED — `exitcode_guard` and `cite_guard`.**
