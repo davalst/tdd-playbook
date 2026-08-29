@@ -255,8 +255,14 @@ The partner keeps watching. It just stops asking you to file proof that it did.
   creates the tag → push. There is no verdict, no engine, no polling, and no script that
   creates a tag.
   1. `sh scripts/civerd_gate.sh > /tmp/gate.out 2>&1; rc=$?` — **never pipe it**; a piped `$?`
-     is `tail`'s, and `exitcode_guard` will say so (§4a: a discarded exit code is a discarded
-     truth). `rc` must be `0`.
+     is `tail`'s, not the gate's (§4a: a discarded exit code is a discarded truth). `rc` must
+     be `0`. **NOTHING ENFORCES THIS NOW.** `exitcode_guard` used to, and this line promised
+     it would "say so" — it was DELETED in v1.47.0 (701 warnings, zero acted on, plus a
+     command-global `$?` read that made it fire on unrelated status reads), and the promise
+     outlived the mechanism by a day. Redirect to a file and read `rc`; the discipline is
+     yours. A replacement was designed and rejected by four reviews — the honest record of
+     why is in CHANGELOG 1.47.0, and an unguarded rule stated plainly beats a guard nobody
+     kept.
   2. Bump the four identity files + `CHANGELOG.md`; regenerate
      `docs/reference/current-state.md`; commit.
   3. **`git push origin main` FIRST — before any tag.** The order is the point, not a
