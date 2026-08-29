@@ -206,7 +206,17 @@ may proceed. These are now things you REACH FOR when they have something to say,
 - **A review record** — when a review actually finds something. Optional never means unchecked:
   a record that IS written still gets the full schema (`review_ledger.py validate`).
 - **The full §0 plan** — for genuinely multi-deliverable or risky work. A one-liner is the
-  default; a plan nobody needed is not evidence of rigour.
+  default; a plan nobody needed is not evidence of rigour. **BUT WHEN A PLAN IS WRITTEN IT
+  LANDS IN THE REPO** (`docs/plans/gated/YYYY-MM-DD-<workstream>.md`, `commands/tdd-plan.md`),
+  committed with the work. That half was NEVER made optional and is not on this list.
+  Restored 2026-08-29 after it lapsed: the 2026-08-18 change above was about REVIEW RECORDS,
+  and the §0 plan was swept into the same "reach for it" sentence as collateral. Measured
+  cost of the lapse — **zero plans committed across the 18 commits from 2026-08-21 to
+  2026-08-29**, including a multi-deliverable feature, a new adversary and two guard
+  deletions; every plan written in that window went to a scratch directory outside the repo,
+  unversioned and undiffable. A plan in a chat scrollback is not a spec, it is a memory. And
+  a mechanical spec-vs-implementation check was designed in that same window and died partly
+  because its input — a committed plan — had stopped being produced.
 - **Adversary dispatch** — on request, or before a release.
 - **`index.json` / `current-state.md` bookkeeping** — follows records being optional.
 
