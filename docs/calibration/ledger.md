@@ -882,3 +882,39 @@ and that is a more valuable answer than recall.
 |---|---|---|---|---|---|---|---|---|
 | L-20260828-03 | 2026-08-28 | 411c663 | plugins/tdd-playbook/agents/intent-adversary.md | NEW agent: reports each ORIGINAL requirement DELIVERED/NARROWED/DROPPED/SUBSTITUTED; discriminator is "was the requester ASKED", not "was it cut"; REFUSES a paraphrased request | intent-narrowed-by-review; intent-substituted-workstream; control-intent-requester-decided; control-intent-delivered-plus-extra; intent-vacuity-summary-as-request | up | 2 | the two plants are the real incidents, reconstructed; recall on them is the whole point. The two controls must stay INTACT — an agent that flags a requester-approved cut is noise, and the vacuity row proves the fixture can reach the drift at all (a "request" that is already the plan's summary cannot detect drift and must be REFUSED, not passed) |
 | L-20260828-04 | 2026-08-28 | 411c663 | plugins/tdd-playbook/commands/tdd-plan.md | close-the-loop step dispatches intent-adversary LAST, with the requester's verbatim words | — | none | 0 | doctrine yield is deliberately unmeasured here (2026-08-14 decision); the effect is registered on the agent brief row above |
+
+### Registered 2026-08-29 — baseline 9560def: verify the problem before a solution exists
+
+Measured over this session: EIGHT consecutive self-initiated build proposals were rejected by
+review — provenance redesign, replay engine, drift detector, exitcode restore, universal
+denominator, tree-hash gate check, claim-check revision, and cite_guard itself (built, shipped,
+deleted within a day). Over the same period ELEVEN commits shipped and stuck; every one of them
+was a fix to a defect that had evidence in hand BEFORE the fix was conceived. The discriminator
+is not care or competence: it is whether the evidence preceded the solution.
+
+Each of the eight was killable by ONE cheap measurement available before any plan existed —
+reading a committed rollup, reading one `index.json`, grepping commit messages, running the
+extractor against three real failures. Under an hour in total; they cost a day, ~20 adversary
+dispatches and 6 Codex runs.
+
+The second half — solution rigour — comes from the same day's evidence: an external prior-art
+review returned KNOWN DEAD END with citations on one design, and it was run LAST. Run first it
+costs half an hour and ends the line before a plan exists. It is PROPORTIONED deliberately; an
+unbounded research obligation is a tax, and taxes get skipped.
+
+The rule added is NOT "verify more". The worst of the eight had already verified the fact that
+disproved it — `emit()` logging `suppressed` for an off guard was confirmed in the morning and
+contradicted by a plan that afternoon. So the rule has two halves: the problem is a CLAIM and
+must be cited before a solution exists, and a verified fact BINDS downstream reasoning
+including your own. §12 said the first half all along, scoped to audits; nothing pointed it at
+a build plan's problem statement.
+
+`expect: none` per the 2026-08-14 decision that SKILL/commands doctrine yield is deliberately
+unmeasured. The honest reading is that this is unmeasurable by the existing scenarios: the
+effect would show as proposals that never get written, and the corpus scores agent output on
+plants, not the absence of a plan. Registered so the change is visible, not because the
+instrument can score it.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260829-01 | 2026-08-29 | 9560def | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md | §0 spec integrity gains "verify the problem BEFORE a solution exists" (the problem statement is a CLAIM and must be cited; three ordered verifications — exists / model right / worth solving; a verified fact BINDS later reasoning) AND "both halves get the same rigour" (internal prior art via HACK_CATALOG/recurrence_key, external literature searched BEFORE designing, alternatives incl. do-nothing weighed in the open, all PROPORTIONED to the commitment) | — | none | 0 | doctrine yield is deliberately unmeasured (2026-08-14). The measurable proxy would be the ratio of proposals that survive review, which no scenario models — stated rather than claimed as scored |

@@ -1444,6 +1444,20 @@ def test_means_line_and_prior_art_sweep():
         skill = fh.read()
     check("SKILL SS0: a plan must cite a PRIOR-ART SWEEP before proposing to build",
           "Prior art:" in skill, None)
+    check("SKILL SS0: the PROBLEM must be a cited claim before a solution may exist",
+          "Verify the problem" in skill, None)
+    check("SKILL SS0: names the three verifications, in order",
+          all(w in skill for w in ("does the problem EXIST", "is my MODEL of it right",
+                                   "is it WORTH solving")), None)
+    check("SKILL SS0: the SOLUTION gets the same rigour as the problem",
+          "Both halves get the same rigour" in skill, None)
+    check("SKILL SS0: alternatives weighed in the open, incl. do-nothing and use-what-exists",
+          "DO NOTHING" in skill and "USE THE\n    THING THAT EXISTS" in skill.replace("  "," ")
+          or "USE THE" in skill, None)
+    check("SKILL SS0: the research obligation is PROPORTIONED, not unbounded",
+          "Proportion it" in skill, None)
+    check("SKILL SS0: a verified fact BINDS — the verified-then-contradicted case",
+          "a verified fact BINDS" in skill, None)
     check("SKILL SS0: the sweep is bound to SS12's exhaustive-negative rule, not a vibe",
           "Prior art:" in skill
           and "exhaustive" in skill.split("Prior art:")[1][:600].lower()
