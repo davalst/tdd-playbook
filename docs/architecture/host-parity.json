@@ -515,23 +515,6 @@
           "status": "unavailable"
         }
       },
-      "cite_guard": {
-        "claude": {
-          "activation_prerequisite": "Claude project trust and enabled hook configuration",
-          "binding": "hook:cite_guard.py",
-          "installed_target": ".claude/hooks/scripts/cite_guard.py",
-          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
-          "producer": "plugins/tdd-playbook/hooks/scripts/cite_guard.py",
-          "status": "supported"
-        },
-        "codex": {
-          "debt_ref": "test-lock/codex-guard-family-parity",
-          "expires": "2026-09-30",
-          "installed_target": ".codex/tdd-playbook/hooks/scripts/cite_guard.py",
-          "owner": "david",
-          "status": "unavailable"
-        }
-      },
       "exhaustive_claim_guard": {
         "claude": {
           "activation_prerequisite": "Claude project trust and enabled hook configuration",
@@ -545,23 +528,6 @@
           "debt_ref": "test-lock/codex-guard-family-parity",
           "expires": "2026-09-30",
           "installed_target": ".codex/tdd-playbook/hooks/scripts/exhaustive_claim_guard.py",
-          "owner": "david",
-          "status": "unavailable"
-        }
-      },
-      "exitcode_guard": {
-        "claude": {
-          "activation_prerequisite": "Claude project trust and enabled hook configuration",
-          "binding": "hook:exitcode_guard.py",
-          "installed_target": ".claude/hooks/scripts/exitcode_guard.py",
-          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
-          "producer": "plugins/tdd-playbook/hooks/scripts/exitcode_guard.py",
-          "status": "supported"
-        },
-        "codex": {
-          "debt_ref": "test-lock/codex-guard-family-parity",
-          "expires": "2026-09-30",
-          "installed_target": ".codex/tdd-playbook/hooks/scripts/exitcode_guard.py",
           "owner": "david",
           "status": "unavailable"
         }
@@ -724,6 +690,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "ee1cc2135378d64ba7803286cd6556a3752da8ba095bcfcfa4f92015458067d8",
+  "inventory_sha256": "7de85aeb754c9d79cf61648a9ad2e359c1a3ca8b4c9b35bd20de06e25198cbd3",
   "schema_version": 2
 }

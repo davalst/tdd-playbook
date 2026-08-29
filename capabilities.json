@@ -1241,14 +1241,14 @@
     },
     {
       "id": "advisory-guards-optin",
-      "summary": "The five guards retired to OPT-IN in v1.32.0: exitcode, overmock, exhaustive, flaky, redlock. They ship OFF on 31 warnings and ZERO blocks across all recorded history (docs/calibration/gate_yield.md). Registered SEPARATELY from integrity-guards, and default:off, so `capability_registry.py doctor` lists them in the dark inventory. A tripwire audit caught the earlier shape: one capability declaring activation on while five of its nine shipped hooks were inert meant the operator health surface could not say so \u2014 dark-to-the-OPERATOR, which is the \u00a76a class this registry exists to make impossible.",
+      "summary": "The guards retired to OPT-IN in v1.32.0. FOUR remain \u2014 overmock, exhaustive, flaky, redlock; `exitcode` was DELETED in v1.47.0 on its own evidence (701 warnings, zero acted on, and a command-global `$?` read that made it fire on unrelated status reads). Deleting beat restoring: it was judged on a metric its tier could not produce, and leaving it off with a dated debt was a decision nobody would ever come back to. They ship OFF on 31 warnings and ZERO blocks across all recorded history (docs/calibration/gate_yield.md). Registered SEPARATELY from integrity-guards, and default:off, so `capability_registry.py doctor` lists them in the dark inventory. A tripwire audit caught the earlier shape: one capability declaring activation on while five of its nine shipped hooks were inert meant the operator health surface could not say so \u2014 dark-to-the-OPERATOR, which is the \u00a76a class this registry exists to make impossible.",
       "user_facing": true,
       "surfaces": [
         "local"
       ],
       "activation": {
         "default": "off",
-        "switch": "TDD_PLAYBOOK_HOOK_EXITCODE|_OVERMOCK|_EXHAUSTIVE|_FLAKY|_REDLOCK=warn (per guard; documented in README's Hook controls). Retirement is not deletion: the scripts ship, the hooks stay registered, and gate_yield keeps accruing rows for anyone who opts in."
+        "switch": "_OVERMOCK|_EXHAUSTIVE|_FLAKY|_REDLOCK=warn (per guard; documented in README's Hook controls). Retirement is not deletion: the scripts ship, the hooks stay registered, and gate_yield keeps accruing rows for anyone who opts in."
       },
       "wired_by": [
         "plugins/tdd-playbook/hooks/hooks.json",
@@ -1266,7 +1266,7 @@
       },
       "integration_debt": [
         {
-          "what": "RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0). These five were retired on 31 warnings / 0 blocks over six cycles from mostly ONE operator \u2014 and a warn-tier guard cannot produce blocks BY CONSTRUCTION, so 'never blocked' is partly a statement about the tier, not the guard. By expiry: read docs/calibration/gate_yield.md again and either confirm the retirement, restore one that turns out to have carried load, or delete the five outright. The one outcome not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN \u2014 several a day \u2014 so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. Separately actionable now and NOT blocked on the unit fix: exitcode at 701 warns / 0 blocks / 0 fp is ~117 warns per cycle that nobody acts on \u2014 that one has enough evidence to promote or delete today, and leaving it warn-and-unread is the shape this debt exists to refuse.",
+          "what": "RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0). These five were retired on 31 warnings / 0 blocks over six cycles from mostly ONE operator \u2014 and a warn-tier guard cannot produce blocks BY CONSTRUCTION, so 'never blocked' is partly a statement about the tier, not the guard. By expiry: read docs/calibration/gate_yield.md again and either confirm the retirement, restore one that turns out to have carried load, or delete the five outright. The one outcome not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN \u2014 several a day \u2014 so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. RESOLVED for exitcode 2026-08-29: it was DELETED. 701 warns / 0 blocks / 0 adjudicated-fp, plus a verified precision defect (a command-global `$?` read satisfied its decision test, so it fired on unrelated and purely informational status reads). The remaining four are still unread.",
           "owner": "david",
           "expires": "2026-11-15"
         }
@@ -1587,47 +1587,6 @@
           "expires": "2026-11-15"
         }
       ]
-    },
-    {
-      "id": "analysis-turn-seam",
-      "summary": "cite_guard (Stop) \u2014 the ANALYSIS-turn seam. 14 of the plugin's 18 hook bindings attach to Edit|MultiEdit|Write or Bash, and the one Stop guard that could fire keys on `git status --porcelain`, empty on a read-only turn \u2014 so an audit, a diagnosis or a plan written as prose passed through every binding untouched, while \u00a712's claims discipline is entirely about that kind of turn. Two rules, one transcript pass: (A) a property claim about a file THIS TURN never opened (a search is not a read); (B) a `Loop closed:` self-report with no dispatch in the transcript. Rests on hooks/scripts/transcript.py, the ONE transcript reader and the ONE tool vocabulary \u2014 which replaced FOUR disagreeing in-code tool-name sets and TWO parsers.",
-      "user_facing": true,
-      "surfaces": [
-        "local"
-      ],
-      "activation": {
-        "default": "off",
-        "switch": "TDD_PLAYBOOK_HOOK_CITE=warn|block (documented in README's Hook controls). OFF is deliberate and evidence-first, not timid: `emit`'s exit contract routes warn(1) to the USER and block(2) back to CLAUDE, so this guard's remedy ('open the file') cannot reach the agent it addresses at warn; and the original promotion condition ('a false claim caught BEFORE publication') is unsatisfiable at warn, where the claim is always already published."
-      },
-      "wired_by": [
-        "plugins/tdd-playbook/hooks/hooks.json",
-        "plugins/tdd-playbook/hooks/scripts/_common.py::_DEFAULT_MODES"
-      ],
-      "exercised_by": [
-        "plugins/tdd-playbook/tests/test_hooks.py::test_cite_guard",
-        "plugins/tdd-playbook/tests/test_hooks.py::test_transcript_module",
-        "plugins/tdd-playbook/tests/test_hooks.py::test_transcript_real_capture"
-      ],
-      "emits": [
-        {
-          "topic": "hook.coverage_events",
-          "consumers": [
-            "plugins/tdd-playbook/bin/gate_yield.py::cmd_rollup \u2014 COVERAGE_EVENTS mints the per_coverage table and prints the `coverage: <gate> \u00b7 saw N turn(s)` line (the denominator that did not exist before v1.46.0)"
-          ]
-        }
-      ],
-      "liveness": {
-        "max_quiet_days": 120,
-        "probe": "The guard ships OFF, so ABSENT rows are the expected steady state and prove nothing \u2014 read this only against an opted-in operator. Then: bin/gate_yield.py rollup prints `coverage: cite \u00b7 saw N turn(s)`, which is the denominator that did not exist before v1.46.0. A `blind` count that is nonzero and rising means the guard could not see: read the row's `reason` field, do not infer the cause. `no-transcript` is a host that supplied nothing; `no-text-edit-only` is a turn with no assistant text and only edit records \u2014 usually the pre-C1 Cheliped shape, but a genuine Claude turn can take it too (capture.py records a live-found 2026-07-30 case), which is why the row names the shape and not the culprit. Either way the guard reports UNMEASURED rather than clean, which is correct behaviour, not a fault."
-      },
-      "integration_debt": [
-        {
-          "what": "DECIDE THE MODE ON MEASURED EVIDENCE, or delete the guard. It ships `off`, which means by default it is DARK and nothing populates its own denominator \u2014 the \u00a76b trap, entered knowingly because the alternative (warn) routes its remedy to the wrong reader and cannot generate promotion evidence either. By expiry, run it opted-in over real turns and settle three numbers: the false-positive rate of Rule A on genuine analysis turns; whether Rule B ever fires on a turn that HAD closed its loop in an earlier turn (the cross-turn case, deliberately not special-cased); and whether `blind` dominates on any host in use. Then promote to warn with a stated FP budget, or delete it. Leaving it off and unmeasured is the one outcome this entry refuses \u2014 that is how the five opt-in guards became unmaintained. NOTE the known bypass that blocks promotion to `block` regardless: `Read(f, offset=1, limit=1)` or `cat f > /dev/null` silences Rule A at a one-line cost, and a blocking gate must not carry a one-line bypass.",
-          "owner": "david",
-          "expires": "2026-11-30"
-        }
-      ],
-      "notes": "Built 2026-08-27 from a build plan that was itself reviewed by four Playbook adversaries and an independent Codex panel; three deliverables of that plan were dropped or restructured on their findings. The plan's own D2 detection rule (a tool_use named `Task` with an exact-match subagent_type) was measurably FALSE \u2014 47 of 47 real dispatches are named `Agent` and most carry a `tdd-playbook:` prefix \u2014 which is the same assumption docs/telemetry.md:31 already records as having cost this repo a dark instrument once. Cheliped's shim emits `Task`, so BOTH names are accepted and that is what host parity means here."
     },
     {
       "id": "intent-drift-review",

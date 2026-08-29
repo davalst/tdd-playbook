@@ -73,8 +73,8 @@ That vendors the skill + commands + agents + hooks + bins (`tdd_lock`, `with_sna
 `${CLAUDE_PLUGIN_ROOT}` → `$CLAUDE_PROJECT_DIR/.claude`. The installer is **reconciling**: it prunes
 every stale Playbook hook group from `.claude/settings.json` and re-adds the current ones — the
 four blocking guards (`weakening_guard`, `lock_guard`, `snapshot_guard`,
-`tag_guard`) plus the opt-in ones (`exitcode_guard`, `exhaustive_claim_guard`, `overmock_guard`,
-`flaky_guard`, `red_lock`, `cite_guard`) plus the warn-by-default `fixture_guard` — so a refresh
+`tag_guard`) plus the opt-in ones (`exhaustive_claim_guard`, `overmock_guard`,
+`flaky_guard`, `red_lock`) plus the warn-by-default `fixture_guard` — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are
 preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
 marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
@@ -172,20 +172,9 @@ test-data file (`test_cases.json`, fixtures, golden) is rewritten or a case remo
 or editing a non-answer field is silent, so the signal stays rare. Set `_FIXTUREGUARD=block`
 to enforce or `=off` to silence.
 
-**OPT-IN since v1.32.0** — `_EXITCODE`, `_OVERMOCK`, `_EXHAUSTIVE`, `_FLAKY`, `_REDLOCK`.
+**OPT-IN since v1.32.0** — `_OVERMOCK`, `_EXHAUSTIVE`, `_FLAKY`, `_REDLOCK`.
 31 warnings and zero blocks across all recorded history, so they ship off. Nothing was deleted:
 turn any of them back on with `TDD_PLAYBOOK_HOOK_<NAME>=warn` and its yield rows resume.
-
-**OPT-IN, awaiting its own evidence** — `_CITE` (`cite_guard`, v1.46.0). The ANALYSIS-turn
-seam: 14 of the 18 hook bindings sit behind a write or a shell command, so an audit, a
-diagnosis or a plan written as prose passed through every one of them untouched. It flags a
-property claim about a file the turn never OPENED (a grep is not a read) and a `Loop closed:`
-self-report with no adversary dispatch in the transcript. Turn it on with
-`TDD_PLAYBOOK_HOOK_CITE=warn`. It ships off for a different reason than the five above — not
-measured-zero yield, but *unmeasured* yield: it is a new detector whose false-positive rate on
-real analysis turns is unknown, and at `warn` its remedy ("open the file") is routed to the
-human rather than the agent it addresses. `bin/gate_yield.py rollup` now prints a
-`coverage: cite · saw N turn(s)` line so that rate can actually be read before it is promoted.
 
 **Break-glass** — `TDD_PLAYBOOK_BREAK_GLASS="<reason>"` demotes **every** blocking gate to warn
 for the session. The reason is required (empty does not demote) and is recorded in the yield log

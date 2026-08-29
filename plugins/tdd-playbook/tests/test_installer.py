@@ -247,7 +247,7 @@ def test_doctor_classifies_overrides_against_each_guards_default():
 
     Origin 2026-08-17: doctor called every guard control var a "STANDING DEMOTION … H-class
     kill switch". Five guards ship `off` since v1.32.0, so this repo's own
-    TDD_PLAYBOOK_HOOK_EXITCODE=warn — the documented way to turn a retired guard back ON — was
+    TDD_PLAYBOOK_HOOK_OVERMOCK=warn — the documented way to turn a retired guard back ON — was
     reported as a kill switch on every release run of that session. A warning that fires on a
     correct configuration teaches the operator to skim the one that matters.
 
@@ -262,7 +262,7 @@ def test_doctor_classifies_overrides_against_each_guards_default():
 
     # unit: the contract lives in _common, keyed off its own defaults table
     cases = [
-        ("TDD_PLAYBOOK_HOOK_EXITCODE", "warn", "enablement"),   # ships off
+        ("TDD_PLAYBOOK_HOOK_OVERMOCK", "warn", "enablement"),   # ships off
         ("TDD_PLAYBOOK_HOOK_TESTLOCK", "warn", "demotion"),     # ships block
         ("TDD_PLAYBOOK_HOOK_TESTLOCK", "off", "demotion"),
         ("TDD_PLAYBOOK_HOOK_TESTLOCK", "block", "noop"),
@@ -270,7 +270,7 @@ def test_doctor_classifies_overrides_against_each_guards_default():
         ("TDD_PLAYBOOK_HOOK_FIXTUREGUARD", "off", "demotion"),
         ("TDD_PLAYBOOK_BREAK_GLASS", "1", "demotion"),
         ("TDD_PLAYBOOK_HOOK_NOSUCHGUARD", "warn", "unknown"),   # fail toward flagging
-        ("TDD_PLAYBOOK_HOOK_EXITCODE", "nonsense", "unknown"),
+        ("TDD_PLAYBOOK_HOOK_OVERMOCK", "nonsense", "unknown"),
     ]
     for key, val, want in cases:
         got = _common.guard_override_effect(key, val)
@@ -295,7 +295,7 @@ def test_doctor_classifies_overrides_against_each_guards_default():
                     code = mod.main(["--doctor", target])
                 return code, buf.getvalue()
 
-            code, out = doctor_with({"TDD_PLAYBOOK_HOOK_EXITCODE": "warn"})
+            code, out = doctor_with({"TDD_PLAYBOOK_HOOK_OVERMOCK": "warn"})
             check("opt-in enablement is NOT a demotion (exit 0)", code == 0, out)
             check("and it is still REPORTED, not silent", "guard opt-in" in out, out)
             check("the alarming wording is absent", "STANDING DEMOTION" not in out, out)

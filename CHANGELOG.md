@@ -1,5 +1,38 @@
 ## 1.47.0 — 2026-08-29
 
+**Two guards DELETED — `exitcode_guard` and `cite_guard`.**
+
+Both were `off`. Neither was going to be switched on. A dark guard is not neutral: it is a
+switch nobody will ever throw, carrying a dated debt that comes due and gets re-deferred, and
+it makes the roster look bigger than the protection actually is.
+
+- **`exitcode_guard`** caught a real defect — a verifier's exit code swallowed by a pipe, so
+  `pytest | tail && git commit` commits on *tail's* success. But it produced **701 warnings
+  with zero acted on**, and it had a verified precision bug: its decision test was satisfied by
+  a `$?` read *anywhere* in the command, so `false; prior=$?; pytest | tail` fired, and so did
+  a status merely printed. Restoring it as a warning was considered and rejected — it was
+  originally retired on "zero blocks", a metric a warn-tier guard cannot produce, but ignored
+  warnings are the Tricorder definition of an effective false positive regardless.
+- **`cite_guard`** (shipped `off` in v1.46.0) flagged a claim about a file the turn never
+  opened. Replayed over 1,727 real turns it fired on **11.1%**, and external prior art showed
+  the approach is a known dead end: it reconstructs whether a file was READ when the file
+  itself is on disk and directly checkable — a proxy for an observable fact, which this
+  repo's own doctrine forbids. Three independent reviews rejected the redesign.
+
+`transcript.py` SURVIVES and is untouched — five other modules import it, and unifying four
+disagreeing tool-name lists was the durable half of that work.
+
+Consequences carried honestly rather than left dangling: `COVERAGE_EVENTS` narrows to
+`unmeasured`, the only value with a live producer now (`verified`/`capped`/`blind` were
+cite-only, and vocabulary nobody emits is the dead-value defect §6c names); the session-id and
+host-truncation tests are RE-POINTED to a surviving guard and to `transcript.current_turn`
+rather than deleted with their old vehicle; host parity moves 42/84 → 40/80.
+
+**Still open, and deliberately not replaced by another regex:** nothing now warns when a
+commit is gated on a faked pass. The proposed replacement is in the release notes below —
+check the FACT (was there a green gate run on this exact tree?) instead of policing the shell
+syntax that produced it.
+
 **The intent adversary — the only reviewer whose subject is the REQUEST.**
 
 Nine adversaries judge a plan on its own terms: band-aid, island, unhandled edge, untrue

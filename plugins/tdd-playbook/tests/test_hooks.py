@@ -57,7 +57,6 @@ _YIELD_DEFAULT = os.path.join(_YIELD_TMP, "yield.jsonl")
 # retired gate quietly becomes an unmaintained one.
 _OPT_IN = {
     "overmock_guard.py": {"TDD_PLAYBOOK_HOOK_OVERMOCK": "warn"},
-    "exitcode_guard.py": {"TDD_PLAYBOOK_HOOK_EXITCODE": "warn"},
     "exhaustive_claim_guard.py": {"TDD_PLAYBOOK_HOOK_EXHAUSTIVE": "warn"},
     "flaky_guard.py": {"TDD_PLAYBOOK_HOOK_FLAKY": "warn"},
     "red_lock.py": {"TDD_PLAYBOOK_HOOK_REDLOCK": "warn"},
@@ -234,114 +233,6 @@ def test_overmock():
 
 
 # ---------------------------------------------------------------------- exitcode_guard
-def test_exitcode():
-    """v1.28 §4a — a verifier's exit code swallowed by a pipe. Two live instances in two
-    days, in the two codebases that check each other: I gated a commit chain on a piped
-    gate run and pushed a repo-red commit (2026-08-05), and the CIVerd runner masked a
-    pytest exit the same way (2026-08-06). Calibrated in BOTH directions per the v1.28 bar:
-    it must flag the masked case and stay silent on every honest handling."""
-    s = "exitcode_guard.py"
-
-    # H15 / SCOPE DECISION, 2026-08-06 — DECIDED, not assumed. Cheliped asked whether a
-    # SELECTOR flag is in scope for this guard, and specified the plant that settles it: a
-    # suite with one failing test plus a marker that deselects it, reported as a pass. The
-    # answer is NO, and it is pinned here as an ALLOW row so a future session that widens
-    # the guard has to confront the decision rather than drift into it.
-    #
-    # Why: this hook fires on the Bash call, and at that moment a scoped run is
-    # indistinguishable from a scoped REPORT. Narrowing while iterating is normal and
-    # correct; a guard that flags it cries wolf and gets demoted, which is how a guard dies.
-    # The error lives at the reporting end, so the denominator rule (§12) covers it there —
-    # `N of M`, not a hook. See HACK_CATALOG H15.
-    for cmd in ('pytest -m "not flaky"',
-                'pytest -k "not docker" tests/',
-                "pytest --ignore=tests/integration",
-                "pytest --lf",
-                "pytest --maxfail=1 && echo done"):
-        check("exitcode: SELECTOR stays silent (decided out of scope, H15): " + cmd[:38],
-              run(s, {"tool_name": "Bash",
-                      "tool_input": {"command": cmd}})[0] == 0, cmd)
-
-    def ev(cmd):
-        return {"tool_name": "Bash", "tool_input": {"command": cmd}}
-
-    # PLANTED — the exact shapes that bit, frozen. Restated 2026-08-18 in their CONSUMPTION
-    # form: both incidents were a piped verdict whose status was then acted on (a commit
-    # chain gated on it; a runner reading it). The display-only variants of these same
-    # commands moved to the ALLOW block below under the v1.42 scope decision — the incident
-    # is what is frozen here, not the punctuation.
-    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh | tail -2 && git commit -m x"))
-    check("exitcode: piped gate gating a commit chain is flagged (the 2026-08-05 shape)",
-          rc == 1 and "swallowed by a pipe" in e, (rc, e[:120]))
-    rc, _o, e = run(s, ev(
-        "python3 plugins/tdd-playbook/tests/test_hooks.py 2>&1 | grep FAIL; rc=$?"))
-    check("exitcode: piped suite whose status is read is flagged (the 2026-08-06 shape)",
-          rc == 1 and "discarded truth" in e, (rc, e[:120]))
-    rc, _o, e = run(s, ev("pytest -q | tail -1; rc=$?"))
-    check("exitcode: piped pytest whose status is captured is flagged", rc == 1,
-          (rc, e[:120]))
-    # v1.32.0: release_verify.py left _VERIFIER with the release wall. verify_verdict.py
-    # STAYS (archival reader, still a verdict-bearing exit code) — and until now it was
-    # named in the pattern but never exercised, so nothing would have noticed if the
-    # deletion had taken it too. A roster entry with no test is a comment (§4a).
-    rc, _o, e = run(s, ev(
-        "python3 plugins/tdd-playbook/bin/verify_verdict.py --sha abc123 | tail -1 && echo ok"))
-    check("exitcode: piped archival verdict CHAINED ON is flagged", rc == 1, (rc, e[:120]))
-    rc, _o, e = run(s, ev("python3 scripts/release_verify.py --wait-s 60 | tail -1"))
-    check("exitcode: the retired release_verify.py is no longer a verifier", rc == 0,
-          (rc, e[:120]))
-
-    # ALLOW — every honest handling must stay silent (the half that decides adoption)
-    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh > /tmp/g.out 2>&1; rc=$?"))
-    check("exitcode: capture-then-inspect is allowed", rc == 0, (rc, e[:120]))
-    rc, _o, e = run(s, ev("set -o pipefail; sh scripts/civerd_gate.sh | tail -2"))
-    check("exitcode: pipefail is allowed", rc == 0, (rc, e[:120]))
-    rc, _o, e = run(s, ev("sh scripts/civerd_gate.sh || exit 1"))
-    check("exitcode: exit code consumed directly is allowed", rc == 0, (rc, e[:120]))
-    rc, _o, e = run(s, ev("grep FAIL /tmp/g.out | head -3"))
-    check("exitcode: piping a NON-verifier is none of its business", rc == 0, (rc, e[:120]))
-    rc, _o, e = run(s, ev("git log --oneline -5 | tail -2"))
-    check("exitcode: ordinary piped tooling is allowed", rc == 0, (rc, e[:120]))
-    # H15-STYLE SCOPE DECISION, 2026-08-18 — DECIDED, not drifted into. David saw the guard
-    # firing on nearly every command and called it "unsettling and non-stop". The record
-    # agreed: 701 warns / 0 blocks / 0 adjudicated false positives across 6 cycles. In six
-    # cycles it never once changed a decision, while rendering as a red "hook error" every
-    # few seconds.
-    #
-    # The guard was not wrong — it was UNDER-SPECIFIED. §4a's concern is "a RED gate reads as
-    # 0", which requires the piped status to be CONSUMED as a verdict. Piping a suite into
-    # `grep` so a human can read the output discards nothing: nobody was going to branch on
-    # that status, and the human reads the real result. So the guard now fires only where the
-    # status is actually consumed — assigned to `$?`, tested by if/while, or chained with
-    # && / ||. Both incidents it was built for are consumption shapes and still flag.
-    #
-    # Frozen as ALLOW rows so a future session that re-widens it has to confront the decision
-    # rather than drift back into wallpaper. A guard demoted for crying wolf protects nothing.
-    for cmd in ("python3 plugins/tdd-playbook/tests/test_hooks.py 2>&1 | grep FAIL",
-                "pytest -q | tail -1",
-                "python3 plugins/tdd-playbook/bin/capability_registry.py validate | tail -2",
-                "sh scripts/civerd_gate.sh 2>&1 | head -20"):
-        rc, _o, e = run(s, ev(cmd))
-        check("exitcode: DISPLAY-only pipe stays silent (v1.42 scope): " + cmd[:42],
-              rc == 0, (rc, e[:100]))
-
-    # ...and the consumption shapes MUST still fire — this is the half that keeps the guard
-    # worth having. Each is a real way a RED verdict becomes a green one.
-    for label, cmd in [
-            ("status captured after a pipe", "sh scripts/civerd_gate.sh | tail -1; rc=$?"),
-            ("piped status gates a chain", "pytest -q | tail -1 && git commit -m x"),
-            ("piped status in a conditional", "if pytest -q | grep -q FAIL; then echo bad; fi"),
-            ("piped status echoed as the verdict",
-             "python3 plugins/tdd-playbook/tests/test_hooks.py | tail -1; echo rc=$?")]:
-        rc, _o, e = run(s, ev(cmd))
-        check("exitcode: CONSUMED piped status still flagged — " + label, rc == 1,
-              (rc, e[:100]))
-
-    rc, _o, _e = run(s, {"tool_name": "Edit", "tool_input": {"file_path": "x.py"}})
-    check("exitcode: non-Bash events ignored", rc == 0, rc)
-
-
-# -------------------------------------------------------------------------- tag_guard
 def test_tag_guard():
     """v1.32.0 — the release tag is the owner's signature. Deleting the CIVerd wall is only
     safe while the model cannot cut a tag, and the file scanner in test_installer.py covers
@@ -499,7 +390,7 @@ def test_break_glass():
         finally:
             os.environ.clear(); os.environ.update(old_env)
 
-    for gate in ("exitcode", "overmock", "exhaustive", "flaky", "redlock"):
+    for gate in ("overmock", "exhaustive", "flaky", "redlock"):
         check("break-glass NEVER silences {} (off stays off, never a silent bypass)".format(gate),
               _mode(gate, TDD_PLAYBOOK_BREAK_GLASS="incident") == "off",
               _mode(gate, TDD_PLAYBOOK_BREAK_GLASS="incident"))
@@ -1117,7 +1008,7 @@ def test_basename_roster_parity():
 
     # guard roster completeness — every BLOCKING/registered guard is self-protected
     # (tag_guard.py was in NEITHER copy: a blocking guard editable while a lock holds)
-    for guard in ("tag_guard.py", "exitcode_guard.py", "exhaustive_claim_guard.py"):
+    for guard in ("tag_guard.py", "exhaustive_claim_guard.py"):
         check("guard roster self-protects {}".format(guard),
               guard in hc.GUARD_BASENAMES, sorted(hc.GUARD_BASENAMES))
 
@@ -1344,7 +1235,7 @@ def test_yield_logging():
     # env-block demotion is the persistent, invisible variant of the kill switch.
     # 2026-08-13, found by its own first false positive: the check used to flag ANY
     # TDD_PLAYBOOK_HOOK_* env var — the variable's PRESENCE, a proxy — and so REDded the
-    # gate when exitcode (shipped default: off) was promoted to warn on measured evidence
+    # gate when a shipped-default-off guard is promoted to warn on measured evidence
     # (43 suppressed findings in one cycle, >=3 real). Direction is the fact: an override
     # WEAKER than the shipped default is a demotion; an override at or above it is an
     # opt-in, which is exactly what the v1.32.0 retirement invited.
@@ -1385,7 +1276,7 @@ def test_yield_logging():
           _standing_demotions({"TDD_PLAYBOOK_HOOK_TESTWEAKEN": "warn"}) != [])
     check("planted: default-off guard promoted to warn is NOT flagged (the 2026-08-13 "
           "false positive)",
-          _standing_demotions({"TDD_PLAYBOOK_HOOK_EXITCODE": "warn"}) == [])
+          _standing_demotions({"TDD_PLAYBOOK_HOOK_OVERMOCK": "warn"}) == [])
     check("planted: unknown guard name IS flagged (fail closed)",
           _standing_demotions({"TDD_PLAYBOOK_HOOK_NOTAGUARD": "off"}) != [])
 
@@ -1434,13 +1325,9 @@ def test_guards_heartbeat():
 # be spelled, not derived — a single dict keyed on the FACT (the mode) is the fix.
 EXPECTED_MODES = {
     "weakening_guard": "block", "lock_guard": "block",
-    "snapshot_guard": "block", "tag_guard": "block",
-    "exitcode_guard": "off", "overmock_guard": "off", "exhaustive_claim_guard": "off",
+    "snapshot_guard": "block", "tag_guard": "block", "overmock_guard": "off", "exhaustive_claim_guard": "off",
     "flaky_guard": "off", "red_lock": "off",
     "fixture_guard": "warn",
-    # v1.46.0 — the analysis-turn seam. OFF by the same evidence-first rule that retired the
-    # five above: at warn its remedy is routed to the user, not the agent it addresses.
-    "cite_guard": "off",
 }
 EXPECTED_ADVISORY = {"build_completion_reminder", "capture", "intent_nudge"}
 
@@ -1479,7 +1366,7 @@ def _roster_problems(chunk, blocking, optin, warn, shorts, machinery_tokens):
     planted fixtures exercise it directly (release discipline: planted inputs, always).
 
     An opt-in guard may appear by script name OR by its NAME short form (CLAUDE.md
-    writes `exitcode/overmock/...`, README writes `exitcode_guard, ...`). Directions:
+    writes `overmock/exhaustive/...`, README writes `overmock_guard, ...`). Directions:
     missing (a real guard absent from prose — blocking, opt-in, OR warn), phantom (a
     guard-shaped token machinery does not have — BOTH dialects: `*_guard` names and
     short-name slash-runs, arch F6b), and a stale COUNT word (arch F6a: five guards behind
@@ -1569,9 +1456,9 @@ def test_guard_roster_derived_and_pinned():
 
     # PLANTED fixtures — the red-first proof, frozen (a pin that cannot fail is décor)
     good = ("...the four blocking guards (weakening_guard, lock_guard, "
-            "snapshot_guard, tag_guard) plus the opt-in ones (exitcode_guard, "
-            "exhaustive_claim_guard, overmock_guard, flaky_guard, red_lock, "
-            "cite_guard) and the warn-by-default fixture_guard...")
+            "snapshot_guard, tag_guard) plus the opt-in ones ("
+            "exhaustive_claim_guard, overmock_guard, flaky_guard, "
+            "red_lock) and the warn-by-default fixture_guard...")
     def rp(chunk, bl=None, op=None, wn=None, sh=None, mt=None):
         return _roster_problems(chunk, bl if bl is not None else blocking,
                                 op if op is not None else optin,
@@ -1587,7 +1474,7 @@ def test_guard_roster_derived_and_pinned():
               for p in rp(good.replace(" and the warn-by-default fixture_guard", ""))))
     check("PLANTED: phantom guard in prose is caught",
           any("phantom" in p and "quantum_guard" in p
-              for p in rp(good.replace("cite_guard)", "cite_guard, quantum_guard)"))))
+              for p in rp(good.replace("red_lock)", "red_lock, quantum_guard)"))))
     grown = dict(shorts, new_guard="newguard")
     check("PLANTED: newly-registered guard absent from prose is caught",
           any("missing opt-in guard" in p and "new_guard" in p
@@ -1600,7 +1487,7 @@ def test_guard_roster_derived_and_pinned():
                           mt=machinery_tokens | {"fifth_guard"})))
     claude_dialect = ("...the four blocking guards: weakening_guard, "
                       "lock_guard, snapshot_guard, tag_guard; plus the opt-in "
-                      "exitcode/overmock/quantum/flaky/red_lock, which ship OFF; plus "
+                      "overmock/quantum/flaky/red_lock, which ship OFF; plus "
                       "fixture_guard...")
     check("PLANTED: phantom short name inside the slash-run is caught",
           any("short-name run" in p and "quantum" in p for p in rp(claude_dialect)))
@@ -1835,290 +1722,6 @@ def _twin(d, label, silent_lines, flag_lines, expect_in_msg=None):
           ok, (label, src, frc, fstderr[:240]))
 
 
-def test_transcript_module():
-    """D0: the shared reader and the ONE tool vocabulary."""
-    import importlib.util as _il
-    spec = _il.spec_from_file_location("transcript", os.path.join(HOOKS, "transcript.py"))
-    tr = _il.module_from_spec(spec)
-    spec.loader.exec_module(tr)
-
-    # The vocabulary disagreement this module exists to end.
-    check("D0: NotebookEdit is an edit (the three hook-side copies omitted it)",
-          "NotebookEdit" in tr.EDIT_TOOLS, sorted(tr.EDIT_TOOLS))
-    check("D0: a search is NOT a read — the distinction the whole guard rests on",
-          not (tr.SEARCH_TOOLS & tr.READ_TOOLS), (tr.SEARCH_TOOLS, tr.READ_TOOLS))
-    # PINNED AGAINST REAL CAPTURES, both hosts. docs/telemetry.md:31 records the cost of
-    # getting this wrong once; 47/47 real CC dispatches are `Agent`, and Cheliped's
-    # transcript_tool_event emits `Task`. A guard keyed to either alone goes dark on the other.
-    check("D0: BOTH hosts' dispatch names are recognised (Agent=CC, Task=Cheliped)",
-          {"Agent", "Task"} <= tr.DISPATCH_TOOLS, sorted(tr.DISPATCH_TOOLS))
-    check("D0: namespaced subagent_type is stripped to the roster stem",
-          tr.normalize_agent_name("tdd-playbook:architecture-adversary")
-          == "architecture-adversary"
-          and tr.normalize_agent_name("architecture-adversary") == "architecture-adversary",
-          tr.normalize_agent_name("tdd-playbook:architecture-adversary"))
-
-    with tempfile.TemporaryDirectory() as d:
-        # TURN BOUNDARY. Tool results are `type:"user"` records too (measured: 39 of 52 in a
-        # real transcript), so "since the last user line" would cut the window to one tool
-        # result and flag everything. Only a user line carrying TEXT starts a turn.
-        lines = [_user("first ask"),
-                 _tool_use("Read", {"file_path": os.path.join(d, "old.py")}, "t1"),
-                 _tool_result("t1"),
-                 _user("second ask"),
-                 _tool_use("Read", {"file_path": os.path.join(d, "new.py")}, "t2"),
-                 _tool_result("t2"),
-                 _assistant_text("done")]
-        for n in ("old.py", "new.py"):
-            open(os.path.join(d, n), "w").write("x = 1\n")
-        turn = tr.current_turn(_write_transcript(d, lines))
-        reads = tr.read_paths(turn.records, root=d)
-        check("D0: current_turn excludes the PREVIOUS turn's read",
-              os.path.realpath(os.path.join(d, "new.py")) in reads
-              and os.path.realpath(os.path.join(d, "old.py")) not in reads, sorted(reads))
-        check("D0: a tool_result (type=user) does NOT start a turn",
-              turn.status == tr.COMPLETE and len(reads) == 1, (turn.status, sorted(reads)))
-
-        # A DENIED read is not a read. The permission system said no; the guard must not
-        # certify a claim on evidence that was refused.
-        lines = [_user("ask"),
-                 _tool_use("Read", {"file_path": os.path.join(d, "new.py")}, "e1"),
-                 _tool_error("e1"), _assistant_text("done")]
-        turn = tr.current_turn(_write_transcript(d, lines, "err.jsonl"))
-        check("D0: a denied/errored read is NOT counted as a read",
-              tr.read_paths(turn.records, root=d) == set(),
-              sorted(tr.read_paths(turn.records, root=d)))
-
-        # Shell reads count; a heredoc WRITE beginning with `cat` must not.
-        open(os.path.join(d, "shell.py"), "w").write("y = 2\n")
-        lines = [_user("ask"), _tool_use("Bash", {"command": "cat shell.py"}, "b1"),
-                 _assistant_text("x")]
-        turn = tr.current_turn(_write_transcript(d, lines, "sh.jsonl"))
-        check("D0: `cat f` is a read",
-              os.path.realpath(os.path.join(d, "shell.py"))
-              in tr.read_paths(turn.records, root=d), None)
-        lines = [_user("ask"),
-                 _tool_use("Bash", {"command": "cat > shell.py <<'EOF'"}, "b2"),
-                 _assistant_text("x")]
-        turn = tr.current_turn(_write_transcript(d, lines, "sh2.jsonl"))
-        check("D0: a heredoc WRITE starting with `cat` is NOT a read (it clobbered the file)",
-              tr.read_paths(turn.records, root=d) == set(),
-              sorted(tr.read_paths(turn.records, root=d)))
-
-        # CAP: env-tunable so this costs milliseconds, not a 50 MB write inside a 15s hook
-        # timeout (the capture.py precedent). A cap hit must be CAPPED, never a silent partial.
-        big = [_user("ask")] + [_assistant_text("filler " * 50) for _ in range(200)]
-        tp = _write_transcript(d, big, "big.jsonl")
-        turn = tr.current_turn(tp, cap=512)
-        check("D0: a cap hit reports CAPPED, never a silent partial verdict",
-              turn.status == tr.CAPPED, turn.status)
-
-        check("D0: a missing transcript is UNREADABLE, not empty",
-              tr.current_turn(os.path.join(d, "nope.jsonl")).status == tr.UNREADABLE, None)
-
-
-def test_transcript_real_capture():
-    """§1 seam rule: ONE input this repo did not author.
-
-    Every other transcript fixture in this suite is written by the suite itself, on BOTH
-    sides of the seam — so a drift in the host's wire format would move the fixtures with
-    it and fail SILENT (exit 0, 'clean'). This pins the reader against a real Claude Code
-    transcript when one is present on the machine.
-    """
-    import glob
-    import importlib.util as _il
-    spec = _il.spec_from_file_location("transcript", os.path.join(HOOKS, "transcript.py"))
-    tr = _il.module_from_spec(spec)
-    spec.loader.exec_module(tr)
-
-    real = sorted(glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")),
-                  key=lambda f: os.path.getmtime(f), reverse=True)[:12]
-    if not real:
-        print("  skip - no real transcript on this machine (CI): seam unpinned here")
-        return
-    parsed = seen_dispatch = 0
-    for f in real:
-        try:
-            with open(f, errors="replace") as fh:
-                for ln in fh:
-                    obj = tr.parse_line(ln)
-                    if obj is None:
-                        continue
-                    parsed += 1
-                    for tu in tr.tool_uses([obj]):
-                        if tu["name"] in tr.DISPATCH_TOOLS and \
-                                tu["input"].get("subagent_type"):
-                            seen_dispatch += 1
-        except OSError:
-            continue
-    # VACUITY (§4a): a seam test that parsed nothing proves nothing.
-    check("seam: the reader parses records from a REAL transcript (vacuity-guarded)",
-          parsed > 0, parsed)
-    check("seam: real dispatch records are recognised by the shipped vocabulary "
-          "(this is the check that would have caught the `Task` assumption)",
-          seen_dispatch > 0, (seen_dispatch, parsed))
-
-
-def test_cite_guard():
-    """D1, both directions, every silent row paired with a firing twin."""
-    import importlib.util as _il
-    spec = _il.spec_from_file_location("cite_guard", os.path.join(HOOKS, "cite_guard.py"))
-    cg = _il.module_from_spec(spec)
-    spec.loader.exec_module(cg)
-
-    with tempfile.TemporaryDirectory() as d:
-        doctor = os.path.join(d, "doctor.py")
-        open(doctor, "w").write("# Human-readable output\n# Machine-readable JSON\n")
-        open(os.path.join(d, "other.py"), "w").write("z = 3\n")
-
-        claim = "doctor.py reads the `readable` field."
-        read_doctor = _tool_use("Read", {"file_path": doctor}, "r1")
-        grep_only = _tool_use("Grep", {"pattern": "readable", "path": doctor}, "g1")
-
-        # E1 — THE MOTIVATING CASE. Searched, never opened.
-        rc, err = _cite_run(d, [_user("audit"), grep_only, _assistant_text(claim)])
-        check("E1: a property claim about a file this turn only GREPPED fires",
-              rc == 1 and "doctor.py" in err, (rc, err[:200]))
-        # ...and names the SPECIFIC file, not merely "found something".
-        check("E1: the message names the specific file",
-              "doctor.py" in err and "other.py" not in err, err[:200])
-
-        # VACUITY (§4a), three legs — proving the fixtures REACH the detector, so the
-        # silent rows below cannot pass for the wrong reason.
-        turn = cg.tr.current_turn(_write_transcript(
-            d, [_user("a"), read_doctor, _assistant_text(claim)], "v.jsonl"))
-        reads = cg.tr.read_paths(turn.records, root=d)
-        check("vacuity-1: the positive twin's READ-SET is non-empty and holds the target",
-              os.path.realpath(doctor) in reads, sorted(reads))
-        check("vacuity-2: CLAIM EXTRACTION finds the claim in the output text",
-              any("doctor.py" in c[0] for c in cg.claims_in(claim, d)),
-              cg.claims_in(claim, d))
-        check("vacuity-3: the target file EXISTS in the fixture tree "
-              "(else every silent row greens on the not-found branch)",
-              os.path.isfile(doctor), doctor)
-
-        # ── the twin rule ──
-        _twin(d, "E2 read-then-claim",
-              [_user("a"), read_doctor, _assistant_text(claim)],
-              [_user("a"), grep_only, _assistant_text(claim)], "doctor.py")
-        _twin(d, "E3 edited-implies-known",
-              [_user("a"), _tool_use("Edit", {"file_path": doctor}, "e1"),
-               _assistant_text(claim)],
-              [_user("a"), _assistant_text(claim)], "doctor.py")
-        _twin(d, "E4 nonexistent-file",
-              [_user("a"), _assistant_text("ghost.py reads the readable field.")],
-              [_user("a"), _assistant_text(claim)], "doctor.py")
-        _twin(d, "E5 bare-mention-no-property",
-              [_user("a"), _assistant_text("See also doctor.py for context.")],
-              [_user("a"), _assistant_text(claim)], "doctor.py")
-        _twin(d, "E11 fenced-code-block",
-              [_user("a"), _assistant_text("```\n" + claim + "\n```")],
-              [_user("a"), _assistant_text(claim)], "doctor.py")
-        _twin(d, "E7 shell-read-counts",
-              [_user("a"), _tool_use("Bash", {"command": "sed -n '1,5p' doctor.py"}, "b1"),
-               _assistant_text(claim)],
-              [_user("a"), _tool_use("Bash", {"command": "grep readable doctor.py"}, "b2"),
-               _assistant_text(claim)], "doctor.py")
-
-        # ── Rule B: a FALSE loop-closure self-report ──
-        # Keyed on the token the commands already mandate, not on "plan shape": a
-        # §0-marker detector would flag every review turn, every quoted plan, and
-        # /readable — whose contract FORBIDS the remedy it would demand.
-        one = "Loop closed: yes (architecture-adversary — clean)"
-        both = ("Loop closed: yes (integration-adversary — none; "
-                "architecture-adversary — clean)")
-        dispatch_cc = _tool_use("Agent", {"subagent_type": "tdd-playbook:architecture-adversary",
-                                          "description": "review"}, "a1")
-        dispatch_int = _tool_use("Agent", {"subagent_type": "integration-adversary",
-                                           "description": "review"}, "a3")
-        dispatch_cheli = _tool_use("Task", {"subagent_type": "architecture-adversary",
-                                            "description": "review"}, "a2")
-        _twin(d, "E13/E17 loop-closed-with-no-dispatch",
-              [_user("a"), dispatch_cc, _assistant_text(one)],
-              [_user("a"), _assistant_text(one)], "Loop closed")
-        # HOST PARITY: the Cheliped spelling must silence it too, or the guard is dark there.
-        rc, err = _cite_run(d, [_user("a"), dispatch_cheli, _assistant_text(one)])
-        check("host parity: a Cheliped-shaped dispatch (Task) silences Rule B",
-              rc == 0, (rc, err[:200]))
-
-        # DECLARED vs SENT, not "any dispatch at all". The earlier predicate was
-        # len(dispatches) >= 1, a proxy: a report naming TWO adversaries went silent when
-        # one ran — a half-done closure is the same "announced is not executed" defect.
-        rc, err = _cite_run(d, [_user("a"), dispatch_cc, _assistant_text(both)])
-        check("Rule B: declaring two adversaries while dispatching ONE fires, naming the "
-              "missing one", rc == 1 and "integration-adversary" in err, (rc, err[:220]))
-        rc, err = _cite_run(d, [_user("a"), dispatch_cc, dispatch_int,
-                                _assistant_text(both)])
-        check("Rule B: declaring two and dispatching BOTH is silent", rc == 0, (rc, err[:200]))
-
-        # `Loop closed: NO — <why>` is BLESSED in five commands as "a visible decision,
-        # never a default" (edge.md:32, probe.md:48, mutate.md:86, tdd-plan.md:67,
-        # integration-audit.md:89). Firing on it punished the behaviour the doctrine
-        # rewards, with a remedy that is a non-sequitur. Found by architecture-adversary.
-        for declined in ("Loop closed: NO — budget exhausted, skipped deliberately",
-                         "**Loop closed:** NO — no plan-shaped work this turn"):
-            rc, err = _cite_run(d, [_user("a"), _assistant_text(declined)])
-            check("Rule B: a declared `Loop closed: NO` is a CLOSED loop, not a finding",
-                  rc == 0, (declined[:40], rc, err[:160]))
-        # E15: ordinary prose containing the words must NOT fire.
-        rc, err = _cite_run(d, [_user("a"), _assistant_text(
-            "We should close the loop with an adversary before shipping.")])
-        check("E15: prose about closing the loop is not a self-report", rc == 0, err[:200])
-
-        # ── honesty events: absent data is UNMEASURED, never zero ──
-        yl = os.path.join(_YIELD_TMP, "cite-honesty.jsonl")
-        env = {"TDD_PLAYBOOK_YIELD_LOG": yl}
-        rc, _ = _cite_run(d, [_user("a"), _assistant_text(claim)],
-                          env_extra=dict(env, TDD_PLAYBOOK_TRANSCRIPT_SCAN_CAP="1"))
-        rows = [json.loads(l) for l in open(yl)] if os.path.exists(yl) else []
-        check("E10: a cap hit exits 0 AND leaves a `capped` row — never a silent partial",
-              rc == 0 and any(r.get("event") == "capped" for r in rows),
-              [r.get("event") for r in rows])
-
-        # BLIND HOST: an Edit-only transcript with no assistant text cannot answer. It must
-        # say so, not report clean. (The pre-C1 Cheliped shim was exactly this shape, and
-        # `transcript_path` there is READABLE — so an absent-file fallback never fires.)
-        yl2 = os.path.join(_YIELD_TMP, "cite-blind.jsonl")
-        rc, _ = _cite_run(d, [_tool_use("Edit", {"file_path": doctor}, "x1")],
-                          env_extra={"TDD_PLAYBOOK_YIELD_LOG": yl2}, name="blind.jsonl")
-        rows = [json.loads(l) for l in open(yl2)] if os.path.exists(yl2) else []
-        check("blind-host: an Edit-only transcript yields `blind`, NOT a clean verdict",
-              rc == 0 and any(r.get("event") == "blind" for r in rows),
-              [r.get("event") for r in rows])
-
-        # Re-entry: both existing Stop hooks guard this; a Stop guard without it can loop,
-        # and this guard's own finding text names a file and asserts a property of it.
-        env2 = dict(os.environ)
-        for k in list(env2):
-            if k.startswith("TDD_PLAYBOOK_"):
-                del env2[k]
-        env2.update({"CLAUDE_PROJECT_DIR": d, "TDD_PLAYBOOK_HOOK_CITE": "warn",
-                     "TDD_PLAYBOOK_YIELD_LOG": os.path.join(_YIELD_TMP, "reentry.jsonl"),
-                     "TDD_PLAYBOOK_HEARTBEAT": os.path.join(_YIELD_TMP, "heartbeat")})
-        tp = _write_transcript(d, [_user("a"), grep_only, _assistant_text(claim)], "re.jsonl")
-        p = subprocess.run([sys.executable, os.path.join(HOOKS, "cite_guard.py")],
-                           input=json.dumps({"transcript_path": tp, "stop_hook_active": True}),
-                           capture_output=True, text=True, env=env2, timeout=20, cwd=d)
-        check("re-entry: stop_hook_active exits 0 immediately (no Stop loop)",
-              p.returncode == 0 and not p.stderr.strip(), (p.returncode, p.stderr[:120]))
-
-        # DETERMINISM: both rules subtract SETS; nothing in this repo pins hash ordering.
-        outs = []
-        for seed in ("0", "1"):
-            _, e = _cite_run(d, [_user("a"), grep_only, _assistant_text(
-                "doctor.py reads the readable field. other.py never calls it.")],
-                env_extra={"PYTHONHASHSEED": seed})
-            outs.append(e)
-        check("determinism: identical stderr under PYTHONHASHSEED 0 and 1",
-              outs[0] == outs[1], outs)
-
-        # The SHIPPED default is off — opt-in is what the rest of this suite does.
-        rc, err = _cite_run(d, [_user("a"), grep_only, _assistant_text(claim)],
-                            env_extra={"TDD_PLAYBOOK_HOOK_CITE": ""})
-        check("shipped default is OFF: no findings surfaced without opt-in",
-              rc == 0 and not err.strip(), (rc, err[:120]))
-
-
 def test_tripwire_read_only_turn_misattribution():
     """REGRESSION (found in review, 2026-08-27): a READ-ONLY turn must not be told it
     changed source.
@@ -2201,92 +1804,43 @@ def test_tripwire_read_only_turn_misattribution():
 
 
 def test_yield_instrument_carries_session_and_coverage():
-    """D2: the record the decay contract is computed from must be able to answer it.
+    """The yield row must carry the session id, and the coverage roster must stay disjoint.
 
-    Two defects, both found in review (2026-08-27):
-      - `log_yield_event` wrote {ts, source, host, gate, event, findings} with NO session
-        id, so §0.5's named metric ("how many fires were followed by a corrective read in
-        the NEXT turn") had no supplier — the contract was prose describing an instrument
-        that could not compute it.
-      - `gate_yield.GATE_EVENTS` is a CLOSED roster and anything else is dropped without a
-        row, so the guard's own honesty events (`capped`, `blind`) would have been written
-        and silently discarded by their named consumer. §0.4 claimed gate_yield as that
-        consumer; at field granularity it was not one.
+    Driven through weakening_guard because the guard this was first written against
+    (cite_guard) was DELETED in v1.47.0. The MECHANISM is in `_common.log_yield_event` and
+    `gate_yield.COVERAGE_EVENTS`, not in any one guard — re-pointing rather than deleting the
+    coverage is the difference between "the producer changed" and "nobody checks this now".
     """
     import importlib.util as _il
     with tempfile.TemporaryDirectory() as d:
-        yl = os.path.join(d, "yield.jsonl")
-        # a guard invocation carrying a session_id must stamp it on the row
-        env = {"TDD_PLAYBOOK_YIELD_LOG": yl, "CLAUDE_PROJECT_DIR": d,
-               "TDD_PLAYBOOK_HOOK_CITE": "warn"}
-        e = dict(os.environ)
-        for k in list(e):
-            if k.startswith("TDD_PLAYBOOK_"):
-                del e[k]
-        e.update(env)
-        e["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
-        tp = os.path.join(d, "t.jsonl")
-        open(tp, "w").write(json.dumps({"type": "user", "message": {"content": "hi"}})
-                            + "\n" + json.dumps({"type": "assistant", "message": {
-                                "content": [{"type": "text", "text": "nothing claimed"}]}})
-                            + "\n")
-        subprocess.run([sys.executable, os.path.join(HOOKS, "cite_guard.py")],
-                       input=json.dumps({"transcript_path": tp, "session_id": "sess-42"}),
-                       capture_output=True, text=True, env=e, timeout=20, cwd=d)
+        yl = os.path.join(d, "y.jsonl")
+        tf = os.path.join(d, "test_x.py")
+        open(tf, "w").write("def test_a():\n    assert total == 5\n")
+        rc, _o, _e = run("weakening_guard.py",
+                         edit(tf, "assert total == 5", "assert True"),
+                         env_extra={"TDD_PLAYBOOK_YIELD_LOG": yl})
+        ev = {"session_id": "sess-42", **edit(tf, "assert total == 5", "assert True")}
+        p2 = subprocess.run([sys.executable, os.path.join(HOOKS, "weakening_guard.py")],
+                            input=json.dumps(ev), capture_output=True, text=True,
+                            env=dict(os.environ, TDD_PLAYBOOK_YIELD_LOG=yl,
+                                     TDD_PLAYBOOK_HEARTBEAT=os.path.join(_YIELD_TMP, "hb")),
+                            timeout=20)
         rows = [json.loads(l) for l in open(yl)] if os.path.exists(yl) else []
-        check("D2: the yield row carries the session id",
-              any(r.get("session_id") == "sess-42" for r in rows), rows)
-        # VACUITY: a clean turn must still leave a row, or there is no denominator at all.
-        check("D2: a CLEAN turn leaves a `verified` row (the denominator)",
-              any(r.get("event") == "verified" for r in rows),
-              [r.get("event") for r in rows])
+        check("yield: the row carries the session id when the event supplies one",
+              any(r.get("session_id") == "sess-42" for r in rows),
+              [r.get("session_id") for r in rows])
 
-        # the rollup must COUNT the honesty events, not drop them
-        spec = _il.spec_from_file_location("gate_yield",
-                                           os.path.join(PLUGIN, "bin", "gate_yield.py"))
-        gy = _il.module_from_spec(spec)
-        spec.loader.exec_module(gy)
-        check("D2: coverage events are a distinct vocabulary from gate events",
-              set(gy.COVERAGE_EVENTS).isdisjoint(gy.GATE_EVENTS),
-              (gy.COVERAGE_EVENTS, gy.GATE_EVENTS))
-        for ev in ("capped", "blind"):
-            check("D2: `{}` is an accepted coverage event (was silently dropped)".format(ev),
-                  ev in gy.COVERAGE_EVENTS, gy.COVERAGE_EVENTS)
-
-        log2 = os.path.join(d, "roll.jsonl")
-        with open(log2, "w") as fh:
-            for ev in ("verified", "verified", "blind", "capped"):
-                fh.write(json.dumps({"gate": "cite", "event": ev, "source": "hook"}) + "\n")
-        import argparse
-        args = argparse.Namespace(log=log2, md=os.path.join(d, "y.md"), date="2026-08-27",
-                                  response_md=os.path.join(d, "r.md"),
-                                  usage_md=os.path.join(d, "u.md"))
-        import io as _io
-        import contextlib as _ctx
-        buf = _io.StringIO()
-        with _ctx.redirect_stdout(buf):
-            gy.cmd_rollup(args)
-        out = buf.getvalue()
-        check("D2: the rollup PRINTS coverage — the numbers have a reader, not just a writer",
-              "coverage: cite" in out and "verified 2" in out and "blind 1" in out, out)
-
-        # `session_id` must have a READER, or it is a write-only field justified by prose —
-        # the T2 defect this repo names, and a tripwire audit flagged exactly that here.
-        log3 = os.path.join(d, "sess.jsonl")
-        with open(log3, "w") as fh:
-            for sid in ("s1", "s1", "s2"):
-                fh.write(json.dumps({"gate": "cite", "event": "verified",
-                                     "source": "hook", "session_id": sid}) + "\n")
-        args3 = argparse.Namespace(log=log3, md=os.path.join(d, "y3.md"),
-                                   date="2026-08-27", response_md=os.path.join(d, "r3.md"),
-                                   usage_md=os.path.join(d, "u3.md"))
-        buf3 = _io.StringIO()
-        with _ctx.redirect_stdout(buf3):
-            gy.cmd_rollup(args3)
-        out3 = buf3.getvalue()
-        check("D2: session_id HAS a consumer — 3 turns are reported across 2 sessions",
-              "3 turn(s) across 2 session(s)" in out3, out3)
-
+    gspec = _il.spec_from_file_location("gate_yield",
+                                        os.path.join(PLUGIN, "bin", "gate_yield.py"))
+    gy = _il.module_from_spec(gspec); gspec.loader.exec_module(gy)
+    check("coverage events stay DISJOINT from gate events "
+          "(a denominator that mints a warn/block row corrupts the retirement arithmetic)",
+          set(gy.COVERAGE_EVENTS).isdisjoint(gy.GATE_EVENTS),
+          (gy.COVERAGE_EVENTS, gy.GATE_EVENTS))
+    check("every coverage event still has a live PRODUCER "
+          "(vocabulary nobody writes is the dead-value defect §6c names)",
+          all(ev in open(os.path.join(HOOKS, "_common.py")).read()
+              for ev in gy.COVERAGE_EVENTS), gy.COVERAGE_EVENTS)
 
 def test_host_truncation_and_tag_guard_regressions():
     """Three defects found by USING the plugin (Cheliped, 2026-08-27). Bodies live in
@@ -2328,16 +1882,13 @@ def test_suite_does_not_dirty_tracked_files():
 
 def main():
     print("TDD Playbook hook calibration")
-    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock,
-               test_exitcode, test_tag_guard, test_exhaustive_claim, test_snapshot,
+    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
                test_fixture_guard, test_basename_roster_parity,
                test_lock_shell, test_yield_logging, test_guards_heartbeat,
                test_break_glass, test_retired_advisory_defaults,
                test_blocking_guards_prove_both_directions,
-               test_guard_roster_derived_and_pinned,
-               test_transcript_module, test_transcript_real_capture,
-               test_cite_guard, test_tripwire_read_only_turn_misattribution,
+               test_guard_roster_derived_and_pinned, test_tripwire_read_only_turn_misattribution,
                test_yield_instrument_carries_session_and_coverage,
                test_host_truncation_and_tag_guard_regressions,
                test_suite_does_not_dirty_tracked_files):

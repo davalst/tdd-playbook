@@ -416,6 +416,13 @@ RETIRED_EVIDENCE = {
         "removed 2026-08-18 with the per-commit review-coverage rule it tested. The two "
         "findings citing it (STREAM-POST-ARCH-3, REL-META-2) were defects IN that rule, so "
         "the evidence and the policy retire together.",
+    "plugins/tdd-playbook/tests/test_hooks.py::test_exitcode":
+        "removed 2026-08-29 with exitcode_guard itself. The guard was DELETED, not demoted: "
+        "701 warnings with zero acted on, plus a verified precision defect (a command-global "
+        "`$?` read satisfied its decision test, so it fired on unrelated and purely "
+        "informational status reads). A test for a guard that no longer exists cannot be "
+        "kept honest, and keeping a stub so an old record still resolves would make the "
+        "ledger a liar to protect its own green — the evidence and the guard retire together.",
 }
 
 

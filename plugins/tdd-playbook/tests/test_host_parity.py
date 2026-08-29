@@ -220,7 +220,10 @@ def test_agents_roster():
 def test_compact_parity_output():
     proc = subprocess.run([sys.executable, BIN, "check"], cwd=REPO,
                           capture_output=True, text=True, timeout=30)
-    # 42 assets / 84 dispositions (intent-adversary, 2026-08-28) — agents/intent-adversary.md
+    # 40 assets / 80 dispositions (guard deletion, 2026-08-29) — cite_guard and exitcode_guard
+# were DELETED, removing TWO assets and FOUR dispositions; intent-adversary added ONE and
+# TWO. Net 42 -> 40. If either number moves by anything else, something entered or left
+# the roster unnoticed. Previously 42/84 (intent-adversary, 2026-08-28) — agents/intent-adversary.md
 # joined the agent family: supported on Claude, `unavailable` on Codex under the standing
 # codex agent-discovery debt. ONE asset, TWO dispositions. Previously 41/82 —
     # hooks/scripts/cite_guard.py joined the guard family: supported on Claude,
@@ -234,7 +237,7 @@ def test_compact_parity_output():
     # cannot reveal its own narrowing).
     check("parity output: success is compact and denominator-bearing",
           proc.returncode == 0 and len(proc.stdout.splitlines()) <= 2
-          and "42 assets" in proc.stdout and "84 dispositions" in proc.stdout,
+          and "40 assets" in proc.stdout and "80 dispositions" in proc.stdout,
           (proc.returncode, proc.stdout, proc.stderr))
 
 

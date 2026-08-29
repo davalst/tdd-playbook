@@ -47,10 +47,6 @@
           },
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/exitcode_guard.py\""
-          },
-          {
-            "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/fixture_guard.py\"",
             "timeout": 15,
             "statusMessage": "TDD: fixture-data guard (shell)"
@@ -133,12 +129,6 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/capture.py\" --event Stop",
             "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/cite_guard.py\"",
-            "timeout": 15,
-            "statusMessage": "TDD: claim/evidence check"
           }
         ]
       }

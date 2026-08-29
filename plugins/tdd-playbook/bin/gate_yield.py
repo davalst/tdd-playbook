@@ -174,7 +174,11 @@ USAGE_EVENTS = ("usage", "usage-note")
 #: that cannot tell a useful warning from wallpaper, which is the one question it exists to
 #: answer. Kept OUT of GATE_EVENTS deliberately: these are denominators, not findings, and
 #: minting warn/block rows from them would corrupt the retirement arithmetic above.
-COVERAGE_EVENTS = ("verified", "capped", "blind", "unmeasured")
+# v1.47.0: narrowed to what a live producer actually writes. `verified`/`capped`/
+# `blind` were cite_guard-only and died with it; leaving them here would be
+# vocabulary nobody emits — the dead-value defect §6c names. `unmeasured` survives:
+# `_common._read_stdin_bounded` writes it when stdin never delivers a payload.
+COVERAGE_EVENTS = ("unmeasured",)
 
 USAGE_SCHEMA = 1
 USAGE_MD_HEADER = (

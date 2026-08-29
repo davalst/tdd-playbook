@@ -63,14 +63,13 @@ def register(check, run, HOOKS, YIELD_TMP, helpers):
         check("R1 twin: the same turn WITHOUT the marker still reads COMPLETE",
               turn2.status == tr.COMPLETE, turn2.status)
 
-        open(os.path.join(d, "doctor.py"), "w").write("# Human-readable output\n")
-        yl = os.path.join(YIELD_TMP, "trunc-yield.jsonl")
-        rc, err = _cite_run(d, lines, env_extra={"TDD_PLAYBOOK_YIELD_LOG": yl},
-                            name="trunc2.jsonl")
-        rows = [json.loads(l) for l in open(yl)] if os.path.exists(yl) else []
-        check("R1: the guard ABSTAINS on a host-truncated turn and logs `capped`",
-              rc == 0 and any(r.get("event") == "capped" for r in rows),
-              (rc, [r.get("event") for r in rows]))
+        # The GUARD that consumed this (cite_guard) was DELETED in v1.47.0. The READER
+        # behaviour is what R1 actually fixed and it survives, so the assertion moves to
+        # transcript.current_turn directly rather than being deleted with its old consumer:
+        # a host that says "I truncated" must never read as COMPLETE.
+        check("R1: the reader honours the host marker even with no guard consuming it",
+              turn.status == tr.CAPPED and turn2.status == tr.COMPLETE,
+              (turn.status, turn2.status))
 
     def tag(cmd):
         return run("tag_guard.py", {"tool_name": "Bash", "tool_input": {"command": cmd}})
