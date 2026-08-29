@@ -1,3 +1,43 @@
+## 1.47.0 — 2026-08-29
+
+**The intent adversary — the only reviewer whose subject is the REQUEST.**
+
+Nine adversaries judge a plan on its own terms: band-aid, island, unhandled edge, untrue
+claim, hollow test. **None asks whether the plan still does what was ASKED.** The requirement
+is nobody's job, so it drifts — and hardest right after a review round, because adopting a
+reviewer's finding is exactly when scope quietly narrows.
+
+Two real incidents, both rebuilt as calibration plants. A requirement stated VERBATIM and
+TWICE — vendor review from both Codex and CC, as built functionality — was argued down to
+"on demand" by four sound reviews (cost, latency, a 20-second dead wait, no spend tracking)
+with no record of the requester being asked, and the plan described this as *taking the
+recommendation*. Separately, a goal of *"meet and beat CC's planning"* shipped as a telemetry
+fix and a citation quote-check: both real defects, neither advancing the goal. **In both cases
+the engineering was GOOD** — which is exactly why nine specialist reviewers saw nothing.
+
+- Reports each ORIGINAL requirement as `DELIVERED / NARROWED / DROPPED / SUBSTITUTED`,
+  enumerated from the requester's words and never from the plan's list of deliverables — that
+  list only contains the requirements that survived.
+- **The discriminator is not "was it cut?" but "was the requester ASKED, and did they answer?"**
+  A cut the requester chose is not drift; flagging it would make the agent noise on every
+  well-run plan, and a noisy reviewer gets ignored on the day it matters.
+- **Refuses a paraphrased request.** Reading the plan's own restatement of the goal inherits
+  the drift it is hunting, and a confident review of a paraphrase certifies that drift.
+- **Runs LAST**, and the description says so, so it is not run first out of habit.
+
+Acceptance test on a real artifact: given a plan and the requester's verbatim words, it
+flagged the known narrowing, then found two further drifts nobody had specified — including a
+command that *prepares* a vendor review and does not dispatch it. It also refuted the obvious
+defence, and scoped its own negative honestly rather than claiming the sweep was exhaustive.
+
+Calibrated both directions: two plants, two clean controls, and a vacuity guard whose
+"original request" is secretly the plan's own summary — where returning INTACT is passing for
+the wrong reason, so the REFUSAL is the pass.
+
+The suite caught the brief failing to LOAD on its first draft: an unquoted `: ` in the
+description breaks the host's YAML parser (the v1.42.0 dark-skill shape). It would have
+shipped registered, tested, and completely dark.
+
 # Changelog
 
 All notable changes to the TDD Playbook plugin. Versions are the plugin `version` in
