@@ -21,6 +21,7 @@ unavailable or unmeasured, never rounded up. It ships:
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
   `edge-case-adversary`, `integration-adversary`, `architecture-adversary`,
+  `intent-adversary` (does the plan still do what was ASKED — run LAST),
   `script-adversary`, `ux-probe-calibrator` — plus the four role-lens adversaries
   (v1.34.0, Claude-only): `security-adversary`, `test-quality-adversary`,
   `observability-adversary`, `adoption-adversary`, each answering its rows of

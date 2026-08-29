@@ -63,6 +63,16 @@ drafted plan — the author's own imagination bounds both lists:
 Fold each gap either names into the plan as a deliverable or an owned debt entry, or explicitly
 reject it with a reason.
 
+**Then, LAST, dispatch `intent-adversary`** — the only reviewer whose subject is the REQUEST.
+The two above judge the plan on its own terms; neither asks whether it still does what was
+ASKED. Run it last and not first: adopting a reviewer's finding is the most common way a
+requirement gets narrowed, so running it before them inspects a plan that has not yet drifted.
+Give it the requester's words VERBATIM — it refuses a paraphrase, because reading the plan's
+own restatement of the goal inherits the drift it is hunting. Origin: a requirement stated
+twice was argued down to "on demand" by four sound reviews with no record of the requester
+being asked, and a whole workstream was replaced by two unrelated real defect fixes. In both
+the engineering was good, which is why nobody else saw it.
+
 Report `Loop closed: yes (integration-adversary — <top island>; architecture-adversary — <top
 band-aid or "clean">)` or `Loop closed: NO — <why>`. Then stop — this plan is the single upstream
 spec; let me review before writing code.

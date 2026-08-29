@@ -6,10 +6,10 @@
 
 - `gate-manifest.json` — `67f0be15a52961262626416eae94ca36409319394f205db961d42f432c80a78c`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
-- `docs/architecture/host-parity-policy.json` — `a63c34d4293f2f7fdeef8552fe2a759e4722f6a234d97da0dc809df2ae80df5b`
-- `docs/architecture/host-parity.json` — `e4eb00bb142578c0efe186489849988fb16bf62f8e65a49deb3a442f8f8a2ece`
+- `docs/architecture/host-parity-policy.json` — `63592eff12474513d675a46474581a6334c36509d46710dfaa46206505e7f4ed`
+- `docs/architecture/host-parity.json` — `caf9ccd84b54131ee8c2b54ce647542ea06cd46ed5c0d741d3b63b6a5215c069`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `9b1db2320169f9669bbf8c5a4ab3c8261476bfaf3015fb226d2b38c19e3bf7dc`
+- `capabilities.json` — `fcf2ef5b1b5391718ff02dac006b02562936c30afead935a9af5577eef4082fa`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
 - `plugins/tdd-playbook/hooks/scripts/_common.py` — `878d9fda84e16392470fa42a19cc23ca6265121ed4e9a8426e3d89241b9d904f`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -70,14 +70,14 @@
 
 ## Host parity
 
-- Canonical assets: 41. Exact host dispositions: 82.
-- Claude: 41 supported, 0 unavailable, 0 debt.
-- Codex: 1 supported, 40 unavailable, 0 debt.
-- Acknowledged inventory digest: `a6854bd4e4fdbb5df0f9a0426f2f8d59ff3a05e70ada3a067efff26d89d3fedd`
+- Canonical assets: 42. Exact host dispositions: 84.
+- Claude: 42 supported, 0 unavailable, 0 debt.
+- Codex: 1 supported, 41 unavailable, 0 debt.
+- Acknowledged inventory digest: `ee1cc2135378d64ba7803286cd6556a3752da8ba095bcfcfa4f92015458067d8`
 
 ## Capability registry
 
-- Registered capabilities: 34. Owned dated integration-debt entries: 65.
+- Registered capabilities: 35. Owned dated integration-debt entries: 66.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -143,6 +143,7 @@
 - `holdout-control-validation/population-snapshot-consumers` — integration-adversary ISLAND2 + arch-F7 (2026-08-16)… (owner `david`, expires `2026-11-15`)
 - `mutation-preflight` — CODEX PARITY, stated not assumed… (owner `david`, expires `2026-11-15`)
 - `analysis-turn-seam` — DECIDE THE MODE ON MEASURED EVIDENCE, or delete the guard… (owner `david`, expires `2026-11-30`)
+- `intent-drift-review` — MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it… (owner `david`, expires `2026-11-30`)
 
 ## Adversarial review records
 
@@ -159,6 +160,7 @@ participation: what the 44 indexed records RECORDED — `reviewers` is written b
 - control-quality-adversary — not named in any indexed review
 - edge-case-adversary — not named in any indexed review
 - integration-adversary · authors records — 18
+- intent-adversary — not named in any indexed review
 - mutation-runner — not named in any indexed review
 - observability-adversary — not named in any indexed review
 - planted-error-probe — not named in any indexed review

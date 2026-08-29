@@ -220,7 +220,9 @@ def test_agents_roster():
 def test_compact_parity_output():
     proc = subprocess.run([sys.executable, BIN, "check"], cwd=REPO,
                           capture_output=True, text=True, timeout=30)
-    # 41 assets / 82 dispositions (analysis-turn seam, 2026-08-27) —
+    # 42 assets / 84 dispositions (intent-adversary, 2026-08-28) — agents/intent-adversary.md
+# joined the agent family: supported on Claude, `unavailable` on Codex under the standing
+# codex agent-discovery debt. ONE asset, TWO dispositions. Previously 41/82 —
     # hooks/scripts/cite_guard.py joined the guard family: supported on Claude,
     # `unavailable` on Codex under the standing codex guard-family-parity debt, which is
     # the correct disposition (docs/architecture/portable-host-contracts.md lists the Stop
@@ -232,7 +234,7 @@ def test_compact_parity_output():
     # cannot reveal its own narrowing).
     check("parity output: success is compact and denominator-bearing",
           proc.returncode == 0 and len(proc.stdout.splitlines()) <= 2
-          and "41 assets" in proc.stdout and "82 dispositions" in proc.stdout,
+          and "42 assets" in proc.stdout and "84 dispositions" in proc.stdout,
           (proc.returncode, proc.stdout, proc.stderr))
 
 

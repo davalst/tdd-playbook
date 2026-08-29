@@ -103,6 +103,23 @@
           "status": "unavailable"
         }
       },
+      "intent-adversary": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/intent-adversary.md",
+          "installed_target": ".claude/agents/intent-adversary.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/intent-adversary.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/intent-adversary.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
       "mutation-runner": {
         "claude": {
           "activation_prerequisite": "Claude project/plugin agent discovery",
@@ -707,6 +724,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "a6854bd4e4fdbb5df0f9a0426f2f8d59ff3a05e70ada3a067efff26d89d3fedd",
+  "inventory_sha256": "ee1cc2135378d64ba7803286cd6556a3752da8ba095bcfcfa4f92015458067d8",
   "schema_version": 2
 }

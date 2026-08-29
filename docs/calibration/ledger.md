@@ -856,3 +856,29 @@ this whole day was spent learning to fear.
 |---|---|---|---|---|---|---|---|---|
 | L-20260828-01 | 2026-08-28 | e24d49b | plugins/tdd-playbook/skills/tdd-playbook/SKILL.md; plugins/tdd-playbook/commands/tripwire.md | §0 gains a PRIOR-ART SWEEP requirement bound to §12's exhaustive-negative rule ("nothing already does this" is a negative claim); /tripwire gains the forced `Means:` line | — | none | 0 | doctrine yield is deliberately unmeasured here (2026-08-14 decision); the effect is registered on the agent brief row below, where it can actually move |
 | L-20260828-02 | 2026-08-28 | e24d49b | plugins/tdd-playbook/agents/tripwire-auditor.md | a fourth forced line, `Means: H honoured · A acknowledged · D drift`, asking whether the plan's stated means were used — a means is not a deliverable, so no existing leg owned it | unwired-deliverable; roadmap-laundering; control-parked-deferral; control-export-wired | up | 2 | both plants ship a deliverable whose stated intent and shipped reality diverge, which is exactly what a means check reads; if recall does not move, the forced line is being satisfied rather than used, and that answer is worth more than a satisfied instrument. The two controls must stay clean — an over-firing Means line is the failure this line exists to avoid repeating |
+
+### Registered 2026-08-28 — baseline 411c663: the intent adversary
+
+Nine adversaries judge a plan on its OWN terms — band-aid, island, unhandled edge, untrue
+claim, hollow test. None asks whether the plan still does WHAT WAS ASKED, so the requirement
+is nobody's job and it drifts, hardest right after a review round, because adopting a
+reviewer's finding is exactly when scope quietly narrows.
+
+Two real incidents produced it. A requirement stated VERBATIM and TWICE (vendor review from
+both Codex and CC, as built functionality) was argued down to "on demand" by four sound
+reviews — cost, latency, a 20-second dead wait, no spend tracking — with no record of the
+requester being asked, and the plan described this as taking the recommendation. Separately, a
+goal of "meet and beat CC's planning" shipped as a telemetry fix and a citation quote-check:
+both real defects, neither advancing the goal. In both cases the ENGINEERING WAS GOOD, which
+is why nine specialist reviewers saw nothing.
+
+Registered against the agent brief with a real prediction, and against SKILL/commands as
+`expect: none` per the 2026-08-14 decision that doctrine yield is unmeasured. The two clean
+controls are the load-bearing half: this role's failure mode is not missing drift, it is
+crying wolf on a cut the requester actually chose. If the controls move, the agent is noise
+and that is a more valuable answer than recall.
+
+| id | date | baseline_sha | surface | change | scenarios | expect | claimed | rationale |
+|---|---|---|---|---|---|---|---|---|
+| L-20260828-03 | 2026-08-28 | 411c663 | plugins/tdd-playbook/agents/intent-adversary.md | NEW agent: reports each ORIGINAL requirement DELIVERED/NARROWED/DROPPED/SUBSTITUTED; discriminator is "was the requester ASKED", not "was it cut"; REFUSES a paraphrased request | intent-narrowed-by-review; intent-substituted-workstream; control-intent-requester-decided; control-intent-delivered-plus-extra; intent-vacuity-summary-as-request | up | 2 | the two plants are the real incidents, reconstructed; recall on them is the whole point. The two controls must stay INTACT — an agent that flags a requester-approved cut is noise, and the vacuity row proves the fixture can reach the drift at all (a "request" that is already the plan's summary cannot detect drift and must be REFUSED, not passed) |
+| L-20260828-04 | 2026-08-28 | 411c663 | plugins/tdd-playbook/commands/tdd-plan.md | close-the-loop step dispatches intent-adversary LAST, with the requester's verbatim words | — | none | 0 | doctrine yield is deliberately unmeasured here (2026-08-14 decision); the effect is registered on the agent brief row above |

@@ -1628,6 +1628,47 @@
         }
       ],
       "notes": "Built 2026-08-27 from a build plan that was itself reviewed by four Playbook adversaries and an independent Codex panel; three deliverables of that plan were dropped or restructured on their findings. The plan's own D2 detection rule (a tool_use named `Task` with an exact-match subagent_type) was measurably FALSE \u2014 47 of 47 real dispatches are named `Agent` and most carry a `tdd-playbook:` prefix \u2014 which is the same assumption docs/telemetry.md:31 already records as having cost this repo a dark instrument once. Cheliped's shim emits `Task`, so BOTH names are accepted and that is what host parity means here."
+    },
+    {
+      "id": "intent-drift-review",
+      "summary": "intent-adversary \u2014 the only reviewer whose subject is the REQUEST. The other adversaries judge a plan on its own terms (band-aid, island, unhandled edge, untrue claim, hollow test); none asks whether the requirement survived, so it drifts, and it drifts hardest right after a review round because adopting a reviewer's finding is when scope quietly narrows. Reports each ORIGINAL requirement as DELIVERED / NARROWED / DROPPED / SUBSTITUTED. Its discriminator is not 'was it cut?' but 'was the requester ASKED, and did they answer?' \u2014 a cut the requester chose is not drift, and flagging it would make the agent noise. REFUSES to run on a paraphrase: reading the plan's own restatement of the goal inherits the drift it is hunting.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "Dispatched by name at plan review, and named in commands/tdd-plan.md's close-the-loop step. No flag; an adversary is on whenever it is dispatched."
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/agents/intent-adversary.md",
+        "plugins/tdd-playbook/commands/tdd-plan.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_agents.py::test_agent_contracts",
+        "calibration/scenarios.json::intent-narrowed-by-review",
+        "calibration/scenarios.json::control-intent-requester-decided"
+      ],
+      "emits": [
+        {
+          "topic": "intent.drift_findings",
+          "consumers": [
+            "the plan author at review time, via the forced `Verdict: INTACT|DRIFT (n)` line; calibration/run_calibration.py scores the same line against must_match/must_not_match"
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 120,
+        "probe": "Two readings, because the agent has two deaths. LOADING: it must parse as YAML for the real host \u2014 pinned by test_agents.py, which caught this brief failing to load on its first draft (an unquoted ': ' in the description, the v1.42.0 dark-skill shape). FIRING: calibration recall on intent-narrowed-by-review and intent-substituted-workstream, with the two controls staying INTACT. Recall without the controls is worthless here \u2014 an agent that flags every cut is noise, and noise is this role's specific failure mode."
+      },
+      "integration_debt": [
+        {
+          "what": "MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it. This agent's danger is not missing drift, it is crying wolf: a requirement legitimately cut by the requester looks identical to one silently narrowed, and the discriminator ('was the requester asked?') depends on the record existing. By expiry, run it on real reviewed plans and settle two numbers \u2014 how often it flags a cut the requester actually made, and whether the verbatim-request refusal fires in practice or is quietly skipped. If it over-fires on well-run plans, narrow it or delete it; leaving a noisy reviewer in the roster teaches people to ignore the roster.",
+          "owner": "david",
+          "expires": "2026-11-30"
+        }
+      ],
+      "notes": "Built 2026-08-28 from two real incidents: a requirement stated verbatim TWICE that four reviewers argued down to on-demand with no record of the requester being asked; and a workstream ('meet and beat CC's planning') silently substituted by two unrelated real defect fixes. In both the engineering was GOOD \u2014 which is why nine other adversaries saw nothing."
     }
   ]
 }

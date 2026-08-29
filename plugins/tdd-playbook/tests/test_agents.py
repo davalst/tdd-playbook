@@ -77,6 +77,11 @@ AGENT_CONTRACTS = {
     # unpinned copy of "the agent's contract" (gate-by-proxy, arch-F5).
     "edge-case-adversary": (False, [r"Recommendation:", r"Coverage:\s*ADEQUATE",
                                     r"Coverage:\s*GAPS"]),
+    # intent-adversary (2026-08-28): the only reviewer whose subject is the REQUEST. Nine
+    # others judge the plan on its own terms; a plan can pass all of them and build the wrong
+    # thing. Forced verdict because the calibration oracles anchor on it.
+    "intent-adversary": (False, [r"Recommendation:", r"Verdict:\s*INTACT",
+                                 r"Verdict:\s*DRIFT"]),
     "integration-adversary": (False, [r"Recommendation:", r"Verdict:\s*CONNECTED",
                                       r"Verdict:\s*ISLANDS"]),
     "architecture-adversary": (False, [r"Recommendation:"]),
@@ -589,6 +594,7 @@ def test_verifier_model_pins():
     adversary-accountability plan, whose first draft was about to copy the wrong half into a
     third classification. The set was right; the sentence was not."""
     PINNED = {"claims-verifier", "tripwire-auditor", "architecture-adversary",
+              "intent-adversary",
               "integration-adversary", "edge-case-adversary", "mutation-runner",
               "script-adversary",
               # v1.34.0 role-lens adversaries — judgment verifiers, pinned
