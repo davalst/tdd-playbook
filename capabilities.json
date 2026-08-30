@@ -3,7 +3,7 @@
   "capabilities": [
     {
       "id": "integrity-guards",
-      "summary": "The four BLOCKING guards: testweaken (4 blocks, 0 adjudicated false positives), testlock (16 blocks, 20 unlocks, ZERO classed gate-wrong \u2014 measured false positives 0), snapshotguard, and tagguard (v1.32.0). One break-glass switch, TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\", demotes all four for a session; the reason is required and recorded as a BLOCK with demoted_by. The five OPT-IN guards are a SEPARATE capability (advisory-guards-optin) precisely so the doctor's dark inventory can report them \u2014 see its entry.",
+      "summary": "The four BLOCKING guards: testweaken (4 blocks, 0 adjudicated false positives), testlock (16 blocks, 20 unlocks, ZERO classed gate-wrong — measured false positives 0), snapshotguard, and tagguard (v1.32.0). One break-glass switch, TDD_PLAYBOOK_BREAK_GLASS=\"<reason>\", demotes all four for a session; the reason is required and recorded as a BLOCK with demoted_by. The five OPT-IN guards are a SEPARATE capability (advisory-guards-optin) precisely so the doctor's dark inventory can report them — see its entry.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -38,12 +38,18 @@
       },
       "integration_debt": [
         {
-          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): every open leg named the CIVerd ENGINE as the actor - guard_env as a ratifiable signed signal, the extended watchlist in the engine's root-owned floor, the probe-clean ratchet before a hard-block release list, and the #11 blocking-composition island. The engine is retired and civerd-integrity.yml deleted, so none of these can be paid or can fail; keeping a live debt whose actor does not exist is the write-only lie the registry exists to prevent. Historical text preserved below the separator. | OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green \u2014 closes H2-via-shell, `planted_probe` \u2014 first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract \u00a71.5 \u2014 settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the \u00a71.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 \u2014 same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists \u2014 floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications \u2014 harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed \u2014 blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion \u2014 a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
+          "id": "proxy-assert-on-own-prose",
+          "what": "SOURCE-TEXT ASSERTIONS MATCH THEIR OWN COMMENTARY (opened 2026-08-30). A test or sweep greps source/prose for a token, and the hit is the COMMENT that documents the token rather than the code that implements it. Doctrine already forbids this in near-verbatim terms in TWO places - ~/.claude/CLAUDE.md:13 'Not \"the source mentions X\" - parse it; a grep matches your own docstring' and SKILL.md:225 'source text GREPPED instead of parsed' - and it recurred SIX times in one day, so restating the rule a third time is a known-failed remedy. EVIDENCE: (a) five occurrences reported by a Cheliped session on 2026-08-30 - two false failures, one would have been a FALSE PASS - PEER-REPORTED AND UNVERIFIED HERE per S12, spot-check before citing as fact; (b) one occurrence I committed and VERIFIED in this repo the same day, sweeping for a guard covering this class and matching bin/tdd.py:209, a docstring DESCRIBING the failure, which I nearly reported as an existing safeguard. WHAT IS ACTUALLY MISSING is not the prohibition but the DECISION RULE that separates the legitimate case from the defect: when the text IS the deliverable (an agent brief that must carry a forced line, a changelog entry) a substring assertion is correct and this repo has ~109 such assertions across 11 test files that are fine; when the text DESCRIBES a deliverable (a comment saying the code checks X) the same assertion is vacuous. That distinction is written down nowhere. OUR OWN INSTANCE: test_verify_verdict.py asserts \"EXPECTED_REQUIRED\" in src - green whether the token is code or comment. THE MITIGATION ALREADY EXISTS HERE: strip comments / ast.parse before matching, used in 13 places, standard in none. PAY BY: writing the product-vs-description rule where test authors will hit it, fixing the verified in-repo instance, and deciding whether comment-stripping becomes the default for code-target sweeps. A guard is NOT presumed - the do-nothing option is live and doctrine-only remedies have failed twice.",
+          "owner": "David",
+          "expires": "2026-09-06"
+        },
+        {
+          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): every open leg named the CIVerd ENGINE as the actor - guard_env as a ratifiable signed signal, the extended watchlist in the engine's root-owned floor, the probe-clean ratchet before a hard-block release list, and the #11 blocking-composition island. The engine is retired and civerd-integrity.yml deleted, so none of these can be paid or can fail; keeping a live debt whose actor does not exist is the write-only lie the registry exists to prevent. Historical text preserved below the separator. | OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green — closes H2-via-shell, `planted_probe` — first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract §1.5 — settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the §1.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 — same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists — floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications — harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed — blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion — a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
           "owner": "david",
           "expires": "2026-12-31"
         },
         {
-          "what": "RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0). exitcode/overmock/exhaustive/flaky/redlock were moved to opt-in on 31 warnings and 0 blocks. That is real evidence but it is SIX cycles from mostly ONE operator, and a warn-tier guard cannot produce blocks by construction - so 'never blocked' is partly a statement about the tier, not only about the guard. Their rows keep accruing for anyone who opts in. By expiry: read gate_yield again and either confirm the retirement, restore a guard that turns out to have been carrying load, or delete the five outright - the one thing not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN \u2014 several a day \u2014 so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. Separately actionable now and NOT blocked on the unit fix: exitcode at 701 warns / 0 blocks / 0 fp is ~117 warns per cycle that nobody acts on \u2014 that one has enough evidence to promote or delete today, and leaving it warn-and-unread is the shape this debt exists to refuse.",
+          "what": "RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0). exitcode/overmock/exhaustive/flaky/redlock were moved to opt-in on 31 warnings and 0 blocks. That is real evidence but it is SIX cycles from mostly ONE operator, and a warn-tier guard cannot produce blocks by construction - so 'never blocked' is partly a statement about the tier, not only about the guard. Their rows keep accruing for anyone who opts in. By expiry: read gate_yield again and either confirm the retirement, restore a guard that turns out to have been carrying load, or delete the five outright - the one thing not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN — several a day — so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. Separately actionable now and NOT blocked on the unit fix: exitcode at 701 warns / 0 blocks / 0 fp is ~117 warns per cycle that nobody acts on — that one has enough evidence to promote or delete today, and leaving it warn-and-unread is the shape this debt exists to refuse.",
           "owner": "david",
           "expires": "2026-11-15"
         },
@@ -56,7 +62,7 @@
     },
     {
       "id": "fixture-data-guard",
-      "summary": "fixture_guard (WARN by default) \u2014 warns when an expected answer in a test-DATA file (test_cases.json, fixtures, golden) is rewritten or a case removed, the gap weakening_guard (test CODE) is blind to. Scoped to answer-value changes: adding a case or editing a non-answer field is silent, so the signal stays rare. Observed in a private calibration run, 2026-08-15; artifact archived privately. Switch: TDD_PLAYBOOK_HOOK_FIXTUREGUARD=off|block.",
+      "summary": "fixture_guard (WARN by default) — warns when an expected answer in a test-DATA file (test_cases.json, fixtures, golden) is rewritten or a case removed, the gap weakening_guard (test CODE) is blind to. Scoped to answer-value changes: adding a case or editing a non-answer field is silent, so the signal stays rare. Observed in a private calibration run, 2026-08-15; artifact archived privately. Switch: TDD_PLAYBOOK_HOOK_FIXTUREGUARD=off|block.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -89,13 +95,13 @@
       "integration_debt": [
         {
           "id": "fixtureguard-warn-tier-decision",
-          "what": "WARN-TIER PROMOTE/KILL (A, 2026-08-15). fixture_guard ships warn, and a warn row is minted but not yet read by any code (gate_yield rolls it up; nothing acts on it). Numeric trigger, not prose: by expiry read gate_yield's fixtureguard warns across the committed cycles since ship \u2014 if it fired on real gaming across >=2 cycles, PROMOTE to block; if zero warns across >=2 cycles, DELETE the guard as unearned ceremony; otherwise re-date with the count. The one thing not allowed is leaving it warn-and-unread, the retired-gate-becomes-unmaintained shape. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN \u2014 several a day \u2014 so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. Separately actionable now and NOT blocked on the unit fix: exitcode at 701 warns / 0 blocks / 0 fp is ~117 warns per cycle that nobody acts on \u2014 that one has enough evidence to promote or delete today, and leaving it warn-and-unread is the shape this debt exists to refuse.",
+          "what": "WARN-TIER PROMOTE/KILL (A, 2026-08-15). fixture_guard ships warn, and a warn row is minted but not yet read by any code (gate_yield rolls it up; nothing acts on it). Numeric trigger, not prose: by expiry read gate_yield's fixtureguard warns across the committed cycles since ship — if it fired on real gaming across >=2 cycles, PROMOTE to block; if zero warns across >=2 cycles, DELETE the guard as unearned ceremony; otherwise re-date with the count. The one thing not allowed is leaving it warn-and-unread, the retired-gate-becomes-unmaintained shape. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN — several a day — so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. Separately actionable now and NOT blocked on the unit fix: exitcode at 701 warns / 0 blocks / 0 fp is ~117 warns per cycle that nobody acts on — that one has enough evidence to promote or delete today, and leaving it warn-and-unread is the shape this debt exists to refuse.",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
           "id": "lock-surface-fixturedata-kind",
-          "what": "RESIDUAL HOLE, stated not assumed (arch-F8). While a TEST-LOCK is ENGAGED, data files a locked test READS are covered only by fixture_guard (WARN), not by the lock's BLOCK \u2014 the lock classifier (host_contract._surface) has no 'fixturedata' surface kind, and tdd_lock locks only the files a human named. So 'TEST-LOCK blocks a fixture rewrite when engaged' is FALSE for data a locked test reads. The warn guard covers the primary (unlocked/default) posture the benchmark exercised; the lock-engaged posture keeps the hole. By expiry: add a 'fixturedata' surface kind to host_contract._surface (post-U1 unification, so one edit) so data under a locked test's dir inherits BLOCK, red-first against a locked-test-reads-fixture case \u2014 or re-date with a decision that warn-under-lock is sufficient and why.",
+          "what": "RESIDUAL HOLE, stated not assumed (arch-F8). While a TEST-LOCK is ENGAGED, data files a locked test READS are covered only by fixture_guard (WARN), not by the lock's BLOCK — the lock classifier (host_contract._surface) has no 'fixturedata' surface kind, and tdd_lock locks only the files a human named. So 'TEST-LOCK blocks a fixture rewrite when engaged' is FALSE for data a locked test reads. The warn guard covers the primary (unlocked/default) posture the benchmark exercised; the lock-engaged posture keeps the hole. By expiry: add a 'fixturedata' surface kind to host_contract._surface (post-U1 unification, so one edit) so data under a locked test's dir inherits BLOCK, red-first against a locked-test-reads-fixture case — or re-date with a decision that warn-under-lock is sufficient and why.",
           "owner": "david",
           "expires": "2026-10-31"
         }
@@ -131,7 +137,7 @@
           "topic": "<git-common-dir>/tdd-playbook/events.jsonl (tdd_lock.journal)",
           "consumers": [
             "learning-loop (/grade reads unlock reasons)",
-            "gate_yield.py (journaled unlocks land as override events \u2014 the adjudicated false-positive signal)"
+            "gate_yield.py (journaled unlocks land as override events — the adjudicated false-positive signal)"
           ]
         }
       ],
@@ -171,7 +177,7 @@
     },
     {
       "id": "citation-gate",
-      "summary": "verify_citations.py \u2014 mechanical check that findings' file:line citations resolve and quotes match.",
+      "summary": "verify_citations.py — mechanical check that findings' file:line citations resolve and quotes match.",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -201,7 +207,7 @@
     },
     {
       "id": "capability-registry",
-      "summary": "capability_registry.py \u2014 validate/doctor/init over capabilities.json; makes darkness enumerable (\u00a76a).",
+      "summary": "capability_registry.py — validate/doctor/init over capabilities.json; makes darkness enumerable (§6a).",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -221,7 +227,7 @@
       "integration_debt": [
         {
           "id": "consumer-reference-typed-schema-decision",
-          "what": "H2 FOLLOW-THROUGH: doctor now buckets emits[].consumers (43 untyped at introduction \u2014 the real denominator). By expiry, read the unresolved/unset noise level and either migrate the registry to typed {ref, kind} consumers (making R-CONSUMER a validate rule) or record the decision that prose consumers stay legal and why. The report must never migrate into validate without this decision",
+          "what": "H2 FOLLOW-THROUGH: doctor now buckets emits[].consumers (43 untyped at introduction — the real denominator). By expiry, read the unresolved/unset noise level and either migrate the registry to typed {ref, kind} consumers (making R-CONSUMER a validate rule) or record the decision that prose consumers stay legal and why. The report must never migrate into validate without this decision",
           "owner": "david",
           "expires": "2026-11-30"
         }
@@ -242,7 +248,7 @@
     },
     {
       "id": "telemetry-grading",
-      "summary": "grade_from_otel.py \u2014 /grade's telemetry seam; grades the cycle from tool logs, never self-narration.",
+      "summary": "grade_from_otel.py — /grade's telemetry seam; grades the cycle from tool logs, never self-narration.",
       "user_facing": false,
       "surfaces": [
         "local"
@@ -272,14 +278,14 @@
     },
     {
       "id": "calibration-loop",
-      "summary": "Planted-error calibration of the verification agents on a live model (\u00a713); scoreboard in docs/calibration/.",
+      "summary": "Planted-error calibration of the verification agents on a live model (§13); scoreboard in docs/calibration/.",
       "user_facing": false,
       "surfaces": [
         "local"
       ],
       "activation": {
         "default": "off",
-        "switch": "python3 calibration/run_calibration.py \u2014 OPT-IN and reactive since v1.32.0 (run it when a verifier misbehaves, on a doer-model upgrade, or to prove a gate against a planted defect); there is no clock. --dry-run is CI-only validation"
+        "switch": "python3 calibration/run_calibration.py — OPT-IN and reactive since v1.32.0 (run it when a verifier misbehaves, on a doer-model upgrade, or to prove a gate against a planted defect); there is no clock. --dry-run is CI-only validation"
       },
       "wired_by": [
         "calibration/host_runner.py",
@@ -308,7 +314,7 @@
       ],
       "liveness": {
         "max_quiet_days": 14,
-        "probe": "calibration/check_staleness.py \u2014 mechanical history.md staleness READ (F5, INVALID rows never extend freshness), run BY HAND. It gates nothing and nothing invokes it: absent from gate-manifest.json, gate_runner.py and .github/workflows/gate.yml. It did gate the release path until v1.32.0 retired the calibration clock with the CIVerd engine; max_quiet_days below is therefore an advisory staleness hint, not an enforced budget"
+        "probe": "calibration/check_staleness.py — mechanical history.md staleness READ (F5, INVALID rows never extend freshness), run BY HAND. It gates nothing and nothing invokes it: absent from gate-manifest.json, gate_runner.py and .github/workflows/gate.yml. It did gate the release path until v1.32.0 retired the calibration clock with the CIVerd engine; max_quiet_days below is therefore an advisory staleness hint, not an enforced budget"
       },
       "integration_debt": [
         {
@@ -317,71 +323,71 @@
           "expires": "2026-09-30"
         },
         {
-          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): the MECHANISM this debt names no longer exists. It was enforced by `check_staleness --history docs/calibration/quarterly.md --max-age-days 100 --warn-only` as a release-gate line, and v1.32.0 removed the quarterly clock along with the weekly one when calibration became opt-in. The CONTENT is not dismissed \u2014 the HACK_CATALOG refresh in particular is still worth doing, and \u00a713 still argues the catalog decays \u2014 but it is now a reactive task with no clock, and keeping a dated debt whose enforcement was deleted is the write-only lie the registry exists to prevent. Original: | QUARTERLY BUNDLE (lift/ratchet set B \u2014 the delay-proofing David demanded): each ~quarter, land a dated row in docs/calibration/quarterly.md (the check_staleness --max-age-days 100 clock, release-gate --warn-only) covering: (a) HACK_CATALOG refresh ritual; (b) the LIFT diagnostic read \u2014 HARD-BLOCKED until the dev/holdout split lands (approve-time pair/class assignment + burn-on-failure via an append-only side-ledger \u2014 burns COLLIDE with corpus immutability, so it needs its own red-first design pass, due before the first post-08-10 authoring batch) and the frozen contract-stub exists (stub = journal-protected measurement apparatus; the vendored lift-sentinel content scan joins that build); (c) the cross-tier calibration row once budgeted. A lapsed quarter = stale clock on every release AND this entry REDs the suite at expiry \u2014 an individually dropped set-A deliverable converts to a dated line here in the same commit, never to 'opportunistic'",
+          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): the MECHANISM this debt names no longer exists. It was enforced by `check_staleness --history docs/calibration/quarterly.md --max-age-days 100 --warn-only` as a release-gate line, and v1.32.0 removed the quarterly clock along with the weekly one when calibration became opt-in. The CONTENT is not dismissed — the HACK_CATALOG refresh in particular is still worth doing, and §13 still argues the catalog decays — but it is now a reactive task with no clock, and keeping a dated debt whose enforcement was deleted is the write-only lie the registry exists to prevent. Original: | QUARTERLY BUNDLE (lift/ratchet set B — the delay-proofing David demanded): each ~quarter, land a dated row in docs/calibration/quarterly.md (the check_staleness --max-age-days 100 clock, release-gate --warn-only) covering: (a) HACK_CATALOG refresh ritual; (b) the LIFT diagnostic read — HARD-BLOCKED until the dev/holdout split lands (approve-time pair/class assignment + burn-on-failure via an append-only side-ledger — burns COLLIDE with corpus immutability, so it needs its own red-first design pass, due before the first post-08-10 authoring batch) and the frozen contract-stub exists (stub = journal-protected measurement apparatus; the vendored lift-sentinel content scan joins that build); (c) the cross-tier calibration row once budgeted. A lapsed quarter = stale clock on every release AND this entry REDs the suite at expiry — an individually dropped set-A deliverable converts to a dated line here in the same commit, never to 'opportunistic'",
           "owner": "david",
           "expires": "2026-12-31"
         },
         {
-          "what": "APPLY_EDITS CREATE capability (v1.24 \u00a76c D15 \u2014 promoted from the corpus README's 'possible future enhancement' to owned deliverable-or-debt because it is now LOAD-BEARING: writer-with-no-reader plants naturally want NEW fixture files, and apply_edits can only modify existing ones \u2014 4 of 6 first-batch candidates were mechanically rejected for exactly this). Done = run_calibration.apply_edits accepts a {file, create} edit shape with red-first tests + validate_scenario coverage, or a consciously re-dated entry here \u2014 never silence",
+          "what": "APPLY_EDITS CREATE capability (v1.24 §6c D15 — promoted from the corpus README's 'possible future enhancement' to owned deliverable-or-debt because it is now LOAD-BEARING: writer-with-no-reader plants naturally want NEW fixture files, and apply_edits can only modify existing ones — 4 of 6 first-batch candidates were mechanically rejected for exactly this). Done = run_calibration.apply_edits accepts a {file, create} edit shape with red-first tests + validate_scenario coverage, or a consciously re-dated entry here — never silence",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE): the premise of this debt was the WEEKLY CLOCK \u2014 'doctrine text shipped in vN.N and owes a scheduled live calibration run'. There is no schedule any more, so the obligation is no longer a date; it is a TRIGGER. Run calibration against these surfaces WHEN a verifier misbehaves, when the doer model is upgraded, or before trusting a gate change \u2014 not because a clock says so. Kept rather than closed because the underlying fact is still true and still worth knowing: this text has never been live-calibrated. The expiry is now a REVIEW date, not a due date. Original text: | V1.24 GATE-SURFACE CALIBRATION (tripwire-fold, \u00a713: gate-surface text changes are live-calibrated before trusted): the D7\u2013D9 v1.24 additions (integration-audit fifth class, integration-adversary dangling-flows pattern, tdd-plan flow table) are NOT trusted until their rows land in docs/calibration/history.md \u2014 sequence in the ~2026-08-10 run AFTER the owed 3-agent re-run. Done = v1.24-surface rows in history.md, or a consciously re-dated entry",
+          "what": "RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE): the premise of this debt was the WEEKLY CLOCK — 'doctrine text shipped in vN.N and owes a scheduled live calibration run'. There is no schedule any more, so the obligation is no longer a date; it is a TRIGGER. Run calibration against these surfaces WHEN a verifier misbehaves, when the doer model is upgraded, or before trusting a gate change — not because a clock says so. Kept rather than closed because the underlying fact is still true and still worth knowing: this text has never been live-calibrated. The expiry is now a REVIEW date, not a due date. Original text: | V1.24 GATE-SURFACE CALIBRATION (tripwire-fold, §13: gate-surface text changes are live-calibrated before trusted): the D7–D9 v1.24 additions (integration-audit fifth class, integration-adversary dangling-flows pattern, tdd-plan flow table) are NOT trusted until their rows land in docs/calibration/history.md — sequence in the ~2026-08-10 run AFTER the owed 3-agent re-run. Done = v1.24-surface rows in history.md, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
-          "what": "RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE): the premise of this debt was the WEEKLY CLOCK \u2014 'doctrine text shipped in vN.N and owes a scheduled live calibration run'. There is no schedule any more, so the obligation is no longer a date; it is a TRIGGER. Run calibration against these surfaces WHEN a verifier misbehaves, when the doer model is upgraded, or before trusting a gate change \u2014 not because a clock says so. Kept rather than closed because the underlying fact is still true and still worth knowing: this text has never been live-calibrated. The expiry is now a REVIEW date, not a due date. Original text: | V1.25 GATE-SURFACE CALIBRATION (\u00a713): the guard-calibration doctrine + brief adoptions (SKILL \u00a713/\u00a71/\u00a712 additions; red-first-verifier / tripwire-auditor / planted-error-probe brief lines) are NOT trusted until their rows land in docs/calibration/history.md \u2014 rides the same re-run as the v1.24 surfaces. Done = v1.25-surface rows in history.md, or a consciously re-dated entry",
+          "what": "RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE): the premise of this debt was the WEEKLY CLOCK — 'doctrine text shipped in vN.N and owes a scheduled live calibration run'. There is no schedule any more, so the obligation is no longer a date; it is a TRIGGER. Run calibration against these surfaces WHEN a verifier misbehaves, when the doer model is upgraded, or before trusting a gate change — not because a clock says so. Kept rather than closed because the underlying fact is still true and still worth knowing: this text has never been live-calibrated. The expiry is now a REVIEW date, not a due date. Original text: | V1.25 GATE-SURFACE CALIBRATION (§13): the guard-calibration doctrine + brief adoptions (SKILL §13/§1/§12 additions; red-first-verifier / tripwire-auditor / planted-error-probe brief lines) are NOT trusted until their rows land in docs/calibration/history.md — rides the same re-run as the v1.24 surfaces. Done = v1.25-surface rows in history.md, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
-          "what": "RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE): the premise of this debt was the WEEKLY CLOCK \u2014 'doctrine text shipped in vN.N and owes a scheduled live calibration run'. There is no schedule any more, so the obligation is no longer a date; it is a TRIGGER. Run calibration against these surfaces WHEN a verifier misbehaves, when the doer model is upgraded, or before trusting a gate change \u2014 not because a clock says so. Kept rather than closed because the underlying fact is still true and still worth knowing: this text has never been live-calibrated. The expiry is now a REVIEW date, not a due date. Original text: | V1.26 GATE-SURFACE CALIBRATION (\u00a713): the seam-contract doctrine + brief adoptions (SKILL \u00a71 seam rule / \u00a74 limitation / \u00a70 field granularity / \u00a76c family-parity Tier-1 rewrite, integration-adversary field-granularity sharpening, mutation-runner + /mutate limitation clauses) are NOT trusted until their rows land in docs/calibration/history.md from a live run \u2014 the ~2026-08-10 run already owes the v1.24 + v1.25 surfaces; include the H11 pair (once approved) in the same run",
+          "what": "RE-SCOPED 2026-08-09 (v1.32.0, calibration is now OPT-IN AND REACTIVE): the premise of this debt was the WEEKLY CLOCK — 'doctrine text shipped in vN.N and owes a scheduled live calibration run'. There is no schedule any more, so the obligation is no longer a date; it is a TRIGGER. Run calibration against these surfaces WHEN a verifier misbehaves, when the doer model is upgraded, or before trusting a gate change — not because a clock says so. Kept rather than closed because the underlying fact is still true and still worth knowing: this text has never been live-calibrated. The expiry is now a REVIEW date, not a due date. Original text: | V1.26 GATE-SURFACE CALIBRATION (§13): the seam-contract doctrine + brief adoptions (SKILL §1 seam rule / §4 limitation / §0 field granularity / §6c family-parity Tier-1 rewrite, integration-adversary field-granularity sharpening, mutation-runner + /mutate limitation clauses) are NOT trusted until their rows land in docs/calibration/history.md from a live run — the ~2026-08-10 run already owes the v1.24 + v1.25 surfaces; include the H11 pair (once approved) in the same run",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
-          "what": "MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F \u2014 the one substantive item): four of the seven false alarms in run 4 are mutation-runner CONTROLS. The brief has accumulated refuse-conditions (vacuous scope, accounting reconciles, baseline green, cache busted, bindings checked) with NO matching description of what a certifiable clean run looks like, so on a clean run it hunts until it finds something. DOUBLY supported: the ledger has now scored FLAT on two independent fixture-side attempts at these same controls (L-20260804-*, L-20260805-01..03, 'wrong-fix'). PRE-REGISTERED DECISION RULE: my L-20260805-24/25/26 target the agents' actual stated run-4 reasons and are unmeasured \u2014 re-run FIRST (the engine's own sequencing: never change a verifier prompt while fixture fixes are pending measurement). If those come back FLAT, three fixture-side attempts across two sessions have failed and the cause is the brief: add the clean-run description. Done = either the entries land HIT, or the brief gains the description with its own ledger entry, or a consciously re-dated entry",
+          "what": "MUTATION-RUNNER CLEAN-RUN DESCRIPTION (CIVerd calibration analysis 2026-08-05, their finding F — the one substantive item): four of the seven false alarms in run 4 are mutation-runner CONTROLS. The brief has accumulated refuse-conditions (vacuous scope, accounting reconciles, baseline green, cache busted, bindings checked) with NO matching description of what a certifiable clean run looks like, so on a clean run it hunts until it finds something. DOUBLY supported: the ledger has now scored FLAT on two independent fixture-side attempts at these same controls (L-20260804-*, L-20260805-01..03, 'wrong-fix'). PRE-REGISTERED DECISION RULE: my L-20260805-24/25/26 target the agents' actual stated run-4 reasons and are unmeasured — re-run FIRST (the engine's own sequencing: never change a verifier prompt while fixture fixes are pending measurement). If those come back FLAT, three fixture-side attempts across two sessions have failed and the cause is the brief: add the clean-run description. Done = either the entries land HIT, or the brief gains the description with its own ledger entry, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point): every agent emits markdown, so any oracle anchored on adjacent literal text is fragile \u2014 normalise agent text before matching (strip emphasis, collapse whitespace) and prefer verdict-line anchors over prose. DELIBERATELY NOT DONE THIS CYCLE: it changes how all 40 oracles match, and doing it now would confound the ten pre-registered predictions L-20260805-20..29 whose whole purpose is to measure per-scenario fixes \u2014 I would not know which change moved what. Do it in the cycle AFTER, with its own ledger entry. HELPER LANDED 2026-08-16 (v1.37.x diagnose feature): run_calibration.normalize_for_oracle (strip * _ backtick + collapse whitespace) is authored and unit-tested as the `holdout diagnose` classifier's normalizer, and oracle(scenario, output, normalizer=) is ALREADY parameterized (default None = unchanged). So paying this debt is now 'flip oracle()'s default to normalizer=normalize_for_oracle, add the ledger entry, and victim-sweep the dev corpus for any newly-rescued must_not_match' -- NOT writing normalization a second time (the Nth-copy this debt warns against). NOTE: normalisation would NOT have rescued the three immutable baseline plants (morphology and synonym misses, not emphasis) \u2014 those need superseding, tracked separately. Done = the pass lands with an entry, or a consciously re-dated entry",
+          "what": "ORACLE NORMALISATION PASS (CIVerd calibration analysis 2026-08-05, their general point): every agent emits markdown, so any oracle anchored on adjacent literal text is fragile — normalise agent text before matching (strip emphasis, collapse whitespace) and prefer verdict-line anchors over prose. DELIBERATELY NOT DONE THIS CYCLE: it changes how all 40 oracles match, and doing it now would confound the ten pre-registered predictions L-20260805-20..29 whose whole purpose is to measure per-scenario fixes — I would not know which change moved what. Do it in the cycle AFTER, with its own ledger entry. HELPER LANDED 2026-08-16 (v1.37.x diagnose feature): run_calibration.normalize_for_oracle (strip * _ backtick + collapse whitespace) is authored and unit-tested as the `holdout diagnose` classifier's normalizer, and oracle(scenario, output, normalizer=) is ALREADY parameterized (default None = unchanged). So paying this debt is now 'flip oracle()'s default to normalizer=normalize_for_oracle, add the ledger entry, and victim-sweep the dev corpus for any newly-rescued must_not_match' -- NOT writing normalization a second time (the Nth-copy this debt warns against). NOTE: normalisation would NOT have rescued the three immutable baseline plants (morphology and synonym misses, not emphasis) — those need superseding, tracked separately. Done = the pass lands with an entry, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "PAID/VALIDATED 2026-08-16 \u2014 the D2.d live probe PASSED on the DEPLOYED 1.37.0 plugin (vacuity: plugin enabled -> 17 hook events fired; isolation: --settings -> 0 events), CONFIRMING that --settings unloads a user-scope plugin and the deployed note_hook_fired writes the sink. The effect-proof is no longer inert; --isolation no-playbook numbers are now trustworthy. Remove this entry at the next debt sweep. ORIGINAL OBLIGATION (now satisfied): BASELINE ISOLATION EFFECT-PROOF IS DEPLOY-GATED (B1, 2026-08-15). `--isolation no-playbook` records the control group and fails closed on a LIVE isolation breach (a non-empty hook-event sink -> the rep is INVALID), but the effect-proof is INERT until the DEPLOYED plugin carries `_common.note_hook_fired`: the nested calibration claude loads the user-scope plugin CACHE (v1.36.0 at ship), not the repo working tree. `run_calibration.sink_liveness_probe` REFUSES a no-playbook run until the deployed intent_nudge demonstrably writes the sink, so a FALSE-isolated number is impossible in the meantime. By expiry: cut a plugin release carrying note_hook_fired, `claude plugin update tdd-playbook@david-tools`, run the D2.d live probe (scratchpad d2d_isolation_probe.sh) to CONFIRM `--settings` unloads a user-scope plugin (vacuity: with-playbook -> non-empty sink; isolation: --settings -> empty), and record the result. If `--settings` does NOT disable a user-scope plugin the mechanism fails and a different isolation approach is required -- do not ship no-playbook numbers.",
+          "what": "PAID/VALIDATED 2026-08-16 — the D2.d live probe PASSED on the DEPLOYED 1.37.0 plugin (vacuity: plugin enabled -> 17 hook events fired; isolation: --settings -> 0 events), CONFIRMING that --settings unloads a user-scope plugin and the deployed note_hook_fired writes the sink. The effect-proof is no longer inert; --isolation no-playbook numbers are now trustworthy. Remove this entry at the next debt sweep. ORIGINAL OBLIGATION (now satisfied): BASELINE ISOLATION EFFECT-PROOF IS DEPLOY-GATED (B1, 2026-08-15). `--isolation no-playbook` records the control group and fails closed on a LIVE isolation breach (a non-empty hook-event sink -> the rep is INVALID), but the effect-proof is INERT until the DEPLOYED plugin carries `_common.note_hook_fired`: the nested calibration claude loads the user-scope plugin CACHE (v1.36.0 at ship), not the repo working tree. `run_calibration.sink_liveness_probe` REFUSES a no-playbook run until the deployed intent_nudge demonstrably writes the sink, so a FALSE-isolated number is impossible in the meantime. By expiry: cut a plugin release carrying note_hook_fired, `claude plugin update tdd-playbook@david-tools`, run the D2.d live probe (scratchpad d2d_isolation_probe.sh) to CONFIRM `--settings` unloads a user-scope plugin (vacuity: with-playbook -> non-empty sink; isolation: --settings -> empty), and record the result. If `--settings` does NOT disable a user-scope plugin the mechanism fails and a different isolation approach is required -- do not ship no-playbook numbers.",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
-          "what": "PAID/VALIDATED 2026-08-16 - the anchor is authored and replayed. Plant ambient-input-seeded-gate-test (a write gate authorizing off a run-scoped contextvar; run_agent_once builds the grants but never calls begin_run, and the test hand-seeds _run_grants over the inert gate) is flagged HOLLOW by test-quality-adversary 3/3; the paired clean control control-ambient-input-driven-gate-test (run_agent_once calls begin_run; the test drives run_agent_once) is called LOAD-BEARING 3/3. The FIRST replay caught the plant but FALSE-POSITIVED the control (0/3, adversary called the correctly-wired test HOLLOW); hunt #6 gained a restraint clause (do NOT flag when the test drives a production entry that publishes the state), registered as ledger L-20260816-01, and the same-day re-run cleared the control (FP 0/1) WITHOUT blinding the plant. Both fixtures in calibration/corpus/approved/. Remove this entry at the next debt sweep. ORIGINAL OBLIGATION (now satisfied): AMBIENT-INPUT SELF-CONSISTENCY CALIBRATION ANCHOR (\u00a71 hardening, cheliped 2026-08-15). The new \u00a71 rule ('drive a guard through the entry that populates its input, never seed the input by hand') + the test-quality-adversary hunt #6 / security-adversary hunt #6 are DOCTRINE-only so far. Per \u00a713, a rule born from a defect must be replayed against a planted fixture a fresh adversary must CATCH \u2014 otherwise it is a rule nobody proved catches anything. By expiry: author a plant+control for the shape (a gate authorizing off a contextvar; a caller that builds the authorization object but never publishes it to that context; a test seeding the contextvar by hand over the inert gate) via the corpus/holdout authoring flow, dispatch test-quality-adversary against it (plant must be flagged as inert-control false-green; control -- a test that drives the real entry -- must pass clean), citing the motivating cheliped pre-fix blob, OR re-date with a reason. Doctrine without a planted anchor is the 'instrument satisfied rather than used' shape this capability warns about.",
+          "what": "PAID/VALIDATED 2026-08-16 - the anchor is authored and replayed. Plant ambient-input-seeded-gate-test (a write gate authorizing off a run-scoped contextvar; run_agent_once builds the grants but never calls begin_run, and the test hand-seeds _run_grants over the inert gate) is flagged HOLLOW by test-quality-adversary 3/3; the paired clean control control-ambient-input-driven-gate-test (run_agent_once calls begin_run; the test drives run_agent_once) is called LOAD-BEARING 3/3. The FIRST replay caught the plant but FALSE-POSITIVED the control (0/3, adversary called the correctly-wired test HOLLOW); hunt #6 gained a restraint clause (do NOT flag when the test drives a production entry that publishes the state), registered as ledger L-20260816-01, and the same-day re-run cleared the control (FP 0/1) WITHOUT blinding the plant. Both fixtures in calibration/corpus/approved/. Remove this entry at the next debt sweep. ORIGINAL OBLIGATION (now satisfied): AMBIENT-INPUT SELF-CONSISTENCY CALIBRATION ANCHOR (§1 hardening, cheliped 2026-08-15). The new §1 rule ('drive a guard through the entry that populates its input, never seed the input by hand') + the test-quality-adversary hunt #6 / security-adversary hunt #6 are DOCTRINE-only so far. Per §13, a rule born from a defect must be replayed against a planted fixture a fresh adversary must CATCH — otherwise it is a rule nobody proved catches anything. By expiry: author a plant+control for the shape (a gate authorizing off a contextvar; a caller that builds the authorization object but never publishes it to that context; a test seeding the contextvar by hand over the inert gate) via the corpus/holdout authoring flow, dispatch test-quality-adversary against it (plant must be flagged as inert-control false-green; control -- a test that drives the real entry -- must pass clean), citing the motivating cheliped pre-fix blob, OR re-date with a reason. Doctrine without a planted anchor is the 'instrument satisfied rather than used' shape this capability warns about.",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
-          "what": "SUPERSEDE PROSE-ORACLE PLANTS (run-4 adjudication, 2026-08-05): csv-escape-fixed-at-call-site, shadowed-import-vacuous-suite and special-case-bypasses-both-copies still score on prose VOCABULARY, which run 4 proved is the weak link (correct agent verdicts scored down on adjectives; one regex could not match the word 'survives'). They are in the v1.22.0 baseline and therefore IMMUTABLE \u2014 check_scoreboard_integrity refused an edit attempt by the assistant and that refusal STANDS. The sanctioned path is NEW superseding plants carrying VERDICT+ARTIFACT anchors (two already carry standing WEAK-PLANT flags). WIDENED 2026-08-06 to SIX plants: CIVerd's --tags fix moved the integrity baseline from v1.22.0 to v1.26.0 and caught three MORE modified approved plants \u2014 ghost-gate-undeclared-export-flag, control-drift-tripwire-union-exercised and drift-tripwire-intersection-excuse \u2014 whose run-4 fixes had been legal only because the old window could not see them. Reverted, journaled, and quarantined against promotion (PROMOTION_QUARANTINE, run_calibration.py); the union control is the urgent one, since its mis-specified PREMISE (a separate planted test does not calibrate the named deliverable) makes its FAILs instrument error. Done = superseding plants approved in corpus/approved/, or a consciously re-dated entry",
+          "what": "SUPERSEDE PROSE-ORACLE PLANTS (run-4 adjudication, 2026-08-05): csv-escape-fixed-at-call-site, shadowed-import-vacuous-suite and special-case-bypasses-both-copies still score on prose VOCABULARY, which run 4 proved is the weak link (correct agent verdicts scored down on adjectives; one regex could not match the word 'survives'). They are in the v1.22.0 baseline and therefore IMMUTABLE — check_scoreboard_integrity refused an edit attempt by the assistant and that refusal STANDS. The sanctioned path is NEW superseding plants carrying VERDICT+ARTIFACT anchors (two already carry standing WEAK-PLANT flags). WIDENED 2026-08-06 to SIX plants: CIVerd's --tags fix moved the integrity baseline from v1.22.0 to v1.26.0 and caught three MORE modified approved plants — ghost-gate-undeclared-export-flag, control-drift-tripwire-union-exercised and drift-tripwire-intersection-excuse — whose run-4 fixes had been legal only because the old window could not see them. Reverted, journaled, and quarantined against promotion (PROMOTION_QUARANTINE, run_calibration.py); the union control is the urgent one, since its mis-specified PREMISE (a separate planted test does not calibrate the named deliverable) makes its FAILs instrument error. Done = superseding plants approved in corpus/approved/, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         }
       ],
-      "notes": "PAID 2026-08-09 \u2014 three CORPUS QUEUE/BATCH debts closed on evidence, not on a date. Each named its plants explicitly and every one is in calibration/corpus/approved/: the \u00a76c four (ghost-gate-undeclared-export-flag, plan-omits-summary-consumer, control-declared-kill-switch, control-summary-consumer-named), the H10 four (bug107-guard-excuses-motivating-shape, control-bug107-guard-replay-red, drift-tripwire-intersection-excuse, control-drift-tripwire-union-exercised) and the H11 pair (seam-self-consistency-return-only, control-seam-message-rendered). proposed/ holds only a README \u2014 the queue is empty. These were paid BEFORE this release and stayed open because nobody closed them; the v1.32.0 debt sweep then re-dated them six weeks out under a 'needs a live claude binary and budget' blocker that was false twice over. Recorded because a batch re-date that does not read its entries is exactly the 'instrument satisfied rather than used' failure the ledger warns about. | ",
+      "notes": "PAID 2026-08-09 — three CORPUS QUEUE/BATCH debts closed on evidence, not on a date. Each named its plants explicitly and every one is in calibration/corpus/approved/: the §6c four (ghost-gate-undeclared-export-flag, plan-omits-summary-consumer, control-declared-kill-switch, control-summary-consumer-named), the H10 four (bug107-guard-excuses-motivating-shape, control-bug107-guard-replay-red, drift-tripwire-intersection-excuse, control-drift-tripwire-union-exercised) and the H11 pair (seam-self-consistency-return-only, control-seam-message-rendered). proposed/ holds only a README — the queue is empty. These were paid BEFORE this release and stayed open because nobody closed them; the v1.32.0 debt sweep then re-dated them six weeks out under a 'needs a live claude binary and budget' blocker that was false twice over. Recorded because a batch re-date that does not read its entries is exactly the 'instrument satisfied rather than used' failure the ledger warns about. | ",
       "calibration_followup": [
         {
-          "what": "PAID IN PART 2026-07-30: the first live run under the v1.17 instrument LANDED recall AND FP numbers (history.md run blocks, repo 1cf99f2/b5b30aa, 8 agents, repeat-3). The numbers then did their job: architecture-adversary, script-adversary, integration-adversary, claims-verifier at/near PASS; red-first-verifier, mutation-runner, tripwire-auditor showed BLOCKING failures dominated by wrong-verdict-line on CLEAN CONTROLS (forced-line contract buried or absent \u2014 mutation-runner's gate verdict was never a mandated line at all). Agent contracts fixed same day (explicit house-contract closing blocks; oracles unchanged \u2014 the mutation-runner forced line was worded to match the shipped control regexes). REMAINING BY EXPIRY: the 3-agent re-run (red-first-verifier, mutation-runner, tripwire-auditor) lands in history.md BEFORE the v1.23.0 tag \u2014 \u00a713: gate-surface changes are live-calibrated before trusted; v2.0 still gated on >=1 month sustained cadence.",
+          "what": "PAID IN PART 2026-07-30: the first live run under the v1.17 instrument LANDED recall AND FP numbers (history.md run blocks, repo 1cf99f2/b5b30aa, 8 agents, repeat-3). The numbers then did their job: architecture-adversary, script-adversary, integration-adversary, claims-verifier at/near PASS; red-first-verifier, mutation-runner, tripwire-auditor showed BLOCKING failures dominated by wrong-verdict-line on CLEAN CONTROLS (forced-line contract buried or absent — mutation-runner's gate verdict was never a mandated line at all). Agent contracts fixed same day (explicit house-contract closing blocks; oracles unchanged — the mutation-runner forced line was worded to match the shipped control regexes). REMAINING BY EXPIRY: the 3-agent re-run (red-first-verifier, mutation-runner, tripwire-auditor) lands in history.md BEFORE the v1.23.0 tag — §13: gate-surface changes are live-calibrated before trusted; v2.0 still gated on >=1 month sustained cadence.",
           "owner": "david"
         },
         {
-          "what": "R3 premise plants (roadmap \u00a7E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and \u00a70's spec-integrity rules have no planted test. Falsification probe first \u2014 author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here \u2014 never silence",
+          "what": "R3 premise plants (roadmap §E, deferred from the v1.17.0 eval-discipline pass): the DOER is the never-calibrated role and §0's spec-integrity rules have no planted test. Falsification probe first — author `wrong-locus-premise` (+ its TRUE-premise control) with a doer calibration path and run it 3x live in the ~2026-08-10 cycle; build the rest of the class only if the doer fails to contradict the false premise. Done = the probe's rows in history.md, or a consciously re-dated entry here — never silence",
           "owner": "david"
         }
       ]
     },
     {
       "id": "scoreboard-integrity",
-      "summary": "check_scoreboard_integrity.py \u2014 history.md append-only, approved corpus immutable+growing, directional oracle rule with the append-only oracle-changes.md journal (D3; exit 0/2/3, fail closed).",
+      "summary": "check_scoreboard_integrity.py — history.md append-only, approved corpus immutable+growing, directional oracle rule with the append-only oracle-changes.md journal (D3; exit 0/2/3, fail closed).",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -393,19 +399,19 @@
       "wired_by": [
         "calibration/test_harness.py (runs it vs the latest release tag on every suite run)",
         "CLAUDE.md::release discipline",
-        "docs/plans/civerd-trust-floor-2026-07.md \u00a72b (calibration_integrity check)"
+        "docs/plans/civerd-trust-floor-2026-07.md §2b (calibration_integrity check)"
       ],
       "exercised_by": [
         "calibration/test_harness.py"
       ],
       "integration_debt": [
         {
-          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): this asked for an engine-side calibration_integrity check on srv1621832. The engine is retired, so the ask cannot be paid and its RED on 2026-09-16 would name an actor that does not exist. Same reasoning applied to integrity-guards in this release; applying it to one debt and not its twin is the inconsistency the sweep exists to catch. The repo-side check it mirrors is LIVE and unaffected: check_scoreboard_integrity.py runs every gate via test_harness.py. Historical text: | engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract \u00a72b + \u00a71.3 hard-floor listing) not yet implemented on srv1621832",
+          "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): this asked for an engine-side calibration_integrity check on srv1621832. The engine is retired, so the ask cannot be paid and its RED on 2026-09-16 would name an actor that does not exist. Same reasoning applied to integrity-guards in this release; applying it to one debt and not its twin is the inconsistency the sweep exists to catch. The repo-side check it mirrors is LIVE and unaffected: check_scoreboard_integrity.py runs every gate via test_harness.py. Historical text: | engine-side calibration_integrity check (CIVerd adapts the reference impl against its root-owned last-green baseline; contract §2b + §1.3 hard-floor listing) not yet implemented on srv1621832",
           "owner": "david",
           "expires": "2026-12-31"
         },
         {
-          "what": "SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 \u2014 DEFERRED, stated not dropped): three checks decide AUTHORIZATION by testing whether a name appears as a substring of prose \u2014 rule (c) `sid in journal_added`, rule (d) `h not in gate_added`, and ledger `_fresh_ids` `e['id'] in added`. A passing mention (a paragraph ABOUT a change, a quoted example, a docstring) grants authorization nobody wrote. This is Cheliped's grep-counts-docstrings error sitting in the integrity checker, which is worse than a count because it is a permission. v1.30 deliberately did NOT rewrite these: changing what authorizes an integrity decision needs its own red-first cycle and its own adversary pass, and doing it inside a doctrine release is how the doctrine release becomes the incident. ALSO OWED HERE: Cheliped's proposed lint \u2014 a check that counts or detects occurrences of a code construct in Python source must PARSE, not text-match \u2014 scoped as a Tier-2 advisory dataflow sweep. Done = a parsed one-line entry grammar the journals already document but nothing enforces, with planted tests proving a mere MENTION does not authorize, plus the lint, or a consciously re-dated entry",
+          "what": "SUBSTRING AUTHORIZATION IN THE INTEGRITY CHECKER (H15/D8, v1.30 — DEFERRED, stated not dropped): three checks decide AUTHORIZATION by testing whether a name appears as a substring of prose — rule (c) `sid in journal_added`, rule (d) `h not in gate_added`, and ledger `_fresh_ids` `e['id'] in added`. A passing mention (a paragraph ABOUT a change, a quoted example, a docstring) grants authorization nobody wrote. This is Cheliped's grep-counts-docstrings error sitting in the integrity checker, which is worse than a count because it is a permission. v1.30 deliberately did NOT rewrite these: changing what authorizes an integrity decision needs its own red-first cycle and its own adversary pass, and doing it inside a doctrine release is how the doctrine release becomes the incident. ALSO OWED HERE: Cheliped's proposed lint — a check that counts or detects occurrences of a code construct in Python source must PARSE, not text-match — scoped as a Tier-2 advisory dataflow sweep. Done = a parsed one-line entry grammar the journals already document but nothing enforces, with planted tests proving a mere MENTION does not authorize, plus the lint, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-11-15"
         }
@@ -422,7 +428,7 @@
     },
     {
       "id": "gate-yield",
-      "summary": "gate_yield.py \u2014 \u00a713's second decay direction (more expensive than the risk): per-cycle rollups of the hooks' event log into docs/calibration/gate_yield.md; retirement candidates only from >=2 committed cycles, absent data UNMEASURED never zero (R4-lean).",
+      "summary": "gate_yield.py — §13's second decay direction (more expensive than the risk): per-cycle rollups of the hooks' event log into docs/calibration/gate_yield.md; retirement candidates only from >=2 committed cycles, absent data UNMEASURED never zero (R4-lean).",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -460,26 +466,26 @@
       ],
       "integration_debt": [
         {
-          "what": "PAID 2026-08-09 \u2014 VERIFIED, not assumed. The stated Done was '--class required on unlock'. tdd_lock.py now REFUSES an unclassed unlock (exit 2) with a message teaching the four classes; verified in a scratch repo: lock -> 0, unlock without --class -> 2, unlock with --class -> 0. Shipped in v1.32.0. The wedge-the-vendored-cycle concern the debt raised is answered by the refusal being self-teaching rather than a bare failure. Original: | REQUIRE --class ON UNLOCK (v1.27 successor to the PAID override-semantics debt): --class ships OPTIONAL because making it mandatory would wedge every vendored /tdd-unlock mid-cycle. Until it is required, an agent can skip it and the unlock records `unclassified` \u2014 measured as nothing, so the instrument stays blind by omission rather than by miscounting. Done = --class required on unlock (argparse required=True) with a planted test proving a class-less unlock is REFUSED, plus a vendored-refresh note, or a consciously re-dated entry",
+          "what": "PAID 2026-08-09 — VERIFIED, not assumed. The stated Done was '--class required on unlock'. tdd_lock.py now REFUSES an unclassed unlock (exit 2) with a message teaching the four classes; verified in a scratch repo: lock -> 0, unlock without --class -> 2, unlock with --class -> 0. Shipped in v1.32.0. The wedge-the-vendored-cycle concern the debt raised is answered by the refusal being self-teaching rather than a bare failure. Original: | REQUIRE --class ON UNLOCK (v1.27 successor to the PAID override-semantics debt): --class ships OPTIONAL because making it mandatory would wedge every vendored /tdd-unlock mid-cycle. Until it is required, an agent can skip it and the unlock records `unclassified` — measured as nothing, so the instrument stays blind by omission rather than by miscounting. Done = --class required on unlock (argparse required=True) with a planted test proving a class-less unlock is REFUSED, plus a vendored-refresh note, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-12-31"
         },
         {
-          "what": "PER-GATE ADJUDICATION SEAM (v1.27, found by integration-adversary): tdd_lock.py is the ONLY producer of `override` events and it hardcodes gate=testlock, so testweaken/snapshotguard/flaky/overmock/redlock have overrides structurally 0 and can NEVER become retirement candidates \u2014 a user wrongly blocked by testweaken has no adjudication channel at all. v1.27 fixed precision on 1 of 6 gates and must not be read as fixing the instrument. Done = a per-gate adjudication path (an override event carrying its own gate) with planted tests, or a consciously re-dated entry",
+          "what": "PER-GATE ADJUDICATION SEAM (v1.27, found by integration-adversary): tdd_lock.py is the ONLY producer of `override` events and it hardcodes gate=testlock, so testweaken/snapshotguard/flaky/overmock/redlock have overrides structurally 0 and can NEVER become retirement candidates — a user wrongly blocked by testweaken has no adjudication channel at all. v1.27 fixed precision on 1 of 6 gates and must not be read as fixing the instrument. Done = a per-gate adjudication path (an override event carrying its own gate) with planted tests, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
-          "what": "DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden): install_into_repo vendors bin/ and commands/ atomically, so downstream repos get tdd_lock.py --class \u2014 but calibration/ is deliberately never vendored and gate_yield.py rollup is invoked ONLY from run_calibration.py, which downstream repos never run. So every downstream repo now writes reason_class into a gitignored journal and an unrolled yield log: a real write-only flow (\u00a76c). Done = either a vendored rollup path for downstream repos, or a documented decision that gate-yield is a playbook-repo-only instrument with the vendored writer explicitly labelled inert, or a consciously re-dated entry",
+          "what": "DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden): install_into_repo vendors bin/ and commands/ atomically, so downstream repos get tdd_lock.py --class — but calibration/ is deliberately never vendored and gate_yield.py rollup is invoked ONLY from run_calibration.py, which downstream repos never run. So every downstream repo now writes reason_class into a gitignored journal and an unrolled yield log: a real write-only flow (§6c). Done = either a vendored rollup path for downstream repos, or a documented decision that gate-yield is a playbook-repo-only instrument with the vendored writer explicitly labelled inert, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-11-15"
         }
       ],
-      "notes": "PAID 2026-08-05 (v1.27): TESTLOCK OVERRIDE SEMANTICS. gate_yield counted EVERY journaled unlock as a block adjudicated a false positive, so four cycles of the normal red-first lock/implement/unlock rhythm printed RETIREMENT CANDIDATE: testlock with zero real false positives \u2014 the instrument recommending retirement of the strongest anti-gaming defense there is. Fixed by a closed reason-class vocabulary on `tdd_lock.py unlock --class` (phase | feature-end | test-wrong | gate-wrong) carried through log_yield_event into a 7th `fp` column, with candidates() computing from fp over CLASSIFIED blocks only. Pre-fix rows stay byte-identical and report as UNCLASSIFIED HISTORY \u2014 never retroactively classified, because inferring into a durable record is the fabrication the fix exists to end. Replayed against the motivating artifact (119e2de) with a negative control proving it still flags a genuine candidate (\u00a713 v1.25). Boundary pin retired to the paid-pattern with a dated comment \u2014 a paid loan, never a silent deletion. PAID 2026-08-07: the linked worktree bypass is closed by one versioned lock authority under `git rev-parse --git-common-dir`; the CLI, Claude structured-edit guard, shell guard, and auto-red producer consume it. Real-process planted tests prove a main-checkout lock blocks both write routes from a linked worktree while clean source edits pass. The legacy `.claude/tdd-lock.json` is imported once and consumed rather than dual-read."
+      "notes": "PAID 2026-08-05 (v1.27): TESTLOCK OVERRIDE SEMANTICS. gate_yield counted EVERY journaled unlock as a block adjudicated a false positive, so four cycles of the normal red-first lock/implement/unlock rhythm printed RETIREMENT CANDIDATE: testlock with zero real false positives — the instrument recommending retirement of the strongest anti-gaming defense there is. Fixed by a closed reason-class vocabulary on `tdd_lock.py unlock --class` (phase | feature-end | test-wrong | gate-wrong) carried through log_yield_event into a 7th `fp` column, with candidates() computing from fp over CLASSIFIED blocks only. Pre-fix rows stay byte-identical and report as UNCLASSIFIED HISTORY — never retroactively classified, because inferring into a durable record is the fabrication the fix exists to end. Replayed against the motivating artifact (119e2de) with a negative control proving it still flags a genuine candidate (§13 v1.25). Boundary pin retired to the paid-pattern with a dated comment — a paid loan, never a silent deletion. PAID 2026-08-07: the linked worktree bypass is closed by one versioned lock authority under `git rev-parse --git-common-dir`; the CLI, Claude structured-edit guard, shell guard, and auto-red producer consume it. Real-process planted tests prove a main-checkout lock blocks both write routes from a linked worktree while clean source edits pass. The legacy `.claude/tdd-lock.json` is imported once and consumed rather than dual-read."
     },
     {
       "id": "nudge-anti-tax",
-      "summary": "intent_nudge sentinel dedupe + per-session damping + meta-question exclusion \u2014 one reminder per working stretch on any install topology, never two per message.",
+      "summary": "intent_nudge sentinel dedupe + per-session damping + meta-question exclusion — one reminder per working stretch on any install topology, never two per message.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -499,21 +505,21 @@
         {
           "topic": "UserPromptSubmit additionalContext reminder",
           "consumers": [
-            "the live session's context (hookSpecificOutput.additionalContext \u2014 read by the model each prompt)"
+            "the live session's context (hookSpecificOutput.additionalContext — read by the model each prompt)"
           ]
         }
       ]
     },
     {
       "id": "install-doctor",
-      "summary": "install_into_repo.py --doctor \u2014 loud version-skew check across canonical plugin, vendored copy, and plugin cache (stale-hook outages become visible).",
+      "summary": "install_into_repo.py --doctor — loud version-skew check across canonical plugin, vendored copy, and plugin cache (stale-hook outages become visible).",
       "user_facing": false,
       "surfaces": [
         "local"
       ],
       "activation": {
         "default": "off",
-        "switch": "python3 <plugin>/bin/tdd.py doctor [--only clone|install] [--fix] \u2014 the user-facing aggregator; `install_into_repo.py --doctor` remains the install-family implementation"
+        "switch": "python3 <plugin>/bin/tdd.py doctor [--only clone|install] [--fix] — the user-facing aggregator; `install_into_repo.py --doctor` remains the install-family implementation"
       },
       "wired_by": [
         "scripts/install_into_repo.py::doctor",
@@ -538,7 +544,7 @@
       "integration_debt": [
         {
           "id": "bin-roster-prose-divergence",
-          "what": "CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README: verify_citations; CLAUDE.md: dataflow_sweeps.py + _debt.py) while bin/ holds 23 scripts \u2014 reconcile the two prose lists or derive them from COPY_TREES the way the guard roster is now derived (test_guard_roster_derived_and_pinned)",
+          "what": "CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README: verify_citations; CLAUDE.md: dataflow_sweeps.py + _debt.py) while bin/ holds 23 scripts — reconcile the two prose lists or derive them from COPY_TREES the way the guard roster is now derived (test_guard_roster_derived_and_pinned)",
           "owner": "david",
           "expires": "2026-10-13"
         }
@@ -569,7 +575,7 @@
           "expires": "2027-02-01"
         }
       ],
-      "notes": "RETIRED 2026-08-09 (v1.32.0) \u2014 ALSO records the sibling deletions made with the engine, because a capability removed whole leaves its WHY nowhere the doctor prints: plan-authoring (bin/plan_block.py + suite + corpus fixture) existed only to emit a civerd-plan block for the engine's plan-predicate evaluator and was recorded as never armed \u2014 plans landed INERT; civerd-integrity.yml (the repo-side plant-target handoff) had no other reader. Producer and consumer deleted together. | RETIRED 2026-08-09 (v1.32.0, owner-control plan rev 3). release_verify.py and its suite deleted; deploy_surface removed with the VPS. Retained historical record: | PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded \u2014 CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay \u2014 the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day \u2014 a paid loan, not a silent deletion.",
+      "notes": "RETIRED 2026-08-09 (v1.32.0) — ALSO records the sibling deletions made with the engine, because a capability removed whole leaves its WHY nowhere the doctor prints: plan-authoring (bin/plan_block.py + suite + corpus fixture) existed only to emit a civerd-plan block for the engine's plan-predicate evaluator and was recorded as never armed — plans landed INERT; civerd-integrity.yml (the repo-side plant-target handoff) had no other reader. Producer and consumer deleted together. | RETIRED 2026-08-09 (v1.32.0, owner-control plan rev 3). release_verify.py and its suite deleted; deploy_surface removed with the VPS. Retained historical record: | PAID 2026-08-05 (forwarding leg): the seam-contract recommendation (docs/recommendations/civerd-seam-contract-2026-08.md) was forwarded — CIVerd is building an implementation plan for it. The debt's second leg (root-config roster action taken or consciously declined) is NOT yet decidable and moved into the SEAM-CONTRACT REPORT-BACK debt above, never dropped. | PAID 2026-08-03 (same day): David armed engine-side shrink protection for this repo's release-trust surface in root config on srv1621832. CORRECTED RECORD per the engine session's relay — the original entry said 'integrity_globs' for all eight files and mis-stated the mechanism for non-Python surfaces: non-Python files are covered via the integrity FLOOR, not globs, and the release_verify.py path was corrected engine-side during the edit. The repo-side roster pin (verify_verdict.py) + this arming together close both directions: engine-config drift (pin) and in-repo edits to the pin's own surface (floor/globs). Boundary pin removed from test_capability_registry the same day — a paid loan, not a silent deletion.",
       "emits": [
         {
           "topic": "verdict read-back of archived signed CIVerd bundles",
@@ -591,7 +597,7 @@
       ],
       "activation": {
         "default": "off",
-        "switch": "enrollment marker <store>/ENABLED \u2014 written BY THE BUILD on David's machines (consent is the commission; a stranger's marketplace install ships OFF, never a silent always-on recorder) \u2014 or TDD_PLAYBOOK_HOOK_CAPTURE=on; env `off` BEATS the marker (the calibration answer-key exclusion, pinned by a named test)"
+        "switch": "enrollment marker <store>/ENABLED — written BY THE BUILD on David's machines (consent is the commission; a stranger's marketplace install ships OFF, never a silent always-on recorder) — or TDD_PLAYBOOK_HOOK_CAPTURE=on; env `off` BEATS the marker (the calibration answer-key exclusion, pinned by a named test)"
       },
       "wired_by": [
         "plugins/tdd-playbook/hooks/hooks.json",
@@ -606,23 +612,23 @@
         {
           "topic": "deliberation store (per-day JSONL: human turns, assistant finals, closure records)",
           "consumers": [
-            "bin/deliberation.py stats/close (David's verbs \u2014 the v1 reader)",
-            "v2 shingle matcher (PRIMARY named candidate \u2014 see consumer debt)"
+            "bin/deliberation.py stats/close (David's verbs — the v1 reader)",
+            "v2 shingle matcher (PRIMARY named candidate — see consumer debt)"
           ]
         }
       ],
       "liveness": {
         "max_quiet_days": 14,
-        "probe": "capability_registry.py doctor prints `capture: ON (store, N records today)` / OFF \u2014 informational, non-demoting; the 14-day calibration cycle checklist re-checks it (David's ships-on-or-triggered rule: the calibration bundle carries the capture-ON verification)"
+        "probe": "capability_registry.py doctor prints `capture: ON (store, N records today)` / OFF — informational, non-demoting; the 14-day calibration cycle checklist re-checks it (David's ships-on-or-triggered rule: the calibration bundle carries the capture-ON verification)"
       },
       "integration_debt": [
         {
-          "what": "ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30): every machine David works on must show capture: ON in the doctor line. This build enrolls THIS machine (writes <store>/ENABLED); the vendored-refresh prompt enrolls other machines as they are touched; cloud sandboxes are honest no-ops (stated, ephemeral). By expiry: all working machines enrolled, or consciously re-dated \u2014 never silently dark.",
+          "what": "ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30): every machine David works on must show capture: ON in the doctor line. This build enrolls THIS machine (writes <store>/ENABLED); the vendored-refresh prompt enrolls other machines as they are touched; cloud sandboxes are honest no-ops (stated, ephemeral). By expiry: all working machines enrolled, or consciously re-dated — never silently dark.",
           "owner": "david",
           "expires": "2026-08-31"
         },
         {
-          "what": "CONSUMER: the store is read only by deliberation.py stats \u2014 a recorder nobody reads does not get to run forever. By expiry either code reads it or capture is turned off. The v2 shingle matcher is the PRIMARY named candidate (motivating incident: a store distinguishing courier-carried assistant text from David's own words would have shown 'approved as stated' originated in a recommender's draft; v1 schema already suffices \u2014 full text + sha256 stored, shingles backfillable). v2 LABEL CONSTRAINT, binding now: unmatched spans are 'unattributed', NEVER 'David's own words' \u2014 under partial coverage (un-enrolled machines, cloud, Cheli/GLM) no-match must not imply human authorship; that failure direction is exactly what the store exists to prevent.",
+          "what": "CONSUMER: the store is read only by deliberation.py stats — a recorder nobody reads does not get to run forever. By expiry either code reads it or capture is turned off. The v2 shingle matcher is the PRIMARY named candidate (motivating incident: a store distinguishing courier-carried assistant text from David's own words would have shown 'approved as stated' originated in a recommender's draft; v1 schema already suffices — full text + sha256 stored, shingles backfillable). v2 LABEL CONSTRAINT, binding now: unmatched spans are 'unattributed', NEVER 'David's own words' — under partial coverage (un-enrolled machines, cloud, Cheli/GLM) no-match must not imply human authorship; that failure direction is exactly what the store exists to prevent.",
           "owner": "david",
           "expires": "2026-10-31"
         }
@@ -630,7 +636,7 @@
     },
     {
       "id": "dataflow-sweeps",
-      "summary": "dataflow_sweeps.py \u2014 \u00a76c Tier-1 edge sweeps: render-pairing (blocking) + exemption-prose (blocking) + ghost-gates (Tier 2, ADVISORY by default; --strict opt-in; promoted to blocking only on the Cheliped pilot verdict). Every flow names a live consumer; per-repo sweep CONFIG is the tailoring, not a dark switch.",
+      "summary": "dataflow_sweeps.py — §6c Tier-1 edge sweeps: render-pairing (blocking) + exemption-prose (blocking) + ghost-gates (Tier 2, ADVISORY by default; --strict opt-in; promoted to blocking only on the Cheliped pilot verdict). Every flow names a live consumer; per-repo sweep CONFIG is the tailoring, not a dark switch.",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -641,16 +647,16 @@
       },
       "wired_by": [
         "scripts/civerd_gate.sh (D13a: blocking render-pairing self-sweep on this repo's own bins)",
-        "scripts/install_into_repo.py (COPY_TREES bin/ vendor rule \u2014 auto-vendors)",
+        "scripts/install_into_repo.py (COPY_TREES bin/ vendor rule — auto-vendors)",
         "plugins/tdd-playbook/commands/integration-audit.md (step-5 standing-mechanism closure)",
-        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md (\u00a76c names it the Tier-1 reference tool)"
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md (§6c names it the Tier-1 reference tool)"
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_dataflow_sweeps.py"
       ],
       "emits": [
         {
-          "topic": "sweep summary lines (checked N \u00b7 violations N \u00b7 exempted N \u00b7 unresolvable N)",
+          "topic": "sweep summary lines (checked N · violations N · exempted N · unresolvable N)",
           "consumers": [
             "plugins/tdd-playbook/tests/test_dataflow_sweeps.py (summary-format pin)",
             "gate_yield.py dataflow-rollup -> docs/calibration/dataflow_yield.md (one committed row per sweep per calibration cycle)",
@@ -660,31 +666,31 @@
       ],
       "integration_debt": [
         {
-          "what": "TIER-2 FIELD-PAIRING SWEEP (v1.26 F3 deferral, David's call 2026-08-05): an attribute/field WRITTEN but never READ outside the constructing module \u2014 the mechanical form of \u00a70's field-granularity emits rule and the T5-shaped twin of render pairing; reuses _check_pairing's both-directions shape in dataflow_sweeps.py. Ships FP-budgeted Tier-2 (advisory, yield-instrumented) and obeys \u00a713 guard calibration first: replayed against the Cheliped /runmode defect shape (the corpus pair seam-self-consistency-return-only transcribes it) before it gates anything. Done = the subcommand with planted-input tests in test_dataflow_sweeps.py, or a consciously re-dated entry \u2014 never silence",
+          "what": "TIER-2 FIELD-PAIRING SWEEP (v1.26 F3 deferral, David's call 2026-08-05): an attribute/field WRITTEN but never READ outside the constructing module — the mechanical form of §0's field-granularity emits rule and the T5-shaped twin of render pairing; reuses _check_pairing's both-directions shape in dataflow_sweeps.py. Ships FP-budgeted Tier-2 (advisory, yield-instrumented) and obeys §13 guard calibration first: replayed against the Cheliped /runmode defect shape (the corpus pair seam-self-consistency-return-only transcribes it) before it gates anything. Done = the subcommand with planted-input tests in test_dataflow_sweeps.py, or a consciously re-dated entry — never silence",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "CHELIPED TIER-2 PILOT VERDICT: promote/tune/retire decision per Tier-2 sweep (storage/telemetry/enum/ghost in their stack) from committed gate-yield data, landed in a successor doc to the dataflow-liveness review \u2014 the pilot must never silently become the permanent state",
+          "what": "CHELIPED TIER-2 PILOT VERDICT: promote/tune/retire decision per Tier-2 sweep (storage/telemetry/enum/ghost in their stack) from committed gate-yield data, landed in a successor doc to the dataflow-liveness review — the pilot must never silently become the permanent state",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "RE-SCOPED 2026-08-09 (v1.32.0): the second half of this debt \u2014 'hand the same sha to the ENGINE-SIDE replay recipe' \u2014 is unpayable; the CIVerd engine is retired. The FIRST half stands and is the real work: fill the pre-fix sha slot in the test docstring so the release that invented the sha-citation rule does not ship its own slot empty. Original: | LAYER_10 PRE-FIX SHA REPORT-BACK (v1.25 tripwire-fold): the Cheliped pilot reports the pre-fix layer_10_autonomy_awareness blob sha; fill the slot in test_dataflow_sweeps.py::test_layer10_motivating_shape's docstring and hand the same sha to the engine-side replay recipe \u2014 the release that invented the sha-citation rule must not ship its own slot empty forever. Done = the sha in the docstring (grep '<reported back' returns nothing), or a consciously re-dated entry",
+          "what": "RE-SCOPED 2026-08-09 (v1.32.0): the second half of this debt — 'hand the same sha to the ENGINE-SIDE replay recipe' — is unpayable; the CIVerd engine is retired. The FIRST half stands and is the real work: fill the pre-fix sha slot in the test docstring so the release that invented the sha-citation rule does not ship its own slot empty. Original: | LAYER_10 PRE-FIX SHA REPORT-BACK (v1.25 tripwire-fold): the Cheliped pilot reports the pre-fix layer_10_autonomy_awareness blob sha; fill the slot in test_dataflow_sweeps.py::test_layer10_motivating_shape's docstring and hand the same sha to the engine-side replay recipe — the release that invented the sha-citation rule must not ship its own slot empty forever. Done = the sha in the docstring (grep '<reported back' returns nothing), or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "ARM THE TWO DARK SWEEPS (H15, v1.30): `ghost_gates` and `exemption_prose` are DECLARED in dataflow_sweeps._SECTION_OF and not armed \u2014 found live 2026-08-06, 1 of 3 armed, under a gate that printed 'ALL suites green'. `exemption_prose` was specified BLOCKING in v1.24 and has never run once. v1.30 makes the shortfall REPORTED and refuses it unless declared in the config's `unarmed` array, so the darkness is now a decision rather than an absence \u2014 but it is still darkness. Done = both armed with whatever they surface resolved, or a consciously re-dated entry recording the decision not to arm them",
+          "what": "ARM THE TWO DARK SWEEPS (H15, v1.30): `ghost_gates` and `exemption_prose` are DECLARED in dataflow_sweeps._SECTION_OF and not armed — found live 2026-08-06, 1 of 3 armed, under a gate that printed 'ALL suites green'. `exemption_prose` was specified BLOCKING in v1.24 and has never run once. v1.30 makes the shortfall REPORTED and refuses it unless declared in the config's `unarmed` array, so the darkness is now a decision rather than an absence — but it is still darkness. Done = both armed with whatever they surface resolved, or a consciously re-dated entry recording the decision not to arm them",
           "owner": "david",
           "expires": "2026-09-30"
         }
       ],
-      "notes": "PAID 2026-08-05: the dataflow-liveness upgrades proposal (docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md) was forwarded to the CIVerd engine backlog and ACTIONED \u2014 David confirms the engine-side work was built (2026-08-05); items 2/5 plus the shrink-protection arming had already landed 2026-08-03 per the doc's CORRECTIONS block. Only the forwarding was owed here; the boundary pin retires from test_capability_registry with this dated note \u2014 a paid loan, never a silent deletion."
+      "notes": "PAID 2026-08-05: the dataflow-liveness upgrades proposal (docs/recommendations/civerd-dataflow-liveness-upgrades-2026-08.md) was forwarded to the CIVerd engine backlog and ACTIONED — David confirms the engine-side work was built (2026-08-05); items 2/5 plus the shrink-protection arming had already landed 2026-08-03 per the doc's CORRECTIONS block. Only the forwarding was owed here; the boundary pin retires from test_capability_registry with this dated note — a paid loan, never a silent deletion."
     },
     {
       "id": "gate-surface-ledger",
-      "summary": "ledger.py + docs/calibration/ledger.md \u2014 every gate-surface change pre-registers its EXPECTED EFFECT (scenario ids, direction, claimed rep movement, mechanism) BEFORE the diff lands; the first live run measuring a strictly-descendant tree scores it as HIT/PARTIAL/FLAT/REGRESSED, significance is claimed only at cycle level (sign test), and a FLAT/REGRESSED entry must become a dated integration_debt here. Gates PROCESS, never the hit rate.",
+      "summary": "ledger.py + docs/calibration/ledger.md — every gate-surface change pre-registers its EXPECTED EFFECT (scenario ids, direction, claimed rep movement, mechanism) BEFORE the diff lands; the first live run measuring a strictly-descendant tree scores it as HIT/PARTIAL/FLAT/REGRESSED, significance is claimed only at cycle level (sign test), and a FLAT/REGRESSED entry must become a dated integration_debt here. Gates PROCESS, never the hit rate.",
       "user_facing": false,
       "surfaces": [
         "local"
@@ -709,7 +715,7 @@
       ],
       "emits": [
         {
-          "topic": "ledger score rows (id \u00b7 scenario \u00b7 baseline \u00b7 actual \u00b7 delta \u00b7 verdict)",
+          "topic": "ledger score rows (id · scenario · baseline · actual · delta · verdict)",
           "consumers": [
             "docs/calibration/ledger.md Scored blocks (human-appended)",
             "calibration/ledger.py report (cycle roll-up)",
@@ -727,91 +733,91 @@
       ],
       "integration_debt": [
         {
-          "what": "PRE-COMMIT GATE BLIND SPOT (found live 2026-08-05): the ledger coverage check reads COMMITTED state, so `sh scripts/civerd_gate.sh` run BEFORE `git commit` reports GREEN on a change it will reject once committed \u2014 that is exactly how 5a86043 reached origin and turned the engine's `tests` check red. The gate's own instructions and every rc-gated commit chain in this repo run it pre-commit. Fix = the check also inspects the working tree (staged + unstaged) so pre-commit and post-commit agree, with a planted test proving a pre-commit run REFUSES an uncovered gate-surface edit. Done = that planted test green, or a consciously re-dated entry",
+          "what": "PRE-COMMIT GATE BLIND SPOT (found live 2026-08-05): the ledger coverage check reads COMMITTED state, so `sh scripts/civerd_gate.sh` run BEFORE `git commit` reports GREEN on a change it will reject once committed — that is exactly how 5a86043 reached origin and turned the engine's `tests` check red. The gate's own instructions and every rc-gated commit chain in this repo run it pre-commit. Fix = the check also inspects the working tree (staged + unstaged) so pre-commit and post-commit agree, with a planted test proving a pre-commit run REFUSES an uncovered gate-surface edit. Done = that planted test green, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-09-15"
         },
         {
-          "what": "SELF-REFERENTIAL DENOMINATORS (H15, v1.30): ~9 verdict surfaces print a count derived from the same filter it describes, so it moves WITH the narrowing and cannot reveal it \u2014 the 16 suite tallies (`N passed`), capability_registry (`N capabilities` from the file being validated), verify_citations, with_snapshot's `clean`, plant_vitality's post-filter total, and gate_yield dataflow-trend (a sweep with too few rows is silently excluded). v1.30 fixed the load-bearing ones (gate, sweeps, harness, ledger, plant_forms); these remain. Done = an INDEPENDENT expectation per surface (the test_agents.py:138 roster pattern), or a recorded decision that a self-referential count is acceptable there and why",
+          "what": "SELF-REFERENTIAL DENOMINATORS (H15, v1.30): ~9 verdict surfaces print a count derived from the same filter it describes, so it moves WITH the narrowing and cannot reveal it — the 16 suite tallies (`N passed`), capability_registry (`N capabilities` from the file being validated), verify_citations, with_snapshot's `clean`, plant_vitality's post-filter total, and gate_yield dataflow-trend (a sweep with too few rows is silently excluded). v1.30 fixed the load-bearing ones (gate, sweeps, harness, ledger, plant_forms); these remain. Done = an INDEPENDENT expectation per surface (the test_agents.py:138 roster pattern), or a recorded decision that a self-referential count is acceptable there and why",
           "owner": "david",
           "expires": "2026-10-31"
         },
         {
-          "what": "WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0). Deleting plan_block.py removed the only reader of docs/plans/gated/*.md, so the directory /tdd-plan writes into is a \u00a76c write-only surface. Partially paid the same day: review_ledger.validate_record now RESOLVES a record's `plan` path on disk, so a review citing a missing plan REDs. Still unpaid: nothing reads a gated plan's CONTENT, and `scaffold`'s mechanical slug-collision refusal is now prose in tdd-plan.md only \u2014 stated here rather than deferred silently. By expiry: a content reader (or a collision check), or a conscious decision that a plan file needs no validator now that no engine parses it.",
+          "what": "WRITE-ONLY GATED PLANS + LOST SLUG-COLLISION CHECK (v1.32.0). Deleting plan_block.py removed the only reader of docs/plans/gated/*.md, so the directory /tdd-plan writes into is a §6c write-only surface. Partially paid the same day: review_ledger.validate_record now RESOLVES a record's `plan` path on disk, so a review citing a missing plan REDs. Still unpaid: nothing reads a gated plan's CONTENT, and `scaffold`'s mechanical slug-collision refusal is now prose in tdd-plan.md only — stated here rather than deferred silently. By expiry: a content reader (or a collision check), or a conscious decision that a plan file needs no validator now that no engine parses it.",
           "owner": "david",
           "expires": "2026-10-15"
         },
         {
-          "what": "DOCTRINE SHRINK NOT DONE (v1.32.0). The owner-control plan targets SKILL.md under 300 lines and CLAUDE.md under 400 words, with everything cut moving to reference docs read on demand. Actual today: SKILL.md 1048 lines / 22 sections, CLAUDE.md ~2650 words \u2014 and CLAUDE.md GREW this release, because the new release procedure had to be written down. Only the text Phases 1-2 falsified was removed here. The rest is deliberately deferred, not forgotten, for a reason worth stating: removing a SKILL `## ` section trips check_scoreboard_integrity rule (d) and needs a gate-changes.md entry, and editing SKILL.md at all needs a pre-registered ledger row \u2014 a ~750-line deletion is its own cycle with its own review, not a rider on this one. By expiry: the shrink pass done under its own ledger registration, or a conscious decision that the doctrine is the right length and the plan's target was wrong.",
+          "what": "DOCTRINE SHRINK NOT DONE (v1.32.0). The owner-control plan targets SKILL.md under 300 lines and CLAUDE.md under 400 words, with everything cut moving to reference docs read on demand. Actual today: SKILL.md 1048 lines / 22 sections, CLAUDE.md ~2650 words — and CLAUDE.md GREW this release, because the new release procedure had to be written down. Only the text Phases 1-2 falsified was removed here. The rest is deliberately deferred, not forgotten, for a reason worth stating: removing a SKILL `## ` section trips check_scoreboard_integrity rule (d) and needs a gate-changes.md entry, and editing SKILL.md at all needs a pre-registered ledger row — a ~750-line deletion is its own cycle with its own review, not a rider on this one. By expiry: the shrink pass done under its own ledger registration, or a conscious decision that the doctrine is the right length and the plan's target was wrong.",
           "owner": "david",
           "expires": "2026-10-31"
         },
         {
           "id": "ledger-L-20260812-06-followup",
-          "what": "REFUTATION OWNED (L-20260812-06): making the observability brief's restraint mechanical moved its control 0/3 -> 2/3 \u2014 PARTIAL, and its plant FLAT at 3/3 (correct: narrowing is not amnesty). The control is still not k/k at the HAIKU lower bound, though it is 3/3 at OPUS, its production tier. Done = the control reaches k/k at haiku, or a recorded decision that production-tier calibration is the bar for this agent and why. Never retried into green; the AMBER rows stay in the record",
+          "what": "REFUTATION OWNED (L-20260812-06): making the observability brief's restraint mechanical moved its control 0/3 -> 2/3 — PARTIAL, and its plant FLAT at 3/3 (correct: narrowing is not amnesty). The control is still not k/k at the HAIKU lower bound, though it is 3/3 at OPUS, its production tier. Done = the control reaches k/k at haiku, or a recorded decision that production-tier calibration is the bar for this agent and why. Never retried into green; the AMBER rows stay in the record",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
           "id": "ledger-L-20260813-01-followup",
-          "what": "REFUTATION OWNED (L-20260813-01): the adoption scope-rule fix moved its control 0/3 -> 0/3, FLAT \u2014 an agent fix that changed nothing, which is precisely the signal that sent me to capture the agent's transcript, where it turned out the agent was right and the CONTROL was mis-authored (four genuine S40 dead ends left standing). Superseded by L-20260813-02 (0/3 -> 3/3, HIT). Done = the transferable rule is carried in doctrine, not just this ledger: when a control fails, capture the agent's output BEFORE editing anything \u2014 'fix the agent, never the plant' assumes the pair was authored correctly, and a mis-authored control is a third category",
+          "what": "REFUTATION OWNED (L-20260813-01): the adoption scope-rule fix moved its control 0/3 -> 0/3, FLAT — an agent fix that changed nothing, which is precisely the signal that sent me to capture the agent's transcript, where it turned out the agent was right and the CONTROL was mis-authored (four genuine S40 dead ends left standing). Superseded by L-20260813-02 (0/3 -> 3/3, HIT). Done = the transferable rule is carried in doctrine, not just this ledger: when a control fails, capture the agent's output BEFORE editing anything — 'fix the agent, never the plant' assumes the pair was authored correctly, and a mis-authored control is a third category",
           "owner": "david",
           "expires": "2026-11-30"
         }
       ],
       "calibration_followup": [
         {
-          "what": "LEDGER FOLLOW-UP L-20260803-04: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 the must_not_match anchor was not the binding cause; the task premise was. Superseded by L-20260804-02, which also came back FLAT \u2014 so the premise fix is itself unconfirmed and the real cause is still open. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260803-04: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — the must_not_match anchor was not the binding cause; the task premise was. Superseded by L-20260804-02, which also came back FLAT — so the premise fix is itself unconfirmed and the real cause is still open. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260804-02: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 counts 156->18 did not move the scenario at all (1/3 -> 1/3). Two successive confident fixes on this control have now failed; the next step is to reproduce the agent's actual refusal text rather than infer the cause a third time. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260804-02: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — counts 156->18 did not move the scenario at all (1/3 -> 1/3). Two successive confident fixes on this control have now failed; the next step is to reproduce the agent's actual refusal text rather than infer the cause a third time. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260804-04: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 making the premise TRUE did not move it (0/3 -> 0/3). The agents may be REDing this control for a reason nobody has read yet; L-20260805-01 tests the v1.25-doctrine reading. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260804-04: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — making the premise TRUE did not move it (0/3 -> 0/3). The agents may be REDing this control for a reason nobody has read yet; L-20260805-01 tests the v1.25-doctrine reading. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260804-05: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 the placement fix did not move it (2/3 -> 2/3). L-20260805-04 tests whether the residual is the markdown-wrapping class instead. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260804-05: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — the placement fix did not move it (2/3 -> 2/3). L-20260805-04 tests whether the residual is the markdown-wrapping class instead. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260804-07: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 max_turns 25->40 did not move it (0/3 -> 0/3), while its paired plant roadmap-laundering did move \u2014 so turn exhaustion was not the cause here. L-20260805-02 tests the missing-mechanism reading. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260804-07: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — max_turns 25->40 did not move it (0/3 -> 0/3), while its paired plant roadmap-laundering did move — so turn exhaustion was not the cause here. L-20260805-02 tests the missing-mechanism reading. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260804-11: the pre-registered effect did not land (REGRESSED). Four-cause disposition: plant-moved \u2014 REGRESSED 2/3 -> 1/3 after widening must_match. A widened oracle cannot lower recall, so this is either run-to-run noise (the 21% class-move floor) or the widening admitted a phrasing that displaced a stronger one. Decide from the next run before touching it. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260804-11: the pre-registered effect did not land (REGRESSED). Four-cause disposition: plant-moved — REGRESSED 2/3 -> 1/3 after widening must_match. A widened oracle cannot lower recall, so this is either run-to-run noise (the 21% class-move floor) or the widening admitted a phrasing that displaced a stronger one. Decide from the next run before touching it. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260804-12: the pre-registered effect did not land (FLAT). Four-cause disposition: underpowered \u2014 FLAT at 2/3 -> 2/3 with claimed 1. One rep is at the measured noise floor, so this entry could not have shown its effect either way; it needs more reps, not another fix. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260804-12: the pre-registered effect did not land (FLAT). Four-cause disposition: underpowered — FLAT at 2/3 -> 2/3 with claimed 1. One rep is at the measured noise floor, so this entry could not have shown its effect either way; it needs more reps, not another fix. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260805-01: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 control-boundary-covered stayed 0/3 after the motivating-defect fixture was added. The v1.25-staleness reading is now REFUTED for this control by its own pre-registered prediction. Next step is NOT a fourth inference: read the agent's actual output on this scenario and quote what it objects to. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260805-01: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — control-boundary-covered stayed 0/3 after the motivating-defect fixture was added. The v1.25-staleness reading is now REFUTED for this control by its own pre-registered prediction. Next step is NOT a fourth inference: read the agent's actual output on this scenario and quote what it objects to. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260805-02: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 control-parked-deferral stayed 0/3 after the claimed registry mechanism was made real. Same refutation as L-20260805-01; the auditor is REDing this for a reason nobody has yet read. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260805-02: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — control-parked-deferral stayed 0/3 after the claimed registry mechanism was made real. Same refutation as L-20260805-01; the auditor is REDing this for a reason nobody has yet read. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         },
         {
-          "what": "LEDGER FOLLOW-UP L-20260805-03: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix \u2014 control-cachebusted-run AND control-green-baseline-measured both stayed 1/3 after the premise was made decidable. THIRD consecutive miss on control-cachebusted-run (L-20260803-04 oracle anchor -> L-20260804-02 mutant counts -> this). Stop inferring; capture the agent's verbatim refusal text and work from it. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
+          "what": "LEDGER FOLLOW-UP L-20260805-03: the pre-registered effect did not land (FLAT). Four-cause disposition: wrong-fix — control-cachebusted-run AND control-green-baseline-measured both stayed 1/3 after the premise was made decidable. THIRD consecutive miss on control-cachebusted-run (L-20260803-04 oracle anchor -> L-20260804-02 mutant counts -> this). Stop inferring; capture the agent's verbatim refusal text and work from it. Done = the cause addressed and the disposition recorded in the next ledger cycle, or a consciously re-dated entry",
           "owner": "david"
         }
       ]
     },
     {
       "id": "plant-forms",
-      "summary": "plant_forms.py + calibration/plant-forms.md \u2014 the dev/holdout split. dev is the tuning set; holdout is the reporting set, read quarterly and never tuned against, so the externally quoted number is not the one the tuning loop has been iterating on. Forms live in an APPEND-ONLY register beside the corpus (rule (b) pins approved plants byte-identical forever, and burn-on-failure must be able to change a form), each entry pinning a content sha256 because name-keyed authorization over mutable content is the d5dec34 shape. Includes the leakage tripwire: a holdout id in a gate surface or a vendored tree is a burned plant.",
+      "summary": "plant_forms.py + calibration/plant-forms.md — the dev/holdout split. dev is the tuning set; holdout is the reporting set, read quarterly and never tuned against, so the externally quoted number is not the one the tuning loop has been iterating on. Forms live in an APPEND-ONLY register beside the corpus (rule (b) pins approved plants byte-identical forever, and burn-on-failure must be able to change a form), each entry pinning a content sha256 because name-keyed authorization over mutable content is the d5dec34 shape. Includes the leakage tripwire: a holdout id in a gate surface or a vendored tree is a burned plant.",
       "user_facing": false,
       "surfaces": [
         "local"
       ],
       "activation": {
         "default": "on",
-        "switch": "blocking `plant_forms.py check` step in scripts/civerd_gate.sh; the SPLIT itself is unarmed until the first holdout assignment \u2014 see the dated debt below, which is the trigger, not a hope"
+        "switch": "blocking `plant_forms.py check` step in scripts/civerd_gate.sh; the SPLIT itself is unarmed until the first holdout assignment — see the dated debt below, which is the trigger, not a hope"
       },
       "wired_by": [
         "scripts/civerd_gate.sh (blocking check step)",
@@ -838,7 +844,7 @@
       ],
       "integration_debt": [
         {
-          "what": "PAID 2026-08-17 \u2014 VERIFIED, not assumed. The Done condition was '>=1 holdout class in calibration/plant-forms.md with `plant_forms.py check` reporting an ARMED tripwire'. Both halves are now true: 20 holdout rows are registered (APPENDED under a second `## Entries` heading \u2014 the file is append-only under check_scoreboard_integrity rule (a), and the first draft rewrote the table and was REDded for it), and check reports `20 holdout / 0 dev \u00b7 tripwire scanned 29 files across 4 of 9 roots with no leak` where it previously reported itself unarmed. Every row records `private`: the bodies live in the private sibling repo, and form_problems refuses a sha256 for a body this repo cannot see. Before publishing the ids the tripwire was run against them and returned 0 leaks; a live probe then planted a real id into a scanned surface and it was DETECTED, so the armed tripwire is falsifiable and not decoration. The `reason` cell records `initial` rather than the vault's verbose descriptions \u2014 ids are public by design (plant_forms.py LEAK_SCAN note) but defect DESCRIPTIONS would publish the answer key in prose. Original: | FIRST HOLDOUT ASSIGNMENT (v1.29, David's ships-on-or-triggered rule): the split mechanism is BUILT, WIRED and BLOCKING, but zero plants are assigned to holdout, so the leakage tripwire cannot fail and `check` reports itself UNARMED rather than green. Two things are owed: (1) David creates the PRIVATE SIBLING REPO for holdout plant bodies (Decision 1, ratified 2026-08-05 \u2014 holdout material never appears in anything published); (2) the next authoring cycle assigns whole plant CLASSES to holdout at --approve, pair-riding via control_for, recording each body's sha256 (or `private`). Until then the quarterly LIFT read stays hard-blocked, which is the downstream cost. Done = >=1 holdout class in calibration/plant-forms.md with `plant_forms.py check` reporting an ARMED tripwire, or a consciously re-dated entry",
+          "what": "PAID 2026-08-17 — VERIFIED, not assumed. The Done condition was '>=1 holdout class in calibration/plant-forms.md with `plant_forms.py check` reporting an ARMED tripwire'. Both halves are now true: 20 holdout rows are registered (APPENDED under a second `## Entries` heading — the file is append-only under check_scoreboard_integrity rule (a), and the first draft rewrote the table and was REDded for it), and check reports `20 holdout / 0 dev · tripwire scanned 29 files across 4 of 9 roots with no leak` where it previously reported itself unarmed. Every row records `private`: the bodies live in the private sibling repo, and form_problems refuses a sha256 for a body this repo cannot see. Before publishing the ids the tripwire was run against them and returned 0 leaks; a live probe then planted a real id into a scanned surface and it was DETECTED, so the armed tripwire is falsifiable and not decoration. The `reason` cell records `initial` rather than the vault's verbose descriptions — ids are public by design (plant_forms.py LEAK_SCAN note) but defect DESCRIPTIONS would publish the answer key in prose. Original: | FIRST HOLDOUT ASSIGNMENT (v1.29, David's ships-on-or-triggered rule): the split mechanism is BUILT, WIRED and BLOCKING, but zero plants are assigned to holdout, so the leakage tripwire cannot fail and `check` reports itself UNARMED rather than green. Two things are owed: (1) David creates the PRIVATE SIBLING REPO for holdout plant bodies (Decision 1, ratified 2026-08-05 — holdout material never appears in anything published); (2) the next authoring cycle assigns whole plant CLASSES to holdout at --approve, pair-riding via control_for, recording each body's sha256 (or `private`). Until then the quarterly LIFT read stays hard-blocked, which is the downstream cost. Done = >=1 holdout class in calibration/plant-forms.md with `plant_forms.py check` reporting an ARMED tripwire, or a consciously re-dated entry",
           "owner": "david",
           "expires": "2026-10-15"
         }
@@ -846,7 +852,7 @@
     },
     {
       "id": "plant-vitality",
-      "summary": "plant_vitality.py \u2014 does a plant still DISCRIMINATE, or has the agent memorised it? Per-scenario streaks from the scoreboard: saturated / discriminating / failing / insufficient. Feeds the AUTHORING cycle (a saturated plant names the target for its next harder sibling; a saturated class is a rotation-to-holdout candidate) and the quarterly review. Never a deletion driver and never a gate \u2014 the corpus only grows (R4), so this answers the absolute question, never the comparative one.",
+      "summary": "plant_vitality.py — does a plant still DISCRIMINATE, or has the agent memorised it? Per-scenario streaks from the scoreboard: saturated / discriminating / failing / insufficient. Feeds the AUTHORING cycle (a saturated plant names the target for its next harder sibling; a saturated class is a rotation-to-holdout candidate) and the quarterly review. Never a deletion driver and never a gate — the corpus only grows (R4), so this answers the absolute question, never the comparative one.",
       "user_facing": false,
       "surfaces": [
         "local"
@@ -876,7 +882,7 @@
       ],
       "integration_debt": [
         {
-          "what": "SATURATION K IS PROVISIONAL (v1.29): K=4 consecutive all-green runs was chosen BEFORE there was enough history to calibrate it \u2014 the repo has ~12 runs and the corpus grew recently, so the first reading (11 saturated / 11 discriminating / 13 failing / 3 insufficient) is a number whose threshold nobody has validated. Done = K revisited against a quarter of real history and either confirmed with the evidence recorded in quarterly.md, or changed, or a consciously re-dated entry. Until then the SATURATED count is a prompt for the authoring cycle, never a fact about a plant",
+          "what": "SATURATION K IS PROVISIONAL (v1.29): K=4 consecutive all-green runs was chosen BEFORE there was enough history to calibrate it — the repo has ~12 runs and the corpus grew recently, so the first reading (11 saturated / 11 discriminating / 13 failing / 3 insufficient) is a number whose threshold nobody has validated. Done = K revisited against a quarter of real history and either confirmed with the evidence recorded in quarterly.md, or changed, or a consciously re-dated entry. Until then the SATURATED count is a prompt for the authoring cycle, never a fact about a plant",
           "owner": "david",
           "expires": "2026-11-01"
         }
@@ -898,7 +904,7 @@
         "plugins/tdd-playbook/bin/review_ledger.py",
         "docs/reviews/*.json",
         "plugins/tdd-playbook/bin/render_reference.py",
-        "calibration/run_calibration.py (cycle block runs `review_ledger.py recurrence` \u2014 the scheduled reader, D-A A8)"
+        "calibration/run_calibration.py (cycle block runs `review_ledger.py recurrence` — the scheduled reader, D-A A8)"
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_review_ledger.py"
@@ -916,7 +922,7 @@
           ]
         },
         {
-          "topic": "recurrence report (per-key guard state \u2014 UNBUILT GUARD / GUARDED / GUARD DARK / historical \u2014 plus the keyed-of-total coverage ratio, `review_ledger.py recurrence`)",
+          "topic": "recurrence report (per-key guard state — UNBUILT GUARD / GUARDED / GUARD DARK / historical — plus the keyed-of-total coverage ratio, `review_ledger.py recurrence`)",
           "consumers": [
             {
               "ref": "rendered into docs/reference/current-state.md by render_reference.py at every release (v1.45: the verb's only code reader is the opt-in calibration run, so the report was dark in exactly the case it exists to show); David turns an UNBUILT GUARD line into a HACK_CATALOG Guard <-> entry map row",
@@ -1075,7 +1081,7 @@
         "CLAUDE.md::Releasing",
         "plugins/tdd-playbook/hooks/hooks.json::PreToolUse/Bash -> tag_guard.py",
         "scripts/civerd_gate.sh (the green precondition a release is cut on)",
-        ".github/workflows/gate.yml (independent-gate-rerun) \u2014 the CI check that makes 'gate-green' independently verified before David tags"
+        ".github/workflows/gate.yml (independent-gate-rerun) — the CI check that makes 'gate-green' independently verified before David tags"
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_installer.py::test_no_script_creates_a_release_tag",
@@ -1130,7 +1136,7 @@
       ],
       "activation": {
         "default": "on",
-        "switch": ".github/workflows/gate.yml \u2014 on: push to any branch, pull_request, and workflow_dispatch; disable by deleting the workflow, which is a visible diff"
+        "switch": ".github/workflows/gate.yml — on: push to any branch, pull_request, and workflow_dispatch; disable by deleting the workflow, which is a visible diff"
       },
       "wired_by": [
         ".github/workflows/gate.yml",
@@ -1152,13 +1158,13 @@
       },
       "integration_debt": [
         {
-          "what": "PAID 2026-08-09 \u2014 first green run observed on the real runner: GitHub Actions run 31315865230, `gate` job on main, conclusion=success in 1m21s, on the sha of the Phase 2 review commit. That answers every leg the debt asked about: the ubuntu-24.04 image and python-3.12 work, and fetch-depth:0 + fetch-tags did make the ledger stage MEASURED rather than UNMEASURED \u2014 the shallow-clone failure this repo already knew about did not occur. Committed != running, and this is the running evidence. | ORIGINAL: UNPROVEN ON THE REAL RUNNER (born 2026-08-09). The workflow is YAML-validated and the gate it runs is green locally, but it has never executed on GitHub: the runner image, the Python version, and above all whether fetch-depth:0 + fetch-tags actually makes the ledger stage MEASURED rather than UNMEASURED are unverified. A shallow clone is the documented default-CI failure this repo already knows about. SUCCESSOR ASK: the run above proves it CAN go green; it does not prove anyone READS it. By expiry: at least one release cut following CLAUDE.md::Releasing step 4 (push -> wait for the check -> tag), or the step is dropped as ceremony nobody performs \u2014 the guard_response 0-of-7 shape applied to this capability.",
+          "what": "PAID 2026-08-09 — first green run observed on the real runner: GitHub Actions run 31315865230, `gate` job on main, conclusion=success in 1m21s, on the sha of the Phase 2 review commit. That answers every leg the debt asked about: the ubuntu-24.04 image and python-3.12 work, and fetch-depth:0 + fetch-tags did make the ledger stage MEASURED rather than UNMEASURED — the shallow-clone failure this repo already knew about did not occur. Committed != running, and this is the running evidence. | ORIGINAL: UNPROVEN ON THE REAL RUNNER (born 2026-08-09). The workflow is YAML-validated and the gate it runs is green locally, but it has never executed on GitHub: the runner image, the Python version, and above all whether fetch-depth:0 + fetch-tags actually makes the ledger stage MEASURED rather than UNMEASURED are unverified. A shallow clone is the documented default-CI failure this repo already knows about. SUCCESSOR ASK: the run above proves it CAN go green; it does not prove anyone READS it. By expiry: at least one release cut following CLAUDE.md::Releasing step 4 (push -> wait for the check -> tag), or the step is dropped as ceremony nobody performs — the guard_response 0-of-7 shape applied to this capability.",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
           "id": "liveness-probe-missing",
-          "what": "NO HEARTBEAT, and gate-run frequency CANNOT be its own probe (2026-08-18 review). The five sibling entries from the same 2026-08-13 anti-dark sweep were closed by naming a real reading; this one cannot be, and saying so is the point. The named death is 'GitHub Actions disabled or the workflow broken' \u2014 the watcher and the watched are the same system, so citing the gate would be gate-by-proxy. Release step 4 treats a MISSING check as stop, which covers release moments; nothing watches between them. Done = a reading OUTSIDE the gate (a scheduled `gh run list` assertion, or a doctor line that fails when the newest main commit has no completed run), or a recorded decision that release-moment coverage is sufficient and why.",
+          "what": "NO HEARTBEAT, and gate-run frequency CANNOT be its own probe (2026-08-18 review). The five sibling entries from the same 2026-08-13 anti-dark sweep were closed by naming a real reading; this one cannot be, and saying so is the point. The named death is 'GitHub Actions disabled or the workflow broken' — the watcher and the watched are the same system, so citing the gate would be gate-by-proxy. Release step 4 treats a MISSING check as stop, which covers release moments; nothing watches between them. Done = a reading OUTSIDE the gate (a scheduled `gh run list` assertion, or a doctor line that fails when the newest main commit has no completed run), or a recorded decision that release-moment coverage is sufficient and why.",
           "owner": "david",
           "expires": "2026-11-15"
         }
@@ -1167,13 +1173,13 @@
       "deploy_surface": {
         "runs_on": "GitHub-hosted ubuntu-24.04 runner (github.com/davalst/tdd-playbook actions)",
         "gets_there_by": "the workflow file rides `git push`; there is no separate deploy",
-        "running_version_probe": "the `gate` check-run conclusion for the pushed sha \u2014 `gh run list --branch main --limit 1`; CLAUDE.md::Releasing step 4 makes reading it a required release step",
+        "running_version_probe": "the `gate` check-run conclusion for the pushed sha — `gh run list --branch main --limit 1`; CLAUDE.md::Releasing step 4 makes reading it a required release step",
         "divergence": "Actions disabled, the workflow deleted, or invalid YAML -> NO check appears at all, which reads like 'not finished yet'. Step 4 treats a MISSING check as a stop, not a pass; test_installer pins the workflow's YAML validity and its gate invocation so a silent break REDs locally."
       }
     },
     {
       "id": "state-reset",
-      "summary": "`tdd reset` removes Playbook machine state across four scopes (repo / shared / machine / plugin), DRY-RUN BY DEFAULT, printing every path before touching any. The printed set and the deleted set are asserted EQUAL by test, which kills the 'prints one thing, deletes another' class outright. CALIBRATION evidence (docs/calibration, calibration/corpus) is unreachable except under --burn-evidence. Note that --repo DOES remove repo-local guard telemetry (playbook-yield.jsonl, the heartbeat, the lock journal) \u2014 deliberate, and named rather than filed under 'exhaust'.",
+      "summary": "`tdd reset` removes Playbook machine state across four scopes (repo / shared / machine / plugin), DRY-RUN BY DEFAULT, printing every path before touching any. The printed set and the deleted set are asserted EQUAL by test, which kills the 'prints one thing, deletes another' class outright. CALIBRATION evidence (docs/calibration, calibration/corpus) is unreachable except under --burn-evidence. Note that --repo DOES remove repo-local guard telemetry (playbook-yield.jsonl, the heartbeat, the lock journal) — deliberate, and named rather than filed under 'exhaust'.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1198,7 +1204,7 @@
       },
       "integration_debt": [
         {
-          "what": "--shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0). Removing common-dir state from one worktree is an unlock of every OTHER worktree without a journal entry \u2014 the exact thing /tdd-unlock exists to prevent. PARTIALLY PAID 2026-08-09: the reason is now journaled to the capture store (.reset-journal.jsonl), which reset never removes. STILL UNPAID, and the debt previously OVERSTATED its mitigation: reset_plan has NO lock logic, so a foreign active lock is NOT refused and the listing emits a worktree COUNT, not names. A debt whose stated mitigation is fictional under-reports its own severity, which is why this correction is written down rather than quietly fixed. By expiry: the burn record written somewhere reset never removes, or --shared restricted to single-worktree repos.",
+          "what": "--shared HAS NO CROSS-WORKTREE JOURNAL (v1.32.0). Removing common-dir state from one worktree is an unlock of every OTHER worktree without a journal entry — the exact thing /tdd-unlock exists to prevent. PARTIALLY PAID 2026-08-09: the reason is now journaled to the capture store (.reset-journal.jsonl), which reset never removes. STILL UNPAID, and the debt previously OVERSTATED its mitigation: reset_plan has NO lock logic, so a foreign active lock is NOT refused and the listing emits a worktree COUNT, not names. A debt whose stated mitigation is fictional under-reports its own severity, which is why this correction is written down rather than quietly fixed. By expiry: the burn record written somewhere reset never removes, or --shared restricted to single-worktree repos.",
           "owner": "david",
           "expires": "2026-10-31"
         }
@@ -1241,7 +1247,7 @@
     },
     {
       "id": "advisory-guards-optin",
-      "summary": "The guards retired to OPT-IN in v1.32.0. FOUR remain \u2014 overmock, exhaustive, flaky, redlock; `exitcode` was DELETED in v1.47.0 on its own evidence (701 warnings, zero acted on, and a command-global `$?` read that made it fire on unrelated status reads). Deleting beat restoring: it was judged on a metric its tier could not produce, and leaving it off with a dated debt was a decision nobody would ever come back to. They ship OFF on 31 warnings and ZERO blocks across all recorded history (docs/calibration/gate_yield.md). Registered SEPARATELY from integrity-guards, and default:off, so `capability_registry.py doctor` lists them in the dark inventory. A tripwire audit caught the earlier shape: one capability declaring activation on while five of its nine shipped hooks were inert meant the operator health surface could not say so \u2014 dark-to-the-OPERATOR, which is the \u00a76a class this registry exists to make impossible.",
+      "summary": "The guards retired to OPT-IN in v1.32.0. FOUR remain — overmock, exhaustive, flaky, redlock; `exitcode` was DELETED in v1.47.0 on its own evidence (701 warnings, zero acted on, and a command-global `$?` read that made it fire on unrelated status reads). Deleting beat restoring: it was judged on a metric its tier could not produce, and leaving it off with a dated debt was a decision nobody would ever come back to. They ship OFF on 31 warnings and ZERO blocks across all recorded history (docs/calibration/gate_yield.md). Registered SEPARATELY from integrity-guards, and default:off, so `capability_registry.py doctor` lists them in the dark inventory. A tripwire audit caught the earlier shape: one capability declaring activation on while five of its nine shipped hooks were inert meant the operator health surface could not say so — dark-to-the-OPERATOR, which is the §6a class this registry exists to make impossible.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1266,7 +1272,7 @@
       },
       "integration_debt": [
         {
-          "what": "RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0). These five were retired on 31 warnings / 0 blocks over six cycles from mostly ONE operator \u2014 and a warn-tier guard cannot produce blocks BY CONSTRUCTION, so 'never blocked' is partly a statement about the tier, not the guard. By expiry: read docs/calibration/gate_yield.md again and either confirm the retirement, restore one that turns out to have carried load, or delete the five outright. The one outcome not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN \u2014 several a day \u2014 so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. RESOLVED for exitcode 2026-08-29: it was DELETED. 701 warns / 0 blocks / 0 adjudicated-fp, plus a verified precision defect (a command-global `$?` read satisfied its decision test, so it fired on unrelated and purely informational status reads). The remaining four are still unread.",
+          "what": "RE-READ THE YIELD BEFORE MAKING THIS PERMANENT (v1.32.0). These five were retired on 31 warnings / 0 blocks over six cycles from mostly ONE operator — and a warn-tier guard cannot produce blocks BY CONSTRUCTION, so 'never blocked' is partly a statement about the tier, not the guard. By expiry: read docs/calibration/gate_yield.md again and either confirm the retirement, restore one that turns out to have carried load, or delete the five outright. The one outcome not allowed is leaving them off and unread, which is how a retired gate becomes an unmaintained one. | READ PERFORMED 2026-08-18 (the debt asked for it). Measured from docs/calibration/gate_yield.md: exitcode 701 warns / 0 blocks / 0 fp over 6 cycles; exhaustive 3 warns / 5 cycles; overmock 3 / 3; redlock 1 / 2; flaky 1 / 1; fixtureguard ZERO rows over the 3 cycles since it shipped 2026-08-15. THE THRESHOLD'S UNIT IS BROKEN, which is why this is re-dated rather than executed: '>=2 cycles' was written when a cycle was a WEEK under the calibration clock. v1.32.0 retired the clock and a cycle became a GATE RUN — several a day — so the bar silently got ~20x cheaper, and applying its letter would delete a rarely-triggered guard on three days of evidence. Re-express the bar in a unit that survived the reversal (elapsed days since ship, or gate runs on days a fixture file was actually touched) BEFORE promoting or deleting anything. RESOLVED for exitcode 2026-08-29: it was DELETED. 701 warns / 0 blocks / 0 adjudicated-fp, plus a verified precision defect (a command-global `$?` read satisfied its decision test, so it fired on unrelated and purely informational status reads). The remaining four are still unread.",
           "owner": "david",
           "expires": "2026-11-15"
         }
@@ -1275,7 +1281,7 @@
     },
     {
       "id": "generated-agents-md",
-      "summary": "AGENTS.md \u2014 the Codex agent-instructions file this repo reads (gate-manifest.json, intent_nudge.py) \u2014 is GENERATED from CLAUDE.md + a curated host-differences header and pinned byte-exact. It is built by CONCATENATION, not substitution: the doctrine is host-neutral and is copied verbatim, so it cannot drift, while the handful of genuinely Codex-specific facts are maintained deliberately in one visible place.",
+      "summary": "AGENTS.md — the Codex agent-instructions file this repo reads (gate-manifest.json, intent_nudge.py) — is GENERATED from CLAUDE.md + a curated host-differences header and pinned byte-exact. It is built by CONCATENATION, not substitution: the doctrine is host-neutral and is copied verbatim, so it cannot drift, while the handful of genuinely Codex-specific facts are maintained deliberately in one visible place.",
       "user_facing": false,
       "surfaces": [
         "local",
@@ -1298,26 +1304,26 @@
           "consumers": [
             "Codex sessions in this repo (the host convention)",
             "gate-manifest.json safe_rules",
-            "plugins/tdd-playbook/hooks/scripts/intent_nudge.py \u2014 names it as a place to discover repo-local testing conventions"
+            "plugins/tdd-playbook/hooks/scripts/intent_nudge.py — names it as a place to discover repo-local testing conventions"
           ]
         }
       ],
       "liveness": {
         "max_quiet_days": 180,
-        "probe": "gate-run frequency IS the probe, stated rather than assumed: render_agents' byte-exact pin (committed AGENTS.md == render()) runs in the blessed gate on every push, so drift is bounded by push frequency, not by release frequency. A machine reading a stale AGENTS.md between pushes remains possible and is accepted \u2014 the window is a push, and the alternative (a filesystem watcher) costs more than the exposure."
+        "probe": "gate-run frequency IS the probe, stated rather than assumed: render_agents' byte-exact pin (committed AGENTS.md == render()) runs in the blessed gate on every push, so drift is bounded by push frequency, not by release frequency. A machine reading a stale AGENTS.md between pushes remains possible and is accepted — the window is a push, and the alternative (a filesystem watcher) costs more than the exposure."
       },
       "integration_debt": [
         {
-          "what": "HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0). The doctrine body cannot drift \u2014 it is CLAUDE.md verbatim \u2014 but the curated host-differences header can: nothing checks that its claims about Codex are still true. It currently asserts that only lock_guard has a Codex adapter, which is true today and is exactly the sort of fact that changes without anyone re-reading a header. By expiry: derive the guard list from docs/architecture/host-parity-policy.json instead of restating it, or a test that the two agree.",
+          "what": "HOST_NOTES IS HAND-MAINTAINED AND UNPINNED (v1.33.0). The doctrine body cannot drift — it is CLAUDE.md verbatim — but the curated host-differences header can: nothing checks that its claims about Codex are still true. It currently asserts that only lock_guard has a Codex adapter, which is true today and is exactly the sort of fact that changes without anyone re-reading a header. By expiry: derive the guard list from docs/architecture/host-parity-policy.json instead of restating it, or a test that the two agree.",
           "owner": "david",
           "expires": "2026-11-30"
         }
       ],
-      "notes": "Born 2026-08-10 after the hand-maintained mirror was found carrying the PRE-v1.32.0 calibration section \u2014 a Codex reader following it would have done the opposite of current doctrine, and no gate said so. David caught it; no mechanism did."
+      "notes": "Born 2026-08-10 after the hand-maintained mirror was found carrying the PRE-v1.32.0 calibration section — a Codex reader following it would have done the opposite of current doctrine, and no gate said so. David caught it; no mechanism did."
     },
     {
       "id": "role-adversaries",
-      "summary": "The four v1.34.0 role-lens adversaries \u2014 security (S17-S24), test-quality (S25-S27,S31), observability (S02,S32,S33), adoption (S38-S41) \u2014 each a judgment verifier pinned model: opus, each calibrated against a planted defect with a paired clean control (calibration/corpus/, R1 coverage enforced by run_calibration). They answer the inventory rows nothing could answer before; dispatch is ALWAYS human-initiated (S23 dogfooded: no auto-spend path exists).",
+      "summary": "The four v1.34.0 role-lens adversaries — security (S17-S24), test-quality (S25-S27,S31), observability (S02,S32,S33), adoption (S38-S41) — each a judgment verifier pinned model: opus, each calibrated against a planted defect with a paired clean control (calibration/corpus/, R1 coverage enforced by run_calibration). They answer the inventory rows nothing could answer before; dispatch is ALWAYS human-initiated (S23 dogfooded: no auto-spend path exists).",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -1357,13 +1363,13 @@
       "integration_debt": [
         {
           "id": "observability-haiku-flakiness",
-          "what": "PAID 2026-08-13 on evidence, then RE-SCOPED. Live calibration ran for all four pairs (docs/calibration/history.md): security 3/3+3/3 PASS, test-quality 3/3+3/3 PASS, adoption 3/3+3/3 PASS at haiku (after the control was found MIS-AUTHORED and re-authored, with the plant oracle tightened to require naming the defect). observability PASSES 3/3+3/3 at OPUS (its production tier) but its control is FLAKY at haiku (2/3 AMBER twice, 3/3 in a 3-rep reproduction) \u2014 the remaining obligation: bring the observability control to k/k at the HAIKU lower bound, or record the decision that production-tier calibration is the bar for this agent and why. Never retry-into-green (section 7): the AMBER rows stay in the record",
+          "what": "PAID 2026-08-13 on evidence, then RE-SCOPED. Live calibration ran for all four pairs (docs/calibration/history.md): security 3/3+3/3 PASS, test-quality 3/3+3/3 PASS, adoption 3/3+3/3 PASS at haiku (after the control was found MIS-AUTHORED and re-authored, with the plant oracle tightened to require naming the defect). observability PASSES 3/3+3/3 at OPUS (its production tier) but its control is FLAKY at haiku (2/3 AMBER twice, 3/3 in a 3-rep reproduction) — the remaining obligation: bring the observability control to k/k at the HAIKU lower bound, or record the decision that production-tier calibration is the bar for this agent and why. Never retry-into-green (section 7): the AMBER rows stay in the record",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
           "id": "role-adversaries-codex-unavailable",
-          "what": "CLAUDE-ONLY BY PARITY: the four agents are codex-unavailable under the standing codex-command-agent-discovery debt (test-lock capability). Its expiry is a DELIBERATE known-RED: on 2026-09-30 the gate goes red unless Codex discovery lands or the debt is consciously re-dated with a recovery trigger \u2014 stated in CHANGELOG v1.34.0 so it cannot read as a surprise",
+          "what": "CLAUDE-ONLY BY PARITY: the four agents are codex-unavailable under the standing codex-command-agent-discovery debt (test-lock capability). Its expiry is a DELIBERATE known-RED: on 2026-09-30 the gate goes red unless Codex discovery lands or the debt is consciously re-dated with a recovery trigger — stated in CHANGELOG v1.34.0 so it cannot read as a surprise",
           "owner": "david",
           "expires": "2026-09-30"
         },
@@ -1376,7 +1382,7 @@
     },
     {
       "id": "scenario-inventory",
-      "summary": "docs/adversary-scenario-inventory.md \u2014 the standing 42-row catalogue of what goes wrong, phrased as the question a human asks at 11pm, with stable IDs (S01-S42), a Route to a real dispatchable agent (or an honest dash), a Class crosswalk into the shared failure taxonomy (anti-double-homing for the section-13 repeat-class metric), and a Facts join to readable_surface.PAGES pinned in both directions. Hand-maintained, append-mostly; governance G1-G5 in the file.",
+      "summary": "docs/adversary-scenario-inventory.md — the standing 42-row catalogue of what goes wrong, phrased as the question a human asks at 11pm, with stable IDs (S01-S42), a Route to a real dispatchable agent (or an honest dash), a Class crosswalk into the shared failure taxonomy (anti-double-homing for the section-13 repeat-class metric), and a Facts join to readable_surface.PAGES pinned in both directions. Hand-maintained, append-mostly; governance G1-G5 in the file.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1418,7 +1424,7 @@
     },
     {
       "id": "readable-surface",
-      "summary": "readable_surface.py facts (+ /readable) \u2014 the first Playbook output whose job is DESCRIPTION, not a verdict: worry-organised, file:line-cited facts composed from the existing machine authorities, for the reader who cannot fall back to source. Stdout-only (no committed artifact, no staleness gate \u2014 those only pay off if the surface is read repeatedly, which is exactly what v1.34.0 measures). Prose never gates; the command never dispatches a paid adversary.",
+      "summary": "readable_surface.py facts (+ /readable) — the first Playbook output whose job is DESCRIPTION, not a verdict: worry-organised, file:line-cited facts composed from the existing machine authorities, for the reader who cannot fall back to source. Stdout-only (no committed artifact, no staleness gate — those only pay off if the surface is read repeatedly, which is exactly what v1.34.0 measures). Prose never gates; the command never dispatches a paid adversary.",
       "user_facing": true,
       "surfaces": [
         "local",
@@ -1429,7 +1435,7 @@
       },
       "wired_by": [
         "plugins/tdd-playbook/commands/readable.md",
-        "README.md (scaffolding roster + routing table \u2014 the canonical discovery surface)",
+        "README.md (scaffolding roster + routing table — the canonical discovery surface)",
         "plugins/tdd-playbook/bin/readable_surface.py"
       ],
       "exercised_by": [
@@ -1460,7 +1466,7 @@
       "integration_debt": [
         {
           "id": "readable-surface-keep-kill",
-          "what": "THE R&D DECISION: by 2026-09-30 read docs/calibration/usage.md (uses per scenario; dispatched/changed_a_decision self-reports) and record keep/flip/kill. Kill = /readable and readable_surface.py are DELETED, not left dark; the inventory survives as a manual checklist. Usage measures whether the surface was ASKED, not whether it helped \u2014 the criterion is rows nobody asks about",
+          "what": "THE R&D DECISION: by 2026-09-30 read docs/calibration/usage.md (uses per scenario; dispatched/changed_a_decision self-reports) and record keep/flip/kill. Kill = /readable and readable_surface.py are DELETED, not left dark; the inventory survives as a manual checklist. Usage measures whether the surface was ASKED, not whether it helped — the criterion is rows nobody asks about",
           "owner": "david",
           "expires": "2026-09-30"
         },
@@ -1474,7 +1480,7 @@
     },
     {
       "id": "holdout-control-validation",
-      "summary": "The D1 authoring gate for holdout bodies (trustworthy-holdout-controls, 2026-08-16): before a body lands, its TARGET verifier runs against it under the SAME execution contract the eval uses, deterministically scored (rc.oracle) \u2014 holds/caught only at k/k; unstable/fails/missed/inconclusive REFUSE approval (fail closed). Hash-bound STRUCTURED-ONLY manifest (full contract shas + rep outcomes + candidate content sha; no raw output, no oracle regexes), TOCTOU re-check at approve, spawn confined away from the vault, raw verifier reasoning held in memory for the judge only. Register statuses (D0) flow to the scorer via TDD_PLAYBOOK_HOLDOUT_REGISTER, parsed once by the trusted parent: legacy-invalid/asymmetric excluded from the CURRENT recall/FP, known-overflag counted, per-run population snapshot in every history block. Born from the diagnose finding that FP 10/10 measured control-AUTHORING quality, not verifier quality.",
+      "summary": "The D1 authoring gate for holdout bodies (trustworthy-holdout-controls, 2026-08-16): before a body lands, its TARGET verifier runs against it under the SAME execution contract the eval uses, deterministically scored (rc.oracle) — holds/caught only at k/k; unstable/fails/missed/inconclusive REFUSE approval (fail closed). Hash-bound STRUCTURED-ONLY manifest (full contract shas + rep outcomes + candidate content sha; no raw output, no oracle regexes), TOCTOU re-check at approve, spawn confined away from the vault, raw verifier reasoning held in memory for the judge only. Register statuses (D0) flow to the scorer via TDD_PLAYBOOK_HOLDOUT_REGISTER, parsed once by the trusted parent: legacy-invalid/asymmetric excluded from the CURRENT recall/FP, known-overflag counted, per-run population snapshot in every history block. Born from the diagnose finding that FP 10/10 measured control-AUTHORING quality, not verifier quality.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1483,9 +1489,9 @@
         "default": "on"
       },
       "wired_by": [
-        "calibration/holdout.py::cmd_approve_holdout (the approve gate \u2014 validate_item runs before any move)",
+        "calibration/holdout.py::cmd_approve_holdout (the approve gate — validate_item runs before any move)",
         "calibration/holdout.py::cmd_validate_holdout (read-only `holdout validate`)",
-        "calibration/holdout.py::cmd_remediate_holdout (`holdout remediate` \u2014 D4 sweep)",
+        "calibration/holdout.py::cmd_remediate_holdout (`holdout remediate` — D4 sweep)",
         "calibration/run_calibration.py::partition_readings + holdout_status_map (register status -> scorer)"
       ],
       "exercised_by": [
@@ -1512,19 +1518,19 @@
       "integration_debt": [
         {
           "id": "dev-calibration-validate-item-reuse",
-          "what": "The PUBLIC dev corpus likely has the same disease (controls approved without a verifier run). Reuse validate_item at author_plants.cmd_approve so dev pairs get the same deterministically-scored gate \u2014 or record a decision that dev stays judge-free. Done = the approve path validates, or a recorded decision.",
+          "what": "The PUBLIC dev corpus likely has the same disease (controls approved without a verifier run). Reuse validate_item at author_plants.cmd_approve so dev pairs get the same deterministically-scored gate — or record a decision that dev stays judge-free. Done = the approve path validates, or a recorded decision.",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
           "id": "holdout-corpus-remediation-sweep",
-          "what": "THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16: parked DARK without this): David runs `holdout remediate --vault-dir ~/tdd-holdout-vault --model sonnet` interactively over the real vault (interactive-only by design \u2014 the y/n half cannot be automated), confirms each disposition, lands superseding replacement pairs via `approve --supersedes`, pushes the vault, then re-runs `holdout diagnose` so it reports BOTH the legacy and corrected readings. Until this runs the holdout FP number still measures control-authoring quality \u2014 the exact failure this plan exists to end. Done = legacy-invalid/known-overflag rows in the private register + a diagnose/history block carrying a Corrected reading.",
+          "what": "THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16: parked DARK without this): David runs `holdout remediate --vault-dir ~/tdd-holdout-vault --model sonnet` interactively over the real vault (interactive-only by design — the y/n half cannot be automated), confirms each disposition, lands superseding replacement pairs via `approve --supersedes`, pushes the vault, then re-runs `holdout diagnose` so it reports BOTH the legacy and corrected readings. Until this runs the holdout FP number still measures control-authoring quality — the exact failure this plan exists to end. Done = legacy-invalid/known-overflag rows in the private register + a diagnose/history block carrying a Corrected reading.",
           "owner": "david",
           "expires": "2026-09-30"
         },
         {
           "id": "population-snapshot-consumers",
-          "what": "integration-adversary ISLAND2 + arch-F7 (2026-08-16): the per-run population snapshot now has TWO readers (holdout_summary_lines' as-of-run counts; history_format.reading_of as the safe accessor), but plant_vitality and ledger remain snapshot-BLIND \u2014 a legacy-invalid scenario keeps accruing saturated/failing streaks and can still spend a pre-registered prediction. Done = vitality streaks and the ledger binder consult the block's population_snapshot (or reading_of) to exclude retired bodies, OR a recorded decision that historical streak continuity outweighs it. Related recorded decision: retired bodies deliberately STAY selected in runs so every run reports both readings (comment at the weak-plant nag, run_calibration.py).",
+          "what": "integration-adversary ISLAND2 + arch-F7 (2026-08-16): the per-run population snapshot now has TWO readers (holdout_summary_lines' as-of-run counts; history_format.reading_of as the safe accessor), but plant_vitality and ledger remain snapshot-BLIND — a legacy-invalid scenario keeps accruing saturated/failing streaks and can still spend a pre-registered prediction. Done = vitality streaks and the ledger binder consult the block's population_snapshot (or reading_of) to exclude retired bodies, OR a recorded decision that historical streak continuity outweighs it. Related recorded decision: retired bodies deliberately STAY selected in runs so every run reports both readings (comment at the weak-plant nag, run_calibration.py).",
           "owner": "david",
           "expires": "2026-11-15"
         }
@@ -1532,7 +1538,7 @@
     },
     {
       "id": "control-quality-adversary",
-      "summary": "The D2 ADVISORY judge (plugins/tdd-playbook/agents/control-quality-adversary.md, model: opus pinned): reads {control edits, task, oracle, verifier reasoning}, forced closed vocabulary Control-Verdict REJECT / FIX-ORACLE / KEEP + a plain-language Recommendation, k/k agreement required (any split -> INCONCLUSIVE, no auto-action). The irreversible half (retire pair / known-overflag) runs ONLY on an interactive y/n bound to the manifest hash \u2014 no TTY aborts. Custody: authoring-time exposure class (it must read the oracle); structured labels persist, free-text rationale is transient. Calibrated against four frozen sect-13 corpus fixtures (ledger L-20260816-03) before being trusted.",
+      "summary": "The D2 ADVISORY judge (plugins/tdd-playbook/agents/control-quality-adversary.md, model: opus pinned): reads {control edits, task, oracle, verifier reasoning}, forced closed vocabulary Control-Verdict REJECT / FIX-ORACLE / KEEP + a plain-language Recommendation, k/k agreement required (any split -> INCONCLUSIVE, no auto-action). The irreversible half (retire pair / known-overflag) runs ONLY on an interactive y/n bound to the manifest hash — no TTY aborts. Custody: authoring-time exposure class (it must read the oracle); structured labels persist, free-text rationale is transient. Calibrated against four frozen sect-13 corpus fixtures (ledger L-20260816-03) before being trusted.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1578,11 +1584,11 @@
         "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_preflight_refuses_red_baseline_and_empty_collection"
       ],
       "liveness": {
-        "probe": "gate-run frequency IS the probe, stated rather than assumed: bin/mutation_run.py is a force_full path and tests/test_mutation_preflight.py runs on every gate, so a wrapper that stopped refusing fails the next push. What the gate CANNOT see is whether an operator invoked mutmut directly instead \u2014 that is the residual, and it is why the command and brief name this as the path rather than merely recommending it."
+        "probe": "gate-run frequency IS the probe, stated rather than assumed: bin/mutation_run.py is a force_full path and tests/test_mutation_preflight.py runs on every gate, so a wrapper that stopped refusing fails the next push. What the gate CANNOT see is whether an operator invoked mutmut directly instead — that is the residual, and it is why the command and brief name this as the path rather than merely recommending it."
       },
       "integration_debt": [
         {
-          "what": "CODEX PARITY, stated not assumed: bin/ ships to Codex (CODEX_COPY_TREES), so mutation_run.py is directly runnable there \u2014 but BOTH of its documented consumers (commands/mutate.md, agents/mutation-runner.md) are Claude-only by the deliberate 2026-08-07 decision that Codex-shaped commands/agents are undiscoverable and become integration islands. So on Codex the mechanism exists with nothing pointing at it, which is the dark-by-default shape this registry exists to surface. Done = a native Codex consumer names it (adapters/codex), or a recorded decision that Codex operators reach it through the vendored bin/ path and why that is sufficient.",
+          "what": "CODEX PARITY, stated not assumed: bin/ ships to Codex (CODEX_COPY_TREES), so mutation_run.py is directly runnable there — but BOTH of its documented consumers (commands/mutate.md, agents/mutation-runner.md) are Claude-only by the deliberate 2026-08-07 decision that Codex-shaped commands/agents are undiscoverable and become integration islands. So on Codex the mechanism exists with nothing pointing at it, which is the dark-by-default shape this registry exists to surface. Done = a native Codex consumer names it (adapters/codex), or a recorded decision that Codex operators reach it through the vendored bin/ path and why that is sufficient.",
           "owner": "david",
           "expires": "2026-11-15"
         }
@@ -1590,7 +1596,7 @@
     },
     {
       "id": "intent-drift-review",
-      "summary": "intent-adversary \u2014 the only reviewer whose subject is the REQUEST. The other adversaries judge a plan on its own terms (band-aid, island, unhandled edge, untrue claim, hollow test); none asks whether the requirement survived, so it drifts, and it drifts hardest right after a review round because adopting a reviewer's finding is when scope quietly narrows. Reports each ORIGINAL requirement as DELIVERED / NARROWED / DROPPED / SUBSTITUTED. Its discriminator is not 'was it cut?' but 'was the requester ASKED, and did they answer?' \u2014 a cut the requester chose is not drift, and flagging it would make the agent noise. REFUSES to run on a paraphrase: reading the plan's own restatement of the goal inherits the drift it is hunting.",
+      "summary": "intent-adversary — the only reviewer whose subject is the REQUEST. The other adversaries judge a plan on its own terms (band-aid, island, unhandled edge, untrue claim, hollow test); none asks whether the requirement survived, so it drifts, and it drifts hardest right after a review round because adopting a reviewer's finding is when scope quietly narrows. Reports each ORIGINAL requirement as DELIVERED / NARROWED / DROPPED / SUBSTITUTED. Its discriminator is not 'was it cut?' but 'was the requester ASKED, and did they answer?' — a cut the requester chose is not drift, and flagging it would make the agent noise. REFUSES to run on a paraphrase: reading the plan's own restatement of the goal inherits the drift it is hunting.",
       "user_facing": true,
       "surfaces": [
         "local"
@@ -1618,16 +1624,16 @@
       ],
       "liveness": {
         "max_quiet_days": 120,
-        "probe": "Two readings, because the agent has two deaths. LOADING: it must parse as YAML for the real host \u2014 pinned by test_agents.py, which caught this brief failing to load on its first draft (an unquoted ': ' in the description, the v1.42.0 dark-skill shape). FIRING: calibration recall on intent-narrowed-by-review and intent-substituted-workstream, with the two controls staying INTACT. Recall without the controls is worthless here \u2014 an agent that flags every cut is noise, and noise is this role's specific failure mode."
+        "probe": "Two readings, because the agent has two deaths. LOADING: it must parse as YAML for the real host — pinned by test_agents.py, which caught this brief failing to load on its first draft (an unquoted ': ' in the description, the v1.42.0 dark-skill shape). FIRING: calibration recall on intent-narrowed-by-review and intent-substituted-workstream, with the two controls staying INTACT. Recall without the controls is worthless here — an agent that flags every cut is noise, and noise is this role's specific failure mode."
       },
       "integration_debt": [
         {
-          "what": "MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it. This agent's danger is not missing drift, it is crying wolf: a requirement legitimately cut by the requester looks identical to one silently narrowed, and the discriminator ('was the requester asked?') depends on the record existing. By expiry, run it on real reviewed plans and settle two numbers \u2014 how often it flags a cut the requester actually made, and whether the verbatim-request refusal fires in practice or is quietly skipped. If it over-fires on well-run plans, narrow it or delete it; leaving a noisy reviewer in the roster teaches people to ignore the roster.",
+          "what": "MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it. This agent's danger is not missing drift, it is crying wolf: a requirement legitimately cut by the requester looks identical to one silently narrowed, and the discriminator ('was the requester asked?') depends on the record existing. By expiry, run it on real reviewed plans and settle two numbers — how often it flags a cut the requester actually made, and whether the verbatim-request refusal fires in practice or is quietly skipped. If it over-fires on well-run plans, narrow it or delete it; leaving a noisy reviewer in the roster teaches people to ignore the roster.",
           "owner": "david",
           "expires": "2026-11-30"
         }
       ],
-      "notes": "Built 2026-08-28 from two real incidents: a requirement stated verbatim TWICE that four reviewers argued down to on-demand with no record of the requester being asked; and a workstream ('meet and beat CC's planning') silently substituted by two unrelated real defect fixes. In both the engineering was GOOD \u2014 which is why nine other adversaries saw nothing."
+      "notes": "Built 2026-08-28 from two real incidents: a requirement stated verbatim TWICE that four reviewers argued down to on-demand with no record of the requester being asked; and a workstream ('meet and beat CC's planning') silently substituted by two unrelated real defect fixes. In both the engineering was GOOD — which is why nine other adversaries saw nothing."
     }
   ]
 }
