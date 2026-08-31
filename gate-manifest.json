@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "suite_glob": "plugins/tdd-playbook/tests/test_*.py",
-  "acknowledged_roster_sha256": "4c226b0f56b69590b4861efcc95ab79f39fea2de0aebe1d48bcdc9c47d4878ce",
+  "acknowledged_roster_sha256": "011e7dba748325912555d33af86f4c7c3852fbe74eb912d35ef79dec69eb38da",
   "acknowledged_plan_sha256": "50de29dcae2b21f758014178bcb646e7cf4b4f904a5d554bf599c9f67577095c",
   "fixed_stages": [
     {

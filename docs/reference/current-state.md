@@ -4,12 +4,12 @@
 
 ## Provenance
 
-- `gate-manifest.json` — `67f0be15a52961262626416eae94ca36409319394f205db961d42f432c80a78c`
+- `gate-manifest.json` — `ce7b1ccc137c5d64a3a33eda24e995b7e9d8c0d125a0cc6f65a6fbcc19e2da22`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
 - `docs/architecture/host-parity-policy.json` — `15524dcfcc0008ea7c5d6320157c7aaa7d6801a3f6f666ff9745b1cf9b67318f`
 - `docs/architecture/host-parity.json` — `c17cb95cd8ca1b7af0d77c80913b374e0bfdc868f3eeb88fbec87864a9bb141f`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `ac7f75f80f3e688c93f8993ee4bbb4474231e77e7720a54015291463969c6aa4`
+- `capabilities.json` — `c84d993d129b7ca8d23e224d6f79862f8802e23e6162a4849c52e4ec0184064f`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
 - `plugins/tdd-playbook/hooks/scripts/_common.py` — `73053e57daddd32f641ba0b2dad78347bc5a494a57b6c85e5e2fbc65b0ce1848`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -62,10 +62,10 @@
 
 - `sh scripts/civerd_gate.sh` — **AUTHORIZING** complete local gate and CIVerd suite command.
 - `sh scripts/civerd_gate.sh affected --base <revision>` — **NON-AUTHORIZING** diagnostic subset; ambiguous scope falls back to full.
-- Discovered suites: 28. Fixed stages: 4. Total stages: 32.
-- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_holdout_confinement`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_mutation_preflight`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
+- Discovered suites: 29. Fixed stages: 4. Total stages: 33.
+- Suite IDs: `test_aaa_suites_via_main`, `test_agents`, `test_capability_registry`, `test_capture`, `test_codex_adapter`, `test_dataflow_sweeps`, `test_ed25519_verify`, `test_escape_log`, `test_gate_runner`, `test_gate_yield`, `test_grade_from_otel`, `test_holdout_confinement`, `test_hooks`, `test_host_adapters`, `test_host_doctor`, `test_host_parity`, `test_host_runner`, `test_installer`, `test_mutation_preflight`, `test_portable_core`, `test_readable_surface`, `test_red_lock_portable`, `test_reference_docs`, `test_review_ledger`, `test_tdd_lock`, `test_vendoring`, `test_verify_citations`, `test_verify_verdict`, `test_with_snapshot`
 - Fixed IDs: `calibration`, `dataflow`, `ledger`, `plant-forms`
-- Acknowledged roster digest: `4c226b0f56b69590b4861efcc95ab79f39fea2de0aebe1d48bcdc9c47d4878ce`
+- Acknowledged roster digest: `011e7dba748325912555d33af86f4c7c3852fbe74eb912d35ef79dec69eb38da`
 - Acknowledged execution-manifest digest: `50de29dcae2b21f758014178bcb646e7cf4b4f904a5d554bf599c9f67577095c`
 
 ## Host parity
@@ -77,8 +77,8 @@
 
 ## Capability registry
 
-- Registered capabilities: 34. Owned dated integration-debt entries: 66.
-- `integrity-guards/proxy-assert-on-own-prose` — SOURCE-TEXT ASSERTIONS MATCH THEIR OWN COMMENTARY (opened 2026-08-30)… (owner `David`, expires `2026-09-06`)
+- Registered capabilities: 35. Owned dated integration-debt entries: 66.
+- `integrity-guards/proxy-assert-on-own-prose` — PAID 2026-08-31, all three legs… (owner `David`, expires `2026-09-06`)
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -108,7 +108,7 @@
 - `gate-yield` — DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden)… (owner `david`, expires `2026-11-15`)
 - `install-doctor/bin-roster-prose-divergence` — CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README… (owner `david`, expires `2026-10-13`)
 - `civerd-release-gate` — ARCHIVAL-ONLY, NO CONSUMER (v1.32.0)… (owner `david`, expires `2027-02-01`)
-- `deliberation-capture` — ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30)… (owner `david`, expires `2026-08-31`)
+- `deliberation-capture` — RE-DATED 2026-08-31 -> 2026-09-30 (David approved, this session)… (owner `david`, expires `2026-09-30`)
 - `deliberation-capture` — CONSUMER… (owner `david`, expires `2026-10-31`)
 - `dataflow-sweeps` — TIER-2 FIELD-PAIRING SWEEP (v1.26 F3 deferral, David's call 2026-08-05)… (owner `david`, expires `2026-09-15`)
 - `dataflow-sweeps` — CHELIPED TIER-2 PILOT VERDICT… (owner `david`, expires `2026-09-15`)

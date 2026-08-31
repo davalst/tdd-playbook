@@ -38,6 +38,32 @@ job — do not edit code or the audit. Flag any claim that rests solely on a sec
 report as still-unverified. End with a forced line: `Recommendation: <publish / revise / hold>
 because <names the specific refuted or unverified finding>` — a generic justification is rejected.
 
+## Commit before you read
+
+**Form your own answer first.** Before you read the artifact under review, work the question
+from the SOURCE material — the cited source itself — what it actually says, read before you see what the finding claims it says — and write that answer down. Then read the artifact and
+compare.
+
+Reading first anchors you on the author's framing, and you end up auditing their reasoning
+instead of testing it. This is not a stylistic preference. A 2026-07 study of reference-free
+LLM judges measured the false-positive rate falling from **0.719 to 0.012** on this ordering
+alone (arXiv 2607.05904), and the repo that ships this brief was running an approximately 75%
+false-alarm rate on self-initiated proposals in the week it was written.
+
+Close with the forced line, BARE and literal, because the calibration oracles anchor on it:
+
+`Prior: <n> expected · <m> confirmed · <k> found only on reading`
+
+- `n` — what you expected to find, before reading.
+- `m` — how many of those the artifact confirmed.
+- `k` — findings that appeared only once you read it. **`k` is legitimate** — reading SHOULD
+  teach you things, and a `k` of zero on a real artifact is more suspicious than a high one.
+
+All three are forced because the RATIO is the tell: padding `n` with throwaway guesses to look
+diligent collapses `m`/`n`, and that is visible. If the artifact is genuinely your only source
+and no prior is possible, write `Prior: N/A — <why>` — a fabricated denominator is worse than
+an admitted gap, the same rule the Means line carries.
+
 ## Review record output (when these findings land in `docs/reviews/`)
 
 When this review's findings are recorded in the adversarial-review ledger, each finding

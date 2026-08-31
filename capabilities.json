@@ -39,9 +39,10 @@
       "integration_debt": [
         {
           "id": "proxy-assert-on-own-prose",
-          "what": "SOURCE-TEXT ASSERTIONS MATCH THEIR OWN COMMENTARY (opened 2026-08-30). A test or sweep greps source/prose for a token, and the hit is the COMMENT that documents the token rather than the code that implements it. Doctrine already forbids this in near-verbatim terms in TWO places - ~/.claude/CLAUDE.md:13 'Not \"the source mentions X\" - parse it; a grep matches your own docstring' and SKILL.md:225 'source text GREPPED instead of parsed' - and it recurred SIX times in one day, so restating the rule a third time is a known-failed remedy. EVIDENCE: (a) five occurrences reported by a Cheliped session on 2026-08-30 - two false failures, one would have been a FALSE PASS - PEER-REPORTED AND UNVERIFIED HERE per S12, spot-check before citing as fact; (b) one occurrence I committed and VERIFIED in this repo the same day, sweeping for a guard covering this class and matching bin/tdd.py:209, a docstring DESCRIBING the failure, which I nearly reported as an existing safeguard. WHAT IS ACTUALLY MISSING is not the prohibition but the DECISION RULE that separates the legitimate case from the defect: when the text IS the deliverable (an agent brief that must carry a forced line, a changelog entry) a substring assertion is correct and this repo has ~109 such assertions across 11 test files that are fine; when the text DESCRIBES a deliverable (a comment saying the code checks X) the same assertion is vacuous. That distinction is written down nowhere. OUR OWN INSTANCE: test_verify_verdict.py asserts \"EXPECTED_REQUIRED\" in src - green whether the token is code or comment. THE MITIGATION ALREADY EXISTS HERE: strip comments / ast.parse before matching, used in 13 places, standard in none. PAY BY: writing the product-vs-description rule where test authors will hit it, fixing the verified in-repo instance, and deciding whether comment-stripping becomes the default for code-target sweeps. A guard is NOT presumed - the do-nothing option is live and doctrine-only remedies have failed twice.",
+          "what": "PAID 2026-08-31, all three legs. (1) The DECISION RULE is written where test authors hit it — SKILL.md S1, 'Searching text: is the text the PRODUCT, or a DESCRIPTION of it?', with the one-question test: would this still match if the implementation were deleted and only the comment remained? (2) The verified in-repo instance is fixed — test_verify_verdict.py:188 now asserts the substitution COUNT via re.subn, not the bare token, and a new check REDs if the mirror rewrite becomes a no-op. (3) DECIDED on comment-stripping: NOT a blanket default. A preference order instead — run the thing over reading it; else match the ASSIGNMENT or CALL; else assert the substitution count; strip comments (ast.parse) only where a text scan is genuinely unavoidable. A blanket default would have broken the ~109 legitimate prose assertions where the text IS the deliverable, which is the distinction the rule exists to draw. Original entry below. | SOURCE-TEXT ASSERTIONS MATCH THEIR OWN COMMENTARY (opened 2026-08-30). A test or sweep greps source/prose for a token, and the hit is the COMMENT that documents the token rather than the code that implements it. Doctrine already forbids this in near-verbatim terms in TWO places - ~/.claude/CLAUDE.md:13 'Not \"the source mentions X\" - parse it; a grep matches your own docstring' and SKILL.md:225 'source text GREPPED instead of parsed' - and it recurred SIX times in one day, so restating the rule a third time is a known-failed remedy. EVIDENCE: (a) five occurrences reported by a Cheliped session on 2026-08-30 - two false failures, one would have been a FALSE PASS - PEER-REPORTED AND UNVERIFIED HERE per S12, spot-check before citing as fact; (b) one occurrence I committed and VERIFIED in this repo the same day, sweeping for a guard covering this class and matching bin/tdd.py:209, a docstring DESCRIBING the failure, which I nearly reported as an existing safeguard. WHAT IS ACTUALLY MISSING is not the prohibition but the DECISION RULE that separates the legitimate case from the defect: when the text IS the deliverable (an agent brief that must carry a forced line, a changelog entry) a substring assertion is correct and this repo has ~109 such assertions across 11 test files that are fine; when the text DESCRIBES a deliverable (a comment saying the code checks X) the same assertion is vacuous. That distinction is written down nowhere. OUR OWN INSTANCE: test_verify_verdict.py asserts \"EXPECTED_REQUIRED\" in src - green whether the token is code or comment. THE MITIGATION ALREADY EXISTS HERE: strip comments / ast.parse before matching, used in 13 places, standard in none. PAY BY: writing the product-vs-description rule where test authors will hit it, fixing the verified in-repo instance, and deciding whether comment-stripping becomes the default for code-target sweeps. A guard is NOT presumed - the do-nothing option is live and doctrine-only remedies have failed twice.",
           "owner": "David",
-          "expires": "2026-09-06"
+          "expires": "2026-09-06",
+          "paid": true
         },
         {
           "what": "RETIRED OBSOLETE 2026-08-09 (v1.32.0): every open leg named the CIVerd ENGINE as the actor - guard_env as a ratifiable signed signal, the extended watchlist in the engine's root-owned floor, the probe-clean ratchet before a hard-block release list, and the #11 blocking-composition island. The engine is retired and civerd-integrity.yml deleted, so none of these can be paid or can fail; keeping a live debt whose actor does not exist is the write-only lie the registry exists to prevent. Historical text preserved below the separator. | OPEN after the 2026-07-28 evidence paydown (CIVerd verified live+proven in signed checks[]: `integrity` floor, `integrity_baseline` shrink-vs-last-green — closes H2-via-shell, `planted_probe` — first firing caught a real capability_registry gap, and the root-owned ratification pipeline): (1) guard_env (contract §1.5 — settings env demotion as a ratifiable signed signal; string ABSENT from the engine codebase, so H8's adversarial variant is uncovered engine-side); (2) confirm the §1.3 extended watchlist (agents/*.md briefs, scenarios.json, oracle-changes.md, gate-changes.md [v1.22 — same authorization-bearing class], civerd-integrity.yml, check_scoreboard_integrity.py) is actually in the engine's root-owned floor/baseline lists — floor existence is proven, its COVERAGE of these files is not; (3) per the ratchet rule, _ed25519_verify.py and check_scoreboard_integrity.py must be probed CLEAN before joining any hard-block release list (only verify_verdict.py is probed-clean so far); (4) CIVerd #11 blocking-composition island (review Flag C): the certification composition lives in the ENGINE's release verb, but this repo's tags are decided by the vendored verify_verdict.py may_release, which stays first-green-wins and knows nothing of certifications — harmless while blocking_targets is EMPTY; at expiry confirm it is still empty OR the repo-side gate mirrors the composition (read the published certifications.json beside the ledger) / delegates to the engine release verb. Never let a module be promoted without this. STATUS 2026-07-28: #11 LIVE on the VPS and dormant as designed — blocking_targets empty everywhere, published store is {} at <verdicts-repo>/certifications.json, all four review items landed with tests (incl. keyless-pristine-RED and forged-failure supersession pins). ALSO: treat pre-2026-07-28 engine SURVIVOR records with suspicion — a stale-pyc bug (mutant written same-second as compile executed ORIGINAL bytecode) could fabricate phantom survivors; our kernel killing tests stand regardless, being driven by LOCAL cache-busted sweeps with observable behavioral diffs, not the engine's reports",
@@ -623,9 +624,9 @@
       },
       "integration_debt": [
         {
-          "what": "ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30): every machine David works on must show capture: ON in the doctor line. This build enrolls THIS machine (writes <store>/ENABLED); the vendored-refresh prompt enrolls other machines as they are touched; cloud sandboxes are honest no-ops (stated, ephemeral). By expiry: all working machines enrolled, or consciously re-dated — never silently dark.",
+          "what": "RE-DATED 2026-08-31 -> 2026-09-30 (David approved, this session). Not paid: enrollment of every working machine is still open, and re-dating rather than closing keeps that honest. Reason for the extension: the original date fell in a week spent on review-process work, and nothing about the enrollment became more urgent. | ENROLLMENT SWEEP (David's nothing-ships-dark directive, 2026-07-30): every machine David works on must show capture: ON in the doctor line. This build enrolls THIS machine (writes <store>/ENABLED); the vendored-refresh prompt enrolls other machines as they are touched; cloud sandboxes are honest no-ops (stated, ephemeral). By expiry: all working machines enrolled, or consciously re-dated — never silently dark.",
           "owner": "david",
-          "expires": "2026-08-31"
+          "expires": "2026-09-30"
         },
         {
           "what": "CONSUMER: the store is read only by deliberation.py stats — a recorder nobody reads does not get to run forever. By expiry either code reads it or capture is turned off. The v2 shingle matcher is the PRIMARY named candidate (motivating incident: a store distinguishing courier-carried assistant text from David's own words would have shown 'approved as stated' originated in a recommender's draft; v1 schema already suffices — full text + sha256 stored, shingles backfillable). v2 LABEL CONSTRAINT, binding now: unmatched spans are 'unattributed', NEVER 'David's own words' — under partial coverage (un-enrolled machines, cloud, Cheli/GLM) no-match must not imply human authorship; that failure direction is exactly what the store exists to prevent.",
@@ -1634,6 +1635,32 @@
         }
       ],
       "notes": "Built 2026-08-28 from two real incidents: a requirement stated verbatim TWICE that four reviewers argued down to on-demand with no record of the requester being asked; and a workstream ('meet and beat CC's planning') silently substituted by two unrelated real defect fixes. In both the engineering was GOOD — which is why nine other adversaries saw nothing."
+    },
+    {
+      "id": "escape-ledger",
+      "summary": "escape_log.py — records every caught defect by DISCOVERY PATH (oracle/accident/human/peer); the only instrument measuring what the guards saved rather than what they cost.",
+      "user_facing": false,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/commands/grade.md"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_escape_log.py"
+      ],
+      "emits": [
+        {
+          "topic": "Escapes: N + self-caught:person ratio + declared-green count",
+          "consumers": [
+            "commands/grade.md (reads the report before grading a cycle)"
+          ]
+        }
+      ]
     }
   ]
 }

@@ -81,3 +81,29 @@ S-row and `file:line` — or `Verdict: OBSERVABLE` when the table has no `NONE` 
 `Recommendation: <the one silence to break first> because <names the specific
 swallow/blind spot in THIS repo and who misses it>` (on OBSERVABLE, recommend the
 cheapest hardening instead, and say it is optional).
+
+## Commit before you read
+
+**Form your own answer first.** Before you read the artifact under review, work the question
+from the SOURCE material — the failure paths in the change — what could fail here at 3am, and who would ever know — and write that answer down. Then read the artifact and
+compare.
+
+Reading first anchors you on the author's framing, and you end up auditing their reasoning
+instead of testing it. This is not a stylistic preference. A 2026-07 study of reference-free
+LLM judges measured the false-positive rate falling from **0.719 to 0.012** on this ordering
+alone (arXiv 2607.05904), and the repo that ships this brief was running an approximately 75%
+false-alarm rate on self-initiated proposals in the week it was written.
+
+Close with the forced line, BARE and literal, because the calibration oracles anchor on it:
+
+`Prior: <n> expected · <m> confirmed · <k> found only on reading`
+
+- `n` — what you expected to find, before reading.
+- `m` — how many of those the artifact confirmed.
+- `k` — findings that appeared only once you read it. **`k` is legitimate** — reading SHOULD
+  teach you things, and a `k` of zero on a real artifact is more suspicious than a high one.
+
+All three are forced because the RATIO is the tell: padding `n` with throwaway guesses to look
+diligent collapses `m`/`n`, and that is visible. If the artifact is genuinely your only source
+and no prior is possible, write `Prior: N/A — <why>` — a fabricated denominator is worse than
+an admitted gap, the same rule the Means line carries.

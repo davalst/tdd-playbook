@@ -230,6 +230,24 @@ Tripwire. Default to a one-liner for small work; don't make David review ceremon
   plausible at the moment of writing — knowing this rule did not stop four of them in one documented
   session — so use the mechanical trigger below (the "what would still be true if this were broken?"
   question), not vigilance.
+- **Searching text: is the text the PRODUCT, or a DESCRIPTION of it?** The sub-rule the proxy rule
+  above was missing, and the reason it kept failing. "Parse it, don't grep it" is not a ban on
+  matching text — sometimes text IS the deliverable, and then matching it is exactly right:
+  an agent brief that must carry a forced line, a changelog entry, a generated reference. Match
+  away; that is a behavioural test of a prose artifact.
+  The defect is matching text that DESCRIBES a deliverable. **Any codebase that documents X
+  contains the string X in its comments**, so a search for X in source hits the docstring
+  explaining X and passes whether or not X exists. The better the comments, the more reliably the
+  check lies. The one-question test: **would this still match if the implementation were deleted
+  and only the comment remained?** If yes, you have asserted that someone wrote a comment.
+  Mechanically: match the ASSIGNMENT or the CALL, not the bare name; assert the substitution
+  COUNT, not that the token appeared; or strip comments (`ast.parse`) before matching. Prefer
+  running the thing over reading it — a grep is a last resort for artifacts you cannot execute.
+  (Origin 2026-08-30: six occurrences in one day across two repos — two false failures and one
+  that would have been a FALSE PASS. The prohibition already existed in two places in near-verbatim
+  terms and did not prevent any of them, INCLUDING one committed while sweeping for a guard
+  against this very class, which matched a docstring describing the problem. A rule that names
+  the defect but not the decision is a rule you cannot apply at the moment you need it.)
 - **An `except` that hides a PROGRAMMING error is a proxy for "this worked".** Best-effort blocks log
   at a level someone reads, and never wrap the line that establishes the guarantee (origin: a broad
   `except Exception: pass` around a capability check swallowed a `TypeError` from a missing

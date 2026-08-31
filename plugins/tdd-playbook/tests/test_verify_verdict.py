@@ -185,11 +185,19 @@ def main():
         shutil.copytree(os.path.dirname(BIN), mirror)
         mbin = os.path.join(mirror, os.path.basename(BIN))
         src = open(mbin).read()
-        assert "EXPECTED_REQUIRED" in src
-        src = re.sub(r"EXPECTED_REQUIRED = \([^)]*\)",
-                     'EXPECTED_REQUIRED = ("deps", "tests", "venv")', src, count=1)
-        src = re.sub(r"EXPECTED_PRESENT = \([^)]*\)", "EXPECTED_PRESENT = ()", src,
-                     count=1)
+        # Assert the ASSIGNMENT, never the bare token. `EXPECTED_REQUIRED` also appears in
+        # a COMMENT at verify_verdict.py:90, so `"EXPECTED_REQUIRED" in src` was true even
+        # if the real assignment were deleted -- the substitution below would then silently
+        # rewrite nothing and this whole case would pass having tested the unmodified file.
+        # (Debt `proxy-assert-on-own-prose`, 2026-08-30: the text here DESCRIBES the
+        # deliverable, so a substring check is a proxy; substring checks on prose that IS
+        # the deliverable -- an agent brief's forced line -- stay correct.)
+        src, n_req = re.subn(r"EXPECTED_REQUIRED = \([^)]*\)",
+                             'EXPECTED_REQUIRED = ("deps", "tests", "venv")', src, count=1)
+        src, n_pres = re.subn(r"EXPECTED_PRESENT = \([^)]*\)", "EXPECTED_PRESENT = ()",
+                              src, count=1)
+        check("roster rewrite actually replaced both assignments (not a no-op mirror)",
+              (n_req, n_pres) == (1, 1), (n_req, n_pres))
         with open(mbin, "w") as fh:
             fh.write(src)
         p = subprocess.run([sys.executable, mbin, "--sha", REAL_SHA, "--ledger", LEDGER,

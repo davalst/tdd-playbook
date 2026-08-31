@@ -292,11 +292,15 @@ def test_own_registry():
         return [v for v in mod.validate(reg, _dt.date.fromisoformat(day))
                 if "EXPIRED" in v and needle in v]
 
-    check("enrollment-sweep debt (2026-08-31): silent on its expiry day, fires 09-01 "
+    # RE-DATED 2026-08-31 -> 2026-09-30 (David approved this session; the debt is NOT paid,
+    # and the registry entry says so). The pin moves with the date because its PURPOSE is to
+    # prove the trigger still fires on the day after expiry -- that purpose is unchanged and
+    # the assertion is not weakened. Both legs stay: silent ON the day, loud the day after.
+    check("enrollment-sweep debt (2026-09-30): silent on its expiry day, fires 10-01 "
           "naming deliberation-capture",
-          not _fires("2026-08-31", "ENROLLMENT SWEEP")
-          and any("deliberation-capture" in v for v in _fires("2026-09-01", "ENROLLMENT SWEEP")),
-          _fires("2026-09-01", "ENROLLMENT SWEEP")[:2])
+          not _fires("2026-09-30", "ENROLLMENT SWEEP")
+          and any("deliberation-capture" in v for v in _fires("2026-10-01", "ENROLLMENT SWEEP")),
+          _fires("2026-10-01", "ENROLLMENT SWEEP")[:2])
     # (The ENGINE-SIDE ARMING pin lived here until 2026-08-09. Retired OBSOLETE with the
     # capability itself in v1.32.0: plan-authoring existed only to emit a `civerd-plan` block
     # for the CIVerd engine's plan-predicate evaluator, and the registry had already recorded
