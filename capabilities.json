@@ -1660,6 +1660,14 @@
             "commands/grade.md (reads the report before grading a cycle)"
           ]
         }
+      ],
+      "integration_debt": [
+        {
+          "id": "escape-report-verdict-redesign",
+          "what": "REDESIGN THE VERDICT, OR DELETE IT (opened 2026-08-31, one day after the instrument shipped). An independent Codex review — given the ledger data and the question but NOT this session's conclusions — showed the report's verdict line is badly formed at escape_log.py's cmd_report: it compares `oracle` against `human + peer`, SILENTLY DROPS the `accident` rows, and weighs nothing by severity, recurrence, or whether a mechanical oracle was even POSSIBLE for that defect — then prints 'the net is NOT catching' as though that settles something. The denominator error is not theoretical: this session quoted '4 of 6' to David from that line when the true non-oracle count is 7, and compared the trimmed figure to a published 70% human-caught benchmark. A number that flatters by construction is worse than no number. WHY NOT FIXED NOW: 11 rows. Codex's own advice was 'record more data before adding severity weights or thresholds', and redesigning an instrument on 11 hand-entered rows would repeat the mistake that produced this session's 8 rejected proposals — building before measuring. THE REAL TRIGGER IS ROW COUNT, NOT THE CALENDAR: revisit when the ledger holds >=30 rows. This date is the BACKSTOP that makes the deferral fail loudly if that never happens, because the registry validates on dates and a row-count trigger would otherwise be prose. DECIDE AT EXPIRY, three ways, all legitimate: (a) rebuild per Codex — score only defects an independent judgement rules mechanically decidable, add recurrence-by-class and false-positive cost; (b) DELETE the verdict line and keep the raw rows, since the counts are useful and the verdict is the part that lies; (c) delete the whole instrument if nobody has read it. Option (b) is the current front-runner and costs the least.",
+          "owner": "David",
+          "expires": "2026-09-30"
+        }
       ]
     }
   ]

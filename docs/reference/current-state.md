@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `15524dcfcc0008ea7c5d6320157c7aaa7d6801a3f6f666ff9745b1cf9b67318f`
 - `docs/architecture/host-parity.json` — `c17cb95cd8ca1b7af0d77c80913b374e0bfdc868f3eeb88fbec87864a9bb141f`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `c84d993d129b7ca8d23e224d6f79862f8802e23e6162a4849c52e4ec0184064f`
+- `capabilities.json` — `8ca5ed180f2c52e31609ea72426bd54026888158168158e37ccb042616303861`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
 - `plugins/tdd-playbook/hooks/scripts/_common.py` — `73053e57daddd32f641ba0b2dad78347bc5a494a57b6c85e5e2fbc65b0ce1848`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -77,7 +77,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 35. Owned dated integration-debt entries: 66.
+- Registered capabilities: 35. Owned dated integration-debt entries: 67.
 - `integrity-guards/proxy-assert-on-own-prose` — PAID 2026-08-31, all three legs… (owner `David`, expires `2026-09-06`)
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
@@ -144,6 +144,7 @@
 - `holdout-control-validation/population-snapshot-consumers` — integration-adversary ISLAND2 + arch-F7 (2026-08-16)… (owner `david`, expires `2026-11-15`)
 - `mutation-preflight` — CODEX PARITY, stated not assumed… (owner `david`, expires `2026-11-15`)
 - `intent-drift-review` — MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it… (owner `david`, expires `2026-11-30`)
+- `escape-ledger/escape-report-verdict-redesign` — REDESIGN THE VERDICT, OR DELETE IT (opened 2026-08-31, one day after the instrument shipped)… (owner `David`, expires `2026-09-30`)
 
 ## Adversarial review records
 
