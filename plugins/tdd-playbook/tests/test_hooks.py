@@ -1918,9 +1918,59 @@ def test_coverage_rollup_renders_every_coverage_event():
               "coverage:" in p.stdout, p.stdout[-200:])
 
 
+def test_rollup_keeps_raw_log_when_a_later_stage_fails():
+    """The raw log must survive ANY failure after the rollup table is written.
+
+    Codex review 2026-08-31: fixing the coverage KeyError removed one crash but left the
+    ORDERING that made it destructive -- os.remove(args.log) ran before the response, usage
+    and coverage stages, so a failure in any of them took the cycle's events with it.
+
+    The planted failure is injected at the LAST stage (the coverage print). A first attempt
+    planted it via --response-md and passed in BOTH directions, because that stage ran
+    BEFORE the drain -- a test that could not fail, proving nothing. Verified RED against
+    the pre-fix order before this was accepted.
+    """
+    import tempfile, json as _json, importlib.util as _ilu, builtins, argparse
+    gy_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "bin", "gate_yield.py")
+    spec = _ilu.spec_from_file_location("_gy_drain", gy_path)
+    gy = _ilu.module_from_spec(spec); spec.loader.exec_module(gy)
+
+    with tempfile.TemporaryDirectory() as td:
+        log = os.path.join(td, "y.jsonl")
+        with open(log, "w") as fh:
+            fh.write(_json.dumps({"event": "block", "gate": "testlock",
+                                  "ts": "2026-08-31T00:00:00+00:00"}) + "\n")
+            fh.write(_json.dumps({"event": "unmeasured", "gate": "stdin",
+                                  "ts": "2026-08-31T00:00:00+00:00"}) + "\n")
+        args = argparse.Namespace(log=log, md=os.path.join(td, "o.md"),
+                                  date="2026-08-31", response_md=os.path.join(td, "r.md"),
+                                  usage_md=os.path.join(td, "u.md"))
+        real_print = builtins.print
+
+        def boom(*a, **k):                     # fail ONLY on the final coverage line
+            if a and isinstance(a[0], str) and a[0].startswith("coverage:"):
+                raise RuntimeError("planted late-stage failure")
+            return real_print(*a, **k)
+
+        builtins.print = boom
+        try:
+            gy.cmd_rollup(args)
+            raised = False
+        except RuntimeError:
+            raised = True
+        finally:
+            builtins.print = real_print
+
+        check("planted failure lands at the LAST stage (after the table is written)", raised)
+        check("raw log SURVIVES a failure after the rollup table was written",
+              os.path.isfile(log), "raw log destroyed — the drain still precedes a consumer")
+
+
 def main():
     print("TDD Playbook hook calibration")
-    for fn in (test_coverage_rollup_renders_every_coverage_event,
+    for fn in (test_rollup_keeps_raw_log_when_a_later_stage_fails,
+              test_coverage_rollup_renders_every_coverage_event,
               test_weakening, test_weakening_h5_exit_calls, test_overmock, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
                test_fixture_guard, test_basename_roster_parity,

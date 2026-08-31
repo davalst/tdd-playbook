@@ -410,8 +410,7 @@ def cmd_rollup(args):
         getattr(args, "response_md", None) or default_response_md(), args.date, per_gate)
     usage_lines = _write_usage_rows(
         getattr(args, "usage_md", None) or default_usage_md(), args.date, per_scenario)
-    os.remove(args.log)  # drained — the committed rollup is the durable record
-    print("rollup: {} gate(s) recorded for {} in {} (raw log drained)".format(
+    print("rollup: {} gate(s) recorded for {} in {}".format(
         len(per_gate), args.date, args.md))
     for ln in response_lines:
         print(ln)
@@ -435,6 +434,13 @@ def cmd_rollup(args):
         breakdown = " · ".join("{} {}".format(e, c[e]) for e in COVERAGE_EVENTS)
         print("coverage: {} · saw {} turn(s) across {} session(s) — {}".format(
             gate, total, len(c["sessions"]) or "?", breakdown))
+    # DRAIN LAST. Until 2026-08-31 this ran before the response/usage/coverage stages, so a
+    # failure in any of them destroyed the cycle's raw events on the way down -- which is
+    # exactly what the coverage KeyError did. Fixing that crash removed one trigger and left
+    # the destructive ORDER intact; Codex flagged the residual. The log is the only
+    # unrecoverable artifact here, so nothing may delete it until every consumer has run.
+    os.remove(args.log)
+    print("(raw log drained)")
     return 0
 
 
