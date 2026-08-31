@@ -425,10 +425,16 @@ def cmd_rollup(args):
     for gate in sorted(per_coverage):
         c = per_coverage[gate]
         total = sum(c[e] for e in COVERAGE_EVENTS)
-        print("coverage: {} · saw {} turn(s) across {} session(s) — verified {} · "
-              "capped {} · blind {} · unmeasured {}".format(
-                  gate, total, len(c["sessions"]) or "?", c["verified"], c["capped"],
-                  c["blind"], c["unmeasured"]))
+        # Render FROM the roster, never from hardcoded keys. Until 2026-08-31 this read
+        # c["verified"]/["capped"]/["blind"] -- three kinds retired when COVERAGE_EVENTS
+        # was narrowed to ("unmeasured",) -- so a live `unmeasured` row (written by
+        # _common._read_stdin_bounded) raised KeyError. It crashed AFTER os.remove(args.log)
+        # above, destroying the cycle's raw events on the way down. The old pin asserted
+        # only that the rosters were mutually disjoint, a proxy that stayed green through
+        # the crash; test_hooks.py now drives cmd_rollup over one row of each declared kind.
+        breakdown = " · ".join("{} {}".format(e, c[e]) for e in COVERAGE_EVENTS)
+        print("coverage: {} · saw {} turn(s) across {} session(s) — {}".format(
+            gate, total, len(c["sessions"]) or "?", breakdown))
     return 0
 
 

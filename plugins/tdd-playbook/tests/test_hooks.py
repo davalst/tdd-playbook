@@ -1880,9 +1880,48 @@ def test_suite_does_not_dirty_tracked_files():
           caused == [], caused)
 
 
+def test_coverage_rollup_renders_every_coverage_event():
+    """Regression: rollup crashed with KeyError on a live `unmeasured` row.
+
+    Found 2026-08-31 by an architecture-adversary replay (arm A), reproduced before fixing.
+    COVERAGE_EVENTS was narrowed to ("unmeasured",) but the print at gate_yield.py:428-431
+    still read three retired keys. `_common._read_stdin_bounded` is a LIVE producer of
+    `unmeasured`, so this was reachable in normal use -- and it crashed AFTER os.remove()
+    of the raw log, so every event in the cycle was destroyed on the way down.
+
+    The old pin asserted only that the event rosters were mutually DISJOINT, which is a
+    proxy for "rows route correctly" and stayed green through the KeyError (SS4a). This
+    drives the real cmd_rollup instead.
+    """
+    import subprocess, tempfile, json as _json
+    gy = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "bin", "gate_yield.py")
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location("_gy_probe", gy)
+    _gy = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_gy)
+
+    check("coverage roster is non-empty (vacuity)", len(_gy.COVERAGE_EVENTS) >= 1,
+          _gy.COVERAGE_EVENTS)
+
+    with tempfile.TemporaryDirectory() as td:
+        log = os.path.join(td, "y.jsonl"); md = os.path.join(td, "o.md")
+        with open(log, "w") as fh:
+            for ev in _gy.COVERAGE_EVENTS:          # every kind the roster declares
+                fh.write(_json.dumps({"event": ev, "gate": "stdin",
+                                      "ts": "2026-08-31T00:00:00+00:00"}) + "\n")
+        p = subprocess.run([sys.executable, gy, "rollup", "--log", log, "--md", md],
+                           capture_output=True, text=True)
+        check("rollup survives one row of EVERY declared coverage event",
+              p.returncode == 0 and "Traceback" not in p.stderr,
+              (p.returncode, p.stderr[-300:]))
+        check("rollup prints a coverage line rather than swallowing it",
+              "coverage:" in p.stdout, p.stdout[-200:])
+
+
 def main():
     print("TDD Playbook hook calibration")
-    for fn in (test_weakening, test_weakening_h5_exit_calls, test_overmock, test_tag_guard, test_exhaustive_claim, test_snapshot,
+    for fn in (test_coverage_rollup_renders_every_coverage_event,
+              test_weakening, test_weakening_h5_exit_calls, test_overmock, test_tag_guard, test_exhaustive_claim, test_snapshot,
                test_flaky, test_intent, test_tripwire_reminder, test_red_lock,
                test_fixture_guard, test_basename_roster_parity,
                test_lock_shell, test_yield_logging, test_guards_heartbeat,

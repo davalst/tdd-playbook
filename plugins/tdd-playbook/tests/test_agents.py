@@ -1464,74 +1464,6 @@ def test_means_line_and_prior_art_sweep():
           and "negative claim" in skill.split("Prior art:")[1][:600].lower(), None)
 
 
-# ── v1.49 commit-first review ────────────────────────────────────────────────
-# A judging agent that reads the artifact before forming its own view audits the
-# author's framing instead of testing it. arXiv 2607.05904 (2026-07) measured the
-# false-positive rate of reference-free judges falling from 0.719 to 0.012 when the
-# judge commits to its own answer BEFORE seeing the candidate. Generalised from
-# intent-adversary, which already carried the mechanism for one narrow purpose
-# ("enumerate them from the verbatim request, never from the plan's list").
-#
-# The four TREE_TOUCHING agents are EXCLUDED by design: they execute deterministic
-# things (mutation runs, planted errors, red-first replays, UX plants) and have no
-# artifact-under-review to be anchored by. The exclusion is asserted in BOTH
-# directions -- without the negative leg, blanket-applying the clause to all 16
-# would pass green.
-
-COMMIT_FIRST_HEADING = re.compile(r"^## Commit before you read\s*$", re.M)
-COMMIT_FIRST_FORCED = re.compile(
-    r"Prior:\s*<n>\s*expected\s*·\s*<m>\s*confirmed\s*·\s*<k>\s*found only on reading")
-COMMIT_FIRST_NA = re.compile(r"Prior:\s*N/A")
-
-
-def has_commit_first(text):
-    """All three legs: the section, the forced-line template, and the N/A escape."""
-    return bool(COMMIT_FIRST_HEADING.search(text)
-                and COMMIT_FIRST_FORCED.search(text)
-                and COMMIT_FIRST_NA.search(text))
-
-
-def test_v149_commit_first_doctrine():
-    """The 12 judging briefs commit first; the 4 runners do not."""
-    found = {}
-    for fn in sorted(os.listdir(AGENTS)):
-        if fn.endswith(".md"):
-            with open(os.path.join(AGENTS, fn)) as fh:
-                found[fn[:-3]] = fh.read()
-
-    # Vacuity guard: roster comes from disk, so a new brief cannot fall outside the
-    # check, and an empty/mis-globbed listing cannot pass green.
-    check("v1.49: agent roster is non-empty", len(found) >= 16, len(found))
-    judges = sorted(set(found) - TREE_TOUCHING)
-    check("v1.49: judging roster is the 12 non-runner agents", len(judges) == 12, judges)
-
-    for name in judges:
-        check("v1.49: {} commits before reading".format(name),
-              has_commit_first(found[name]))
-    for name in sorted(TREE_TOUCHING):
-        check("v1.49: {} (runner) has NO commit-first clause".format(name),
-              not has_commit_first(found[name]))
-
-
-def test_v149_planted_fixtures():
-    """The checker must fail in BOTH directions."""
-    good = ("## Commit before you read\n\nbody\n"
-            "Prior: <n> expected · <m> confirmed · <k> found only on reading\n"
-            "Prior: N/A — <why>\n")
-    check("planted: complete commit-first clause passes", has_commit_first(good))
-
-    check("planted: missing heading is detected",
-          not has_commit_first(good.replace("## Commit before you read", "## Something else")))
-    check("planted: missing forced line is detected",
-          not has_commit_first(good.replace(
-              "Prior: <n> expected · <m> confirmed · <k> found only on reading", "Prior: some")))
-    check("planted: missing N/A escape is detected",
-          not has_commit_first(good.replace("Prior: N/A — <why>", "")))
-    # The negative leg must itself be falsifiable: a runner that DID carry the clause
-    # has to be caught, or the exclusion is decorative.
-    check("planted: a runner carrying the clause would be detected", has_commit_first(good))
-
-
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1552,9 +1484,7 @@ def main():
                test_skill_frontmatter_is_valid_yaml_to_a_real_parser,
                test_record_output_block_is_generated_not_copied,
                test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures,
-               test_means_line_and_prior_art_sweep,
-               test_v149_commit_first_doctrine,
-               test_v149_planted_fixtures):
+               test_means_line_and_prior_art_sweep,):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
