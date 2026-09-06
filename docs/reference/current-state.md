@@ -9,9 +9,9 @@
 - `docs/architecture/host-parity-policy.json` — `15524dcfcc0008ea7c5d6320157c7aaa7d6801a3f6f666ff9745b1cf9b67318f`
 - `docs/architecture/host-parity.json` — `c17cb95cd8ca1b7af0d77c80913b374e0bfdc868f3eeb88fbec87864a9bb141f`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `8ca5ed180f2c52e31609ea72426bd54026888158168158e37ccb042616303861`
+- `capabilities.json` — `34dd57c32055cbed8a1904ed011ec1a1460cefd59f8f6af5c057773308b08d08`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
-- `plugins/tdd-playbook/hooks/scripts/_common.py` — `73053e57daddd32f641ba0b2dad78347bc5a494a57b6c85e5e2fbc65b0ce1848`
+- `plugins/tdd-playbook/hooks/scripts/_common.py` — `4b9a9b79d265154156e1ce663934eaf982c63e9ac65964ce871fbbe2046eba26`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
 - `docs/reviews/2026-08-07-assurance-pipeline-plan.json` — `1f723b5524d6746f4da06b565e81f62758796e32f1cfcefc2d9a6baa64474bbd`
 - `docs/reviews/2026-08-07-v1.31.0-release-implementation.json` — `77785271eddb17ba1ae19789c01e4b546ac246b52cdd18bd5272eaee9d3911fa`
@@ -77,7 +77,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 35. Owned dated integration-debt entries: 67.
+- Registered capabilities: 36. Owned dated integration-debt entries: 68.
 - `integrity-guards/proxy-assert-on-own-prose` — PAID 2026-08-31, all three legs… (owner `David`, expires `2026-09-06`)
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
@@ -107,6 +107,7 @@
 - `gate-yield` — PER-GATE ADJUDICATION SEAM (v1.27, found by integration-adversary)… (owner `david`, expires `2026-11-15`)
 - `gate-yield` — DOWNSTREAM WRITE-ONLY EMITTER (v1.27 surface-parity boundary, stated not hidden)… (owner `david`, expires `2026-11-15`)
 - `install-doctor/bin-roster-prose-divergence` — CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README… (owner `david`, expires `2026-10-13`)
+- `install-doctor/double-registration-risk-doctor` — DOUBLE REGISTRATION (plan 2026-09-06-tripwire-reminder-lock-aware, deferred D)… (owner `david`, expires `2026-11-30`)
 - `civerd-release-gate` — ARCHIVAL-ONLY, NO CONSUMER (v1.32.0)… (owner `david`, expires `2027-02-01`)
 - `deliberation-capture` — RE-DATED 2026-08-31 -> 2026-09-30 (David approved, this session)… (owner `david`, expires `2026-09-30`)
 - `deliberation-capture` — CONSUMER… (owner `david`, expires `2026-10-31`)

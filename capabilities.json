@@ -548,6 +548,12 @@
           "what": "CLAUDE.md step-2 and README.md name DIFFERENT partial bin lists (README: verify_citations; CLAUDE.md: dataflow_sweeps.py + _debt.py) while bin/ holds 23 scripts — reconcile the two prose lists or derive them from COPY_TREES the way the guard roster is now derived (test_guard_roster_derived_and_pinned)",
           "owner": "david",
           "expires": "2026-10-13"
+        },
+        {
+          "id": "double-registration-risk-doctor",
+          "what": "DOUBLE REGISTRATION (plan 2026-09-06-tripwire-reminder-lock-aware, deferred D): a repo that is BOTH vendored (installer writes plugin-namespace groups into .claude/settings.json) AND plugin-enabled (user-scope) runs every hook twice. The README claimed Claude Code de-dupes by name until v1.49.0; it does not. --doctor cannot decide it from static state (plugin cache = directories exist, not enablement/trust/what the process loaded — Codex F6) and there is no safe automatic fix (removing the vendored copy breaks cloud; disabling the plugin darkens every repo, H8 — Codex F7). Done = a doctor line that reports RISK (both surfaces present) with the trade-off spelled out, or a live invocation-count probe that proves double firing, or a consciously re-dated entry.",
+          "owner": "david",
+          "expires": "2026-11-30"
         }
       ]
     },
@@ -1667,6 +1673,44 @@
           "what": "REDESIGN THE VERDICT, OR DELETE IT (opened 2026-08-31, one day after the instrument shipped). An independent Codex review — given the ledger data and the question but NOT this session's conclusions — showed the report's verdict line is badly formed at escape_log.py's cmd_report: it compares `oracle` against `human + peer`, SILENTLY DROPS the `accident` rows, and weighs nothing by severity, recurrence, or whether a mechanical oracle was even POSSIBLE for that defect — then prints 'the net is NOT catching' as though that settles something. The denominator error is not theoretical: this session quoted '4 of 6' to David from that line when the true non-oracle count is 7, and compared the trimmed figure to a published 70% human-caught benchmark. A number that flatters by construction is worse than no number. WHY NOT FIXED NOW: 11 rows. Codex's own advice was 'record more data before adding severity weights or thresholds', and redesigning an instrument on 11 hand-entered rows would repeat the mistake that produced this session's 8 rejected proposals — building before measuring. THE REAL TRIGGER IS ROW COUNT, NOT THE CALENDAR: revisit when the ledger holds >=30 rows. This date is the BACKSTOP that makes the deferral fail loudly if that never happens, because the registry validates on dates and a row-count trigger would otherwise be prose. DECIDE AT EXPIRY, three ways, all legitimate: (a) rebuild per Codex — score only defects an independent judgement rules mechanically decidable, add recurrence-by-class and false-positive cost; (b) DELETE the verdict line and keep the raw rows, since the counts are useful and the verdict is the part that lies; (c) delete the whole instrument if nobody has read it. Option (b) is the current front-runner and costs the least.",
           "owner": "David",
           "expires": "2026-09-30"
+        }
+      ]
+    },
+    {
+      "id": "tripwire-reminder",
+      "summary": "Stop-hook Tripwire reminder: uncommitted source edited THIS TURN with no test edit this turn, no uncommitted session test, and no matching active TEST-LOCK -> agent-facing additionalContext (v1.49; was operator-facing exit 1 that the agent never read).",
+      "user_facing": true,
+      "surfaces": [
+        "local",
+        "cloud"
+      ],
+      "activation": {
+        "default": "on"
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/hooks/hooks.json",
+        "scripts/install_into_repo.py::_merge_hooks",
+        "plugins/tdd-playbook/hooks/scripts/_common.py::emit(feedback_event='Stop')",
+        "plugins/tdd-playbook/bin/host_contract.py::read_lock (the one lock authority)"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tripwire_reminder",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tripwire_read_only_turn_misattribution",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_tripwire_lock_and_turn_evidence",
+        "plugins/tdd-playbook/tests/test_hooks.py::test_emit_stop_feedback_routing"
+      ],
+      "emits": [
+        {
+          "topic": "Stop hookSpecificOutput.additionalContext (warn) / stderr exit 2 (block)",
+          "consumers": [
+            "the live session's context (Claude Code shows it as 'Stop hook feedback' and continues the turn)"
+          ]
+        },
+        {
+          "topic": "yield rows: warn | unmeasured(reason=lock-unreadable|transcript-capped)",
+          "consumers": [
+            "plugins/tdd-playbook/bin/gate_yield.py"
+          ]
         }
       ]
     }

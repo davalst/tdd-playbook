@@ -1,3 +1,58 @@
+## 1.49.0 — 2026-09-06
+
+**The Tripwire reminder fired on the playbook's own workflow, and nobody it addressed could
+read it.** Both from a downstream field report (cheliped, 2026-09-06 — Phase 0 of its Immune
+plan, the first strict end-to-end red → commit → `/tdd-lock` → implement run), verified here
+before anything was designed, then cross-reviewed by Codex (9 findings, 8 taken).
+
+- **The false positive, root-caused — and the proposal's own explanation was wrong.** The
+  reminder intersected `git status --porcelain` (uncommitted paths only) with every edit in
+  the whole session transcript. A red test that was COMMITTED left the git-status leg and
+  vanished from the evidence, so "source changed with NO test change this turn" fired on
+  every implementing turn. The commit was the cause — not the lock, not a turn boundary; the
+  message's "this turn" was a misnomer over a session-wide walk. Reproduced in a scratch repo
+  first; no test in the suite committed a test file before the source edit.
+- **The predicate now (D1).** SOURCE = uncommitted ∩ edited THIS TURN
+  (`transcript.current_turn`, built in 1.46 for exactly this reason and never adopted here).
+  A TEST counts if edited this turn (any commit state), or still uncommitted from earlier in
+  the session (pre-1.49 behaviour, kept, not widened), or under an active TEST-LOCK that was
+  taken in THIS worktree, at this HEAD **or an ancestor** of it, naming a test file whose
+  on-disk hash still matches. Ancestor rather than equality (Codex asked for equality): the
+  playbook's own git rule checkpoints mid-feature, and strict equality voids the evidence at
+  the first checkpoint. Each condition has a twin that must still warn; a malformed lock is NO
+  evidence and logs an `unmeasured` row. The message now says what was observed and what was
+  not: *"…no test edit this turn and no matching active TEST-LOCK (<why>)"*.
+- **Routed to the agent (D2).** `emit(name, lines, feedback_event="Stop")`: a warn-class Stop
+  finding goes out as `hookSpecificOutput.additionalContext` on stdout, exit 0 — the host
+  shows it as "Stop hook feedback", no operator error, and continues the conversation under
+  `stop_hook_active` and the continuation cap. The exit-1 path was shown to the OPERATOR only
+  (recorded for the since-deleted cite_guard in 1.46.0 and left unfixed). Explicit kwarg,
+  never inferred from the event: `emit` is every guard's transport including the Codex
+  adapter, and callers that do not pass it are byte-identical. The knob text ("set
+  …=off to silence") is NOT sent to the model. Block unchanged. Cost stated: every fire now
+  buys the agent a turn — which is why D1 landed and went green first.
+- **README corrected.** It said plugin + vendored "is harmless — Claude Code de-dupes by
+  name". It does not (no such rule in the hook docs; the two registrations carry different
+  command paths; measured live in cheliped and by this repo's own weakening_guard firing
+  twice on 2026-09-06). A doctor check was designed and DEFERRED as dated debt
+  (`double-registration-risk-doctor`): static state cannot decide it and there is no safe
+  automatic fix (Codex F6/F7).
+- **Not built, on review:** symbol-reference inference and "test committed after source's
+  last commit" (correlation proxies); a Codex-host Stop adapter (the reminder stays
+  `unavailable` there); the proposal's "say whether the files are uncommitted" (every file it
+  names comes from `git status` — vacuous as stated).
+- **A real-clock time bomb in the registry suite, defused.** `test_capability_registry`'s CLEAN
+  fixture carried a debt expiring 2026-09-01, so the blessed gate went RED on 2026-09-02 for every
+  tree — found here while gating this change (CI on main was last green 2026-08-31; nothing had
+  pushed since). Pinned to a far-future date with the reason inline; expiry behaviour stays proven
+  by `--as-of` and a planted past date, never by today's date (§7). Also refreshed this repo's own
+  vendored `.claude/` copy, which the doctor found at 1.47.0.
+- **Process record.** TEST-LOCK was taken on the red tests (fe367ba) and then unlocked with a
+  journaled `phase` reason before implementation: the lock guard protects `hooks/scripts/` as
+  the enforcement surface, and this feature edits that surface. The gate was right; recorded
+  via guard_note rather than written around. Registry: `tripwire-reminder` added (it was
+  never registered).
+
 ## 1.48.0 — 2026-08-29
 
 **Two doctrine changes, both from measured failure in one session.**

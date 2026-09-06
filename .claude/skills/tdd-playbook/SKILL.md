@@ -518,7 +518,7 @@ process; it cannot, and the attempts are the documented time sink.
   `git checkout`/`stash`-reverts to restore source WILL clobber uncommitted work, silently
   (origin: a hand-rolled targeted-mutant script git-checkout'd away uncommitted work mid-pass —
   detect-after is worse than refuse-before). Gate any revert-based script on
-  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
+  `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/with_snapshot.py" preflight` (it REFUSES on uncommitted
   tracked changes) — or use `with_snapshot.py begin`/`verify`, which RECORDS a dirty tree and
   restores it rather than blindly reverting. Committing first is the cheapest form of both.
 
@@ -883,7 +883,7 @@ green-lighting ~1k LOC of provably unreachable code on import-success):
   assembly-level test (`exercised_by`), emitted topics with NAMED consumers, and integration debt
   (owner + expiry, expired debt FAILS). Corpus rules apply: **it only grows**; registering there is
   part of a deliverable's WIRED proof. Mechanical gate:
-  `python3 "${CLAUDE_PLUGIN_ROOT}/bin/capability_registry.py" validate` (BLOCKING in the release
+  `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/capability_registry.py" validate` (BLOCKING in the release
   gate) · `… doctor` prints the dark-feature inventory — every built-but-off capability WITH its
   on-switch, write-only emitters, debt aging. The doctor makes the next archaeology audit unnecessary.
 - **Version-echo — for capabilities that run ELSEWHERE (the RUNNING leg's mechanism).** Wiring rot has a

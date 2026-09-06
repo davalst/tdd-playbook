@@ -77,8 +77,13 @@ four blocking guards (`weakening_guard`, `lock_guard`, `snapshot_guard`,
 `flaky_guard`, `red_lock`) plus the warn-by-default `fixture_guard` — so a refresh
 can't leave dead hook references behind. **Your own non-Playbook hooks are
 preserved** (verify that before committing). Open a cloud session and it loads — guaranteed, no
-marketplace fetch. Having both the user-scope plugin and the vendored copy is harmless — Claude Code
-de-dupes by name.
+marketplace fetch. **Having both the user-scope plugin and the vendored copy fires every hook TWICE**
+on that machine (measured: cheliped 2026-09-06, and this repo's own weakening_guard on 2026-09-06) — the two
+registrations carry different command paths and Claude Code does not de-duplicate them (this line claimed it
+did until v1.49.0; the hook docs contain no such rule). Blocking guards still block exactly once; warn-class
+output is doubled. `--doctor` cannot see it from static state and there is no safe automatic fix (removing
+the vendored copy breaks cloud; disabling the plugin darkens every repo) — dated debt
+`double-registration-risk-doctor` on `install-doctor`.
 
 ## Install — Codex (per repo)
 

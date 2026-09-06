@@ -391,10 +391,24 @@ def log_yield_event(gate, event, extra=None, source="hook"):
         pass
 
 
-def emit(name, lines):
+def emit(name, lines, feedback_event=None):
     """Surface findings per the hook's mode, then exit with the right code.
 
     `lines` is a list of human-readable finding strings (empty -> clean exit 0).
+
+    `feedback_event="Stop"` (v1.49, plan 2026-09-06-tripwire-reminder-lock-aware D2): a
+    WARN-class finding on the Stop event is routed to the AGENT as
+    `hookSpecificOutput.additionalContext` on stdout with exit 0, instead of stderr + exit 1.
+    The exit-code contract above sends exit 1 to the OPERATOR only — so a Stop-hook nudge
+    addressed to the model was never read by the model (recorded for the since-deleted
+    cite_guard in CHANGELOG 1.46.0 and left unfixed). Per the Claude Code hook docs the
+    additionalContext form is shown as "Stop hook feedback", raises no operator error, and
+    CONTINUES the conversation under `stop_hook_active` + the host's continuation cap — so
+    every fire costs the agent a turn, which is the point, and why the caller's predicate
+    must be trustworthy before it passes this. Block is unchanged (stderr, exit 2). The
+    kwarg is EXPLICIT rather than inferred from the event, because this function is the
+    transport for every guard including the Codex adapter; callers that do not pass it are
+    byte-identical to before.
     """
     mode = resolve_mode(name)
     if not lines:
@@ -442,6 +456,15 @@ def emit(name, lines):
                 "   (recorded as a BLOCK with demoted_by=break-glass, so the yield record "
                 "still shows it fired; unset TDD_PLAYBOOK_BREAK_GLASS to restore)"
                 .format(glass))
+    if feedback_event == "Stop" and mode == "warn":
+        # Agent-facing. Deliberately WITHOUT `tail`: the knob text tells the reader how to
+        # silence this gate, which is exactly the H-class "disable the guard" move when the
+        # reader is the model. The yield row above already carries the demotion facts.
+        sys.stdout.write(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "Stop",
+            "additionalContext": header + "\n" + body,
+        }}) + "\n")
+        sys.exit(0)
     sys.stderr.write(header + "\n" + body + "\n" + tail + "\n")
     sys.exit(2 if mode == "block" else 1)
 

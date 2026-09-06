@@ -28,6 +28,7 @@
     ".claude/bin/capability_registry.py",
     ".claude/bin/dataflow_sweeps.py",
     ".claude/bin/deliberation.py",
+    ".claude/bin/escape_log.py",
     ".claude/bin/gate_plan.py",
     ".claude/bin/gate_runner.py",
     ".claude/bin/gate_yield.py",

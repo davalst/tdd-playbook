@@ -67,8 +67,14 @@ CLEAN = {
             "exercised_by": ["tests/test_assembly.py::test_delivery_gateway_reachable"],
             "emits": [{"topic": "events.task_done", "consumers": ["orchestrator"]}],
             "integration_debt": [
+                # A CLEAN fixture must not carry a real-clock time bomb (§7: no real clock in
+                # tests). This read "2026-09-01" and the suite went RED on 2026-09-02 for
+                # every tree — found 2026-09-06 while gating an unrelated change; CI on main
+                # was last green 2026-08-31 and nothing had pushed since. Expiry behaviour is
+                # PROVEN elsewhere with --as-of (test_own_registry) and with a planted past
+                # date (test_validate, expires 2026-01-01), never against today's date.
                 {"what": "route heartbeat escalations through the delivery gateway",
-                 "owner": "david", "expires": "2026-09-01"}
+                 "owner": "david", "expires": "2099-01-01"}
             ],
         },
     ],

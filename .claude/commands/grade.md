@@ -42,3 +42,23 @@ Grade the CYCLE (spend → evidence → claims → outcome), not the narration. 
 
 Output: a short scored card + the single highest-value proposed change. Report-only grades
 nobody acts on are theater.
+
+## Escape ledger — WHO CAUGHT IT (read this FIRST, before any narration)
+
+```
+python3 .claude/bin/escape_log.py report --since <start of the window you are grading>
+```
+
+This is the only number in the loop that measures what the machinery SAVED rather than what
+it COST (`gate_yield.py` measures cost). Paste the block verbatim; the `self-caught : caught
+by a person` ratio and the `declared green` count are the grade, and neither is negotiable by
+narration. An empty ledger prints EMPTY DENOMINATOR — report that as a gap in the instrument,
+never as a clean record.
+
+Record escapes as they happen, not at grading time:
+```
+python3 .claude/bin/escape_log.py record --what "<defect>" --caught-by oracle|accident|human|peer \
+        --where <ref> [--declared-green]
+```
+`--declared-green` is for a defect found in work already reported as finished — §13 calls that
+the loudest signal there is, because the oracle ended exactly where confidence began.
