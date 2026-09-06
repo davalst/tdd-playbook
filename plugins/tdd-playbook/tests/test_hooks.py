@@ -667,6 +667,26 @@ def test_intent():
 
 
 # ------------------------------------------------------------- build_completion_reminder
+# v1.49 contract (plan 2026-09-06-tripwire-reminder-lock-aware, D2): a warn-class finding on
+# the Stop event reaches the AGENT as hookSpecificOutput.additionalContext on stdout with
+# exit 0 — never the operator's stderr (exit 1 is shown only to the operator, which is why
+# nobody it addressed ever read it). SILENT must therefore mean exit 0 AND empty stdout:
+# exit 0 alone no longer distinguishes silence from a fire.
+def _tripwire_fired(p):
+    try:
+        out = json.loads(p.stdout)
+    except ValueError:
+        return False
+    hso = out.get("hookSpecificOutput") or {}
+    ctx = (hso.get("additionalContext") or "").lower()
+    return (p.returncode == 0 and hso.get("hookEventName") == "Stop"
+            and "no test" in ctx and not p.stderr.strip())
+
+
+def _tripwire_silent(p):
+    return p.returncode == 0 and not p.stdout.strip() and not p.stderr.strip()
+
+
 def test_tripwire_reminder():
     s = "build_completion_reminder.py"
 
@@ -694,7 +714,7 @@ def test_tripwire_reminder():
             [sys.executable, os.path.join(HOOKS, s)],
             input="{}", capture_output=True, text=True, cwd=d, env=env, timeout=20,
         )
-        check("tripwire: source-only change warns", p.returncode == 1 and "no test" in p.stderr.lower(),
+        check("tripwire: source-only change warns", _tripwire_fired(p),
               (p.returncode, p.stderr))
 
         # now add a test change too -> silent
@@ -703,7 +723,7 @@ def test_tripwire_reminder():
             [sys.executable, os.path.join(HOOKS, s)],
             input="{}", capture_output=True, text=True, cwd=d, env=env, timeout=20,
         )
-        check("tripwire: source+test change silent", p.returncode == 0, (p.returncode, p.stderr))
+        check("tripwire: source+test change silent", _tripwire_silent(p), (p.returncode, p.stdout, p.stderr))
 
         # REGRESSION (old bug): tree has BOTH changes, but the TRANSCRIPT shows this
         # session only edited source — a pre-existing test change elsewhere must no
@@ -721,21 +741,21 @@ def test_tripwire_reminder():
         p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
                            input=ev, capture_output=True, text=True, cwd=d, env=env, timeout=20)
         check("tripwire: session-only source edit warns despite unrelated test change",
-              p.returncode == 1 and "no test" in p.stderr.lower(), (p.returncode, p.stderr))
+              _tripwire_fired(p), (p.returncode, p.stdout, p.stderr))
 
         # transcript shows source+test edited by the session -> silent
         ev = json.dumps({"transcript_path": transcript(["app.py", "test_app.py"])})
         p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
                            input=ev, capture_output=True, text=True, cwd=d, env=env, timeout=20)
-        check("tripwire: session source+test edits silent", p.returncode == 0,
-              (p.returncode, p.stderr))
+        check("tripwire: session source+test edits silent", _tripwire_silent(p),
+              (p.returncode, p.stdout, p.stderr))
 
         # unreadable transcript falls back to whole-tree behavior (silent here: tree has tests)
         ev = json.dumps({"transcript_path": os.path.join(d, "nope.jsonl")})
         p = subprocess.run([sys.executable, os.path.join(HOOKS, s)],
                            input=ev, capture_output=True, text=True, cwd=d, env=env, timeout=20)
-        check("tripwire: missing transcript falls back to whole tree", p.returncode == 0,
-              (p.returncode, p.stderr))
+        check("tripwire: missing transcript falls back to whole tree", _tripwire_silent(p),
+              (p.returncode, p.stdout, p.stderr))
 
     # integ-#7: a fixture-DATA edit is not a test change — it must NOT silence the nudge.
     import importlib.util as _il
@@ -1778,7 +1798,7 @@ def test_tripwire_read_only_turn_misattribution():
         p = run_with(read_only, "ro.jsonl")
         check("misattribution: a READ-ONLY turn on a dirty tree is SILENT "
               "(it did not change source 'this turn')",
-              p.returncode == 0, (p.returncode, p.stderr[:200]))
+              _tripwire_silent(p), (p.returncode, p.stdout[:200], p.stderr[:200]))
 
         # TWIN — the guard must still fire when THIS turn really did edit source, or the
         # fix above would be indistinguishable from disabling the hook.
@@ -1790,8 +1810,7 @@ def test_tripwire_read_only_turn_misattribution():
         ]
         p = run_with(edited, "ed.jsonl")
         check("misattribution twin: a turn that DID edit source still warns",
-              p.returncode == 1 and "no test" in p.stderr.lower(),
-              (p.returncode, p.stderr[:200]))
+              _tripwire_fired(p), (p.returncode, p.stdout[:200], p.stderr[:200]))
 
         # An UNREADABLE transcript keeps the old whole-tree fallback — absence of evidence
         # is not evidence of a read-only turn (§12: UNMEASURED, never zero).
@@ -1800,7 +1819,289 @@ def test_tripwire_read_only_turn_misattribution():
             input=json.dumps({"transcript_path": os.path.join(d, "nope.jsonl")}),
             capture_output=True, text=True, cwd=d, env=env, timeout=20)
         check("misattribution: an UNREADABLE transcript still falls back to whole-tree",
-              p.returncode == 1, (p.returncode, p.stderr[:200]))
+              _tripwire_fired(p), (p.returncode, p.stdout[:200], p.stderr[:200]))
+
+
+def test_tripwire_lock_and_turn_evidence():
+    """Plan 2026-09-06-tripwire-reminder-lock-aware, D1 + D3.
+
+    THE DEFECT (cheliped, 2026-09-06; reproduced here before any fix): red test authored,
+    COMMITTED, then /tdd-lock'ed; the next turn edits source only. The reminder intersected
+    `git status` (uncommitted only) with the session's edits, so the COMMITTED test vanished
+    and "source changed with NO test change" fired on every implementing turn of the workflow
+    the playbook itself prescribes. The commit — not the lock, not a turn boundary — was the
+    cause.
+
+    The predicate now: SOURCE = uncommitted ∩ edited THIS TURN. A TEST counts if it was
+    edited this turn (any commit state), or is still uncommitted from earlier this session
+    (the pre-existing behaviour, not widened), or is under an active TEST-LOCK that (1) was
+    taken in THIS worktree, (2) at a HEAD that is this HEAD or an ancestor of it, and (3)
+    names at least one test file whose on-disk hash still matches the lock. Each of those
+    three has a TWIN below that must still warn, or the fix is indistinguishable from
+    disabling the hook.
+    """
+    s = "build_completion_reminder.py"
+    sys.path.insert(0, os.path.join(PLUGIN, "bin"))
+    import host_contract as hc
+
+    with tempfile.TemporaryDirectory() as raw:
+        d = os.path.realpath(raw)
+
+        def git(*a):
+            return subprocess.run(["git", *a], cwd=d, capture_output=True, text=True)
+
+        git("init", "-q")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 1\n")
+        git("add", "-A")
+        git("commit", "-qm", "init")
+
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["CLAUDE_PROJECT_DIR"] = d
+        env["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
+        yield_log = os.path.join(_YIELD_TMP, "lock-evidence.jsonl")
+        env["TDD_PLAYBOOK_YIELD_LOG"] = yield_log
+
+        def rec_user(text):
+            return json.dumps({"type": "user", "message": {"content": text}})
+
+        def rec_edit(rel):
+            return json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Edit",
+                 "input": {"file_path": os.path.join(d, rel)}}]}})
+
+        def run_with(lines, name):
+            tp = os.path.join(d, name)
+            with open(tp, "w") as fh:
+                fh.write("\n".join(lines) + "\n")
+            return subprocess.run(
+                [sys.executable, os.path.join(HOOKS, s)],
+                input=json.dumps({"transcript_path": tp}),
+                capture_output=True, text=True, cwd=d, env=env, timeout=20)
+
+        def lock(*rels):
+            return subprocess.run(
+                [sys.executable, os.path.join(PLUGIN, "bin", "tdd_lock.py"), "lock", *rels],
+                cwd=d, env=env, capture_output=True, text=True, timeout=20)
+
+        def unlock():
+            return subprocess.run(
+                [sys.executable, os.path.join(PLUGIN, "bin", "tdd_lock.py"), "unlock",
+                 "--reason", "test fixture reset", "--class", "feature-end"],
+                cwd=d, env=env, capture_output=True, text=True, timeout=20)
+
+        def lock_record():
+            identity = hc.resolve_repository(d)
+            path = hc.lock_path(identity)
+            with open(path) as fh:
+                return path, json.load(fh)
+
+        def rewrite_lock(mutate):
+            path, rec = lock_record()
+            mutate(rec)
+            with open(path, "w") as fh:
+                json.dump(rec, fh)
+
+        # turn 1: red test authored and COMMITTED; turn 2: source only.
+        open(os.path.join(d, "test_app.py"), "w").write(
+            "from app import f\ndef test_f():\n    assert f() == 2\n")
+        git("add", "-A")
+        git("commit", "-qm", "red: test_f")
+        two_turns = [rec_user("write the red test"), rec_edit("test_app.py"),
+                     rec_user("implement"), rec_edit("app.py")]
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 2\n")
+
+        # (a) committed test, NO lock, edited an EARLIER turn -> the only cross-turn evidence
+        #     for a COMMITTED test is the lock; without it this WARNS (and the message says
+        #     which evidence was missing, so the agent's next step is /tdd-lock, not a test).
+        p = run_with(two_turns, "a.jsonl")
+        check("lock-evidence (a): committed test from an earlier turn, no lock -> warns",
+              _tripwire_fired(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+        check("lock-evidence (a): the message names the missing evidence",
+              "test-lock" in (p.stdout or "").lower(), p.stdout[:300])
+
+        # (b) THE DEFECT: same tree, now LOCKED -> SILENT.
+        r = lock("test_app.py")
+        check("lock-evidence: fixture lock taken", r.returncode == 0, (r.returncode, r.stderr))
+        p = run_with(two_turns, "b.jsonl")
+        check("lock-evidence (b): committed + LOCKED red test, source-only turn -> SILENT "
+              "(the cheliped false positive)",
+              _tripwire_silent(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+
+        # (b2) a forward checkpoint commit on the SAME line must NOT void the lock evidence
+        #      (strict HEAD equality would bring the false positive straight back at the
+        #      playbook's own mid-feature checkpoint rule).
+        git("add", "-A")
+        git("commit", "-qm", "green: f")
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 2  # tidy\n")
+        p = run_with(two_turns, "b2.jsonl")
+        check("lock-evidence (b2): a checkpoint commit after locking keeps the evidence",
+              _tripwire_silent(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+
+        # The twins MUTATE the canonical record and RESTORE it afterwards (the unlock CLI
+        # rightly refuses a record owned by another worktree, so unlock/relock cannot reset).
+        lock_file, orig = lock_record()
+
+        def restore():
+            with open(lock_file, "w") as fh:
+                json.dump(orig, fh)
+
+        # TWIN 1: the lock belongs to ANOTHER worktree -> no evidence -> warns.
+        rewrite_lock(lambda rec: rec.__setitem__("source_worktree_id", "0" * 64))
+        p = run_with(two_turns, "t1.jsonl")
+        check("lock-evidence twin 1: another worktree's lock is not evidence -> warns",
+              _tripwire_fired(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+        restore()
+
+        # TWIN 2: the lock's HEAD is not on this line of history -> warns.
+        rewrite_lock(lambda rec: rec.__setitem__("head", "1" * 40))
+        p = run_with(two_turns, "t2.jsonl")
+        check("lock-evidence twin 2: a lock taken at a foreign HEAD is not evidence -> warns",
+              _tripwire_fired(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+        restore()
+
+        # TWIN 3: a lock on a NON-test file (the lock CLI accepts any regular file) -> warns.
+        r = unlock(); check("lock-evidence: fixture unlock 2", r.returncode == 0, r.stderr)
+        git("add", "-A"); git("commit", "-qm", "tidy")
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 3\n")
+        r = lock("app.py")
+        check("lock-evidence: fixture lock on a source file", r.returncode == 0, r.stderr)
+        p = run_with(two_turns, "t3.jsonl")
+        check("lock-evidence twin 3: a lock naming no test file is not evidence -> warns",
+              _tripwire_fired(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+        r = unlock(); check("lock-evidence: fixture unlock 3", r.returncode == 0, r.stderr)
+
+        # TWIN 4: the locked test was edited AROUND the guard (hash no longer matches) -> warns.
+        git("checkout", "-q", "--", "app.py")
+        r = lock("test_app.py"); check("lock-evidence: fixture relock 2", r.returncode == 0, r.stderr)
+        open(os.path.join(d, "test_app.py"), "a").write("# tampered\n")
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 4\n")
+        p = run_with([rec_user("implement"), rec_edit("app.py")], "t4.jsonl")
+        check("lock-evidence twin 4: a locked test whose hash changed is not evidence -> warns",
+              _tripwire_fired(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+        git("checkout", "-q", "--", "test_app.py")
+
+        # (c) a MALFORMED lock is NO evidence, never silence — and the shortfall is logged
+        #     as UNMEASURED so a broken lock cannot read as a quiet one.
+        path, _ = lock_record()
+        with open(path, "w") as fh:
+            fh.write("{not json")
+        if os.path.isfile(yield_log):
+            os.remove(yield_log)
+        p = run_with([rec_user("implement"), rec_edit("app.py")], "c.jsonl")
+        rows = [json.loads(ln) for ln in open(yield_log)] if os.path.isfile(yield_log) else []
+        check("lock-evidence (c): a malformed lock still warns",
+              _tripwire_fired(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+        check("lock-evidence (c): ...and logs an UNMEASURED row naming the lock",
+              any(r.get("event") == "unmeasured" and "lock" in json.dumps(r).lower()
+                  for r in rows), rows)
+        os.remove(path)
+
+        # (d) a test edited THIS TURN counts even when it was committed in the same turn.
+        git("checkout", "-q", "--", "app.py")
+        open(os.path.join(d, "test_app.py"), "a").write("def test_g():\n    assert f() == 5\n")
+        git("add", "-A"); git("commit", "-qm", "red: test_g")
+        open(os.path.join(d, "app.py"), "w").write("def f():\n    return 5\n")
+        p = run_with([rec_user("do both"), rec_edit("test_app.py"), rec_edit("app.py")], "d.jsonl")
+        check("lock-evidence (d): a test edited this turn counts regardless of commit state",
+              _tripwire_silent(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+
+        # (e) pre-existing behaviour, not widened: an UNCOMMITTED test from an earlier turn
+        #     still counts (it is in git status AND in the session's edits).
+        open(os.path.join(d, "test_h.py"), "w").write(
+            "from app import f\ndef test_h():\n    assert f() == 5\n")
+        p = run_with([rec_user("test"), rec_edit("test_h.py"), rec_user("impl"), rec_edit("app.py")],
+                     "e.jsonl")
+        check("lock-evidence (e): an uncommitted test from an earlier turn still counts",
+              _tripwire_silent(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+
+        # (f) SOURCE is turn-scoped too: source dirtied in an EARLIER turn, nothing edited
+        #     this turn -> silent (the 1.46.0 read-only-turn fix, now exact).
+        os.remove(os.path.join(d, "test_h.py"))
+        p = run_with([rec_user("impl"), rec_edit("app.py"), rec_user("what did you do?")], "f.jsonl")
+        check("lock-evidence (f): stale dirty source from an earlier turn is not this turn's",
+              _tripwire_silent(p), (p.returncode, p.stdout[:300], p.stderr[:200]))
+
+
+def test_emit_stop_feedback_routing():
+    """Plan 2026-09-06-tripwire-reminder-lock-aware, D2.
+
+    `emit`'s exit contract routes warn (exit 1 + stderr) to the OPERATOR and block (exit 2)
+    to CLAUDE — recorded for the since-deleted cite_guard in CHANGELOG 1.46.0 and never
+    fixed. A Stop hook's warn-class audience is the agent. With `feedback_event="Stop"`, warn
+    goes out as hookSpecificOutput.additionalContext on stdout, exit 0 (Claude Code shows it
+    as "Stop hook feedback", no operator error, and continues the conversation). Block is
+    unchanged; every caller that does not pass the kwarg is byte-identical to before — the
+    Codex adapter imports the same function.
+    """
+    log = os.path.join(_YIELD_TMP, "stop-routing.jsonl")
+
+    def call(mode, feedback):
+        if os.path.isfile(log):
+            os.remove(log)
+        env = dict(os.environ)
+        for k in list(env):
+            if k.startswith("TDD_PLAYBOOK_"):
+                del env[k]
+        env["TDD_PLAYBOOK_YIELD_LOG"] = log
+        env["TDD_PLAYBOOK_HEARTBEAT"] = os.path.join(_YIELD_TMP, "heartbeat")
+        if mode:
+            env["TDD_PLAYBOOK_HOOK_TRIPWIRE"] = mode
+        kw = ', feedback_event="Stop"' if feedback else ""
+        code = ("import sys; sys.path.insert(0, {!r}); from _common import emit; "
+                "emit('tripwire', ['no test change: app.py', 'add the test']{})"
+                .format(HOOKS, kw))
+        p = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                           env=env, timeout=20)
+        rows = [json.loads(ln) for ln in open(log)] if os.path.isfile(log) else []
+        return p, rows
+
+    p, rows = call("warn", True)
+    try:
+        out = json.loads(p.stdout)
+    except ValueError:
+        out = {}
+    hso = out.get("hookSpecificOutput") or {}
+    check("stop-routing: Stop+warn -> stdout JSON additionalContext, exit 0, stderr empty",
+          p.returncode == 0 and hso.get("hookEventName") == "Stop"
+          and "no test change: app.py" in (hso.get("additionalContext") or "")
+          and not p.stderr.strip(), (p.returncode, p.stdout[:300], p.stderr[:200]))
+    check("stop-routing: the agent payload carries the finding header but NOT the "
+          "silence-me knob (telling the model how to disable a guard is the H-class vector)",
+          "TDD Playbook" in (hso.get("additionalContext") or "")
+          and "TDD_PLAYBOOK_HOOK_" not in (hso.get("additionalContext") or ""),
+          hso.get("additionalContext"))
+    check("stop-routing: exactly ONE warn yield row (telemetry path not bypassed)",
+          len(rows) == 1 and rows[0].get("gate") == "tripwire" and rows[0].get("event") == "warn",
+          rows)
+
+    p, rows = call("block", True)
+    check("stop-routing: Stop+block unchanged -> stderr, exit 2, no stdout JSON",
+          p.returncode == 2 and "no test change" in p.stderr and not p.stdout.strip()
+          and len(rows) == 1 and rows[0].get("event") == "block",
+          (p.returncode, p.stdout[:200], p.stderr[:200], rows))
+
+    p, rows = call("warn", False)
+    check("stop-routing: a non-Stop warn is byte-identical to before -> stderr, exit 1",
+          p.returncode == 1 and "no test change" in p.stderr and not p.stdout.strip()
+          and len(rows) == 1 and rows[0].get("event") == "warn",
+          (p.returncode, p.stdout[:200], p.stderr[:200], rows))
+
+    p, rows = call("off", True)
+    check("stop-routing: off -> nothing on either stream, a 'suppressed' row",
+          p.returncode == 0 and not p.stdout.strip() and not p.stderr.strip()
+          and len(rows) == 1 and rows[0].get("event") == "suppressed",
+          (p.returncode, p.stdout[:200], p.stderr[:200], rows))
+
+    # re-entry: the reminder's own guard must stay silent on BOTH streams, or the
+    # continuation it now buys would loop up to the host's cap.
+    rc, out, err = run("build_completion_reminder.py", {"stop_hook_active": True})
+    check("stop-routing: re-entry is silent on both streams",
+          rc == 0 and not out.strip() and not err.strip(), (rc, out[:100], err[:100]))
 
 
 def test_yield_instrument_carries_session_and_coverage():
@@ -1978,6 +2279,7 @@ def main():
                test_break_glass, test_retired_advisory_defaults,
                test_blocking_guards_prove_both_directions,
                test_guard_roster_derived_and_pinned, test_tripwire_read_only_turn_misattribution,
+               test_tripwire_lock_and_turn_evidence, test_emit_stop_feedback_routing,
                test_yield_instrument_carries_session_and_coverage,
                test_host_truncation_and_tag_guard_regressions,
                test_suite_does_not_dirty_tracked_files):
