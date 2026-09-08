@@ -6,6 +6,27 @@
 **Request:** split `SKILL.md` into a progressive-disclosure reference bundle without weakening the
 gate-surface ratchet.
 
+**Mandate.** This plan PAYS an existing owned debt, and is not a fresh proposal.
+`capabilities.json:758` — *"DOCTRINE SHRINK NOT DONE (v1.32.0). The owner-control plan targets
+SKILL.md under 300 lines … with everything cut moving to reference docs read on demand"* — owner
+david, **expires 2026-10-31**, DONE condition *"the shrink pass done under its own ledger
+registration."* The debt already names rule (d) AND the pre-registered ledger row as its deferral
+reasons, and calls the work *"its own cycle with its own review"*. This is that cycle.
+
+**Two things the debt tells us that change this plan.**
+
+1. **The target is 300 lines, not 500.** Phase 1 delivers ~590, or ~450 with D5b — both MISS the
+   owner's own stated target. That is stated here rather than discovered at review. The debt's
+   escape clause is explicit: *"or a conscious decision that the doctrine is the right length and
+   the plan's target was wrong."* **Q1 is therefore really "which target?"** — 300 (owner's), 500
+   (Anthropic's published bar), or a recorded decision that both are wrong. The plan cannot pick.
+2. **Editing SKILL.md at all requires a pre-registered ledger row.** Not just the removals — the
+   edits. The draft treated `calibration/ledger.py` as a thing to extend (D2) and never registered
+   the entries this plan's own 12 commits owe. See D2's addendum.
+
+**And one the debt does not know:** the doctrine has grown **1,048 → 1,459 lines (+39%)** since the
+debt was opened. It is not merely unpaid; it is moving away from its target, and nothing reports that.
+
 ---
 
 ## Repo-local testing conventions layered on top of the universal floor
@@ -65,11 +86,15 @@ the measurement in D8 comes back negative, the correct outcome is to revert and 
   needs §0 (153 lines) or §1 (195) moved, both arguably every-turn content. This plan proposes
   moving §0's *detail* with a summary stub in the spine (→ ~450 lines) as **D5b, gated on your
   approval**. If you'd rather stop at 590, D5b drops and the plan still delivers 60%.
-- **Q2 — REVERSED BY REVIEW.** The draft said the rosters should stay separate. The
-  architecture-adversary refuted both halves of that reasoning and it is withdrawn. See
-  **D-1** below: the rosters are unified, and the prior art the draft failed to sweep for is
-  cited there. The draft's error is kept visible rather than edited away, because "we thought
-  about it and said no" and "nobody looked" are indistinguishable from the outside.
+- **Q2 — STILL YOURS TO DECIDE. RESTORED after the intent pass.** The draft gave a REASON for
+  keeping the three rosters separate; the architecture-adversary refuted that reason correctly (all
+  three targets are in `calibration/` — no boundary is crossed). **But refuting the reason does not
+  establish that unification is required to split a markdown file.** D2 is a one-line prefix change
+  with or without it. In the intervening revision D-1 was promoted to a phase-A prerequisite by
+  reviewer decision, and Q2 vanished from your list — which is drift, and the intent-adversary
+  caught it. Q2 is back: **unify the rosters now (D-1), or split first and unify separately?**
+  The prior art the draft failed to cite is in D-1 either way, so you are deciding with it, not
+  without it.
 - **Q3 — NEW, needs your call.** `.agents/skills/tdd-playbook/SKILL.md` is a tracked,
   byte-identical third copy of the doctrine that no mechanism protects (D0). Delete it, or
   protect it? The plan cannot proceed past D0 without an answer.
@@ -80,7 +105,7 @@ the measurement in D8 comes back negative, the correct outcome is to revert and 
 
 | Fact | Value | Citation |
 |---|---|---|
-| SKILL.md size | 1,459 lines / 131,277 chars | this tree |
+| SKILL.md size | 1,459 lines · 131,277 decoded chars · 132,524 bytes (`wc -c`) | this tree |
 | Published bar | "under 500 lines" | Anthropic skill-authoring best practices |
 | Movable (command-routed / rarely needed) | 869 lines = 60% | per-section counts below |
 | Residual spine, phase 1 | ~590 lines | 1,459 − 869 |
@@ -118,12 +143,25 @@ for one commit.** Three orderings fail, and naming them is the point:
 
 ```
 0. ENUMERATE + DECIDE THE COPIES  (D0)      — three tracked doctrine copies, not one
-A. UNIFY THEN EXTEND PROTECTION   (D-1 D1 D2 D3)  — one roster owner, then coverage
-B. TEACH THE TESTS + ACKNOWLEDGE  (D4 + D7 SAME COMMIT) — see F5 below
-D. MOVE, ONE SECTION PER COMMIT   (D5 D6 D6b) — attribution + citations updated per move
-E. MEASURE                        (D8)      — calibration decides whether it stays
-F. PROPAGATE                      (D9 D9b D10) — vendored self-parity, downstream, registry
+   ANSWER Q1 Q2 Q3                          — target, roster timing, .agents/ disposition
+A1. BASELINE CALIBRATION RUN                — D8 has nothing to compare against otherwise
+A2. SECTION ANCHORS INTO THE MONOLITH (D5c) — <!-- gate-surface: N --> before D1 can key on them
+A3. LEDGER ROWS PRE-REGISTERED (D2b)        — editing SKILL.md at all requires them
+A4. ROSTER + PROTECTION           (D-1 if Q2=now; D1 D2 D3)
+B1. THE §N -> FILE MAP            (D6's map only)  — D4 derives from it, so it comes first
+B2. TESTS + ACKNOWLEDGE           (D4 + D7 SAME COMMIT)
+C.  MOVE, ONE SECTION PER COMMIT  (D5 D6 D6b)
+D.  MEASURE                       (D8 vs the A1 baseline)
+E.  PROPAGATE                     (D9 D9b D10)
 ```
+
+**Three ordering defects the review round INTRODUCED, caught by the intent pass and fixed above.**
+(1) D4 was sequenced before D6, then D4 adopted architecture-F4 and began deriving its map *from*
+D6 — a dependency on an artifact built two phases later. D6's map is now B1, alone. (2) D8's own
+edge case called the baseline run "a sequencing constraint, not a nice-to-have" and it appeared
+nowhere in the sequence; it is now A1. (3) D1 keys on section-id anchors that nothing was assigned
+to create; anchor insertion is now A2 / D5c, in the monolith, before D1's planted test can mean
+anything. Adopting good review findings without re-checking the order is how sequencing rots.
 
 **Phase C was deleted, and why matters.** The draft sequenced "re-acknowledge the gate roster"
 as a separate phase AFTER adding the new suite. `plugins/tdd-playbook/bin/gate_plan.py:99`
@@ -252,13 +290,9 @@ or carries the anchor through. Assumption 3 is not satisfiable without this.
 **Property test.** For any partition of a fixed heading set across spine + N reference files, the
 union is invariant. Moving headings between files never REDs; deleting one always does.
 
-**Note on Q2 (why not one shared roster).** `calibration/` is repo-local and never vendored;
-`plugins/tdd-playbook/` ships downstream. A shared constant would either drag calibration code into
-the vendored package or make the vendored package import from a directory that does not exist in a
-downstream repo. The three rosters stay separate; D1/D2/D3 each get their own planted test, and the
-divergence risk is answered by tests rather than by a shared import. **This is a decision, not an
-oversight** — `calibration/ledger.py:58` already carries a comment asserting "no second list" while
-being one, which is the drift this note exists to stop repeating.
+**Q2 note removed.** The draft's "the three rosters stay separate" argument lived here and
+contradicted D-1 in the same document — the reversal was pasted in without sweeping the text it
+reversed (intent finding 4). D-1 and Q2 above carry the live position.
 
 ### D2 — Gate-surface ledger covers the bundle
 
@@ -277,6 +311,28 @@ is load-bearing and gets its own planted case.
 - *EFFECTFUL classification* — `:74` deliberately keeps SKILL.md OUT of `EFFECTFUL` (doctrine yield
   is unmeasured by decision, dated 2026-08-14). Reference files inherit that; changing it is a
   separate decision and is **explicitly out of scope**.
+
+**D2b — the ledger rows this plan itself owes.** `capabilities.json:758` states it directly:
+*"editing SKILL.md at all needs a pre-registered ledger row."* `calibration/ledger.py:399` demands
+an entry whose `surface` cell contains the changed path EXACTLY. The draft extended the roster and
+never registered the entries its own 12 move commits owe — architecture F6, confirmed by the debt
+text. One entry naming spine + every reference file in list form is sufficient
+(`calibration/test_harness.py:2112` shows the list shape, already using a directory prefix). Decide
+explicitly whether `coverage_problems` should match a prefix now that the surface is a directory.
+
+### D5c — Section anchors, into the monolith, BEFORE the split
+
+**What.** Every `## ` section in SKILL.md carries a stable `<!-- gate-surface: N -->` anchor while
+it is still in the monolith, so D1 can key on identity rather than on rendered heading text.
+
+Sequenced at A2 because D1's planted test is meaningless without it and D5 only "carries it
+through" — the draft assigned the edit to nobody (intent finding 3). Additive: adding an anchor
+removes no heading, so rule (d) stays green throughout, which is what makes this safe to do first.
+
+**Edge cases**
+- *Anchor uniqueness* — two sections must not share an id; assert injectivity.
+- *Anchor survives the move* byte-identically; that is the invariant D5 asserts against.
+- *A section with no anchor* is a hard error once D1 keys on them, never a silent skip.
 
 ### D3 — Holdout-leak scan covers the bundle · **highest-severity item in this plan**
 
@@ -361,7 +417,11 @@ Layout follows Anthropic's Pattern 2 (domain organization), mirroring the comman
 - *One level deep* — every reference file linked directly from SKILL.md's index. Nested-only
   reachability causes partial reads (`head -100`), per Anthropic's guidance. Assert mechanically:
   every file in `reference/` appears in the spine's index; no file is reachable only via another.
-- *TOC on files > 100 lines* — `wiring.md` (155) and `mutation.md` (231) qualify; assert it.
+- *TOC on files > 100 lines* — **SIX of seven qualify, not two** (claims-verifier caught the draft's
+  arithmetic against its own counts): `mutation.md` 231 · `wiring.md` 155 · `claims.md` 137 ·
+  `probes-and-evals.md` 109 · `learning-loop.md` 109 · `security-and-ci.md` 101; only
+  `checkpoints.md` (27) is exempt, plus `planning.md` (153) under D5b. Assert it from the counts,
+  never from a hand list — a closed-form enumeration that missed four of six is why.
 - *Section content is byte-preserved across the move* — assert moved text is identical modulo the
   heading level and the added TOC, so "moved" can never quietly mean "rewritten".
 - *Empty/duplicate* — no reference file is empty; no heading appears in two files.
@@ -393,7 +453,7 @@ resolves after the split.
 
 The draft's D6 covered `§N` tokens *inside* the bundle. Two larger populations sit outside it:
 
-- **13 line-anchored citations** (`git grep -nE "SKILL\.md:[0-9]+"`): `capabilities.json:42`,
+- **15 line-anchored citations** (`git grep -nE "SKILL\.md:[0-9]+"`): `capabilities.json:42`,
   `docs/reviews/2026-08-16-v1.37.0-release.json:50`,
   `docs/reviews/2026-08-17-mutation-attribution-doctrine.json:20,21,34,35,47,48,60,61`, and — with
   some irony — `docs/recommendations/mantis-pattern-review-2026-09.md:74,75,208,264,271`. The spine
@@ -567,7 +627,7 @@ Neither becomes a deliverable in this plan — that is a deliberate scope hold, 
 | T-vocabulary pin | §6c text (moving) | `plugins/tdd-playbook/tests/test_readable_surface.py:132` reads SKILL for §6c terms | D4 attribution follows §6c to `reference/wiring.md` |
 | doctrine path class | file path | `plugins/tdd-playbook/tests/test_review_ledger.py:620` maps path → `"doctrine"` | D4 reference paths classify as doctrine |
 
-| line-anchored citations | `SKILL.md:<line>` in 13 places | `plugins/tdd-playbook/bin/verify_citations.py` resolves each anchor | D6b: a stale anchor REDs the citation gate |
+| line-anchored citations | `SKILL.md:<line>` in 15 places | `plugins/tdd-playbook/bin/verify_citations.py` resolves each anchor | D6b: a stale anchor REDs the citation gate |
 | `§N` pointers outside the bundle | 622 in agents/commands/hooks/bin/tests/calibration/CLAUDE/AGENTS | each doc's reader; totality asserted | D6b planted dangling `§99` |
 | registry wiring claims | `capabilities.json` `wired_by` strings carrying `§N` anchors | `capability_registry.py` resolves by FILE existence only — never reads the anchor | D10 sweep: an anchor whose home moved |
 | this repo's vendored tree | `COPY_TREES` walk | `<repo>/.claude/skills/**` + committed manifest (74 entries) | D9b self-parity pin (none exists today) |
@@ -601,7 +661,7 @@ that ignores the field is no consumer.
 
 | # | Deliverable | BUILT | WIRED | ACTIVATED | EXERCISED |
 |---|---|---|---|---|---|
-| D1 | rule (d) covers bundle | heading union in `check_scoreboard_integrity` | called by the ledger stage in `gate-manifest.json` | on by default | planted reference-heading deletion REDs |
+| D1 | rule (d) covers bundle | heading union in `check_scoreboard_integrity` | the **calibration** stage via `calibration/test_harness.py:435` — NOT the ledger stage (draft named the wrong composition root; exhaustive sweep confirms `:435`/`:986` are the only invokers) | on by default | planted reference-heading deletion REDs |
 | D2 | ledger surface prefix | `SURFACE_PATTERNS` prefix | `ledger.py check` fixed stage | on | planted reference edit counted |
 | D3 | leak scan covers bundle | `LEAK_SCAN` prefix | `plant-forms check` fixed stage | on | planted holdout id caught + `files_scanned` grows |
 | D4 | doctrine reader + attribution | helper module | imported by all 17 sites | on | planted misplaced needle REDs |
@@ -625,4 +685,77 @@ four assurance mechanisms, and that D8 measures whether behavior held.
 
 ## Adversary findings folded in
 
-*(populated after dispatch — see the review record below)*
+Four fresh-context reviewers ran. **Every one of them found something that changed the plan**, and
+three found errors in MY work rather than in the idea. Recorded rather than summarised away.
+
+### architecture-adversary — MIXED (7)
+| # | Finding | Disposition |
+|---|---|---|
+| F1 | Q2's rejection reason is a false dichotomy — all three rosters are in `calibration/`; prior art at `calibration/history_format.py:2` ("the ONE owner") | **ADOPTED** as D-1. Reason withdrawn; the DECISION returned to Q2 after the intent pass |
+| F2 | A fourth roster exists (`plugins/tdd-playbook/bin/review_ledger.py:626`), already a directory prefix, in the vendored package | **ADOPTED** — D-1 names it; needs no change, which is itself the counter-evidence |
+| F3 | D1 keys on the rendered `## ` string while D5 permits heading changes — all 12 sections would report as removals | **ADOPTED** — D1 keys on section id; new D5c creates the anchors |
+| F4 | D4's hand-written attribution map would be a FIFTH roster; 149/173 labels already carry `§N` | **ADOPTED** — derive from D6's map + a 24-entry exception list |
+| F5 | Phase C invalid: `plugins/tdd-playbook/bin/gate_plan.py:99` RAISES on digest mismatch | **ADOPTED** — D7 folded into D4's commit, phase deleted |
+| F6 | D2 multiplies the standing ledger obligation and the plan registers no rows for itself | **ADOPTED** as D2b, corroborated by `capabilities.json:758` |
+| F7–F9 | 22-section count assertion, `README.md:253`, CLAUDE.md refresh list, existing `SKILL` constant | **ADOPTED** into D4's site list |
+
+### integration-adversary — ISLANDS (6)
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | `.agents/skills/tdd-playbook/SKILL.md` — a third tracked, byte-identical, wholly unprotected copy | **ADOPTED** as blocking D0 + Q3 |
+| 2 | This repo's own vendored `.claude/skills` and manifest are outside D9; no self-parity pin exists | **ADOPTED** as D9b |
+| 3 | The parity citation was wrong — zero mentions of skills in either parity JSON | **ADOPTED** — corrected; cites `capabilities.json:1384` |
+| 4 | Two deferrals with no expiry that `validate` would refuse | **ADOPTED** — both dated |
+| 5 | 15 line-anchored citations break; consumer is `verify_citations.py` | **ADOPTED** as D6b |
+| 6 | 622 `§N` pointers outside the bundle owned by no deliverable | **ADOPTED** into D6b's totality property |
+| 7–9 | `calibration/test_harness.py` missing from D4; registry `wired_by` staleness; D1's absence asymmetry | **ADOPTED** |
+
+### claims-verifier — 30 checked · 20 confirmed · **6 refuted** · 4 leads
+| # | Finding | Disposition |
+|---|---|---|
+| R1 | **"The context cost has never been considered" is FALSE** — `capabilities.json:758` is an open, owned, dated debt targeting SKILL.md <300 lines with "reference docs read on demand", already naming rule (d) as its deferral reason | **ADOPTED** — the recommendation's F1 is corrected and downgraded high→medium; this plan is reframed as PAYING that debt |
+| R3 | D5's ">100 lines" names 2 of the 6 files its own counts qualify | **ADOPTED** — enumerate from counts |
+| R4 | D1's Tripwire WIRED cell names the wrong stage; only invoker is `calibration/test_harness.py:435` | **ADOPTED** |
+| R5 | The recommendation's "four hook registrations" is really 17 across 4 event types incl. `capture.py` | **ADOPTED** — corrected in the recommendation |
+| R2, R6 | Parity citation; missing flow row | **ALREADY FIXED** — verifier read the pre-fold draft |
+| D1–D4 | Anthropic guidance, token estimate, loader behavior, mantis facts are **externally sourced and not repo-resolvable** | **ACCEPTED as leads, not findings.** They carry the plan's target; they cannot be verified from this tree |
+
+### intent-adversary — DRIFT (3)
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | **D-1 was never asked for and became a phase-A prerequisite by reviewer decision; Q2 vanished from the requester's list** | **ADOPTED** — Q2 restored as an open decision. This is the finding this reviewer exists for |
+| 2 | The stale D1 Q2 note contradicted D-1 in the same document | **ADOPTED** — removed |
+| 3 | D4 derives from D6's map but was sequenced two phases earlier | **ADOPTED** — D6's map is now B1 |
+| 4 | D8's baseline run called a sequencing constraint but absent from the sequence | **ADOPTED** — now A1 |
+| 5 | Anchor insertion unassigned | **ADOPTED** — D5c |
+| 6 | 13 vs 15 citations; chars-vs-bytes | **ADOPTED** — both corrected |
+| — | **The cost basis moved after approval**: four costs were shown, fifteen deliverables now exist, D0 blocks and D-1 was never the ask | **NOT RESOLVED IN THIS DOCUMENT — this is the requester's call.** See "What this now costs" below |
+
+---
+
+## What this now costs, versus what was approved
+
+The cost-benefit answer that prompted this plan named **four costs**. The plan carries **fifteen
+deliverables**, four of them added after that answer (D0, D-1, D6b, D9b), two of them sequenced
+*ahead* of the split. The honest position, per the intent finding:
+
+| | Approved basis | Current plan |
+|---|---|---|
+| Deliverables | 4 costs | 15 |
+| Blocking prerequisites | none | D0 (a pre-existing hole this plan did not create) |
+| Never requested | — | D-1 roster unification |
+| Target | Anthropic's 500 lines | conflicts with the owner's own 300 |
+
+**Three questions, one decision, in plain language:**
+- **Q1 — which target?** 300 (yours, `capabilities.json:758`), 500 (Anthropic's), or a recorded
+  decision that both are wrong. Phase 1 delivers 590; with D5b, 450.
+- **Q2 — unify the rosters now, or split first and unify separately?**
+- **Q3 — `.agents/skills/tdd-playbook/SKILL.md`: delete it, or bring it under the guards?**
+
+---
+
+**Loop closed: yes** (integration-adversary — top island: `.agents/skills/tdd-playbook/SKILL.md`,
+a third tracked doctrine copy no mechanism protects, now blocking D0; architecture-adversary — top
+band-aid: Q2's three-roster rejection, refuted by prior art in the same directory; claims-verifier —
+top refutation: "never been considered" is false, `capabilities.json:758`; intent-adversary — top
+drift: D-1 was a reviewer decision on a question that was the requester's).

@@ -75,14 +75,41 @@ words) in a single file with 22 `##` sections, spanning §0 planning through §1
 `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:1344`). Its frontmatter description makes it
 fire on building, fixing, testing, planning, auditing, reviewing, diagnosing and self-improvement
 work — which is close to every turn. There is no bundled-reference directory to load sections on
-demand `(absent: plugins/tdd-playbook/skills/tdd-playbook/references)`.
+demand `(absent: plugins/tdd-playbook/skills/tdd-playbook/reference)`.
 
-The reason this is a finding and not a preference: **it has never been considered.** A sweep of
-`CHANGELOG.md` (2,567 lines), `docs/plans/gated/`, `docs/recommendations/` and `capabilities.json`
-for `progressive disclosure`, `context budget`, `token cost`, `context window`, `split SKILL` and
-`references/` returns nothing. Every other trade-off in this repo is argued in writing, often at
-length and often reversed on evidence. This one is not a decision that was made; it is a shape
-that accreted. Mantis's 18-directory split is the counter-example that makes the question askable.
+**CORRECTION (2026-09-08, claims-verifier). The draft's headline reason for this finding was
+FALSE and is withdrawn.** It said the cost "has never been considered" on the strength of a sweep
+for six phrasings across the CHANGELOG, plans, recommendations and registry. That sweep really does
+return zero — and the conclusion drawn from it is still wrong, because the repo says this in
+different words. `capabilities.json:758` carries an open, owned, dated `integration_debt`:
+
+> "**DOCTRINE SHRINK NOT DONE (v1.32.0).** The owner-control plan targets **SKILL.md under 300
+> lines** … **with everything cut moving to reference docs read on demand.** … The rest is
+> **deliberately deferred, not forgotten**, for a reason worth stating: removing a SKILL `## `
+> section trips check_scoreboard_integrity rule (d) and needs a gate-changes.md entry, **and
+> editing SKILL.md at all needs a pre-registered ledger row** — a ~750-line deletion is its own
+> cycle with its own review." — owner david, expires **2026-10-31**
+
+That is progressive disclosure, with a numeric target stricter than Anthropic's, a costed deferral,
+an owner, an expiry — and the rule-(d) constraint this review presented as its own discovery
+already written down as the reason for deferring. This is the textbook over-narrow-sweep negative
+that §12 warns about, committed by a review whose own subject is claims discipline.
+
+**What survives, and it is still worth acting on — three facts the debt does not contain:**
+
+1. **The doctrine has GROWN away from its target since the debt was opened.** The entry records
+   1,048 lines at v1.32.0. It is now **1,459** — up 411 lines (+39%) against a stated target of
+   300. An unpaid debt is one thing; one moving in the wrong direction is another, and nothing
+   reports that.
+2. **The target now has external grounding.** The debt's "under 300 lines" was an owner's judgement
+   call, and its own closing clause allows "a conscious decision that the doctrine is the right
+   length and the plan's target was wrong." Anthropic's published 500-line bar independently
+   supports the direction, which is exactly the evidence that clause was waiting for.
+3. **The debt expires 2026-10-31** and its DONE condition is "the shrink pass done under its own
+   ledger registration". That is the mandate for the build plan, which changes the plan's status
+   from unsolicited proposal to scheduled work.
+
+**Severity revised: high → medium.** The finding is real and dated; the novelty is not.
 
 The natural decomposition already exists and is already routed: `/mutate` → §4, `/probe` → §5a,
 `/tripwire` → §6, `/integration-audit` → §6a/§6c, `/claims` → §12, `/grade` → §13. The spine that
@@ -178,16 +205,22 @@ is the strongest reason to treat the split as a proven change rather than a refa
 `docs/plans/gated/2026-08-15-two-tier-calibration.md:8` states the scope directly: the threat is
 agent-side test-gaming and answer-key recognition, "not trusted human collaborators."
 
-That is a coherent scope. What is missing is the other one. This repo publishes a marketplace
-(`.claude-plugin/marketplace.json`) and an installer that writes four `PreToolUse`/`PostToolUse`
-hook registrations into a third party's `settings.json` — `hooks/scripts/lock_guard.py` and
-`snapshot_guard.py` on `Edit|MultiEdit|Write` and again on `Bash`, `tag_guard.py` on `Bash`
-(`plugins/tdd-playbook/hooks/hooks.json:44`), `weakening_guard.py` on `PostToolUse`
-(`plugins/tdd-playbook/hooks/hooks.json:63`) — each of which executes Python on every matching
-tool call, reads the tool payload, and writes to per-repo and machine-scoped state. There is no
-security policy `(absent: SECURITY.md)`, no vulnerability reporting path, and no contributor
-guidance `(absent: CONTRIBUTING.md)`. Mantis, whose blast radius is comparable, opens its README
-with the isolation requirements and states plainly that AI agents may bypass intended constraints.
+That is a coherent scope. What is missing is the other one. This repo publishes a marketplace (`.claude-plugin/marketplace.json`) and an installer that writes
+hook registrations into a third party's `settings.json`. **CORRECTION (claims-verifier): the draft
+said "four", counting only the blocking guards. The real figure is 6 groups / 17 registrations /
+12 distinct scripts across FOUR event types** — PreToolUse (7), PostToolUse (6), UserPromptSubmit
+(2) and Stop (2) — and `scripts/install_into_repo.py` merges every group wholesale. Undercounting
+by 4× in a *security* finding, in the direction that understates blast radius, is the error that
+finding exists to prevent.
+
+The omission that matters most: **`capture.py`, the transcript recorder, is registered on
+UserPromptSubmit and Stop** in a stranger's repo. The draft praised its default-off posture in §3
+while leaving it out of the blast-radius paragraph here. Default-off is the right design; it
+belongs in the disclosure, not only in the compliment.
+
+There is no security policy `(absent: SECURITY.md)`, no vulnerability reporting path, and no
+contributor guidance `(absent: CONTRIBUTING.md)`. Mantis, whose blast radius is comparable, opens
+its README with the isolation requirements.
 
 The material is already written and already true — it is just scattered where an adopter will not
 find it: the capture store ships off for strangers, break-glass cannot silence a gate, a global
@@ -261,12 +294,12 @@ here, it should be the planted-plant-with-clean-control pair.
 
 | # | Claim | Evidence | Verdict |
 |---|---|---|---|
-| 1 | SKILL.md is ~131 KB / ~33k tokens, one file, 22 `##` sections | `wc -c` = 131,277; headings §0–§13 at `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:53`–`plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:1344` | VERIFIED |
-| 2 | No progressive-disclosure reference bundle exists | `(absent: plugins/tdd-playbook/skills/tdd-playbook/references)` | VERIFIED |
-| 3 | Skill context cost has never been discussed in-repo | sweep of `CHANGELOG.md`, `docs/plans/gated/`, `docs/recommendations/`, `capabilities.json` for six phrasings — zero hits | VERIFIED |
+| 1 | SKILL.md is ~131 KB, one file, 22 `##` sections | 131,277 decoded chars (`wc -c` reports 132,524 bytes); headings §0–§13 at `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:53`–`plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:1344` | VERIFIED |
+| 2 | No progressive-disclosure reference bundle exists | `(absent: plugins/tdd-playbook/skills/tdd-playbook/reference)` | VERIFIED |
+| 3 | ~~Skill context cost has never been discussed in-repo~~ | the six-term sweep is honest, the conclusion is not — `capabilities.json:758` says it in other words | **REFUTED — see the F1 correction** |
 | 4 | Rule (d) enumerates gate surfaces by path and would read a section move as a removal | `calibration/check_scoreboard_integrity.py:191`, `:200` | VERIFIED |
 | 5 | The threat model is scoped to agent test-gaming, not to the shipped hooks | `docs/HACK_CATALOG.md:1`, `docs/plans/gated/2026-08-15-two-tier-calibration.md:8` | VERIFIED |
-| 6 | Four guards execute on every matching tool call in a downstream repo | `plugins/tdd-playbook/hooks/hooks.json:44`, `:63` | VERIFIED |
+| 6 | ~~Four guards execute on every matching tool call~~ → 17 registrations / 12 scripts / 4 event types, incl. `capture.py` on UserPromptSubmit+Stop | `plugins/tdd-playbook/hooks/hooks.json` enumerated in full | **CORRECTED — draft undercounted 4×** |
 | 7 | No security policy or contributor guidance ships | `(absent: SECURITY.md)` `(absent: CONTRIBUTING.md)` `(absent: CODE_OF_CONDUCT.md)` | VERIFIED |
 | 8 | Repo-convention discovery is per-invocation and never persisted | `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md:31`, `plugins/tdd-playbook/commands/tdd-plan.md:8`, `plugins/tdd-playbook/bin/capability_registry.py:63` | VERIFIED |
 | 9 | CI pins one interpreter; no floor is declared | `.github/workflows/gate.yml:47`, `(absent: pyproject.toml)` `(absent: setup.cfg)` | VERIFIED |
@@ -280,7 +313,12 @@ here, it should be the planted-plant-with-clean-control pair.
 | 17 | 148 internal cross-references are the real design work | `§N` mention count in SKILL.md | VERIFIED |
 | 18 | The installer needs no change — it vendors the directory | `scripts/install_into_repo.py:44` | VERIFIED |
 
-**Claims 18/18.** Three of the twelve are refutations of findings this review carried in draft;
+| 19 | An owned, dated debt already targets this (SKILL.md <300 lines, "reference docs read on demand") | `capabilities.json:758`, owner david, expires 2026-10-31 | VERIFIED — **refutes claim 3** |
+| 20 | The doctrine GREW 1,048 → 1,459 lines (+39%) since that debt was opened | debt text vs this tree | VERIFIED |
+| 21 | 6 of 7 proposed reference files exceed 100 lines, not 2 | per-section counts | **CORRECTED in the plan** |
+| 22 | `check_scoreboard_integrity` is invoked only by `calibration/test_harness.py:435` (calibration stage) | exhaustive `git grep` | VERIFIED — **corrects the plan's Tripwire cell** |
+
+**Claims 22 — 18 verified, 3 refuted or corrected, 1 restated.** Three of the twelve are refutations of findings this review carried in draft;
 they are kept visible rather than deleted, because a review that shows only its survivors is
 reporting its inventory, not its search (§12).
 
