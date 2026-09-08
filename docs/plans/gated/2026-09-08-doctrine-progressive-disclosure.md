@@ -2,7 +2,12 @@
 
 **Slug:** `2026-09-08-doctrine-progressive-disclosure` (permanent; no collision — the only other
 2026-09 gated plan is `2026-09-06-tripwire-reminder-lock-aware.md`)
-**Base sha:** `b32346413383f2fc02a82e91f51d45f5703d1014`
+**Base sha:** `b32346413383f2fc02a82e91f51d45f5703d1014` — resolves in this repo
+(`git cat-file -t` → `commit`). The Codex review reported it unavailable; that reviewer was reading
+a downloaded copy of this plan against a clone that had not fetched
+`claude/repo-best-practice-review-mblh86`. **Not a plan defect, and the counts are not regenerated.**
+Recorded rather than silently "fixed", because acting on it would have meant rebasing away a
+resolvable base.
 **Request:** split `SKILL.md` into a progressive-disclosure reference bundle without weakening the
 gate-surface ratchet.
 
@@ -59,8 +64,10 @@ Discovered, not assumed:
 
 1. The goal is fewer always-loaded doctrine tokens **at equal or better agent behavior**. Token
    reduction that degrades what agents catch is a failure, not a trade.
-2. Anthropic's published 500-line bar is guidance for the format, not a repo requirement. This plan
-   treats it as the target and reports honestly when a phase does not reach it.
+2. Anthropic's 500-line figure is a CEILING for the body, not a magic optimum — "under 500" is not
+   evidence that 500 is ideal or that 300 is inherently better. This plan treats `<500` as a hard
+   acceptance criterion and `≤450` as the working budget, and does NOT claim either number is
+   optimal.
 3. "Without weakening the ratchet" is read STRICTLY: after this change, deleting a moved section
    must cost exactly what deleting it costs today. Equal protection, not "protection somewhere".
 
@@ -82,10 +89,15 @@ the measurement in D8 comes back negative, the correct outcome is to revert and 
 
 **Open questions for review — planned around, not silently answered:**
 
-- **Q1.** Phase 1 lands the spine at ~590 lines, still 18% above the published bar. Reaching it
-  needs §0 (153 lines) or §1 (195) moved, both arguably every-turn content. This plan proposes
-  moving §0's *detail* with a summary stub in the spine (→ ~450 lines) as **D5b, gated on your
-  approval**. If you'd rather stop at 590, D5b drops and the plan still delivers 60%.
+- **Q1 — RESOLVED BY THE CODEX REVIEW; confirm or overrule.** The draft let the plan finish at
+  ~590 lines with the only route under the bar (D5b) optional and approval-gated, and no test
+  asserting the budget at all. That is a plan that can pass while missing its own objective, and it
+  is the correct P0. **Revised position: `<500` body lines is a NON-NEGOTIABLE acceptance criterion,
+  `≤450` is the internal budget (≈10% headroom), D5b is MANDATORY, and D5d adds a permanent gate
+  that counts the YAML-excluded body and fails at 451 (internal) and independently at 500
+  (conformance).** The 300-line debt (`capabilities.json:758`) becomes a STRETCH target, formally
+  re-scoped under its own escape clause — it must not block satisfying the externally grounded one.
+  Your call is only whether to accept that re-scoping.
 - **Q2 — STILL YOURS TO DECIDE. RESTORED after the intent pass.** The draft gave a REASON for
   keeping the three rosters separate; the architecture-adversary refuted that reason correctly (all
   three targets are in `calibration/` — no boundary is crossed). **But refuting the reason does not
@@ -95,9 +107,18 @@ the measurement in D8 comes back negative, the correct outcome is to revert and 
   caught it. Q2 is back: **unify the rosters now (D-1), or split first and unify separately?**
   The prior art the draft failed to cite is in D-1 either way, so you are deciding with it, not
   without it.
-- **Q3 — NEW, needs your call.** `.agents/skills/tdd-playbook/SKILL.md` is a tracked,
-  byte-identical third copy of the doctrine that no mechanism protects (D0). Delete it, or
-  protect it? The plan cannot proceed past D0 without an answer.
+- **Q3 — RESOLVED by evidence this tree cannot produce; confirm.** The draft offered deletion of
+  `.agents/skills/tdd-playbook/SKILL.md`. **The Codex reviewer reports, first-hand, that its own
+  session was directed to load that exact path.** It is a LIVE host surface, not an orphan — and
+  `git log -- .agents/` shows it moving in step with doctrine releases (`3f221fa`). Deletion is
+  unsafe. **Revised: protect AND propagate**, unless a real Codex-host removal probe proves it
+  unused. Consequence: the budgeted bundle must land on `.agents/` too, or Codex sessions keep
+  loading the 1,459-line monolith and get none of the benefit.
+
+  *Reconciling the apparent contradiction:* `capabilities.json:1384` says "NO skill reaches a Codex
+  install" — that is about the INSTALLER (`CODEX_COPY_TREES` ships adapters + bin only). `.agents/`
+  is a separate, hand-maintained repo-local surface the host reads directly. Both are true; the
+  draft's error was citing the installer debt as if it settled the runtime question.
 
 ---
 
@@ -109,7 +130,8 @@ the measurement in D8 comes back negative, the correct outcome is to revert and 
 | Published bar | "under 500 lines" | Anthropic skill-authoring best practices |
 | Movable (command-routed / rarely needed) | 869 lines = 60% | per-section counts below |
 | Residual spine, phase 1 | ~590 lines | 1,459 − 869 |
-| Residual spine, phase 1 + D5b | ~450 lines | −153 (§0) + ~13 stub |
+| Residual spine, D5b, measured | **437 lines** (before index + anchors) | generated, not estimated |
+| D5b spine tokens | ~11,300 est. — **~2× the ~5k guidance** | see D5e |
 | Internal `§N` cross-references | 148 | `grep -oE '§[0-9]+[a-c]?'` |
 | Duplicated SKILL.md read sites in `test_agents.py` | 17 | `grep -c` |
 | Text-needle assertions against SKILL.md | 32 | `grep -c "in text"` |
@@ -142,17 +164,19 @@ for one commit.** Three orderings fail, and naming them is the point:
 **The only safe order (revised — the draft's phase C was invalid):**
 
 ```
-0. ENUMERATE + DECIDE THE COPIES  (D0)      — three tracked doctrine copies, not one
-   ANSWER Q1 Q2 Q3                          — target, roster timing, .agents/ disposition
-A1. BASELINE CALIBRATION RUN                — D8 has nothing to compare against otherwise
+0. ENUMERATE + PROTECT ALL LIVE COPIES (D0) — canonical + .claude + .agents; none is deleted
+   CONFIRM Q1 Q2 Q3                         — budget, roster timing, .agents/ disposition
+A0. CANDIDATE-LOADING PROBE (D8a)           — without it every later measurement is meaningless
+A1. BASELINE CALIBRATION RUN (fingerprinted)— D8 has nothing to compare against otherwise
 A2. SECTION ANCHORS INTO THE MONOLITH (D5c) — <!-- gate-surface: N --> before D1 can key on them
 A3. LEDGER ROWS PRE-REGISTERED (D2b)        — editing SKILL.md at all requires them
-A4. ROSTER + PROTECTION           (D-1 if Q2=now; D1 D2 D3)
+A4. PROTECTION                    (D1 D2 D3)   — D-1 is OFF the critical path (Q2)
 B1. THE §N -> FILE MAP            (D6's map only)  — D4 derives from it, so it comes first
 B2. TESTS + ACKNOWLEDGE           (D4 + D7 SAME COMMIT)
 C.  MOVE, ONE SECTION PER COMMIT  (D5 D6 D6b)
-D.  MEASURE                       (D8 vs the A1 baseline)
-E.  PROPAGATE                     (D9 D9b D10)
+D.  MEASURE                       (D8b behavior · D8c navigation · D5e tokens)
+E.  PROPAGATE                     (D9 D9b D9c D10) — .claude AND .agents get the budgeted bundle
+F.  OPTIONAL, SEPARATE PLAN       (D-1 roster unification — never the ask)
 ```
 
 **Three ordering defects the review round INTRODUCED, caught by the intent pass and fixed above.**
@@ -425,6 +449,10 @@ Layout follows Anthropic's Pattern 2 (domain organization), mirroring the comman
 - *Section content is byte-preserved across the move* — assert moved text is identical modulo the
   heading level and the added TOC, so "moved" can never quietly mean "rewritten".
 - *Empty/duplicate* — no reference file is empty; no heading appears in two files.
+- *The 437 figure EXCLUDES this plan's own additions* (Codex P1): the new one-level index and D5c's
+  anchors on retained sections both land in the spine. **Replace every approximate figure with a
+  GENERATED candidate layout and an exact count before the move set is approved** — D5d's gate then
+  enforces it rather than trusting the arithmetic.
 - *Second-order — frontmatter description* is near the 1,024-char limit and is loaded for ALL
   skills at all times. Out of scope here; recorded as debt (see below) rather than smuggled in.
 
@@ -467,11 +495,20 @@ The draft's D6 covered `§N` tokens *inside* the bundle. Two larger populations 
   file-less: `commands/claims.md` says "Playbook §12", `agents/mutation-runner.md` says "the
   Playbook §4 mutation pass". §12 and §4 are both in the move set.
 
+**The draft promised two incompatible things (Codex P1).** It said every citation "still resolves"
+AND that historical records stay unrewritten. Declaring an anchor historical does not make it
+resolve. **Resolved: the contract is REDUCED and stated.** `verify_citations.py` gains
+revision-aware resolution — a citation carrying the sha it was written against resolves against
+THAT revision — and every pre-split anchor is de-anchored going forward (cite the section id, never
+the line). The deliverable is no longer "every citation still resolves"; it is "no citation silently
+resolves to the WRONG text", which is the property that actually mattered.
+
 **Edge cases**
 - *Historical records are append-only.* A committed review record must NOT be rewritten to chase a
-  moved line. The fix is de-anchoring (cite the section id, not the line) going forward, plus a
-  recorded decision that pre-split anchors are historical. **Rewriting them would be the
-  scoreboard-integrity violation this repo blocks.**
+  moved line — that would be the scoreboard-integrity violation this repo blocks. Revision-aware
+  resolution is the only mechanism compatible with append-only.
+- *An un-revisioned pre-split anchor* resolves to different text and must be reported as
+  UNRESOLVED-BY-POLICY, not silently accepted.
 - *Prefix collision* — `§6` vs `§6a` vs `§6c` must not match on prefix.
 - *Planted dangling* — a deliberate `§99` must RED, or the sweep asserts its own inventory.
 - *Totality* — the property covers `agents/**`, `commands/**`, `hooks/**`, `bin/**`, `tests/**`,
@@ -520,28 +557,107 @@ optimization that risks under-selecting on exactly the assurance-bearing surface
   present on disk (the H8 built-vs-running distinction).
 - *Failure* — a stale digest must fail loudly with the expected-vs-actual pair, which `:94` does.
 
-### D8 — The measurement that decides whether this stays
+### D8 — The measurement that decides whether this stays · **REWRITTEN — the draft measured the wrong tree**
 
-**What.** A calibration run on the split tree shows the verifier agents catch what they caught
-before.
+**The defect (Codex P0, confirmed from this repo's own source).** The draft said calibration runs
+"on the split tree". It does not. `calibration/run_calibration.py:571` states it outright:
 
-This is the deliverable that makes the change provable rather than aesthetic, and it is the one
-thing most projects cannot do. Plants whose doctrine moved out of the spine (mutation-class,
-claims-class, wiring-class) are the ones that matter.
+> "Tests the DEPLOYED hook (**the user-scope plugin cache the nested calibration claude actually
+> loads**), NOT the repo copy — a repo that has the writer while the installed plugin does not is
+> exactly the false-isolated trap this guards."
+
+The nested Claude loads the **installed plugin cache**, not the working tree. Since D8 was
+sequenced before propagation (E before F), the baseline run and the candidate run would both have
+exercised **the same installed monolith** — and D8 would report perfect non-regression having never
+once loaded the split bundle. The entire "this repo can measure it" argument, which is the standing
+reason to do this work at all, was resting on a measurement that could not see the change.
+
+**What. (revised)** Before any calibration result is accepted, the nested process PROVES which
+doctrine bundle it loaded, by fingerprint.
+
+**D8a — candidate-loading probe (blocking precondition, not a nice-to-have).**
+The nested agent reports the sha256 of the bundle it actually read. A run whose fingerprint does not
+match the candidate is **INVALID**, never a pass. Either install the candidate into an isolated
+plugin cache (`TDD_PLAYBOOK_PLUGIN_CACHE` is already honored at
+`calibration/run_calibration.py:582`) or vendor the candidate and point the run at it — then assert
+the fingerprint before reading any score.
+
+**D8b — behavioral A/B**, only once D8a is green for BOTH arms: baseline (monolith fingerprint) vs
+candidate (bundle fingerprint), 3× per scenario, paired clean controls, recall and false-positive
+rate reported separately, non-root.
 
 **Edge cases**
-- *3× per scenario* — one roll is a coin flip. PASS only at k/k; AMBER is nonzero.
-- *Paired clean controls* — a verifier that got noisier is as much a regression as one that got
-  quieter; recall and false-positive rate are reported separately.
-- *Non-root* — the headless doer cannot run as root (`run_calibration.py` header); an INVALID run
-  is not a passing run.
-- *Baseline* — the pre-split run is the comparison. **If no recent baseline exists, the baseline
-  run happens BEFORE phase D**, or D8 has nothing to compare against. This is a sequencing
-  constraint, not a nice-to-have.
+- *The trap this replaces* — a green run with a monolith fingerprint must be reported INVALID and
+  loud, never rounded to a pass. Planted case: run the candidate arm against a deliberately stale
+  cache and assert INVALID.
+- *Both arms, same fingerprint* → INVALID by construction; assert the two differ.
+- *3× / paired controls / non-root* — unchanged from the draft.
+- *Ordering* — A1's baseline run is only meaningful once D8a exists, so **D8a moves to phase A0**,
+  ahead of the baseline. The draft had the probe nowhere at all.
 
-**Honest scoping.** This is agent-behavioral evidence, not proof. A stable calibration result does
-not prove the split helped; it proves it did not visibly hurt. The token reduction is the claimed
-benefit; behavioral neutrality is the bar it must clear.
+**Honest scoping, unchanged and now load-bearing.** A stable result proves the split did not
+visibly hurt; it does not prove it helped. The token reduction is the claimed benefit and D5e
+measures it. Behavioral neutrality is the bar it must clear.
+
+### D8c — progressive disclosure is itself untested (Codex P1)
+
+**What.** Representative real-host journeys show the right reference files get read and the wrong
+ones do not.
+
+D5's checks establish direct links, TOCs, byte preservation and unique headings. **None of that
+proves selective loading** — an agent could read no reference file and miss doctrine, or read all of
+them and forfeit the entire benefit. Anthropic's guidance names exactly this as the thing to observe.
+
+| Journey | Expect read | Expect NOT read |
+|---|---|---|
+| small bug fix | spine only | everything |
+| security-touching diff | `security-and-ci.md` | mutation, claims, learning-loop |
+| audit / diagnosis | `claims.md` | mutation, wiring |
+| mutation task | `mutation.md` | claims, planning |
+| multi-deliverable feature | `planning.md`, `wiring.md` | — |
+
+**Oracle split, per §5a/§5b:** "the candidate bundle was loaded" (D8a) is DETERMINISTIC and blocks.
+Which files a given turn chose is a TREND LINE and never gates — a hard gate on a stochastic
+navigation choice is a flaky gate, which is the mistake §5b exists to prevent.
+
+### D5d — the budget gate · **new, Codex P0**
+
+**What.** A permanent mechanical check counts the YAML-excluded body of `SKILL.md` and fails at 451
+(internal budget) and, independently, at 500 (Anthropic conformance).
+
+Without it the objective is unenforced and the plan can complete while missing it. Two independent
+thresholds so a later relaxation of the internal budget cannot silently breach the external one.
+
+**Edge cases**
+- *Frontmatter excluded* — count the body only; a growing `description` must not consume the budget
+  (it has its own, `skill-description-budget`).
+- *Reference files are NOT in this budget* — that is the point; assert the gate ignores them.
+- *Planted* — a 451-line body must RED at the internal gate and a 501-line body at both.
+
+### D5e — measure the token objective, not just the line count · **new, Codex P1, now MEASURED**
+
+**What.** Body lines, characters and tokens are recorded before and after, plus workload-weighted
+loaded tokens once references are followed.
+
+**The measurement Codex asked for, taken:**
+
+| Layout | Body lines | Chars | Words | ~Tokens (chars/3.5) |
+|---|---|---|---|---|
+| today (monolith) | 1,459 | 131,277 | 20,690 | ~37,500 |
+| D5a spine | 590 | 53,208 | 8,388 | ~15,200 |
+| D5b spine | **437** | 39,709 | 6,234 | **~11,300** |
+
+**This is a finding, not a footnote.** Anthropic's Level-2 profile is roughly 5k tokens. The D5b
+spine satisfies the 500-LINE ceiling at 437 and still sits at **~11.3k estimated tokens — about 2×
+the token guidance.** The doctrine averages ~91 characters per line against a typical ~50, so
+**lines and tokens are different budgets here and the line ceiling is the weaker one.** Satisfying
+`<500` does not satisfy `~5k`.
+
+Consequences to state rather than discover later: the honest headline is a ~70% reduction in
+always-loaded doctrine (37.5k → 11.3k estimated tokens), not "now conformant". And a typical feature
+turn will re-load `planning.md` + `wiring.md`, so **workload-weighted** loaded tokens — not the
+spine in isolation — is the number that decides whether this was worth doing. The estimate above is
+chars/3.5; a real tokenizer count is required before any of it is quoted as fact.
 
 ### D9 — Downstream and vendored parity
 
@@ -563,6 +679,21 @@ that must become per-file across the bundle or the references ship unverified.
 - *Stale downstream* — a repo vendored pre-split has a monolithic SKILL.md and no bundle. The
   reconciling installer prunes by previous manifest (`scripts/install_into_repo.py:410`), so the stale file
   is replaced. Assert against a scratch repo seeded with the OLD layout.
+
+### D9c — `.agents/` gets the budgeted bundle · **new, Codex P1**
+
+**What.** The split lands on `.agents/skills/tdd-playbook/` too, because a live Codex host reads it.
+
+No tool writes that path today (`scripts/install_into_repo.py:44` targets `.claude`/`.codex`), so
+it is hand-maintained and moves with doctrine releases by discipline alone. After D5 that discipline
+has to reproduce a 9-file bundle instead of copying one file.
+
+**Edge cases**
+- *Drift detection* — a parity check pinning `.agents/` to canonical is the deliverable; today
+  nothing compares them, which is how it became an unratcheted copy in the first place.
+- *Or automate it* — adding `.agents` to the installer's copy targets removes the hand step
+  entirely. Decide; do not leave it to discipline twice.
+- *Budget applies there too* — `<500` must hold on every live surface, not just the canonical one.
 
 ### D10 — Registry and doctrine bookkeeping
 
@@ -746,13 +877,38 @@ deliverables**, four of them added after that answer (D0, D-1, D6b, D9b), two of
 | Never requested | — | D-1 roster unification |
 | Target | Anthropic's 500 lines | conflicts with the owner's own 300 |
 
-**Three questions, one decision, in plain language:**
-- **Q1 — which target?** 300 (yours, `capabilities.json:758`), 500 (Anthropic's), or a recorded
-  decision that both are wrong. Phase 1 delivers 590; with D5b, 450.
-- **Q2 — unify the rosters now, or split first and unify separately?**
-- **Q3 — `.agents/skills/tdd-playbook/SKILL.md`: delete it, or bring it under the guards?**
+**After the Codex review, two of the three questions have a recommended answer. Confirm or overrule:**
+- **Q1 — budget.** *Recommended:* `<500` hard, `≤450` internal, D5b mandatory, D5d gates it; the
+  300-line debt re-scoped to a stretch target under its own escape clause. **Note what this does
+  NOT buy:** 437 lines is still ~11.3k tokens against a ~5k guidance. The honest headline is a ~70%
+  reduction, not conformance.
+- **Q2 — roster unification (D-1).** *Recommended:* OFF the critical path, its own plan. Never your
+  ask; not required to split a markdown file.
+- **Q3 — `.agents/`.** *Recommended:* protect and propagate, not delete — a live Codex host loads
+  it. This is the one answer resting on evidence I could not obtain from this tree.
+
+**The definition of done, per the Codex contract:** canonical body ≤450 mechanically gated and
+`<500` independently asserted · the same budgeted bundle on every live surface (`.claude`,
+`.agents`) · every reference directly linked with an explicit "read this when…" trigger · a
+candidate-loading probe proving which bundle ran · navigation journeys showing relevant references
+found without loading everything · loaded tokens measured down on a representative workload ·
+behavioral calibration neutral or better · D-1 off the critical path · citation semantics internally
+consistent.
 
 ---
+
+### codex (external reviewer) — DO NOT APPROVE (2 P0, 6 P1, 2 P2)
+| # | Finding | Disposition |
+|---|---|---|
+| P0-A | The plan can finish while missing its objective — D5b optional, no test asserts the budget | **ADOPTED.** `<500` is now a hard acceptance criterion, `≤450` the internal budget, D5b MANDATORY, new D5d gate fails at 451/501. The 300-line debt becomes a stretch target |
+| P0-B | **D8 measures the installed monolith, not the split** — `calibration/run_calibration.py:571` says the nested claude loads the plugin CACHE, not the repo copy | **ADOPTED — the most important finding in this whole chain.** D8 rewritten; new D8a candidate-loading fingerprint probe becomes phase A0, blocking. Without it the plan's central "we can measure it" argument was hollow |
+| P1 | Progressive disclosure itself is untested — structure ≠ selective loading | **ADOPTED** as D8c, with the §5a/§5b oracle split (loading is deterministic and blocks; file choice is a trend) |
+| P1 | The 450 figure omits the index and D5c's anchors | **ADOPTED** — measured at 437 before additions; generate the layout and count exactly before approving |
+| P1 | The token objective behind the line guidance is never measured | **ADOPTED as D5e, and MEASURED: the D5b spine is 437 lines but ~11.3k tokens — ~2× the ~5k guidance.** Lines and tokens are different budgets here; the line ceiling is the weaker one |
+| P1 | `.agents/` is a live host surface; deletion is unsafe | **ADOPTED.** Q3 resolved to protect-and-propagate on the reviewer's first-hand report; new D9c. Reconciled against `capabilities.json:1384` (an installer claim, not a runtime one) |
+| P1 | D6b promises mutually incompatible outcomes | **ADOPTED** — contract reduced to "no citation silently resolves to the WRONG text", via revision-aware resolution |
+| P2 | D-1 should leave the critical path | **ADOPTED** — moved to phase F, a separate plan. Consistent with the intent-adversary |
+| P2 | The base sha is unavailable | **REFUTED.** `git cat-file -t b323464` → `commit`. The reviewer read a downloaded copy against a clone lacking this branch. Recorded, not "fixed" — acting on it would have rebased away a resolvable base |
 
 **Loop closed: yes** (integration-adversary — top island: `.agents/skills/tdd-playbook/SKILL.md`,
 a third tracked doctrine copy no mechanism protects, now blocking D0; architecture-adversary — top
