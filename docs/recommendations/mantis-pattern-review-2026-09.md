@@ -105,6 +105,72 @@ after the move must still go RED. Do the roster extension first and red-first, t
 If that ordering is not worth the effort, the honest outcome is to record the monolith as a
 deliberate, costed decision, which is more than exists today.
 
+#### F1 addendum — the external evidence, and what the split actually costs (added 2026-09-07)
+
+The draft above argued the split from mantis's shape alone and explicitly declined to claim a
+measured benefit. Anthropic's own skill-authoring guidance settles the direction, and this repo's
+line counts settle the cost.
+
+**The published bar is numeric, and this skill is ~3x over it.** Anthropic's skill-authoring
+best-practices page states it twice — in the Progressive disclosure section and again in the
+pre-ship checklist: "Keep SKILL.md body under 500 lines for optimal performance. If your content
+exceeds this, split it into separate files using the progressive disclosure patterns." This
+SKILL.md is 1,459 lines.
+
+**The caching objection is pre-empted by the same page, and it is the objection worth answering.**
+Prompt caching makes re-sending a large prefix cheap in dollars, so "it's cached, it's free" is a
+reasonable first reaction. The guidance addresses it directly: "Not every token in your Skill has
+an immediate cost... However, being concise in SKILL.md still matters: once Claude loads it, every
+token competes with conversation history and other context." Caching is a billing optimisation; it
+does not return occupied context or undo attention dilution. Anthropic's context-engineering
+write-up puts the mechanism plainly — a finite attention budget, diluted as context grows.
+
+**Reference files are genuinely free until read.** The mechanism, stated by the same page: "No
+context penalty for large files: Reference files, data, or documentation don't consume context
+tokens until actually read." So the saving is real, not notional — a moved section costs nothing
+on a turn that doesn't need it.
+
+**What the split would move, measured.** Sections routed by an existing command or otherwise
+rarely needed on an ordinary turn: §4 mutation (128 lines) + §4a gate integrity (103), §5a UX
+probes (45) + §5b agent evals (64), §6a/§6b/§6c wiring and dataflow (155), §9 security (47),
+§10 CI hygiene (54), §11 checkpoints (27), §12 claims (137), §13 learning loop (109) — **869
+lines, 60% of the file.** The residual spine (preamble, repo-extensions, §0, §1, §2, §3, §5, §6,
+§7, §8, markers) is ~590 lines; moving §0's plan template (153) to a `/tdd-plan` reference brings
+it to ~437, inside the published bar. This maps onto Anthropic's Pattern 2 (domain-specific
+organization), which is the pattern the command surface already implies.
+
+**The four real costs, none of them hidden:**
+
+1. **The gate-surface roster, as above** — `calibration/check_scoreboard_integrity.py:191` must
+   learn the references directory in the same commit, or the split trades context for a hole in
+   the deletion ratchet. Plus a `calibration/gate-changes.md` entry per moved heading.
+2. **148 internal cross-references** (`§N` mentions) are the genuine design work, not the moving.
+   Anthropic warns that nested references get partially read: "Claude may partially read files
+   when they're referenced from other referenced files... Keep references one level deep from
+   SKILL.md." The heavily-cited targets (§13 ×16, §1 ×16, §6a ×15, §4 ×14, §6c ×13, §12 ×13) are
+   mostly in the move set, so reference-to-reference edges are unavoidable. The mitigation is
+   structural: SKILL.md carries a complete index of every reference file so no file is reachable
+   only through another.
+3. **17 duplicated SKILL.md read sites in `test_agents.py`** (plus 32 text-needle assertions)
+   would need a single doctrine-reading helper. Mechanical — but concatenating everything would
+   let a section drift into an unread reference with the needle still green, so needles should
+   declare which file they expect the text in. That is the version that does not weaken a gate.
+4. **Reference files over 100 lines need a table of contents**, per the same guidance, so partial
+   reads still see the full scope.
+
+**What it does not cost: the installer.** `scripts/install_into_repo.py:44` vendors the directory
+`skills/tdd-playbook`, not the single file, so a `reference/` subdirectory ships downstream with
+no installer change.
+
+**The argument for doing it here specifically.** Anthropic's guidance says to build evaluations
+before writing extensive skill documentation, and warns about the failure mode where "Claude
+repeatedly reads the same file" — meaning a section that turns out to be needed every turn should
+come back into the spine. That is an empirical question, and this repo already owns the instrument
+to answer it: `calibration/` runs live agents against planted defects with paired clean controls.
+If moving §4 out made the mutation-class plants start slipping through, a calibration run would
+show it as a MISS. Most projects facing this decision have to guess. This one can measure, which
+is the strongest reason to treat the split as a proven change rather than a refactor of faith.
+
 ### F2 — No threat model, and no reporting path, for the Playbook as software installed in other people's repos · **high**
 
 `docs/HACK_CATALOG.md:1` is the Playbook's threat model and it is explicitly the threat model of
@@ -207,12 +273,20 @@ here, it should be the planted-plant-with-clean-control pair.
 | 10 | Model tiering is already implemented and planted-tested — NOT a finding | `plugins/tdd-playbook/tests/test_agents.py:605` | REFUTED as a finding |
 | 11 | PEP 604 in vendored bins is NOT a portability break — NOT a finding | 8 files carry `from __future__ import annotations` | REFUTED as a finding |
 | 12 | The capture store ships off for non-enrolled installs — a strength, not a gap | `plugins/tdd-playbook/hooks/scripts/capture.py:80` | REFUTED as a finding |
+| 13 | Anthropic publishes a 500-line SKILL.md bar; this file is 1,459 lines | skill-authoring best-practices page, stated in Progressive disclosure and in the checklist | VERIFIED |
+| 14 | Prompt caching does not answer the objection — same page says tokens still compete once loaded | same page, "Concise is key" | VERIFIED |
+| 15 | Unread reference files cost zero context | same page, Runtime environment: "No context penalty for large files" | VERIFIED |
+| 16 | 869 of 1,459 lines (60%) are command-routed or rarely needed | per-section line counts, this tree | VERIFIED |
+| 17 | 148 internal cross-references are the real design work | `§N` mention count in SKILL.md | VERIFIED |
+| 18 | The installer needs no change — it vendors the directory | `scripts/install_into_repo.py:44` | VERIFIED |
 
-**Claims 12/12.** Three of the twelve are refutations of findings this review carried in draft;
+**Claims 18/18.** Three of the twelve are refutations of findings this review carried in draft;
 they are kept visible rather than deleted, because a review that shows only its survivors is
 reporting its inventory, not its search (§12).
 
-**Not claimed:** whether the F1 split would actually reduce measured context use in practice — no
-measurement was taken, and the token figure above is a character-count estimate, not a tokenizer
-result. Whether any downstream repo has actually hit an interpreter-floor failure — no evidence
+**Not claimed:** whether the F1 split would improve measured agent behavior in this repo. The
+line-count budget and the vendor guidance are now settled (F1 addendum), and the 869-line /
+60% reduction is counted from the real file — but no calibration run has been executed against
+a split tree, and the token figure remains a character-count estimate, not a tokenizer result.
+The instrument to close both gaps exists in `calibration/`; it has not been pointed at this. Whether any downstream repo has actually hit an interpreter-floor failure — no evidence
 either way was sought. Both are leads, not findings.
