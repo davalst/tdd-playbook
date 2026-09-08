@@ -65,11 +65,14 @@ the measurement in D8 comes back negative, the correct outcome is to revert and 
   needs §0 (153 lines) or §1 (195) moved, both arguably every-turn content. This plan proposes
   moving §0's *detail* with a summary stub in the spine (→ ~450 lines) as **D5b, gated on your
   approval**. If you'd rather stop at 590, D5b drops and the plan still delivers 60%.
-- **Q2.** Three files hardcode the `SKILL.md` path (D1/D2/D3 targets). Should they be factored into
-  one shared roster? This plan says **no** and explains why in D1's note — the boundary between
-  `calibration/` and the vendored `plugins/` package is real. Flagging it because the
-  architecture-adversary is expected to raise it, and a silent "no" would be indistinguishable
-  from not having thought about it.
+- **Q2 — REVERSED BY REVIEW.** The draft said the rosters should stay separate. The
+  architecture-adversary refuted both halves of that reasoning and it is withdrawn. See
+  **D-1** below: the rosters are unified, and the prior art the draft failed to sweep for is
+  cited there. The draft's error is kept visible rather than edited away, because "we thought
+  about it and said no" and "nobody looked" are indistinguishable from the outside.
+- **Q3 — NEW, needs your call.** `.agents/skills/tdd-playbook/SKILL.md` is a tracked,
+  byte-identical third copy of the doctrine that no mechanism protects (D0). Delete it, or
+  protect it? The plan cannot proceed past D0 without an answer.
 
 ---
 
@@ -111,23 +114,108 @@ for one commit.** Three orderings fail, and naming them is the point:
 - **Fix the tests last** → 32 needles go red in the same commit as the move, and a genuinely lost
   section is indistinguishable from a needle that needs repointing. Rejected.
 
-**The only safe order:**
+**The only safe order (revised — the draft's phase C was invalid):**
 
 ```
-A. PROTECT THE DESTINATION      (D1 D2 D3)  — tree otherwise unchanged; refs don't exist yet
-B. TEACH THE TESTS WHERE TEXT LIVES (D4)    — attribution map, all entries still "SKILL.md"
-C. RE-ACKNOWLEDGE THE GATE      (D7)        — new suite enters the roster
-D. MOVE, ONE SECTION PER COMMIT (D5 D6)     — attribution map updated per move
-E. MEASURE                      (D8)        — calibration decides whether it stays
-F. PROPAGATE                    (D9 D10)    — downstream refresh + registry
+0. ENUMERATE + DECIDE THE COPIES  (D0)      — three tracked doctrine copies, not one
+A. UNIFY THEN EXTEND PROTECTION   (D-1 D1 D2 D3)  — one roster owner, then coverage
+B. TEACH THE TESTS + ACKNOWLEDGE  (D4 + D7 SAME COMMIT) — see F5 below
+D. MOVE, ONE SECTION PER COMMIT   (D5 D6 D6b) — attribution + citations updated per move
+E. MEASURE                        (D8)      — calibration decides whether it stays
+F. PROPAGATE                      (D9 D9b D10) — vendored self-parity, downstream, registry
 ```
 
-A→B→C is strict. D5's per-section commits are individually revertible, which is what makes E's
+**Phase C was deleted, and why matters.** The draft sequenced "re-acknowledge the gate roster"
+as a separate phase AFTER adding the new suite. `plugins/tdd-playbook/bin/gate_plan.py:99`
+**raises** `PlanError` on a digest mismatch — it does not warn. A commit that adds a suite
+without re-acknowledging in the same commit has no runnable gate at all: not a red suite, a
+refused plan. Acknowledgement is a line in the commit that adds the suite, never a phase.
+The draft sequenced against a rule it had already written down in its own conventions section,
+which is the failure this note exists to make un-repeatable.
+
+0→A→B is strict. D5's per-section commits are individually revertible, which is what makes E's
 verdict actionable rather than all-or-nothing.
 
 ---
 
 ## Deliverables
+
+### D0 — Enumerate the doctrine copies and decide `.agents/` · **blocks everything**
+
+**What.** Every tracked copy of the doctrine is named, and each is either protected or deleted,
+before one line of text moves.
+
+The draft assumed one canonical file plus vendored copies. There are **three tracked copies**:
+
+| Copy | State | Protected by |
+|---|---|---|
+| `plugins/tdd-playbook/skills/tdd-playbook/SKILL.md` | canonical | rule (d), ledger, leak scan, full-lane |
+| `.claude/skills/tdd-playbook/SKILL.md` | this repo's own vendored copy, in sync | leak scan via `VENDOR_DIRS` |
+| `.agents/skills/tdd-playbook/SKILL.md` | **byte-identical, tracked, written by nothing** | **nothing** |
+
+Verified: `git ls-files .agents` returns exactly that one file; `diff` against canonical is
+empty; `calibration/plant_forms.py:68` `VENDOR_DIRS` covers `.claude/*` only; rule (d) reads one
+path (`calibration/check_scoreboard_integrity.py:58`); `plugins/tdd-playbook/bin/review_ledger.py:626`
+`_FULL_LANE_PREFIXES` covers `plugins/…/skills/` only. No tool writes `.agents/` —
+`scripts/install_into_repo.py:44` targets `.claude`/`.codex`.
+
+**Why this blocks the plan.** The moment D5 lands, `.agents/…/SKILL.md` becomes the tree's *last
+remaining monolith* — an unscanned, unratcheted, full copy of the doctrine that a leak scan never
+reads and a deletion ratchet never guards. Splitting the protected copy while an unprotected copy
+survives is a weakening of exactly the kind the request forbids, arrived at by accident.
+
+**Edge cases**
+- *Auth-negative analogue* — a holdout id in `.agents/` today is already unscanned. This is a
+  **pre-existing hole**, not one this plan creates; it is D0's job to say so out loud rather than
+  inherit it silently.
+- *Deletion is not obviously right* — the directory may serve a host discovery surface nobody
+  documented. D0's first step is `git log --diff-filter=A` on the path, not `rm`.
+- *Idempotency* — if kept, adding `.agents/skills` to `VENDOR_DIRS` must not double-count files in
+  the leak scan's `files_scanned` total (which D3 asserts grows).
+
+**This is Q3 and it needs your decision.** The plan does not choose for you.
+
+### D-1 — One roster owner · **supersedes the draft's Q2**
+
+**What.** The set of paths meaning "this is doctrine / a gate surface" is defined once and imported,
+not restated in four places.
+
+**The draft was wrong and the review proved it.** Q2 argued a shared constant would cross the
+`calibration/` ↔ vendored `plugins/` boundary. It would not: **all three targets are in
+`calibration/`** — `calibration/check_scoreboard_integrity.py:58`, `calibration/ledger.py:61`,
+`calibration/plant_forms.py:55`. No boundary is crossed. Both halves of the reasoning are refuted
+by prior art the draft never swept for:
+
+- `calibration/history_format.py:2` — *"the ONE owner of the calibration scoreboard's on-disk
+  format… Format knowledge lives here and nowhere else — the previous arrangement (a writer, a
+  date regex, and column-string asserts in three files) **was the parallel-list bug one level
+  up**."* The pattern is installed, named, and defended in the very directory Q2 declined to use it in.
+- `calibration/history_format.py:18` — `import plant_forms  # the ONE status-vocabulary owner
+  (arch-F3) — no second literal here`. A prior architecture adversary already won this argument.
+- `plugins/tdd-playbook/bin/review_ledger.py:626` — `_FULL_LANE_PREFIXES` is a **fourth** roster of
+  the same concept, already a directory prefix (`"plugins/tdd-playbook/skills/"`), already covering
+  `reference/` with zero edits, and living in the vendored package — which refutes Q2's second horn
+  directly.
+- Cross-boundary imports already happen in the direction Q2 called impossible:
+  `calibration/run_calibration.py:967` inserts `plugins/tdd-playbook/hooks/scripts` on the path;
+  `calibration/test_harness.py:1418` imports `dataflow_sweeps` from `plugins/tdd-playbook/bin`.
+
+Without D-1 this plan ends with **five** definitions of the same membership question in **three
+incompatible shapes** — exact-file, directory-prefix, heading-union — under a comment at
+`calibration/ledger.py:58` that still reads *"No second list: a divergent copy is how one of them
+silently stops covering something."*
+
+**Edge cases**
+- *Policy stays local* — each consumer keeps its own subsetting (`EFFECTFUL` at
+  `calibration/ledger.py:74` is a decision dated 2026-08-14 and must not be swept into the shared
+  owner). The owner exports membership; it does not export policy.
+- *Vacuity* — the shared roster must be non-empty and enumerated from something real; an empty
+  tuple would make all three consumers pass by checking nothing.
+- *Planted divergence* — a consumer that stops importing the owner and re-inlines a literal must
+  RED. Without this case the unification is a convention, not a mechanism.
+- *`review_ledger.py` is the fourth* — it ships downstream and cannot import `calibration/`.
+  Decide explicitly: normalise it to the same prefix form and pin the two against each other with a
+  test, or record why it stays independent. **Do not leave it unmentioned, which is what the draft did.**
 
 ### D1 — Rule (d) covers the reference bundle
 
@@ -137,15 +225,29 @@ verdict actionable rather than all-or-nothing.
 Today `calibration/check_scoreboard_integrity.py:200` reads headings out of one blob at one path
 (`:58`). A moved section lands outside that path and its later deletion is free.
 
+**The proxy problem the draft missed (architecture F3).**
+`calibration/check_scoreboard_integrity.py:204` defines a section as *"a line starting with
+`## `"* and compares the rendered heading **strings** as a set. The draft's D5 then permitted
+moved text to change "modulo the heading level" — so `## 4. Mutation testing` becoming
+`# Mutation testing` in its own file **vanishes from the set and is reported as an unjournaled
+removal**, for all 12 sections. Journalling those to get green is precisely Reading A, which this
+plan rejects. The gate keys on a proxy for the fact it cares about.
+
+**Resolution:** D1 keys on a stable section **id** (an explicit `<!-- gate-surface: 4a -->`
+anchor, or the `§N` token), not the rendered heading. D5 then either byte-preserves heading text
+or carries the anchor through. Assumption 3 is not satisfiable without this.
+
 **Edge cases**
-- *Empty/absent directory* — the bundle doesn't exist at A-time. The check must be a no-op when
-  absent and must NOT silently pass once present-but-empty (vacuity).
-- *Boundary — heading moved between two reference files.* Union-of-headings across spine + bundle,
-  not per-file sets, or every move REDs as a removal.
-- *Malformed* — a reference file with no `##` at all contributes nothing; must not crash.
-- *Second-order* — a file DELETED wholesale removes all its headings at once; the union handles it,
-  but the message must name the file, not just the heading.
-- *Idempotency* — re-running against an unchanged tree stays green (no accumulating state).
+- *Baseline-absent vs candidate-absent are NOT symmetric* (integration F9). Baseline-absent →
+  legitimate no-op (the bundle didn't exist yet). Candidate-absent with baseline-present → **every
+  heading in it counts as removed**. The draft said only "no-op when absent", which if keyed on the
+  candidate side makes `rm -rf reference/` free — the exact protection this plan exists to keep.
+  Planted case: delete the whole directory, expect RED.
+- *Boundary — heading moved between two reference files.* Union across spine + bundle, computed at
+  BOTH revisions (`git ls-tree <rev>`), not per-file sets.
+- *Malformed* — a reference file with no headings contributes nothing; must not crash.
+- *Wholesale file deletion* — message must name the file, not just the orphaned heading.
+- *Idempotency* — re-running on an unchanged tree stays green; no accumulating state.
 
 **Property test.** For any partition of a fixed heading set across spine + N reference files, the
 union is invariant. Moving headings between files never REDs; deleting one always does.
@@ -208,14 +310,36 @@ in, so a section that lands in the wrong file, or in no file, goes RED.
 keep searching the pile — **is a weakening**: a section could drift into a file nothing ever reads
 and every needle stays green.
 
+**Do not hand-write the map (architecture F4).** 149 of 173 needle labels in
+`plugins/tdd-playbook/tests/test_agents.py` already begin `"SKILL §N: …"`, and D6 is already
+building a total `§N → file` map. Derive `declared_home` from the label through D6's map; keep a
+vacuity-guarded exception list for the ~24 unsectioned needles (`SKILL description…`,
+`SKILL markers:…`). A hand-maintained 173-entry map would be a **fifth** roster that must be
+edited on every future move — growing the drift surface this plan exists to shrink.
+
+**Sites the draft's enumeration missed:**
+- `calibration/test_harness.py` — the rule-(d) planted fixtures build a fake tree containing only
+  the canonical SKILL path, and `:2112` is the ledger CONTROL case. It is in `gate-manifest.json`
+  `force_full`, i.e. itself a gate surface. **D1/D2's planted tests land here**, and the draft's
+  Tripwire EXERCISED cells never named the suite.
+- `plugins/tdd-playbook/tests/test_agents.py:1342` — `"SKILL: still 22 top-level sections"`, a
+  **count** assertion over the `## ` prefix. The spine becomes ~10. D4's `found_in == declared_home`
+  property cannot see a count assertion; it needs the union set (which D1's F3 fix supplies).
+- `README.md:253` — the layout block names `SKILL.md  # the doctrine (auto-fires)`, and it is
+  pinned by a README needle in `test_agents.py`.
+- `CLAUDE.md` standing refresh prompt — instructs downstream repos to *"confirm the vendored
+  SKILL.md mentions … §6a wiring liveness, §6c Dataflow Liveness"*. Both are in the move set, so
+  after D5 that instruction sends every downstream repo looking in the wrong file. U2 promised
+  CLAUDE.md "gains a line"; it must also **repoint the existing verification list**.
+
 **Edge cases**
-- *Attribution map is exhaustive* — every needle names its expected file; an unmapped needle is a
-  hard error, not a default-to-anywhere. Vacuity-guarded against the real file list.
+- *Exception list is exhaustive* — an unparseable-and-unlisted label is a hard error, never a
+  default-to-anywhere. Vacuity-guarded against the real file list.
 - *Planted misplacement* — a needle whose text is present but in the WRONG file must RED. Without
   this case the map is decoration.
-- *Boundary — A-time state* — at D4 every entry is `SKILL.md` and the suite must be fully green
+- *Ambiguity* — a needle resolving in two files fails; homes are unique.
+- *Boundary — B-time state* — every entry resolves to `SKILL.md` and the suite is fully green
   before any move. That green run is the baseline the moves are measured against.
-- *Concurrency* — none; single-process suites.
 
 **Property test.** For any needle set, `found_in(needle) == declared_home(needle)` for all needles,
 and the check fails if any needle resolves in two files (ambiguous home).
@@ -262,14 +386,70 @@ indexes every file, so no file is only reachable through another.
 **Property test.** Every `§N` token in the bundle maps to exactly one heading in the union set;
 the map is total and injective on section ids.
 
-### D7 — Gate roster re-acknowledgement and selection policy
+### D6b — Line-anchored citations INTO SKILL.md, repo-wide · **new, from integration F5/F6**
+
+**What.** Every `SKILL.md:<line>` citation and every `§N` pointer written OUTSIDE the bundle still
+resolves after the split.
+
+The draft's D6 covered `§N` tokens *inside* the bundle. Two larger populations sit outside it:
+
+- **13 line-anchored citations** (`git grep -nE "SKILL\.md:[0-9]+"`): `capabilities.json:42`,
+  `docs/reviews/2026-08-16-v1.37.0-release.json:50`,
+  `docs/reviews/2026-08-17-mutation-attribution-doctrine.json:20,21,34,35,47,48,60,61`, and — with
+  some irony — `docs/recommendations/mantis-pattern-review-2026-09.md:74,75,208,264,271`. The spine
+  drops to ~590 lines, so anchors at `:768/:940/:945/:1344` become UNRESOLVED and the rest silently
+  point at different text. **The consumer is real and named:**
+  `plugins/tdd-playbook/bin/verify_citations.py`, dispatched by `agents/claims-verifier.md`,
+  `commands/claims.md`, `commands/integration-audit.md` and `commands/readable.md`. A committed
+  review record whose evidence no longer resolves is exactly what the citation gate exists to catch.
+- **622 `§N` pointers in the named directories** — agents 45 · commands 45 · hooks 27 · bin 66 ·
+  tests 328 · calibration 71 · CLAUDE.md 20 · AGENTS.md 20 (930 across the wider tree). These are
+  file-less: `commands/claims.md` says "Playbook §12", `agents/mutation-runner.md` says "the
+  Playbook §4 mutation pass". §12 and §4 are both in the move set.
+
+**Edge cases**
+- *Historical records are append-only.* A committed review record must NOT be rewritten to chase a
+  moved line. The fix is de-anchoring (cite the section id, not the line) going forward, plus a
+  recorded decision that pre-split anchors are historical. **Rewriting them would be the
+  scoreboard-integrity violation this repo blocks.**
+- *Prefix collision* — `§6` vs `§6a` vs `§6c` must not match on prefix.
+- *Planted dangling* — a deliberate `§99` must RED, or the sweep asserts its own inventory.
+- *Totality* — the property covers `agents/**`, `commands/**`, `hooks/**`, `bin/**`, `tests/**`,
+  `calibration/**`, `CLAUDE.md`, `AGENTS.md` — not just the bundle.
+
+### D9b — This repo's own vendored copy · **new, from integration F2**
+
+**What.** `<repo>/.claude/skills/` is re-vendored and committed in the same change, and a gate check
+pins it to canonical.
+
+The draft scoped D9 to "a repo that re-vendors" and a scratch install. **This repo is itself a
+vendored repo with committed artifacts** — `.claude/skills/tdd-playbook/SKILL.md` is tracked and in
+sync (differing from canonical only at the two `${CLAUDE_PLUGIN_ROOT}` rewrite lines), and
+`.claude/.tdd-playbook-manifest.json` carries 74 entries with exactly one skills entry. That is the
+tree this repo's own sessions load.
+
+Consequences if unaddressed: the plan's headline benefit **does not land in this repo**; the
+committed manifest goes stale; and `_prune_upstream_removals` (`scripts/install_into_repo.py:410`),
+which prunes from the *previous* manifest, never runs to remove the stale monolith.
+
+**Edge cases**
+- *No self-parity pin exists today* — `plugins/tdd-playbook/tests/test_installer.py:193` compares
+  only a `tempfile` install; nothing compares `<repo>/.claude/skills` to canonical. The pin is the
+  deliverable.
+- *Rewrite lines* — the comparison is modulo the plugin-root rewrite, per-file across the bundle.
+- *Double registration* — this repo carrying both the plugin and a vendored copy is known, dated
+  debt (`double-registration-risk-doctor`); the split changes file count, not that posture. Named so
+  it is not rediscovered as new.
+
+### D7 — Gate roster re-acknowledgement · **folded into D4's commit, not a phase**
 
 **What.** The new suite is in the gate roster and the affected-selector routes bundle paths to a
 full plan.
 
 `gate-manifest.json`'s `suite_glob` auto-discovers `test_*.py`, and
-`plugins/tdd-playbook/bin/gate_plan.py:98` enforces `acknowledged_roster_sha256`. Adding a suite
-without re-acknowledging REDs the gate — correctly, but it must be a planned step, not a surprise.
+`plugins/tdd-playbook/bin/gate_plan.py:98` enforces `acknowledged_roster_sha256`. `:99` **raises** `PlanError` — it does not warn. A commit that adds a suite without
+re-acknowledging in the same commit has NO RUNNABLE GATE: not a red suite, a refused plan. This is
+why the draft's phase C was deleted rather than reordered.
 
 **Decision, stated rather than defaulted:** do **not** add a `safe_rules` entry for `skills/**`.
 Bundle paths stay "unknown" and fall back to the complete plan. A narrow safe rule would be an
@@ -346,9 +526,14 @@ prompt tells downstream repos what changed.
 `scripts/install_into_repo.py` + `bin/vendoring.py` (vendoring) · the Claude Code skill loader
 (runtime, out of repo). **Not "none" — this plan is almost entirely integration.**
 
-**Surface parity.** Claude: full. Codex: skills are already `unavailable`
-(`docs/architecture/host-parity-policy.json`); this plan adds no new divergence and D9 makes the
-existing one explicit. Cloud/vendored: identical to local via the walk-derived manifest.
+**Surface parity.** Claude: full. Codex: **the draft's citation here was wrong and is corrected.**
+It claimed skills are "already `unavailable` per `docs/architecture/host-parity-policy.json`" —
+that file records nothing about skills for either host (`grep -ci skill` = 0 on both parity JSONs),
+and `plugins/tdd-playbook/bin/host_parity.py:20` reads `FAMILIES = ("commands", "agents",
+"guards")`. Skills are not a parity family at all. The real record is dated debt
+`codex-skill-surface-absent` at `capabilities.json:1384` (owner david, **expires 2026-11-15**),
+whose DONE condition is verbatim what D9's draft edge case proposed. **D9 cites that debt and does
+not open a parallel obligation.** Cloud/vendored: identical to local via the walk-derived manifest.
 
 **Activation.** ON by default the moment the bundle exists — a skill's file layout is not
 switchable. **This is a plan that ships a change with no user-facing switch**, which §6b normally
@@ -356,12 +541,18 @@ treats as an audit finding waiting to happen. The mitigating control is that D5'
 commits are individually revertible and D8's calibration run is the go/no-go. Named rollback:
 `git revert` of the D5 range restores the monolith; D1–D4 are additive and stay.
 
-**Reverse sweep.** Which existing features should adopt this once it exists?
-- `plugins/tdd-playbook/commands/*.md` (12 files, 49,671 bytes) carry doctrine restatements that
-  could point at reference files instead of repeating them. **Not a deliverable here** — dated debt
-  `commands-restate-doctrine`, owner David, so this plan does not grow a second workstream.
-- `docs/adversary-scenario-inventory.md` and the 16 agent briefs are the other large always-loaded
-  prose surfaces. Same shape, out of scope, same debt entry.
+**Reverse sweep.** Which existing features should adopt this once it exists? The draft deferred
+two items with no expiry and one by forward-reference to an entry that did not exist —
+`capability_registry.py validate` refuses debt without owner AND date, so as drafted neither could
+be created. Both are now concrete, to be written into `capabilities.json` in D10's commit or
+dropped from the plan:
+
+| Debt id | What | Owner | Expires |
+|---|---|---|---|
+| `commands-restate-doctrine` | 12 command files (49,671 bytes) and 16 agent briefs restate doctrine that could point at reference files | David | 2026-12-15 |
+| `skill-description-budget` | the frontmatter `description` is near the 1,024-char limit and is loaded for ALL skills at all times; out of scope here | David | 2026-12-15 |
+
+Neither becomes a deliverable in this plan — that is a deliberate scope hold, not a silent one.
 
 ### §6c flow table
 
@@ -376,7 +567,22 @@ commits are individually revertible and D8's calibration run is the go/no-go. Na
 | T-vocabulary pin | §6c text (moving) | `plugins/tdd-playbook/tests/test_readable_surface.py:132` reads SKILL for §6c terms | D4 attribution follows §6c to `reference/wiring.md` |
 | doctrine path class | file path | `plugins/tdd-playbook/tests/test_review_ledger.py:620` maps path → `"doctrine"` | D4 reference paths classify as doctrine |
 
-**Empty consumer cells: none.** Every flow this plan produces has a named reader with a citation.
+| line-anchored citations | `SKILL.md:<line>` in 13 places | `plugins/tdd-playbook/bin/verify_citations.py` resolves each anchor | D6b: a stale anchor REDs the citation gate |
+| `§N` pointers outside the bundle | 622 in agents/commands/hooks/bin/tests/calibration/CLAUDE/AGENTS | each doc's reader; totality asserted | D6b planted dangling `§99` |
+| registry wiring claims | `capabilities.json` `wired_by` strings carrying `§N` anchors | `capability_registry.py` resolves by FILE existence only — never reads the anchor | D10 sweep: an anchor whose home moved |
+| this repo's vendored tree | `COPY_TREES` walk | `<repo>/.claude/skills/**` + committed manifest (74 entries) | D9b self-parity pin (none exists today) |
+| third doctrine copy | `.agents/skills/tdd-playbook/SKILL.md` | **NOBODY — written by nothing, scanned by nothing** | D0: deleted, or added to `VENDOR_DIRS` + the union |
+
+**One empty consumer cell, and it is the point.** `.agents/skills/tdd-playbook/SKILL.md` has no
+producer and no consumer — a tracked, byte-identical copy of the doctrine that no mechanism reads
+or guards. The draft's flow table did not contain this row because the draft did not know the file
+existed. It is now D0, and it blocks the plan.
+
+**The `capabilities.json` row is the H11 tell in its textbook form:** the registry receives the
+path, `capability_registry.py` resolves it by file existence, and the `§6c` anchor inside the
+string is never read. `capabilities.json:659` claims SKILL.md `§6c names it the Tier-1 reference
+tool`; after D5 that is false and `validate` stays green, because SKILL.md still exists. A consumer
+that ignores the field is no consumer.
 
 ---
 
@@ -402,6 +608,10 @@ commits are individually revertible and D8's calibration run is the go/no-go. Na
 | D5 | spine + `reference/` | files exist | indexed one level deep | loaded by the skill runtime | index-completeness + byte-preservation checks |
 | D6 | cross-reference resolution | sweep | gate suite | on | planted dangling `§99` REDs |
 | D7 | roster re-acknowledged | digest updated | `plugins/tdd-playbook/bin/gate_plan.py:98` | on | new suite in the EXECUTED roster, not just on disk |
+| D0 | doctrine copies enumerated | decision recorded | `.agents/` deleted or in `VENDOR_DIRS` | on | planted holdout id in the third copy is caught (or the copy is gone) |
+| D-1 | one roster owner | shared module | imported by all consumers | on | planted re-inlined literal REDs |
+| D6b | citations resolve repo-wide | sweep | gate suite | on | planted dangling `§99` + a stale line anchor REDs |
+| D9b | this repo's vendored tree | re-vendored + committed | self-parity pin | on | `<repo>/.claude/skills` == canonical modulo rewrite |
 | D8 | calibration measurement | run recorded in `docs/calibration/history.md` | — | — | **RUNNING leg, not EXERCISED** — a live agent run, 3×, paired controls |
 | D9 | vendored parity | per-file comparison | `test_installer` | on | scratch-repo install from the OLD layout |
 | D10 | registry entry | `capabilities.json` | `validate` in the release gate | on | `test_own_registry` with the real clock |
