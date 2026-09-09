@@ -263,6 +263,13 @@ def test_doctor_reports_mutation_scopes_and_last_run():
             out = buf.getvalue()
             check("doctor names a MISSING scope mapping and the command that scaffolds it",
                   "mutation scopes: MISSING" in out and "--dry-run" in out, out)
+            # v1.52.1: the suggested command was pasted verbatim into zsh, which read `<name>`
+            # as an input redirection ("no such file or directory: name") — an adoption message
+            # whose next step fails when copied is worse than none (S40). Placeholders in a
+            # printed COMMAND must be shell-safe: no angle brackets, no unquoted metacharacters.
+            cmd_line = next(ln for ln in out.splitlines() if "mutation scopes:" in ln)
+            check("doctor's suggested command is shell-safe when pasted (no <placeholder>)",
+                  "<" not in cmd_line and ">" not in cmd_line and "--scope SCOPE_NAME" in cmd_line, cmd_line)
             os.makedirs(os.path.join(target, ".tdd-playbook"))
             with open(os.path.join(target, ".tdd-playbook", "mutation-scopes.json"), "w") as fh:
                 json.dump({"a": {"sources": ["x.py"], "tests": ["t/"], "cost": "c"},
