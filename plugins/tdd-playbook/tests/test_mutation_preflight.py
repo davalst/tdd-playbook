@@ -27,6 +27,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+import tempfile
 import time
 
 HERE = os.path.dirname(os.path.realpath(__file__))
@@ -537,6 +538,113 @@ def test_scope_mapping_is_the_roster():
     check("collect_selection counts the mapped tests with pytest_add_cli_args replayed", n == 2 and problem is None, (n, problem))
 
 
+def test_narrow_config_rewrites_a_copy_and_reads_back():
+    """v1.52.0 D3 writer (Q4): line-anchored rewrite of the file mutmut actually reads, in a
+    DISPOSABLE copy only — set only_mutate + pytest_add_cli_args_test_selection (inserting
+    absent keys), neutralise legacy tests_dir (mutmut appends it to the selection), leave
+    paths_to_mutate as the deprecated root, preserve do_not_mutate and pytest_add_cli_args —
+    then READ BACK through mutmut and assert the keys took. Unsupported shapes are refused with
+    a concrete migration instruction, and the legacy list shape is named as one of them."""
+    import shutil, hashlib
+    m = load()
+    if shutil.which("mutmut") is None:
+        unmeasured("config writer + read-back against real mutmut", "mutmut is not installed here")
+        return
+
+    def sha(path):
+        with open(path, "rb") as fh:
+            return hashlib.sha256(fh.read()).hexdigest()
+
+    scopes = {"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"}}
+    # --- setup.cfg with legacy tests_dir and an existing only_mutate and pytest_add_cli_args
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\ntests_dir=tests/\nonly_mutate=app/fmt.py\n"
+                                   "do_not_mutate=app/never.py\npytest_add_cli_args=-p\n    no:cacheprovider\n",
+                         scopes=scopes)
+    cfg = m.effective_mutmut_config(root); sc = m.resolve_scope(root, "calc", cfg)
+    copy = tempfile.mkdtemp(); shutil.rmtree(copy); shutil.copytree(root, copy)
+    before = sha(os.path.join(root, "setup.cfg"))
+    rep = m.narrow_config(copy, cfg, sc)
+    after = m.effective_mutmut_config(copy)
+    check("setup.cfg copy: only_mutate is the scope's sources (read back through mutmut)",
+          after.only_mutate == ["app/calc.py"], vars(after))
+    check("setup.cfg copy: selection is the scope's tests and legacy tests_dir no longer widens it",
+          after.selection == ["tests/test_calc.py"] and after.legacy_tests_dir == [], vars(after))
+    check("setup.cfg copy: do_not_mutate and pytest_add_cli_args preserved",
+          after.do_not_mutate == ["app/never.py"] and after.pytest_add_cli_args == ["-p", "no:cacheprovider"], vars(after))
+    check("the REAL config is untouched (sha256 equal)", sha(os.path.join(root, "setup.cfg")) == before)
+    check("the report names the file, the keys set, and the neutralised tests_dir",
+          rep.config_file == "setup.cfg" and "tests_dir" in " ".join(rep.notes) and rep.real_sha256 == before, vars(rep))
+
+    # --- pyproject with the keys ABSENT: inserted; paths_to_mutate legacy root stays
+    root2 = _fixture_repo(pyproject='[tool.mutmut]\npaths_to_mutate = ["app"]\npytest_add_cli_args = ["-p", "no:cacheprovider"]\n\n[tool.other]\nx = 1\n',
+                          scopes=scopes)
+    cfg2 = m.effective_mutmut_config(root2); sc2 = m.resolve_scope(root2, "calc", cfg2)
+    copy2 = tempfile.mkdtemp(); shutil.rmtree(copy2); shutil.copytree(root2, copy2)
+    m.narrow_config(copy2, cfg2, sc2)
+    after2 = m.effective_mutmut_config(copy2)
+    check("pyproject copy: absent keys are INSERTED under [tool.mutmut], not appended to another table",
+          after2.only_mutate == ["app/calc.py"] and after2.selection == ["tests/test_calc.py"], vars(after2))
+    check("pyproject copy: paths_to_mutate stays as the deprecated root; other tables untouched",
+          after2.source_paths == ["app"] and "[tool.other]" in open(os.path.join(copy2, "pyproject.toml")).read())
+
+    # --- unsupported shape: a multi-line array for a key we must rewrite -> refuse + migration text
+    root3 = _fixture_repo(pyproject='[tool.mutmut]\nsource_paths = ["app"]\nonly_mutate = [\n  "app/fmt.py",  # keep\n]\n',
+                          scopes=scopes)
+    cfg3 = m.effective_mutmut_config(root3); sc3 = m.resolve_scope(root3, "calc", cfg3)
+    copy3 = tempfile.mkdtemp(); shutil.rmtree(copy3); shutil.copytree(root3, copy3)
+    try:
+        m.narrow_config(copy3, cfg3, sc3)
+    except m.ConfigProblem as exc:
+        text = str(exc)
+        check("multi-line array for a rewritten key is REFUSED (no general TOML writer)", True)
+        check("...with a concrete migration instruction naming the key and the one-line form",
+              "only_mutate" in text and "one line" in text.lower(), text)
+        check("...and the legacy paths_to_mutate + tests_dir list shape is named as unsupported too",
+              "tests_dir" in text and "paths_to_mutate" in text, text)
+    else:
+        check("multi-line array for a rewritten key is REFUSED", False, "no refusal")
+    check("the real pyproject is untouched after a refusal",
+          open(os.path.join(root3, "pyproject.toml")).read() == open(os.path.join(copy3, "pyproject.toml")).read())
+
+
+def test_baseline_replays_pytest_add_cli_args_and_names_domination():
+    """v1.52.0 D4 (Q2): the wrapper's baseline runs the SAME selection AND the same non-selection
+    arguments mutmut will (`pytest_add_cli_args`); `--collect-only` there collapses the baseline
+    and is refused; a baseline over a fifth of the budget is named as a GATE misconfiguration."""
+    m = load()
+    cfg = m.EffectiveConfig(config_file="setup.cfg", source_paths=["app"], pytest_add_cli_args=["-p", "no:cacheprovider", "-W", "error"])
+    sc = m.Scope("calc", ["app/calc.py"], ["tests/test_calc.py", "tests/test_x.py::TestY"], "c", "0" * 64)
+    argv = m.baseline_argv(cfg, sc, python="PY")
+    check("baseline argv = python -m pytest + pytest_add_cli_args + mapped selectors, in that order",
+          argv == ["PY", "-m", "pytest", "-p", "no:cacheprovider", "-W", "error", "tests/test_calc.py", "tests/test_x.py::TestY"], argv)
+    bad = m.EffectiveConfig(config_file="setup.cfg", source_paths=["app"], pytest_add_cli_args=["--collect-only"])
+    check("PLANTED: --collect-only inside pytest_add_cli_args is refused (it defeats the baseline)",
+          m.forbidden_add_args(bad.pytest_add_cli_args) is not None)
+    check("ordinary add args pass", m.forbidden_add_args(["-p", "no:cacheprovider"]) is None)
+    msg = m.baseline_dominates(70.0, max_minutes=5)
+    check("a baseline over a fifth of the budget is NAMED as the gate's misconfiguration, not the module's",
+          msg and "GATE is misconfigured" in msg and "not the module" in msg, msg)
+    check("a proportionate baseline is not flagged", m.baseline_dominates(10.0, max_minutes=5) is None)
+    check("the share is reported as a number (for the record and the /mutate line)",
+          abs(m.baseline_share(70.0, max_minutes=5) - 70.0 / 300.0) < 1e-9)
+
+
+def test_suite_args_is_a_migration_refusal():
+    """v1.52.0 Q2: `--suite-args` is deprecated OUTRIGHT — in this release it exists only to
+    emit a migration refusal naming the mapping (selection) and mutmut's pytest_add_cli_args
+    (non-selection options); removed next release."""
+    m = load()
+    why = m.suite_args_migration("tests/ -q")
+    check("any --suite-args value is refused with the migration instruction",
+          why and "mutation-scopes.json" in why and "pytest_add_cli_args" in why and "deprecated" in why.lower(), why)
+    check("an empty --suite-args is not an error (the flag merely exists this release)",
+          m.suite_args_migration("") is None)
+    proc = subprocess.run([sys.executable, BIN, "--scope", "x", "--suite-args", "tests/", "--max-minutes", "5"],
+                          capture_output=True, text=True, timeout=30)
+    check("CLI: --suite-args refuses BEFORE any baseline or config read, by message",
+          proc.returncode == 1 and "mutation-scopes.json" in proc.stderr, (proc.returncode, proc.stderr[:200]))
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
@@ -546,7 +654,10 @@ def main():
                test_against_REAL_mutmut_not_a_mock,
                test_wrapper_does_not_claim_scoped,
                test_run_bounded_deadline_grace_and_cwd_with_real_children,
-               test_effective_config_comes_from_mutmut_itself, test_scope_mapping_is_the_roster):
+               test_effective_config_comes_from_mutmut_itself, test_scope_mapping_is_the_roster,
+               test_narrow_config_rewrites_a_copy_and_reads_back,
+               test_baseline_replays_pytest_add_cli_args_and_names_domination,
+               test_suite_args_is_a_migration_refusal):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
