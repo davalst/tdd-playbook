@@ -233,10 +233,10 @@ def test_main_actually_invokes_mutmut():
                     config_reader=reader)
         check("main() exits 0 on a clean pass", rc == 0, rc)
         check("main() ACTUALLY INVOKES mutmut (not a print)",
-              any(a and a[0] == "mutmut" for a in seen), seen)
+              any(a and a[:3] == [sys.executable, "-m", "mutmut"] for a in seen), seen)
         check("the invoked argv is mutmut 3.x's REAL shape (no 2.x flags)",
               all("--paths-to-mutate" not in a and "--runner" not in a
-                  for a in seen if a and a[0] == "mutmut"), seen)
+                  for a in seen if a and a[:3] == [sys.executable, "-m", "mutmut"]), seen)
         check("the baseline ran the MAPPED selection (not the whole tree)",
               any(a and "pytest" in " ".join(a) and a[-1] == "tests/test_calc.py" for a in seen), seen)
 
@@ -246,7 +246,7 @@ def test_main_actually_invokes_mutmut():
         rc = m.main(["--scope", "outside", "--max-minutes", "30"], run=rec,
                     config_reader=reader)
         check("PLANTED: a scope outside mutmut's source_paths is REFUSED", rc == 1, rc)
-        check("...and mutmut was never reached", not any(a and a[0] == "mutmut" for a in seen), seen)
+        check("...and mutmut was never reached", not any(a and a[:3] == [sys.executable, "-m", "mutmut"] for a in seen), seen)
 
         # the projection is WIRED, not merely unit-tested
         seen.clear()
@@ -255,7 +255,7 @@ def test_main_actually_invokes_mutmut():
                     config_reader=reader)
         check("an unaffordable projection REFUSES before invoking mutmut", rc == 1, rc)
         check("...and mutmut was never reached",
-              not any(a and a[0] == "mutmut" for a in seen), seen)
+              not any(a and a[:3] == [sys.executable, "-m", "mutmut"] for a in seen), seen)
     finally:
         os.chdir(cwd)
 
