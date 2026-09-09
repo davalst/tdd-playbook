@@ -101,6 +101,7 @@ def main():
               (len(before), len(after)))
 
     test_doctor()
+    test_doctor_reports_mutation_scopes_and_last_run()
     test_doctor_classifies_overrides_against_each_guards_default()
     test_codex_install_preserves_user_config()
     test_vendoring_containment()
@@ -240,6 +241,51 @@ def test_release_version_identity():
     planted["codex-adapter"] = "previous-release-plant"
     check("release identity: PLANTED stale host adapter is detected",
           len(set(planted.values())) != 1, planted)
+
+
+def test_doctor_reports_mutation_scopes_and_last_run():
+    """v1.52.0 D8 (adoption): after the scoped runner lands, the documented /mutate invocation
+    refuses in every repo without a scope mapping — and the refusal is the only place that says
+    so. The doctor is the operator's health surface, so it must name a MISSING mapping, count a
+    present one, and show the last recorded run (the D6 record's code consumer)."""
+    print("\n[doctor: mutation scopes + last run]")
+    import io, contextlib, importlib.util, subprocess as _sp
+    mod = load_installer()
+    spec = importlib.util.spec_from_file_location("mutation_run", os.path.join(REPO, "plugins", "tdd-playbook", "bin", "mutation_run.py"))
+    mr = importlib.util.module_from_spec(spec); spec.loader.exec_module(mr)
+    with tempfile.TemporaryDirectory() as target, tempfile.TemporaryDirectory() as cache:
+        os.environ["TDD_PLAYBOOK_PLUGIN_CACHE"] = cache
+        try:
+            mod.main([target])
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mod.main(["--doctor", target])
+            out = buf.getvalue()
+            check("doctor names a MISSING scope mapping and the command that scaffolds it",
+                  "mutation scopes: MISSING" in out and "--dry-run" in out, out)
+            os.makedirs(os.path.join(target, ".tdd-playbook"))
+            with open(os.path.join(target, ".tdd-playbook", "mutation-scopes.json"), "w") as fh:
+                json.dump({"a": {"sources": ["x.py"], "tests": ["t/"], "cost": "c"},
+                           "b": {"sources": ["y.py"], "tests": ["t/"], "cost": "c"}}, fh)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mod.main(["--doctor", target])
+            out = buf.getvalue()
+            check("doctor counts the mapping's entries", "mutation scopes: 2 entr" in out, out)
+            check("doctor says when no run has been recorded yet", "last mutation run: none" in out, out)
+            for a in (["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"], ["add", "-A"], ["commit", "-q", "-m", "i"]):
+                _sp.run(["git", "-C", target] + a, capture_output=True, check=True)
+            ident = mr.repo_identity(target)
+            mr.write_record(ident, "r-1", {"scope": "a", "exit_reason": "complete",
+                                            "buckets": {"killed": 3, "decided": 4, "unfinished": 0}})
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mod.main(["--doctor", target])
+            out = buf.getvalue()
+            check("doctor shows the last recorded run: scope, result, kill count",
+                  "last mutation run: a" in out and "complete" in out and "3/4" in out, out)
+        finally:
+            os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
 
 
 def test_doctor_classifies_overrides_against_each_guards_default():

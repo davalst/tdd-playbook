@@ -1605,6 +1605,69 @@ def test_v151_planted_fixtures():
     check("planted: downstream lingo leak is detected", "shim" in sect.lower())
 
 
+def test_v152_scoped_runner_doctrine_and_consumers():
+    """v1.52.0 D7: the reference implementation exists, so every surface that described the
+    old invocation or the old limitation changes with it — the brief and /mutate invoke the
+    mapping (never --suite-args), SS4b's worked example cites THIS runner first and the
+    "does not yet narrow" sentence is gone, the approved doctrine amendment (explicit mapping →
+    refuse and name the roster gap) is in all three places, the standing refresh prompt seeds
+    the mapping, and the registry no longer says the wrapper does not narrow."""
+    with open(SKILL) as fh:
+        skill = fh.read()
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        brief = fh.read()
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        cmd = fh.read()
+    with open(os.path.join(os.path.dirname(os.path.dirname(ROOT)), "CLAUDE.md")) as fh:
+        claude_md = fh.read()
+    import json as _json
+    with open(os.path.join(os.path.dirname(os.path.dirname(ROOT)), "capabilities.json")) as fh:
+        reg = _json.load(fh)
+    cap = next(c for c in reg["capabilities"] if c["id"] == "mutation-preflight")
+
+    for label, text, needle in [
+        ("brief: invocation names the mapping scope, not a module path", brief, "--scope <scope-name>"),
+        ("brief: invocation no longer carries --suite-args", brief, None),
+        ("/mutate: invocation names the mapping scope", cmd, "--scope <scope-name>"),
+        ("/mutate: names the mapping file as the roster", cmd, "mutation-scopes.json"),
+        ("brief: names the mapping file as the roster", brief, "mutation-scopes.json"),
+        ("SKILL SS4b: worked example cites THIS runner first", skill, "`bin/mutation_run.py` is the reference implementation"),
+        ("SKILL SS4b: the amendment — explicit mapping refuses and names the roster gap", skill, "with an explicit mapping"),
+        ("brief: the amendment", brief, "with an explicit mapping"),
+        ("/mutate: the amendment", cmd, "with an explicit mapping"),
+        ("brief: commit the kill test, then re-measure (Q5)", brief, "commit the kill test"),
+        ("/mutate: commit the kill test, then re-measure (Q5)", cmd, "commit the kill test"),
+        ("brief: with_snapshot begin/verify rescoped to passes OUTSIDE the runner", brief, "outside `mutation_run.py`"),
+        ("SKILL: isolated-worktree advice cites the runner", skill, "`mutation_run.py` does this"),
+        ("CLAUDE.md standing prompt: step 3b seeds the mapping", claude_md, "3b. SEED THE MUTATION SCOPES"),
+    ]:
+        if needle is None:
+            run_line = brief[brief.index("RUN THE PASS THROUGH"):brief.index("RUN THE PASS THROUGH") + 400]
+            check(label, "--suite-args" not in run_line, run_line[:200])
+        else:
+            check(label, needle in text, "needle {!r} missing".format(needle))
+    check("SKILL SS4b: the 'does not yet narrow' sentence is GONE", "does not yet narrow" not in skill)
+    check("registry: mutation-preflight no longer says it does NOT narrow",
+          "does NOT narrow" not in cap["summary"] and "SS4b-scoped" in cap["summary"] or "scoped" in cap["summary"].lower(), cap["summary"][:200])
+    check("registry: activation switch no longer documents --suite-args as selection",
+          "--suite-args" not in cap["activation"]["switch"] and "--scope <scope-name>" in cap["activation"]["switch"], cap["activation"]["switch"])
+    check("registry: surfaces name both hosts (bin ships to Codex)", set(cap["surfaces"]) >= {"local", "codex"}, cap["surfaces"])
+    check("registry: exercised_by names the real end-to-end and accounting tests",
+          any("test_main_runs_both_halves_in_the_worktree_for_real" in e for e in cap["exercised_by"])
+          and any("test_full_mutant_accounting_from_one_source" in e for e in cap["exercised_by"]), cap["exercised_by"])
+    check("registry: the run record is an emits row with a CODE consumer (the doctor)",
+          any("run record" in (e.get("topic") or "").lower() and any("install_into_repo" in str(c) for c in e.get("consumers", []))
+              for e in cap.get("emits", [])), cap.get("emits"))
+    check("registry: scoped-baseline-and-partial-measurement debt is CLOSED",
+          not any(x.get("id") == "scoped-baseline-and-partial-measurement" for x in cap.get("integration_debt", [])))
+    check("registry: the two accepted debts exist (acknowledged-sha, projection-from-observed-count)",
+          {x.get("id") for x in cap.get("integration_debt", [])} >= {"mutation-scopes-acknowledged-sha", "projection-from-observed-count"},
+          [x.get("id") for x in cap.get("integration_debt", [])])
+    # calibration seam (I5): the oracle anchor phrase survives in the brief
+    check("brief KEEPS 'killed + survived < generated' (the unmeasured-not-certified oracle anchors on it)",
+          "killed + survived < generated" in brief)
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1627,7 +1690,8 @@ def main():
                test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures,
                test_means_line_and_prior_art_sweep,
                test_v150_per_phase_mutation, test_v150_planted_fixtures,
-               test_v151_scoped_run_cost, test_v151_planted_fixtures,):
+               test_v151_scoped_run_cost, test_v151_planted_fixtures,
+               test_v152_scoped_runner_doctrine_and_consumers,):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
