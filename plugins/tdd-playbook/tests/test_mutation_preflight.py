@@ -628,6 +628,23 @@ def test_narrow_config_rewrites_a_copy_and_reads_back():
     check("the real pyproject is untouched after a refusal",
           open(os.path.join(root3, "pyproject.toml")).read() == open(os.path.join(copy3, "pyproject.toml")).read())
 
+    # SURVIVOR-DRIVEN (Phase 3 targeted mutants): dropping the read-back assertion survived because
+    # every rewrite above genuinely took. Plant a reader that reports the rewrite did NOT take:
+    # narrow_config must refuse rather than run over an unscoped tree.
+    copy4 = tempfile.mkdtemp(); shutil.rmtree(copy4); shutil.copytree(root, copy4)
+    real_reader = m.effective_mutmut_config
+    m.effective_mutmut_config = lambda cwd, python=None: m.EffectiveConfig(
+        config_file="setup.cfg", source_paths=["app"], only_mutate=["app/fmt.py"], selection=["tests/"],
+        do_not_mutate=cfg.do_not_mutate, pytest_add_cli_args=cfg.pytest_add_cli_args)
+    try:
+        m.narrow_config(copy4, cfg, sc)
+    except m.ConfigProblem as exc:
+        check("PLANTED: a rewrite that mutmut does not read back as narrowed is REFUSED", "read-back" in str(exc), str(exc))
+    else:
+        check("PLANTED: a rewrite that mutmut does not read back as narrowed is REFUSED", False, "no refusal")
+    finally:
+        m.effective_mutmut_config = real_reader
+
 
 def test_baseline_replays_pytest_add_cli_args_and_names_domination():
     """v1.52.0 D4 (Q2): the wrapper's baseline runs the SAME selection AND the same non-selection
