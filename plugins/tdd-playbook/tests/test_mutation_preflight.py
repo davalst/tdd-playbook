@@ -759,7 +759,10 @@ def test_literal_clean_and_disposable_worktree_lifecycle():
         try:
             m.Worktree.create(ident, run_id="run-a", scope_name="calc")
         except m.WorktreeProblem as exc:
-            check("a leftover/duplicate path is REFUSED by name, never reused", "run-a" in str(exc), str(exc))
+            # SURVIVOR-DRIVEN (Phase 4 targeted mutants): git itself also refuses an existing path,
+            # so the message must carry OUR recovery text, not just git's complaint
+            check("a leftover/duplicate path is REFUSED by name, never reused, naming the recovery",
+                  "run-a" in str(exc) and "never reused" in str(exc) and "--reap-stale" in str(exc), str(exc))
         else:
             check("a leftover/duplicate path is REFUSED by name, never reused", False)
     finally:
@@ -773,6 +776,9 @@ def test_literal_clean_and_disposable_worktree_lifecycle():
     except m.CleanupFailed as exc:
         check("cleanup failure raises with the RETAINED path and the manual command",
               exc.path == wt2.path and "git worktree remove --force" in m.retained_line(exc.path) and exc.path in m.retained_line(exc.path), str(exc))
+        # SURVIVOR-DRIVEN (Phase 4 targeted mutants): the still-present-directory branch also
+        # raises, so the git failure must be the DETAIL the operator reads, not swallowed
+        check("cleanup failure carries git's own reason as the detail", "simulated: busy" in exc.detail, exc.detail)
     else:
         check("cleanup failure raises with the RETAINED path", False)
     wt2.remove()
@@ -1016,7 +1022,10 @@ def test_real_run_record_and_partial_on_timeout():
                                               for i in range(12):
                                                   assert getattr(slow, 'f%d' % i)(1, 2) == 3 + i
                                       """))])
-    proc = subprocess.run([sys.executable, BIN, "--scope", "slow", "--max-minutes", "1"],
+    # --max-children 1: mutmut parallelises across cores, and a 36-mutant fixture at ~3s each
+    # finished inside a 60s deadline on a many-core machine (observed 2026-09-09); serialised, it
+    # cannot — the cut-off is then a property of the fixture, not of the host's core count (§7)
+    proc = subprocess.run([sys.executable, BIN, "--scope", "slow", "--max-minutes", "1", "--max-children", "1"],
                           cwd=slow, capture_output=True, text=True, timeout=900)
     out = proc.stdout + proc.stderr
     rec = m.latest_record(m.repo_identity(slow))

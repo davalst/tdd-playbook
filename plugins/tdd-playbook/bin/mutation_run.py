@@ -875,6 +875,193 @@ def reap_stale(ident, report):
     return removed
 
 
+class AccountingProblem(Exception):
+    """The per-mutant accounting cannot be trusted: unknown status, duplicate name, or a
+    disagreement between mutmut's two views of the same run (Q7: fail closed)."""
+
+
+class RecordProblem(Exception):
+    """The run record could not be written — a record is a deliverable, not a nicety."""
+
+
+DECIDED = ("killed", "survived")
+UNSCORED = ("no tests", "skipped", "suspicious", "timeout", "segfault", "caught by type check")
+UNFINISHED = ("check was interrupted by user", "not checked")
+# CI export field per status, for the statuses the export EMITS (it omits not_checked and
+# caught_by_type_check — the known residual, never compared)
+_EXPORT_FIELD = {"killed": "killed", "survived": "survived", "no tests": "no_tests", "skipped": "skipped",
+                 "suspicious": "suspicious", "timeout": "timeout", "segfault": "segfault",
+                 "check was interrupted by user": "check_was_interrupted_by_user"}
+_RESULT_LINE = re.compile(r"^\s*(\S.*?):\s*(.+?)\s*$")
+
+
+class Buckets:
+    def __init__(self, counts):
+        self.counts = dict(counts)
+        self.killed = counts.get("killed", 0); self.survived = counts.get("survived", 0)
+        self.decided = self.killed + self.survived
+        self.unscored = {k: v for k, v in counts.items() if k in UNSCORED and v}
+        self.unscored_total = sum(self.unscored.values())
+        self.interrupted = counts.get("check was interrupted by user", 0)
+        self.not_checked = counts.get("not checked", 0)
+        self.unfinished = self.interrupted + self.not_checked
+        self.rows = sum(counts.values())
+        self.total = self.rows
+        self.survivors = []
+
+    def as_dict(self):
+        return {"killed": self.killed, "survived": self.survived, "decided": self.decided,
+                "unscored": self.unscored, "unscored_total": self.unscored_total,
+                "interrupted": self.interrupted, "not_checked": self.not_checked,
+                "unfinished": self.unfinished, "rows": self.rows, "total": self.total,
+                "survivors": list(self.survivors)}
+
+
+def classify_results(text):
+    """Parse `mutmut results --all=true` — one line per mutant, `<name>: <status>` — into the
+    three buckets. Duplicate names are refused BEFORE anything is counted; an unknown status is
+    refused rather than bucketed (mutmut's status map is a defaultdict, so a new word means the
+    contract moved)."""
+    counts = {}
+    seen = set()
+    survivors = []
+    for raw in (text or "").splitlines():
+        if not raw.strip():
+            continue
+        mo = _RESULT_LINE.match(raw)
+        if not mo or raw.strip().endswith(":"):
+            continue
+        name, status = mo.group(1).strip(), mo.group(2).strip()
+        if status not in DECIDED + UNSCORED + UNFINISHED:
+            raise AccountingProblem("unknown mutant status {!r} for {!r} — mutmut's status vocabulary has "
+                                    "changed; refusing to bucket it".format(status, name))
+        if name in seen:
+            raise AccountingProblem("duplicate mutant name {!r} in results — one duplicated row can conceal "
+                                    "one missing row; refusing to count".format(name))
+        seen.add(name)
+        counts[status] = counts.get(status, 0) + 1
+        if status == "survived":
+            survivors.append(name)
+    b = Buckets(counts)
+    b.survivors = survivors
+    return b
+
+
+def reconcile(buckets, export):
+    """None when the CI export agrees with the per-mutant rows; else the refusal text (Q7):
+    missing/malformed export, a `total` that differs from the row count, or any EMITTED field
+    that differs. The export's omitted statuses are the known residual and are not compared."""
+    if not isinstance(export, dict):
+        return ("CI export (mutants/mutmut-cicd-stats.json) is missing or unreadable — the denominator "
+                "cannot be checked; {} rows seen, total UNVERIFIED — refusing".format(buckets.rows))
+    if not isinstance(export.get("total"), int):
+        return "CI export is malformed (no integer `total`) — {} rows seen, total UNVERIFIED — refusing".format(buckets.rows)
+    if export["total"] != buckets.rows:
+        return ("mutant accounting DISAGREES: results list {} mutants, the CI export's total is {} — "
+                "refusing rather than picking one".format(buckets.rows, export["total"]))
+    for status, field in _EXPORT_FIELD.items():
+        if field in export and isinstance(export[field], int) and export[field] != buckets.counts.get(status, 0):
+            return ("mutant accounting DISAGREES on {!r}: results say {}, the CI export says {} (total {}) — "
+                    "refusing".format(status, buckets.counts.get(status, 0), export[field], export["total"]))
+    return None
+
+
+def certify_problem(buckets):
+    """A COMPLETE run may certify only when every mutant was scored (SS4a's
+    `killed + survived < generated` rule, mechanical)."""
+    if buckets.unfinished:
+        return "{} mutant(s) unfinished — not a complete run; cannot certify".format(buckets.unfinished)
+    if buckets.unscored_total:
+        return ("{} mutant(s) terminal but UNSCORED ({}) — killed + survived < generated; refusing to "
+                "certify (segfault/timeout/no-tests are not kills)".format(
+                    buckets.unscored_total, ", ".join("{} {}".format(v, k) for k, v in sorted(buckets.unscored.items()))))
+    return None
+
+
+def _rate(b):
+    return (100.0 * b.killed / b.decided) if b.decided else 0.0
+
+
+def partial_line(b):
+    return ("PARTIAL — kill rate {}/{} = {:.0f}% over {} decided, {} unscored, {} unfinished at cutoff "
+            "({} interrupted mid-check, {} not yet checked) — NON-AUTHORIZING".format(
+                b.killed, b.decided, _rate(b), b.decided, b.unscored_total, b.unfinished, b.interrupted, b.not_checked))
+
+
+def score_line(b):
+    return ("Mutation: {}/{} killed = {:.0f}% (raw over decided) · {} survived · {} unscored · {} unfinished · "
+            "{} total".format(b.killed, b.decided, _rate(b), b.survived, b.unscored_total, b.unfinished, b.total))
+
+
+def account(worktree_dir, python=None):
+    """(buckets, export, problem) read from the worktree after the pass (complete OR cut off):
+    `mutmut results --all=true` is the one per-mutant source; `mutmut export-cicd-stats` is the
+    denominator cross-check. Never raises on a disagreement — returns it, so the record is still
+    written; the CALLER refuses."""
+    py = python or sys.executable
+    res = subprocess.run([py, "-m", "mutmut", "results", "--all=true"], cwd=worktree_dir,
+                         capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
+    if res.returncode != 0:
+        return None, None, "mutmut results failed ({}): {}".format(res.returncode, (res.stdout + res.stderr)[-300:])
+    try:
+        buckets = classify_results(res.stdout)
+    except AccountingProblem as exc:
+        return None, None, str(exc)
+    subprocess.run([py, "-m", "mutmut", "export-cicd-stats"], cwd=worktree_dir,
+                   capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
+    export = None
+    try:
+        with open(os.path.join(worktree_dir, "mutants", "mutmut-cicd-stats.json")) as fh:
+            export = json.load(fh)
+    except (OSError, ValueError):
+        export = None
+    return buckets, export, reconcile(buckets, export)
+
+
+def write_record(ident, run_id, payload):
+    """<state>/mutation-runs/<run_id>/index.json — 0600, atomic, retention shared with gate runs
+    via gate_runner.prune_dir (keep 20, own lock in this directory)."""
+    import host_contract
+    runs = os.path.join(ident["state_dir"], RUNS_DIR)
+    rec_dir = os.path.join(runs, run_id)
+    try:
+        os.makedirs(rec_dir, mode=0o700, exist_ok=True)
+        record = dict(payload)
+        record.setdefault("run_id", run_id)
+        record["written_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        path = os.path.join(rec_dir, "index.json")
+        host_contract._atomic_json(path, record)
+        os.utime(rec_dir, None)
+    except OSError as exc:
+        raise RecordProblem("could not write the run record under {}: {}".format(runs, exc))
+    try:
+        import gate_runner
+        gate_runner.prune_dir(runs, keep=20, lock_name=".prune.lock", protect=rec_dir)
+    except Exception as exc:          # retention must never lose the record just written
+        print("mutation_run: record retention skipped ({})".format(exc), file=sys.stderr)
+    return path
+
+
+def latest_record(ident):
+    runs = os.path.join(ident["state_dir"], RUNS_DIR)
+    if not os.path.isdir(runs):
+        return None
+    best = None
+    for name in os.listdir(runs):
+        p = os.path.join(runs, name, "index.json")
+        if os.path.isfile(p):
+            key = (os.stat(p).st_mtime_ns, name)
+            if best is None or key > best[0]:
+                best = (key, p)
+    if best is None:
+        return None
+    try:
+        with open(best[1]) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+
 def mutmut_argv(max_children=None):
     """The REAL mutmut 3.x contract, verified against the installed binary: `mutmut run`, with
     scope and runner coming from config. Accepted flags are --all/--max-children/--rootdir/
@@ -962,9 +1149,20 @@ def main(argv=None, run=None, config_reader=None):
                 return 1
             print("mutation_run: disposable worktree {} (detached at {})".format(wt.path, ident["head"][:12]))
             rc = 1
+            payload = {"scope": scope.name, "sources": scope.sources, "tests": scope.tests,
+                       "cost": scope.cost, "source_count": scope.source_count, "test_count": scope.test_count,
+                       "mapping_sha256": scope.mapping_sha256, "head": ident["head"], "worktree": wt.path,
+                       "budget_minutes": args.max_minutes, "pytest_add_cli_args": cfg.pytest_add_cli_args,
+                       "config_file": cfg.config_file, "exit_reason": "refused-before-run"}
             try:
-                rc = _run_in_worktree(args, ident, cfg, scope, wt, run=run, config_reader=config_reader)
+                rc = _run_in_worktree(args, ident, cfg, scope, wt, payload, run=run, config_reader=config_reader)
             finally:
+                try:
+                    write_record(ident, run_id, payload)
+                    print("mutation_run: record written ({})".format(os.path.join(RUNS_DIR, run_id, "index.json")))
+                except RecordProblem as exc:
+                    print("mutation_run: " + str(exc), file=sys.stderr)
+                    rc = 1
                 try:
                     wt.remove()
                     print("mutation_run: worktree removed")
@@ -979,7 +1177,7 @@ def main(argv=None, run=None, config_reader=None):
         return 1
 
 
-def _run_in_worktree(args, ident, cfg, scope, wt, run=None, config_reader=None):
+def _run_in_worktree(args, ident, cfg, scope, wt, payload, run=None, config_reader=None):
     """Both halves, inside the worktree: narrow the copy's config (read back), count the mapped
     selection, run the baseline with pytest_add_cli_args replayed, project, then mutmut."""
     try:
@@ -990,6 +1188,7 @@ def _run_in_worktree(args, ident, cfg, scope, wt, run=None, config_reader=None):
     print("mutation_run: worktree config ({}): only_mutate={!r} selection={!r} pytest_add_cli_args={!r} · {} · "
           "real config untouched (sha256 {})".format(rep.config_file, scope.sources, scope.tests,
                                                      cfg.pytest_add_cli_args, "; ".join(rep.notes), rep.real_sha256[:12]))
+    payload["config_notes"] = rep.notes; payload["real_config_sha256"] = rep.real_sha256
     if run is None:
         n, problem = collect_selection(wt.path, scope.tests, cfg.pytest_add_cli_args)
         if problem:
@@ -1004,6 +1203,8 @@ def _run_in_worktree(args, ident, cfg, scope, wt, run=None, config_reader=None):
         return 1
     print("mutation_run: baseline GREEN — {} collected, {:.1f}s measured (share of budget {:.0%})".format(
         collected, seconds, baseline_share(seconds, args.max_minutes)))
+    payload["baseline_s"] = round(seconds, 3); payload["baseline_share"] = round(baseline_share(seconds, args.max_minutes), 4)
+    payload["baseline_collected"] = collected
     dominates = baseline_dominates(seconds, args.max_minutes)
     if dominates:
         print("mutation_run: " + dominates)
@@ -1018,6 +1219,7 @@ def _run_in_worktree(args, ident, cfg, scope, wt, run=None, config_reader=None):
               "assumed affordable; the {}-minute hard bound still applies".format(args.max_minutes))
     if args.dry_run:
         print("mutation_run: --dry-run — everything validated, mutmut not invoked")
+        payload["exit_reason"] = "dry-run"
         return 0
 
     mut = mutmut_argv(args.max_children)
@@ -1032,9 +1234,35 @@ def _run_in_worktree(args, ident, cfg, scope, wt, run=None, config_reader=None):
               "score nothing produced".format(exc), file=sys.stderr)
         return 1
     sys.stdout.write(proc.stdout or "")
-    if getattr(proc, "timed_out", False):
-        print("mutation_run: mutation pass exceeded {} minutes — UNMEASURED; SIGINT then SIGKILL to the "
-              "process group, no orphans ({:.0f}s)".format(args.max_minutes, proc.elapsed_s), file=sys.stderr)
+    timed_out = bool(getattr(proc, "timed_out", False))
+    payload["mutmut_exit"] = proc.returncode; payload["elapsed_s"] = round(getattr(proc, "elapsed_s", 0.0), 1)
+    if run is not None:                       # injected hook: no real tool to account against
+        payload["exit_reason"] = "timeout" if timed_out else "complete"
+        payload["buckets"] = None
+        return 1 if timed_out else proc.returncode
+    buckets, export, problem = account(wt.path)
+    payload["buckets"] = buckets.as_dict() if buckets else None
+    payload["export"] = export
+    if problem:
+        payload["exit_reason"] = "accounting-refused"
+        print("mutation_run: REFUSED — " + problem, file=sys.stderr)
+        return 1
+    if timed_out:
+        payload["exit_reason"] = "timeout"
+        print("mutation_run: mutation pass hit the {}-minute deadline (SIGINT at deadline-30s, SIGKILL at the "
+              "deadline; {:.0f}s)".format(args.max_minutes, proc.elapsed_s), file=sys.stderr)
+        print("mutation_run: " + partial_line(buckets))
+        for name in buckets.survivors:
+            print("mutation_run:   survived: " + name)
+        return 1
+    payload["exit_reason"] = "complete"
+    print("mutation_run: " + score_line(buckets))
+    for name in buckets.survivors:
+        print("mutation_run:   survived: " + name)
+    cert = certify_problem(buckets)
+    if cert:
+        payload["exit_reason"] = "complete-uncertified"
+        print("mutation_run: REFUSED to certify — " + cert, file=sys.stderr)
         return 1
     return proc.returncode
 
