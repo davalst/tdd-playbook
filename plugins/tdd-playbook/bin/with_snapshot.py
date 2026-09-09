@@ -113,6 +113,26 @@ def cmd_verify():
     return 0
 
 
+def dirty_tracked(root):
+    """TRACKED paths with uncommitted changes under `root` (staged or not), porcelain-relative.
+    Root-parameterised on purpose (v1.52.0 D0): the mutation runner reuses this instead of
+    copying the porcelain filter, and it must never be bound to the caller's cwd."""
+    status = _git("-C", root, "status", "--porcelain", "--untracked-files=no")
+    if status.returncode != 0:
+        raise RuntimeError("git status failed in {}: {}".format(root, status.stderr.strip()))
+    return [ln[3:] for ln in status.stdout.splitlines() if ln.strip() and not ln.startswith("??")]
+
+
+def untracked(root):
+    """NON-IGNORED untracked files under `root`, every file listed (not collapsed to directories).
+    The literal-clean rule (v1.52.0 Q5): a conftest.py, helper or fixture that is untracked is
+    absent from a HEAD checkout, and a run that ignores it reports a wrong answer cleanly."""
+    status = _git("-C", root, "status", "--porcelain", "--untracked-files=all")
+    if status.returncode != 0:
+        raise RuntimeError("git status failed in {}: {}".format(root, status.stderr.strip()))
+    return [ln[3:] for ln in status.stdout.splitlines() if ln.startswith("??")]
+
+
 def cmd_preflight():
     """Refuse a REVERT-BASED pass (git checkout/stash-pop to restore source) when the tree has
     uncommitted changes to TRACKED files — a bare checkout would clobber that work. Untracked
@@ -122,7 +142,10 @@ def cmd_preflight():
     if status.returncode != 0:
         sys.stderr.write("with_snapshot: git status failed: {}\n".format(status.stderr.strip()))
         return 2
-    dirty = [ln for ln in status.stdout.splitlines() if ln.strip() and not ln.startswith("??")]
+    # the DECISION comes from the shared function; the printed lines keep the porcelain form
+    dirty_paths = set(dirty_tracked(os.getcwd()))
+    dirty = [ln for ln in status.stdout.splitlines() if ln.strip() and not ln.startswith("??")
+             and ln[3:] in dirty_paths]
     if dirty:
         sys.stderr.write("with_snapshot: REFUSING — {} uncommitted tracked change(s); a "
                          "revert-based (git checkout) pass will CLOBBER them:\n".format(len(dirty)))

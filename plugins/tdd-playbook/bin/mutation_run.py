@@ -117,26 +117,53 @@ def projection_problem(mutants, baseline_seconds, max_minutes, factor=1.0):
     return None
 
 
-def run_bounded(argv, timeout, run=None):
-    """Run in its OWN process group with stdin closed, and kill the GROUP on timeout.
+def run_bounded(argv, deadline_s, run=None, cwd=None, grace_s=30):
+    """Run in its OWN process group with stdin closed, under an ABSOLUTE deadline (Q3, v1.52.0):
+    SIGINT to the group at `deadline_s - grace_s` so the tool can flush what it measured, then
+    SIGKILL at `deadline_s` — never deadline + grace. Returns a CompletedProcess carrying
+    `timed_out` (bool) and `elapsed_s`; a child that honours SIGINT returns its OWN exit code
+    with `timed_out=True`, a stubborn one returns a negative code. Callers read `timed_out`
+    rather than catching TimeoutExpired, because a cut-off run still has EVIDENCE (partial
+    results) and an exception throws it away.
 
     subprocess.run's timeout kills the direct child only; pytest-xdist workers and anything the
-    tests spawned survive as orphans. stdin is closed because capture_output hides a prompt, so
-    a suite that hits breakpoint()/--pdb would hang invisibly for the whole budget."""
-    if run is not None:                      # injected for tests
-        return run(argv, capture_output=True, text=True, timeout=timeout)
+    tests spawned survive as orphans — hence the group. stdin is closed because capture_output
+    hides a prompt, so a suite that hits breakpoint()/--pdb would hang invisibly."""
+    if run is not None:                      # injected for argv-shape tests ONLY (bypasses Popen)
+        proc = run(argv, capture_output=True, text=True, timeout=deadline_s)
+        proc.timed_out = False
+        proc.elapsed_s = 0.0
+        return proc
+    grace_s = max(0.0, min(float(grace_s), float(deadline_s)))
+    started = time.monotonic()
     proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, text=True, start_new_session=True)
+                            stderr=subprocess.STDOUT, text=True, start_new_session=True,
+                            cwd=cwd)
+    timed_out = False
     try:
-        out, _ = proc.communicate(timeout=timeout)
-        return subprocess.CompletedProcess(argv, proc.returncode, out, "")
+        out, _ = proc.communicate(timeout=max(0.0, deadline_s - grace_s))
     except subprocess.TimeoutExpired:
+        timed_out = True
+        _signal_group(proc, signal.SIGINT)
         try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            proc.kill()
-        proc.communicate()
-        raise
+            out, _ = proc.communicate(timeout=max(0.0, deadline_s - (time.monotonic() - started)))
+        except subprocess.TimeoutExpired:
+            _signal_group(proc, signal.SIGKILL)
+            out, _ = proc.communicate()
+    result = subprocess.CompletedProcess(argv, proc.returncode, out or "", "")
+    result.timed_out = timed_out
+    result.elapsed_s = time.monotonic() - started
+    return result
+
+
+def _signal_group(proc, sig):
+    try:
+        os.killpg(os.getpgid(proc.pid), sig)
+    except (ProcessLookupError, PermissionError):
+        try:
+            proc.send_signal(sig)
+        except ProcessLookupError:
+            pass
 
 
 def baseline(suite_argv, run=None, timeout=None):
@@ -283,7 +310,7 @@ def main(argv=None, run=None):
     print("mutation_run: invoking " + " ".join(mut) + f" (scope from config: {configured})")
     try:
         proc = run_bounded(mut, args.max_minutes * 60, run=run)
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired:      # only the injected hook can still raise this
         print(f"mutation_run: mutation pass exceeded {args.max_minutes} minutes — UNMEASURED; process group "
               "killed, no orphans", file=sys.stderr)
         return 1
@@ -292,6 +319,11 @@ def main(argv=None, run=None):
               "score nothing produced", file=sys.stderr)
         return 1
     sys.stdout.write(proc.stdout or "")
+    if getattr(proc, "timed_out", False):
+        print(f"mutation_run: mutation pass exceeded {args.max_minutes} minutes — UNMEASURED; "
+              f"SIGINT then SIGKILL to the process group, no orphans ({proc.elapsed_s:.0f}s)",
+              file=sys.stderr)
+        return 1
     return proc.returncode
 
 

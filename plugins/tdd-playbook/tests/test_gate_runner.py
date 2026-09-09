@@ -357,8 +357,11 @@ def test_run_store_subdir_and_prune_dir_are_shared_code():
             os.utime(d, (1000 + i, 1000 + i))
         gr.prune_dir(mr.root, keep=2, lock_name=".prune.lock", protect=mr.path)
         left = sorted(n for n in os.listdir(mr.root) if os.path.isdir(os.path.join(mr.root, n)))
-        check("prune_dir keeps the newest `keep` finished runs plus the protected live one",
-              left == ["c", "d", "m1"], left)
+        # `keep` COUNTS the live run — the pre-existing RunStore contract (keep=20 means 20
+        # directories, the live one included); the first draft of this check assumed
+        # keep-finished-plus-live and was corrected to the contract, not the other way round.
+        check("prune_dir keeps `keep` runs INCLUDING the protected live one (existing contract)",
+              left == ["d", "m1"], left)
         check("prune_dir wrote its lock in the pruned root",
               os.path.isfile(os.path.join(mr.root, ".prune.lock")))
     finally:
