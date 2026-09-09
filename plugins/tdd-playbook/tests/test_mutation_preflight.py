@@ -295,13 +295,39 @@ def test_against_REAL_mutmut_not_a_mock():
           "mutations/second" in out or "1/1" in out, out[-200:])
 
 
+def test_wrapper_does_not_claim_scoped():
+    """v1.51.2 (Codex source-verification of 1.51.1): the docstring stopped claiming 'scoped' but
+    the CLI description still said 'Run a scoped mutation pass', and the projection refusal still
+    advised 'narrow --scope' — a flag that CHECKS the configured scope and narrows nothing. A
+    wrapper must not advise a remedy it cannot perform."""
+    m = load()
+    import argparse, io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        try:
+            m.main(["--help"])
+        except SystemExit:
+            pass
+    help_text = buf.getvalue()
+    check("CLI description does not say 'scoped'", "scoped mutation pass" not in help_text, help_text[:200])
+    check("CLI description says what --scope actually does (check, not narrow)",
+          "not narrow" in help_text or "does NOT narrow" in help_text, help_text[:300])
+    why = m.projection_problem(10000, 2.0, 5) or ""
+    check("projection refusal no longer advises 'narrow --scope'", "narrow --scope" not in why
+          and "narrow\n" not in why and "narrow " not in why, why)
+    check("projection refusal names remedies the wrapper can act on",
+          "--max-minutes" in why and ("only_mutate" in why or "configured scope" in why.lower()
+                                      or "config" in why.lower()), why)
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
                test_projection_refuses_before_the_expensive_pass,
                test_preflight_refuses_red_baseline_and_empty_collection,
                test_cli_is_the_real_seam, test_main_actually_invokes_mutmut,
-               test_against_REAL_mutmut_not_a_mock):
+               test_against_REAL_mutmut_not_a_mock,
+               test_wrapper_does_not_claim_scoped):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
