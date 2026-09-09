@@ -109,6 +109,9 @@ mechanisms.
    the warn-by-default
    fixture_guard, which warns when an expected answer in a test-data file is rewritten or a
    case removed). My own non-playbook hooks must survive — verify that before committing.
+   If this repo already runs the playbook as a USER-SCOPE PLUGIN (check `claude /plugin`), pass
+   `--no-hooks` so the guards are not registered twice (the installer records that choice;
+   v1.52.3). A script of my own inside `.claude/hooks/scripts/` survives since v1.52.3.
 
 2. VERIFY: Confirm .claude/bin/ contains tdd_lock.py, with_snapshot.py, grade_from_otel.py,
    capability_registry.py, and dataflow_sweeps.py (with its _debt.py sibling); confirm

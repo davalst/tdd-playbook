@@ -1,3 +1,32 @@
+## 1.52.3 — 2026-09-09
+
+**The refresh must not undo a downstream repo's decisions.** Reported by the origin repo's
+other session after the 1.52.x refreshes, verified here, and the earlier verdict ("documented
+behaviour, not a defect") withdrawn: a foot-gun that fires twice in one day on the first real
+user is a defect.
+
+- **Ownership is by shipment, not by directory.** `_is_plugin_group` now treats a hook group as
+  the playbook's only when every command names a script the playbook ships now or wrote in a
+  previous install (the manifest). The origin repo's own Stop hook lives in
+  `.claude/hooks/scripts/` and was dropped by two refreshes in one day; a script we never shipped
+  is the user's, wherever it sits. Trees with no manifest keep the old namespace rule.
+- **`--no-hooks` for plugin-enabled repos, persisted.** The origin repo had deliberately removed
+  the playbook's six guard groups from its settings on 2026-09-06 because the user-scope plugin
+  already runs them; the reconciling refresh put all six back — double firing, re-created by the
+  tool that lists it as debt. `--no-hooks` vendors the machinery and registers nothing, records
+  `hooks_mode: none` in the manifest so later plain refreshes honour it, and `--hooks` flips it
+  back. The doctor prints the mode; the standing refresh prompt says when to use it.
+- **The doctor flags dead registrations.** A hook whose script no longer exists fires nothing
+  and warns nobody (the origin repo's adopted `exitcode_guard.py` after the manifest prune
+  removed the file it had kept on purpose). `DEAD HOOK REGISTRATION: <event> → <path>`, rc 1.
+- Pinned by three planted tests in `test_installer.py` (red at 2c037ec).
+- **§4b in the origin repo, measured.** After re-vendoring 1.52.2 the first scoped run of its
+  `cheliped.oracle` scope ran to completion in 50 seconds: 290 mutants generated for the one
+  module (not the tens of thousands the unscoped roster produced), 253 killed, 37 survived,
+  0 unscored, 0 unfinished, baseline 7.7 s = 0.5% of budget, record written, worktree removed.
+  Twenty-plus minutes of fixed cost per run is gone. The run also refused, correctly, on an
+  untracked test file from live work in progress (Q5).
+
 ## 1.52.2 — 2026-09-09
 
 **The pass runs through the same interpreter as everything else.** The origin repo's first real

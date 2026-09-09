@@ -11,6 +11,9 @@ Usage:
     python3 scripts/install_into_repo.py --host codex [TARGET_REPO]
     python3 scripts/install_into_repo.py --host all [TARGET_REPO]
     python3 scripts/install_into_repo.py --doctor [TARGET_REPO]   # version-skew check
+    python3 scripts/install_into_repo.py --no-hooks [TARGET_REPO] # vendor the machinery, register NO
+                                                                   # hook groups (repo runs the guards as a
+                                                                   # user-scope plugin); persisted; --hooks undoes
 Then commit the selected host directory.  Codex project hooks also require project trust and hook
 review; configuration present on disk is not proof that the native runtime invoked it.
 
@@ -27,6 +30,7 @@ vendored) are informational, not failures.
 from __future__ import annotations
 
 import json
+import re
 import os
 import shutil
 import sys
@@ -112,22 +116,41 @@ def _copy_file(src: str, dest: str, rewrite=_rewrite) -> int:
 _PLUGIN_NS = "/.claude/hooks/scripts/"  # our vendored namespace — plugin-owned, reconciled
 
 
-def _is_plugin_group(group: dict) -> bool:
-    """A hook group is OURS iff every command in it points into the vendored namespace.
+def _shipped_hook_names() -> set:
+    d = os.path.join(PLUGIN, "hooks", "scripts")
+    return {n for n in os.listdir(d)} if os.path.isdir(d) else set()
 
-    User hooks that live elsewhere (any other path) are never touched. Anyone vendoring
-    their OWN scripts into .claude/hooks/scripts/ is inside the plugin-owned namespace and
-    will be reconciled — documented behavior; keep custom scripts in another directory.
+
+def _previously_written_hook_names(previous) -> set:
+    return {rel.split("/")[-1] for rel in (previous or []) if "/.claude/hooks/scripts/" in "/" + rel}
+
+
+def _is_plugin_group(group: dict, owned: set = None) -> bool:
+    """A hook group is OURS iff every command in it points into the vendored namespace AND names
+    a script the playbook ships now or wrote before (the previous install manifest).
+
+    v1.52.3: until 2026-09-09 the namespace alone decided, and a downstream repo's OWN Stop hook
+    living in .claude/hooks/scripts/ was dropped by two refreshes in one day — "documented
+    behaviour" was the wrong verdict for a foot-gun that fires on the first real user. A script we
+    never shipped and never wrote is the user's, wherever it sits. With no manifest (a tree
+    vendored before manifests existed) ownership falls back to the namespace, as before.
     """
     hooks = group.get("hooks", [])
-    return bool(hooks) and all(_PLUGIN_NS in (h.get("command") or "") for h in hooks)
+    if not hooks or not all(_PLUGIN_NS in (h.get("command") or "") for h in hooks):
+        return False
+    if owned is None:
+        return True
+    return all((h.get("command") or "").split(_PLUGIN_NS, 1)[1].split('"')[0].split(" ")[0] in owned
+               for h in hooks)
 
 
-def _merge_hooks(claude_dir: str) -> int:
+def _merge_hooks(claude_dir: str, previous=None, mode: str = "merged") -> int:
     """RECONCILE the plugin's hooks into <repo>/.claude/settings.json.
 
-    Plugin-namespace groups are pruned then re-added from the current hooks.json, so a hook
-    the plugin removed or renamed disappears downstream instead of accumulating as drift.
+    Plugin-OWNED groups (see _is_plugin_group) are pruned then, in mode "merged", re-added from the
+    current hooks.json, so a hook the plugin removed or renamed disappears downstream instead of
+    accumulating as drift. Mode "none" (--no-hooks, v1.52.3) prunes ours and adds NOTHING — for a
+    repo that runs the playbook as a user-scope plugin and must not register the guards twice.
     Non-plugin groups are preserved untouched. Idempotent.
     """
     plugin_hooks_path = os.path.join(PLUGIN, "hooks", "hooks.json")
@@ -143,17 +166,20 @@ def _merge_hooks(claude_dir: str) -> int:
             settings = json.load(fh)
     existing = settings.setdefault("hooks", {})
 
-    # 1) prune every plugin-namespace group from every event bucket (stale or current)
+    owned = None
+    if previous:
+        owned = _shipped_hook_names() | _previously_written_hook_names(previous)
+    # 1) prune every plugin-OWNED group from every event bucket (stale or current)
     for event in list(existing):
-        kept = [g for g in existing[event] if not _is_plugin_group(g)]
+        kept = [g for g in existing[event] if not _is_plugin_group(g, owned)]
         if kept:
             existing[event] = kept
         else:
             del existing[event]
 
-    # 2) add the CURRENT plugin groups
+    # 2) add the CURRENT plugin groups (unless the repo runs them as a plugin: mode "none")
     added = 0
-    for event, groups in plugin_hooks.items():
+    for event, groups in (plugin_hooks.items() if mode != "none" else []):
         bucket = existing.setdefault(event, [])
         for group in groups:
             bucket.append(group)
@@ -335,6 +361,27 @@ def doctor(target: str) -> int:
     # v1.52.0 D8: the scoped mutation runner REFUSES without a scope mapping, and the refusal
     # is otherwise the only place that says so — the doctor is the health surface.
     scopes_path = os.path.join(target, ".tdd-playbook", "mutation-scopes.json")
+    # v1.52.3: the recorded hooks mode, and registrations whose script no longer exists
+    print("vendored hooks: {}".format("none (--no-hooks: guards run as a user-scope plugin)"
+                                     if _previous_hooks_mode(target) == "none" else "merged into .claude/settings.json"))
+    sp = os.path.join(target, ".claude", "settings.json")
+    if os.path.isfile(sp):
+        try:
+            with open(sp) as fh:
+                hooks = json.load(fh).get("hooks", {}) or {}
+        except ValueError:
+            hooks = {}
+        for event, groups in hooks.items():
+            for g in groups or []:
+                for h in g.get("hooks", []) or []:
+                    cmd = h.get("command") or ""
+                    m = re.search(r'\$CLAUDE_PROJECT_DIR/([^"\s]+)', cmd)
+                    rel = m.group(1) if m else None
+                    if rel and not os.path.exists(os.path.join(target, *rel.split("/"))):
+                        print(f"DEAD HOOK REGISTRATION: {event} → {rel} — the script does not exist, so the hook "
+                              "fires nothing and warns nobody; remove the entry or restore the file")
+                        rc = 1
+
     # v1.52.2: the runner must run THROUGH the repo's environment (mutmut + the project's deps in
     # one interpreter); a repo with a .venv is told so in the command it will paste
     venv_py = os.path.join(target, ".venv", "bin", "python")
@@ -499,8 +546,36 @@ def _write_install_manifest(target, host, previous=()):
         _prune_upstream_removals(target, host, previous)
 
 
-def _install_claude(target: str) -> None:
+def _previous_hooks_mode(target) -> str:
+    path = os.path.join(target, ".claude", ".tdd-playbook-manifest.json")
+    try:
+        with open(path) as fh:
+            return json.load(fh).get("hooks_mode") or "merged"
+    except (OSError, ValueError):
+        return "merged"
+
+
+def _record_hooks_mode(target, mode: str) -> None:
+    """Persist --no-hooks in the manifest so a later plain refresh honours it; the key is absent
+    in the default mode, keeping the install→uninstall→install round trip byte-identical."""
+    path = os.path.join(target, ".claude", ".tdd-playbook-manifest.json")
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return
+    if mode == "none":
+        data["hooks_mode"] = "none"
+    else:
+        data.pop("hooks_mode", None)
+    with open(path, "w") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+
+
+def _install_claude(target: str, hooks_mode: str = None) -> None:
     previous = _previous_manifest(target, "claude")
+    mode = hooks_mode or _previous_hooks_mode(target)
     claude_dir = os.path.join(target, ".claude")
     os.makedirs(claude_dir, exist_ok=True)
     total = 0
@@ -508,15 +583,20 @@ def _install_claude(target: str) -> None:
         src = os.path.join(PLUGIN, src_rel)
         if os.path.isdir(src):
             total += _copy_tree(src, os.path.join(claude_dir, dest_rel))
-    hooks_added = _merge_hooks(claude_dir)
+    hooks_added = _merge_hooks(claude_dir, previous, mode)
     _merge_claude_gitignore(claude_dir)
     _remove_legacy_collectible(target)
     _write_install_manifest(target, "claude", previous)
+    _record_hooks_mode(target, mode)
     with open(os.path.join(target, _STAMP_REL), "w") as fh:
         fh.write(_canonical_version() + "\n")
     print(f"Vendored {total} file(s) into {claude_dir}")
-    print(f"Merged {hooks_added} hook group(s) into .claude/settings.json "
-          f"(removed any marketplace/enabledPlugins block)")
+    if mode == "none":
+        print("Merged NO hook groups (--no-hooks: this repo runs the playbook's guards as a user-scope "
+              "plugin; recorded in the manifest, so later refreshes keep it — pass --hooks to change)")
+    else:
+        print(f"Merged {hooks_added} hook group(s) into .claude/settings.json "
+              f"(removed any marketplace/enabledPlugins block)")
 
 
 def _install_codex(target: str) -> None:
@@ -547,6 +627,10 @@ def main(argv=None) -> int:
     if argv and argv[0] == "--doctor":
         target = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
         return doctor(target)
+    hooks_mode = None
+    while argv[:1] in (["--no-hooks"], ["--hooks"]):
+        hooks_mode = "none" if argv[0] == "--no-hooks" else "merged"
+        argv = argv[1:]
     host = "claude"
     if argv[:1] == ["--host"]:
         if len(argv) < 2 or argv[1] not in ("claude", "codex", "all"):
@@ -566,7 +650,7 @@ def main(argv=None) -> int:
         return 2
 
     if host in ("claude", "all"):
-        _install_claude(target)
+        _install_claude(target, hooks_mode)
     if host in ("codex", "all"):
         _install_codex(target)
     print("\nNext:")
