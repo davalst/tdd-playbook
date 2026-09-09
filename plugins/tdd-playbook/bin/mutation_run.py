@@ -433,6 +433,191 @@ def collect_selection(cwd, tests, add_args, python=None):
     return n, None
 
 
+class NarrowReport:
+    def __init__(self, config_file, notes, real_sha256, copy_sha256):
+        self.config_file = config_file; self.notes = list(notes)
+        self.real_sha256 = real_sha256; self.copy_sha256 = copy_sha256
+
+
+_MIGRATION_HINT = (
+    "Migration: put each rewritten key on ONE line — setup.cfg: `only_mutate=<path>` per line under "
+    "[mutmut]; pyproject.toml: `only_mutate = [\"a.py\", \"b/*\"]` on one line under [tool.mutmut]. "
+    "Unsupported shapes this wrapper refuses rather than reformats: multi-line arrays, inline "
+    "tables, comment-carrying arrays, and the legacy `paths_to_mutate` + `tests_dir` LIST shape "
+    "(both keys are deprecated upstream; `tests_dir` is appended to the test selection by mutmut "
+    "and must not survive in a narrowed copy)."
+)
+
+
+def _sha256_file(path):
+    import hashlib
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+def _rewrite_setup_cfg(text, sources, tests):
+    """Line-anchored rewrite of the [mutmut] section: set only_mutate and
+    pytest_add_cli_args_test_selection (multi-line values, one entry per continuation line —
+    the form mutmut's setup_cfg_conf splits on '\\n'), drop tests_dir, leave everything else."""
+    lines = text.splitlines()
+    out, notes = [], []
+    in_section = False
+    skipping = False
+    replaced = set()
+    def block(key, values):
+        return [key + "="] + ["    " + v for v in values] if len(values) > 1 else [key + "=" + values[0]]
+    for ln in lines:
+        stripped = ln.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if in_section:
+                # leaving [mutmut]: insert any keys we never saw
+                for key, vals in (("only_mutate", sources), ("pytest_add_cli_args_test_selection", tests)):
+                    if key not in replaced:
+                        out.extend(block(key, vals)); replaced.add(key); notes.append("inserted " + key)
+            in_section = (stripped == "[mutmut]")
+            skipping = False
+            out.append(ln); continue
+        if in_section:
+            if ln[:1] in (" ", "\t") and skipping:
+                continue                      # continuation line of a key we are replacing/dropping
+            skipping = False
+            key = stripped.split("=", 1)[0].strip() if "=" in stripped else None
+            if key in ("only_mutate", "pytest_add_cli_args_test_selection"):
+                vals = sources if key == "only_mutate" else tests
+                out.extend(block(key, vals)); replaced.add(key); skipping = True
+                notes.append("replaced " + key); continue
+            if key == "tests_dir":
+                skipping = True; notes.append("neutralised legacy tests_dir (mutmut appends it to the selection)"); continue
+            if key == "paths_to_mutate":
+                notes.append("left deprecated paths_to_mutate as the source root (only_mutate narrows)")
+        out.append(ln)
+    if in_section:
+        for key, vals in (("only_mutate", sources), ("pytest_add_cli_args_test_selection", tests)):
+            if key not in replaced:
+                out.extend(block(key, vals)); replaced.add(key); notes.append("inserted " + key)
+    return "\n".join(out) + "\n", notes
+
+
+def _rewrite_pyproject(text, sources, tests):
+    """Line-anchored rewrite inside [tool.mutmut] only. Refuses (ConfigProblem) any shape it
+    cannot anchor on a single line: a multi-line array or an inline table for a key it must
+    touch, or a table header it cannot find. Never a general TOML writer (Q4)."""
+    lines = text.splitlines()
+    out, notes = [], []
+    in_table = False
+    replaced = set()
+    def one_line(key, values):
+        return key + " = [" + ", ".join(json.dumps(v) for v in values) + "]"
+    i = 0
+    while i < len(lines):
+        ln = lines[i]; stripped = ln.strip()
+        if stripped.startswith("[") and stripped.endswith("]") and not stripped.startswith("[["):
+            if in_table:
+                for key, vals in (("only_mutate", sources), ("pytest_add_cli_args_test_selection", tests)):
+                    if key not in replaced:
+                        out.append(one_line(key, vals)); replaced.add(key); notes.append("inserted " + key)
+            in_table = stripped == "[tool.mutmut]"
+            out.append(ln); i += 1; continue
+        if in_table and "=" in stripped and not stripped.startswith("#"):
+            key = stripped.split("=", 1)[0].strip()
+            rhs = stripped.split("=", 1)[1].strip()
+            if key in ("only_mutate", "pytest_add_cli_args_test_selection", "tests_dir"):
+                complete = (rhs.startswith("[") and rhs.rstrip().endswith("]") and "#" not in rhs) or rhs.startswith('"')
+                if not complete or rhs.startswith("{"):
+                    raise ConfigProblem("cannot anchor `{}` in pyproject.toml [tool.mutmut]: its value is not a "
+                                        "single-line array (multi-line, inline-table or comment-carrying). "
+                                        "{}".format(key, _MIGRATION_HINT))
+                if key == "tests_dir":
+                    notes.append("neutralised legacy tests_dir (mutmut appends it to the selection)"); i += 1; continue
+                vals = sources if key == "only_mutate" else tests
+                out.append(one_line(key, vals)); replaced.add(key); notes.append("replaced " + key); i += 1; continue
+            if key == "paths_to_mutate":
+                notes.append("left deprecated paths_to_mutate as the source root (only_mutate narrows)")
+        out.append(ln); i += 1
+    if in_table:
+        for key, vals in (("only_mutate", sources), ("pytest_add_cli_args_test_selection", tests)):
+            if key not in replaced:
+                out.append(one_line(key, vals)); replaced.add(key); notes.append("inserted " + key)
+    if not any(l.strip() == "[tool.mutmut]" for l in lines):
+        raise ConfigProblem("pyproject.toml has no [tool.mutmut] table header to anchor on. " + _MIGRATION_HINT)
+    return "\n".join(out) + "\n", notes
+
+
+def narrow_config(copy_dir, cfg, scope, real_dir=None, python=None):
+    """Rewrite the mutmut config IN THE COPY (`copy_dir`) so mutmut mutates only `scope.sources`
+    and its stats pass runs only `scope.tests`; then READ BACK through mutmut and assert both
+    took and legacy tests_dir no longer widens the selection. The real file (in `real_dir`, or
+    inferred as the copy's own pre-rewrite content) is never written; its sha256 is recorded."""
+    path = os.path.join(copy_dir, cfg.config_file)
+    if not os.path.isfile(path):
+        raise ConfigProblem("{} is missing in the copy at {} — the copy does not mirror the repo".format(cfg.config_file, copy_dir))
+    before_sha = _sha256_file(path)
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    if cfg.config_file == "setup.cfg":
+        new_text, notes = _rewrite_setup_cfg(text, scope.sources, scope.tests)
+    else:
+        new_text, notes = _rewrite_pyproject(text, scope.sources, scope.tests)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(new_text)
+    after = effective_mutmut_config(copy_dir, python=python)
+    if after.only_mutate != list(scope.sources) or after.selection != list(scope.tests) or after.legacy_tests_dir:
+        raise ConfigProblem("read-back through mutmut does not match the narrowed scope: only_mutate={} "
+                            "selection={} legacy_tests_dir={} (wanted {} / {} / []). The rewrite did not "
+                            "take; refusing to run over an unscoped tree. {}".format(
+                                after.only_mutate, after.selection, after.legacy_tests_dir,
+                                scope.sources, scope.tests, _MIGRATION_HINT))
+    if after.do_not_mutate != cfg.do_not_mutate or after.pytest_add_cli_args != cfg.pytest_add_cli_args:
+        raise ConfigProblem("the rewrite disturbed keys it must preserve (do_not_mutate / pytest_add_cli_args)")
+    real_sha = _sha256_file(os.path.join(real_dir, cfg.config_file)) if real_dir else before_sha
+    if real_dir and real_sha != before_sha:
+        raise ConfigProblem("the copy's config did not match the real one before rewriting — refusing")
+    notes.append("read back through mutmut: OK")
+    return NarrowReport(cfg.config_file, notes, real_sha, _sha256_file(path))
+
+
+def forbidden_add_args(add_args):
+    """`pytest_add_cli_args` is replayed into the baseline; a non-executing arg there collapses it."""
+    for part in add_args or []:
+        if part in _NON_EXECUTING:
+            return ("refusing `{}` inside mutmut's pytest_add_cli_args: it collects without executing, so "
+                    "the baseline would prove nothing and the measured time would make any scope look "
+                    "affordable".format(part))
+    return None
+
+
+def baseline_argv(cfg, scope, python=None):
+    """The wrapper's baseline = python -m pytest + mutmut's pytest_add_cli_args + the mapped
+    selectors: the SAME selection and the SAME non-selection arguments mutmut will use (Q2)."""
+    return [python or sys.executable, "-m", "pytest"] + list(cfg.pytest_add_cli_args) + list(scope.tests)
+
+
+def baseline_share(seconds, max_minutes):
+    return float(seconds) / float(max_minutes * 60)
+
+
+def baseline_dominates(seconds, max_minutes):
+    """SS4b: a baseline over a fifth of the budget is the GATE's misconfiguration (selection too
+    wide), not the module's size — named as such, before the projection decides affordability."""
+    if baseline_share(seconds, max_minutes) > 0.2:
+        return ("BASELINE DOMINATES: {:.0f}s of a {}-minute budget goes to the baseline — the GATE is "
+                "misconfigured (the scope's test selection is too wide), not the module; narrow the "
+                "mapping's tests, do not blame the module and do not defer the measurement".format(
+                    seconds, max_minutes))
+    return None
+
+
+def suite_args_migration(value):
+    """Q2 (v1.52.0): --suite-args is DEPRECATED outright; this release it only emits this."""
+    if not (value or "").strip():
+        return None
+    return ("--suite-args is deprecated and no longer used ({!r} ignored). Test SELECTION comes from "
+            "the scope mapping (.tdd-playbook/mutation-scopes.json, `tests` per scope) and non-selection "
+            "pytest options come from mutmut's own `pytest_add_cli_args` (which the baseline replays), "
+            "so the wrapper and mutmut cannot run different pytest configurations. The flag is removed "
+            "in the next release.".format(value))
+
+
 def mutmut_argv(max_children=None):
     """The REAL mutmut 3.x contract, verified against the installed binary: `mutmut run`, with
     scope and runner coming from config. Accepted flags are --all/--max-children/--rootdir/
@@ -453,7 +638,9 @@ def main(argv=None, run=None, config_reader=None):
                      "SKILL §4's collection and green-baseline checks; roster integrity and "
                      "tracer attribution remain the operator's."))
     parser.add_argument("--scope", required=True)
-    parser.add_argument("--suite-args", default="")
+    parser.add_argument("--suite-args", default="",
+                        help="DEPRECATED (v1.52.0): selection comes from the scope mapping, options from "
+                             "mutmut's pytest_add_cli_args; any value is refused with the migration note")
     parser.add_argument("--max-minutes", type=int, default=None)
     parser.add_argument("--baseline-timeout", type=int, default=None,
                         help="bound for the CHEAP baseline (default: a fifth of --max-minutes)")
@@ -464,22 +651,37 @@ def main(argv=None, run=None, config_reader=None):
     parser.add_argument("--dry-run", action="store_true", help="preflight only")
     args = parser.parse_args(argv)
 
-    problem = forbidden_composition(args.suite_args)
+    problem = suite_args_migration(args.suite_args)
     if problem:
-        print("mutation_run: " + problem, file=sys.stderr)
+        print("mutation_run: REFUSED — " + problem, file=sys.stderr)
         return 1
     if args.max_minutes is None:
         print("mutation_run: --max-minutes is REQUIRED. An unbounded pass is how a run times "
               "out at 1800s having measured nothing.", file=sys.stderr)
         return 1
 
+    try:
+        cfg = (config_reader or effective_mutmut_config)(os.getcwd())
+    except ConfigProblem as exc:
+        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
+        return 1
+    problem = forbidden_add_args(cfg.pytest_add_cli_args)
+    if problem:
+        print("mutation_run: REFUSED — " + problem, file=sys.stderr)
+        return 1
     bound = args.baseline_timeout or max(60, (args.max_minutes * 60) // 5)
-    suite_argv = [sys.executable, "-m", "pytest"] + shlex.split(args.suite_args)
+    # Phase 3 (v1.52.0): the baseline replays mutmut's pytest_add_cli_args; the mapped SELECTION
+    # joins in Phase 4 together with the disposable worktree.
+    suite_argv = [sys.executable, "-m", "pytest"] + list(cfg.pytest_add_cli_args)
     ok, why, seconds, collected = baseline(suite_argv, run=run, timeout=bound)
     if not ok:
         print(f"mutation_run: REFUSED — {why}", file=sys.stderr)
         return 1
-    print(f"mutation_run: baseline GREEN — {collected} collected, {seconds:.1f}s measured")
+    print(f"mutation_run: baseline GREEN — {collected} collected, {seconds:.1f}s measured "
+          f"(share of budget {baseline_share(seconds, args.max_minutes):.0%})")
+    dominates = baseline_dominates(seconds, args.max_minutes)
+    if dominates:
+        print("mutation_run: " + dominates)
 
     if args.expected_mutants is not None:
         proj = projection_problem(args.expected_mutants, seconds, args.max_minutes, args.factor)
@@ -492,11 +694,6 @@ def main(argv=None, run=None, config_reader=None):
     if args.dry_run:
         return 0
 
-    try:
-        cfg = (config_reader or effective_mutmut_config)(os.getcwd())
-    except ConfigProblem as exc:
-        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
-        return 1
     roots = [os.path.realpath(sp) for sp in cfg.source_paths]
     asked = os.path.realpath(args.scope)
     if not any(asked == r or asked.startswith(r + os.sep) for r in roots):

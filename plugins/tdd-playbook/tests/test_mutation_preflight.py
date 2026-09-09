@@ -169,13 +169,19 @@ def test_cli_is_the_real_seam():
 
     # CORRECTED after review: exit==1 alone also matches a crash/ImportError, so this asserted
     # the script had failed, not that it had REFUSED. Assert the message.
-    proc = subprocess.run([sys.executable, BIN, "--scope", "x", "--suite-args",
-                           "tests/ --collect-only"], capture_output=True, text=True, timeout=30)
-    check("CLI refuses non-executing args, by MESSAGE not just exit code",
-          proc.returncode == 1 and "collects without executing" in proc.stderr,
-          (proc.returncode, proc.stderr[:160]))
+    # v1.52.0 (Q2): --suite-args is deprecated; the non-executing-arg refusal now guards mutmut's
+    # own pytest_add_cli_args, which the baseline replays. Driven in-process with an injected
+    # reader (the reader seam has its own real-mutmut test) and a recording run hook.
+    m = load()
+    seen = []
+    rec = lambda argv, **kw: (seen.append(list(argv)), subprocess.CompletedProcess(argv, 0, "collected 5 items\n5 passed in 1s\n", ""))[1]
+    bad_cfg = lambda cwd: m.EffectiveConfig(config_file="setup.cfg", source_paths=["app/"],
+                                             pytest_add_cli_args=["--collect-only"])
+    rc = m.main(["--scope", "app/", "--max-minutes", "5"], run=rec, config_reader=bad_cfg)
+    check("non-executing args inside pytest_add_cli_args are refused BEFORE any baseline runs",
+          rc == 1 and seen == [], (rc, seen))
 
-    proc = subprocess.run([sys.executable, BIN, "--scope", "x", "--suite-args", "tests/"],
+    proc = subprocess.run([sys.executable, BIN, "--scope", "x"],
                           capture_output=True, text=True, timeout=30)
     check("CLI REQUIRES an explicit budget rather than inventing one",
           proc.returncode != 0 and "max-minutes" in (proc.stdout + proc.stderr),
@@ -216,7 +222,7 @@ def test_main_actually_invokes_mutmut():
     cwd = os.getcwd()
     try:
         os.chdir(root)
-        rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec,
+        rc = m.main(["--scope", "app/", "--max-minutes", "30"], run=rec,
                     config_reader=reader)
         check("main() exits 0 on a clean pass", rc == 0, rc)
         check("main() ACTUALLY INVOKES mutmut (not a print)",
@@ -228,14 +234,14 @@ def test_main_actually_invokes_mutmut():
         # a scope that disagrees with mutmut's config is refused: mutating a different tree
         # than the one asked about is a score about the wrong code
         seen.clear()
-        rc = m.main(["--scope", "other/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec,
+        rc = m.main(["--scope", "other/", "--max-minutes", "30"], run=rec,
                     config_reader=reader)
         check("PLANTED: --scope disagreeing with mutmut's config is REFUSED", rc == 1, rc)
         check("...and mutmut was never reached", not any(a and a[0] == "mutmut" for a in seen), seen)
 
         # the projection is WIRED, not merely unit-tested
         seen.clear()
-        rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "1",
+        rc = m.main(["--scope", "app/", "--max-minutes", "1",
                      "--expected-mutants", "5000", "--factor", "1000000"], run=rec,
                     config_reader=reader)
         check("an unaffordable projection REFUSES before invoking mutmut", rc == 1, rc)
