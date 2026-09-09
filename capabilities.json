@@ -1169,8 +1169,8 @@
           "expires": "2026-11-15"
         },
         {
-          "id": "gate-digest-cannot-name-a-flipped-check",
-          "what": "ONE UNEXPLAINED RED, RECORDED NOT RETRIED-INTO-GREEN (2026-09-09, v1.51.0 release). Local blessed-gate run 18d8943b: test_hooks exit 1 after 29.9s; the same suite passed in the run before (gate3), the run after (ce1c5942, 310 checks, 13.2s), three direct loops (13-14s each) and a mirror of the gate's exact subprocess.run shape. The failing output had the SAME 373 lines as a passing run, so no traceback: exactly one check flipped, in a run twice its normal duration. WHICH check is unknowable after the fact because gate_runner's RunStore persists only counts (225 bytes) - AND its digest counts lines that START with 'FAIL', while every plugin suite prints '  FAIL - <name>' indented, so fail_signals read 0 on a real failure (verified: gate_runner.py:47 vs test_hooks.py check()). The diagnostic cannot even count the failures of the suites it was built for. HYPOTHESIS, unverified: capture.py._git_info's 5s git timeouts degrade to (None, None) under load via a bare except, flipping any check that asserts repo/sha in a capture event. FALSIFY by running test_hooks under induced CPU/IO load and reading the flipped check name. DONE = (a) the digest persists the NAMES of failed checks (suite-authored strings after the '  FAIL - ' marker, not arbitrary subprocess text, so the no-text-on-disk property survives) and matches the indented marker, red-first against a planted failing suite; AND (b) the flake is either reproduced-and-fixed or 30 days of gate runs show no repeat, stated in the entry. A gate that is red once and cannot say why is the honor-system seam SS4a exists to close.",
+          "id": "unexplained-hooks-red-2026-09-09",
+          "what": "OBSERVATION, NOT A DEFECT YET (opened 2026-09-09; the digest defect it was bundled with in v1.51.0 is FIXED in v1.51.1 and closed). DURABLE FACTS: local gate run 18d8943b recorded test_hooks exit 1, 29.9s, 373 output lines, on tree f631563+dirty. The same suite passed in the gate runs before and after (ce1c5942: 310 checks, 13.2s; the final 1.51.0 run: 12.7s), three direct loops (13-14s) and a mirror of the gate's exact subprocess.run shape. INFERENCES, labelled as such: a passing run also prints 373 lines, so PROBABLY no traceback and PROBABLY one check flipped - the run's text was not preserved (pre-fix digest), so neither is proven. HYPOTHESIS, unverified: capture.py._git_info's 5s git timeouts degrade to (None, None) under load via a bare except, flipping a check that asserts repo/sha in a capture event; the 2x duration is consistent with it and proves nothing. FALSIFY: run test_hooks under induced CPU/IO load; with v1.51.1 the digest now NAMES a flipped check, so the next occurrence is diagnosable. DONE = reproduced and fixed (its own red test), OR 30 days of gate runs with no repeat, stated here on closure. NOT bundled with anything else on purpose.",
           "owner": "david",
           "expires": "2026-10-15"
         }
@@ -1572,14 +1572,14 @@
     },
     {
       "id": "mutation-preflight",
-      "summary": "Runs a scoped mutation pass with its preflight ON the execution path: refuses a red baseline, zero-or-unknown collection, and an unaffordable projection before any mutant exists.",
+      "summary": "PREFLIGHT WRAPPER around mutmut: refuses a red baseline, zero-or-unknown collection, an unaffordable projection, and a --scope that is not within the CONFIGURED source scope - before any mutant exists. It does NOT narrow the run to the requested scope: mutmut mutates every configured source path and runs the whole configured test directory, and the baseline runs BEFORE the scope check. SS4b-scoped (mutants AND baseline narrowed per run, in a disposable worktree) is what downstream gates must build on top until the debt below is paid or assigned.",
       "user_facing": false,
       "surfaces": [
         "local"
       ],
       "activation": {
         "default": "on",
-        "switch": "python3 <plugin>/bin/mutation_run.py --scope <module> --suite-args \"<pytest args>\" --max-minutes N; it IS the documented path for /mutate step 2 (b)+(c), so there is nothing to turn on"
+        "switch": "python3 <plugin>/bin/mutation_run.py --scope <module> --suite-args \"<pytest args>\" --max-minutes N; it IS the documented path for /mutate step 2 (b)+(c). What it does not do (SS4b narrowing) is stated in the summary, not implied by the word 'scoped'."
       },
       "wired_by": [
         "plugins/tdd-playbook/commands/mutate.md",
@@ -1600,7 +1600,7 @@
         },
         {
           "id": "scoped-baseline-and-partial-measurement",
-          "what": "SS4b DOGFOOD GAP, stated not claimed (opened 2026-09-09, v1.51.0). Doctrine now says a mutmut gate rewrites the DISPOSABLE worktree's config so both halves are scoped — source paths = requested modules, test directory = the tests that reach them — and that a timeout prints its PARTIAL measurement before any refusal. bin/mutation_run.py does neither: mutmut_config_scope READS setup.cfg and REFUSES a --scope mismatch (honest, but the fixed cost SS4b names is paid in full), and run_bounded's timeout path prints UNMEASURED and returns 1 with no partial. The downstream origin repo has both (its commit 2fb23811). DONE = (a) mutation_run.py narrows a copied config per run in a worktree and leaves the original untouched, red-first against a planted unscoped config, AND prints killed/survived-so-far on timeout; or (b) a recorded decision that the playbook's runner stays a preflight-only wrapper and downstream gates own scoping, with SS4b's worked-example line rewritten to say so.",
+          "what": "SS4b DOGFOOD GAP - A DESIGN DECISION, NOT A BACKLOG ITEM (opened 2026-09-09 v1.51.0; reframed v1.51.1 after a Codex review). The wording is now narrowed (summary + docstring say what the wrapper does NOT do), so the repo no longer claims SS4b compliance. What remains is an unmade decision with two legitimate outcomes, and the questions a plan must answer before implementing: (1) how the baseline and the mutmut invocation BOTH run inside the disposable worktree; (2) whether --scope/--suite-args become the source/test mapping or new flags are needed, and who supplies the test-to-module mapping the playbook cannot infer generically; (3) worktree creation, cleanup, dirty state, and concurrent runs; (4) how a partial result on timeout distinguishes completed / still-running / unmeasured mutants (killed+survived counts alone violate the accounting rule); (5) the downstream origin's implementation (its commit 2fb23811) as prior art, with what generalises and what is repo-specific. DONE = (a) a SS0 plan in docs/plans/gated/ answering 1-5, implemented red-first in its own release; or (b) a recorded decision that the wrapper stays preflight-only and downstream gates own worktree scoping, with SS4b's worked-example line rewritten to say so. Priority argument (Codex, accepted): this gap undermines adoption of the release's central doctrine, so it outranks diagnostic polish; that is why it is a decision surfaced to the owner rather than a deferral.",
           "owner": "david",
           "expires": "2026-10-31"
         }

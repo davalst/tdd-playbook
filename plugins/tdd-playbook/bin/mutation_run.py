@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""mutation_run — runs a scoped mutation pass with its preflight ON THE EXECUTION PATH.
+"""mutation_run — runs a mutation pass with its preflight ON THE EXECUTION PATH.
+
+NOT §4b-SCOPED (stated 2026-09-09, v1.51.1): --scope is CHECKED against the configured source
+scope, never used to NARROW it — mutmut mutates every configured source path and runs the whole
+configured test directory, and the baseline runs before the scope check. Narrowing both halves
+per run in a disposable worktree is the downstream gate's job until the `mutation-preflight`
+debt in capabilities.json is paid or assigned; the word "scoped" was removed from the summary
+so the wrapper does not claim what it does not do.
 
 SKILL §4 has required a preflight for a long time, stated in three places (§4, commands/mutate.md,
 the mutation-runner brief). In a downstream three-hour session on 2026-08-18 it was skipped anyway

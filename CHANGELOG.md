@@ -1,3 +1,35 @@
+## 1.51.1 — 2026-09-09
+
+**The gate can say why it is red, and the runner stops claiming it is scoped.** Both from a
+Codex review of the 1.51.0 debt entries (five claims, five verified here before acting).
+
+- **Gate digest FIXED (deterministic, closed).** `gate_runner.py` counted only lines starting
+  with `FAIL`; every plugin suite prints `  FAIL - <name>` indented, so a real failure was
+  persisted as `fail_signals=0`, and the console showed a hash — the redacted tail helper had
+  existed since the store was built and was never emitted. Now: indented `ok`/`FAIL` markers
+  are counted; the failure-marked lines ONLY are kept — through `redact`, truncated to 240
+  chars, at most 40 with the true total recorded — in the private 0600 store; and the console
+  prints the failed check NAMES (repo-authored literals, safe in a public CI log) with the
+  runtime detail withheld. `redact` gained URL-userinfo (`https://user:secret@host`), which
+  the store test had planted inside a FAIL line since the store existed and which passed only
+  because FAIL lines were never persisted. The compact-runner planted test's contract was
+  FLIPPED on purpose (`motivating failure` now must appear; secrets and noise still must not),
+  with the reason inline. Red at 943b677.
+- **The unexplained hooks red is its own record now** (`independent-gate-rerun`,
+  `unexplained-hooks-red-2026-09-09`, expires 2026-10-15): durable facts, inferences labelled
+  as inferences ("probably one check flipped" — the pre-fix digest kept no text, so it is not
+  proven), one hypothesis, a falsification path, and closure by reproduction or 30 clean days.
+  It was wrong to bundle it with a defect that could be fixed today.
+- **The runner no longer claims "scoped".** The capability summary, activation text and the
+  script docstring now say what `mutation_run.py` does NOT do: `--scope` is checked against the
+  configured source scope, never used to narrow it, and the baseline runs before the check.
+  Implementing §4b narrowing is a DESIGN DECISION with five named questions in the debt entry
+  (`scoped-baseline-and-partial-measurement`, 2026-10-31) and two legitimate outcomes — a
+  planned release, or assigning worktree scoping to downstream gates and saying so in §4b.
+  The Codex priority argument is accepted and recorded: this gap outranks diagnostic polish
+  because it touches adoption of the release's central doctrine; that is why it is a decision
+  surfaced to the owner rather than a deferral or an unplanned two-hour build.
+
 ## 1.51.0 — 2026-09-09
 
 **§4b — the run must be scoped to what it measures.** A new subsection, requested as a follow-up

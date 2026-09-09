@@ -262,10 +262,14 @@ def test_compact_runner_preserves_suite_directory_seam():
                      "[print('noise-%d' % i) for i in range(40)]\nsys.exit(1)\n")
         bad = subprocess.run(["sh", SHELL_GATE, d], cwd=REPO,
                              capture_output=True, text=True, timeout=30)
-        check("compact runner: planted failure propagates with redacted detail",
+        # CONTRACT FLIP 2026-09-09 (v1.51.1): the failed check NAME now reaches the console —
+        # a red stage that printed only a hash could not say why (run 18d8943b). Names are
+        # repo-authored literals; secrets and non-failure noise still never do.
+        check("compact runner: planted failure propagates, NAMED, with secrets redacted",
               bad.returncode != 0 and "FAIL test_bad" in bad.stdout and
               "failure_signals=" in bad.stdout and
-              "motivating failure" not in bad.stdout and
+              "motivating failure" in bad.stdout and
+              "noise-" not in bad.stdout and
               "top-secret" not in bad.stdout + bad.stderr and
               "console-secret" not in bad.stdout + bad.stderr,
               (bad.returncode, bad.stdout, bad.stderr))
@@ -310,6 +314,8 @@ def test_failure_digest_names_the_failed_checks():
     text = gr._failure_diagnostics(raw)
     check("console: failure diagnostics NAME the failed checks",
           "capture: sha present in event" in text and "secret-token-value" not in text, text)
+    check("console: the runtime DETAIL stays out of the console (private store only)",
+          "(None, None)" not in text and "Bearer" not in text, text)
     # the store: the same bounded, redacted lines land in the private log
     td, root = _repo()
     try:

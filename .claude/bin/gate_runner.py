@@ -27,6 +27,9 @@ _SECRET_PATTERNS = (
     re.compile(r"(?i)(authorization\s*:\s*(?:bearer|basic)\s+)[^\s]+"),
     re.compile(r"(?i)((?:api[_-]?key|token|secret|password)\s*[:=]\s*)[^\s]+"),
     re.compile(r"\b(?:sk|gh[opusr])-[A-Za-z0-9_-]{8,}\b"),
+    # URL userinfo — `https://alice:really-secret@host/` (planted in the store test since the
+    # store existed; it passed only because FAIL lines were never persisted until 2026-09-09)
+    re.compile(r"(://[^/\s:@]+:)[^@\s/]+(?=@)"),
     re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"),
 )
 
@@ -38,14 +41,32 @@ def redact(value: str) -> str:
     return out
 
 
+# Every plugin suite prints its verdict lines INDENTED ("  ok   - <name>", "  FAIL - <name>");
+# the repository-form suites print them flush-left ("PASS ...", "FAIL ..."). Until 2026-09-09 the
+# digest matched only the flush-left form, so a real failure in a plugin suite was persisted as
+# fail_signals=0 and the console showed a hash (run 18d8943b: test_hooks exit 1, cause unknowable).
+_PASS_MARK = re.compile(r"^\s*(?:PASS|ok)\b")
+_FAIL_MARK = re.compile(r"^\s*FAIL\b")
+_ERROR_MARK = re.compile(r"^\s*(?:ERROR|Traceback)\b")
+FAILED_LINES_MAX = 40      # a pathological suite cannot turn the private store into a transcript
+FAILED_LINE_CHARS = 240
+
+
 def _sanitized_diagnostic(raw: str) -> str:
-    """Persist derived counts only; arbitrary subprocess text never reaches disk."""
+    """Persist derived counts plus the FAILURE-MARKED lines only — redacted, truncated, capped.
+
+    Arbitrary subprocess text still never reaches disk: a line is persisted only when it carries
+    a failure marker, after `redact`, cut to FAILED_LINE_CHARS, at most FAILED_LINES_MAX of them,
+    with the true total recorded so a reader knows when lines were dropped."""
     lines = raw.splitlines()
+    failed = [line for line in lines if _FAIL_MARK.match(line)]
     summary = {
         "lines": len(lines),
-        "pass_signals": sum(1 for line in lines if line.startswith("PASS")),
-        "fail_signals": sum(1 for line in lines if line.startswith("FAIL")),
-        "error_signals": sum(1 for line in lines if line.startswith(("ERROR", "Traceback"))),
+        "pass_signals": sum(1 for line in lines if _PASS_MARK.match(line)),
+        "fail_signals": len(failed),
+        "error_signals": sum(1 for line in lines if _ERROR_MARK.match(line)),
+        "failed_lines_total": len(failed),
+        "failed_lines": [redact(line).strip()[:FAILED_LINE_CHARS] for line in failed[:FAILED_LINES_MAX]],
     }
     return json.dumps(summary, sort_keys=True)
 
@@ -164,11 +185,28 @@ def _tail(output: str) -> str:
     return "\n".join(lines[-TAIL_LINES:])
 
 
+def _check_name(failed_line: str) -> str:
+    """'FAIL - <name>  <detail>' -> 'FAIL - <name>'. The suites separate name from detail with
+    two spaces; a line without the separator is all name."""
+    return failed_line.split("  ", 1)[0]
+
+
 def _failure_diagnostics(output: str) -> str:
+    """What the operator sees at failure time: the counts, the hash, and the failed check NAMES
+    (the same redacted, bounded lines the store keeps) — a red stage must say why."""
     summary = json.loads(_sanitized_diagnostic(output))
-    return ("failure_signals={} error_signals={} output_sha256={}".format(
+    head = ("failure_signals={} error_signals={} output_sha256={}".format(
         summary["fail_signals"], summary["error_signals"],
         hashlib.sha256(output.encode("utf-8", "replace")).hexdigest()))
+    # Console = check NAMES only (repo-authored literals, safe in a public CI log); the runtime
+    # DETAIL after the double-space separator stays in the private store, redacted.
+    named = ["  " + _check_name(line) for line in summary["failed_lines"]]
+    if summary["failed_lines_total"] > len(summary["failed_lines"]):
+        named.append("  … {} more failure line(s) not shown".format(
+            summary["failed_lines_total"] - len(summary["failed_lines"])))
+    if not named:
+        named.append("  (no failure-marked line in the output — exit code only; read the suite directly)")
+    return "\n".join([head] + named)
 
 
 def _run(plan: gate_plan.Plan) -> int:
