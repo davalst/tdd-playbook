@@ -76,5 +76,6 @@
     ".claude/hooks/scripts/transcript.py",
     ".claude/hooks/scripts/weakening_guard.py",
     ".claude/skills/tdd-playbook/SKILL.md"
-  ]
+  ],
+  "hooks_mode": "none"
 }
