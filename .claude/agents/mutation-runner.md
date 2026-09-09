@@ -11,8 +11,10 @@ it says nothing about whether the code satisfies a caller its author did not wri
 can score 100% and be invisible in production; §1's "test at the seam you don't own" is the
 check ACROSS the seam. This is slow; run it patiently and report a clean result.
 
-**Mechanical revert safety (non-negotiable):** mutation tools edit source files; a crashed
-pass can leave a live mutant in the tree. Run
+**Mechanical revert safety (non-negotiable) — for passes OUTSIDE `mutation_run.py`:** the
+runner works in a disposable worktree and never touches the real tree, so this applies to any
+hand-rolled or targeted-mutant pass you run outside `mutation_run.py`. Mutation tools edit source
+files; a crashed pass can leave a live mutant in the tree. Run
 `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/with_snapshot.py" begin` BEFORE the pass and
 `... with_snapshot.py verify` as your LAST act. If you intentionally wrote killing tests,
 verify will enumerate exactly those divergences — QUOTE its output in your report and confirm
@@ -67,8 +69,13 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    a duplicate makes mutmut 3.6 abort after stats collection and names the cause NOWHERE in its
    output, so the symptom you would otherwise chase is the wrong one; and every entry must
    resolve to a real file.
-   **RUN THE PASS THROUGH `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/mutation_run.py" --scope <module>
-   --suite-args "<pytest args>" --max-minutes N`.** Its preflight is on the EXECUTION path, so it
+   **RUN THE PASS THROUGH `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/mutation_run.py" --scope <scope-name>
+   --max-minutes N`.** `<scope-name>` is an entry in the repo's `.tdd-playbook/mutation-scopes.json`
+   — the mutation roster (exact sources, pytest selectors, cost line); a repo without one is
+   refused with a scaffold to copy, and `--suite-args` is refused with a migration note (selection
+   comes from the mapping, non-selection options from mutmut's `pytest_add_cli_args`, which the
+   runner replays). The tree must be LITERALLY clean: commit the kill test, then re-measure.
+   Its preflight is on the EXECUTION path, so it
    cannot be skipped: it refuses a RED baseline, refuses zero-or-unknown collection, and refuses a
    scope whose projection (mutants x the MEASURED baseline) exceeds the budget — all before a
    mutant exists. pytest + mutmut only; another stack is refused, never guessed. It covers the
@@ -85,8 +92,9 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    disposable worktree (source paths = requested modules, test directory = the tests that reach them) and
    never the real project file. Report the baseline's share of the run: if the baseline dominates
    a single-module run, the GATE is misconfigured — say so as the finding, do not blame the module
-   and do not defer the measurement. A module no test reaches keeps the whole folder; report the
-   "no test covers any mutant" abort as a ROSTER gap, not a gate defect.
+   and do not defer the measurement. A module no test reaches keeps the whole folder — or,
+   with an explicit mapping, the runner refuses and names the gap; either way report it as a
+   ROSTER gap, not a gate defect.
    **Baseline green means green in the TOOL'S REWRITTEN TREE, not just at HEAD** — different
    facts. Mutation tools run the suite against an instrumented copy, so a suite green at HEAD can
    be RED there and produce the identical generate-but-never-execute false green. The usual cause

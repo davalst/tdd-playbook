@@ -735,22 +735,39 @@ by work unrelated to its subject will be deferred, and §4 says deferral is not 
   two-tier policy); a run whose time goes to unrelated tests is fixed in the gate, once, for
   every future run.
 - **A module no test reaches keeps the whole test folder in the baseline — and the gate SAYS
-  SO.** Narrowing to zero tests would be the vacuity guard's own failure (§4a). Instead the gate
-  reports that it could not narrow, so the tool's "no test covers any mutant" abort reads as the
-  roster gap it is — a module on the roster with nothing exercising it — rather than as a gate
-  defect. Fixing that gap is writing tests, not tuning the gate.
+  SO — or, with an explicit mapping, refuses and names the roster gap.** Narrowing to zero
+  tests would be the vacuity guard's own failure (§4a). Where the tool picks tests itself, the
+  gate reports that it could not narrow, so the tool's "no test covers any mutant" abort reads
+  as the roster gap it is — a module on the roster with nothing exercising it — rather than as
+  a gate defect. Where the repo has an explicit, authoritative scope mapping (below), falling
+  back to the whole suite would silently UN-scope the run, so the gate refuses and names the gap
+  instead (approved amendment, 2026-09-09). Either way, fixing the gap is writing tests, not
+  tuning the gate.
 - **The existing rules stand beside this one, not under it:** the timeout is
   sized from the measured rate and re-sized whenever the baseline changes (§4a); a timeout prints its
   partial measurement before any refusal, because a killed run that measured half the mutants has
   evidence and a bare UNMEASURED throws it away; one scoped run per phase; never a
   programme-end sweep on the development path; and the score is NON-DEFERRABLE — a phase is not
   done until its own scoped score is recorded (§4).
-- **Worked example.** The origin repo's gate rewrites its worktree's mutmut config per run
-  (Cheliped commit `2fb23811`: `scope_mutmut_config` in `cheliped/verify/mutation_runner.py`,
-  pinned by `tests/test_mutation_gate_scoped_warmup.py`). This playbook's own
-  `bin/mutation_run.py` reads the config and REFUSES a scope mismatch; it does not yet narrow
-  the config or print a partial measurement on timeout — recorded as dated debt on the
-  `mutation-preflight` capability rather than claimed.
+- **Reference implementation — `bin/mutation_run.py` is the reference implementation of this
+  section (v1.52.0).** `--scope <name>` selects an entry in the repo-owned
+  `.tdd-playbook/mutation-scopes.json` — the machine-readable mutation roster: exact sources,
+  pytest selectors, and the §4 cost line per entry. The runner requires a LITERALLY clean tree
+  (any dirty tracked or non-ignored untracked file refuses: commit the kill test, then
+  re-measure), takes the repository's advisory lock, creates one detached worktree at HEAD under
+  the git common dir, asks mutmut for its effective config and rewrites the COPY there
+  (`only_mutate` = the scope's sources, `pytest_add_cli_args_test_selection` = its tests, legacy
+  `tests_dir` neutralised, `pytest_add_cli_args` preserved and REPLAYED into the wrapper's own
+  baseline), reads it back through mutmut, runs the baseline and then mutmut inside that
+  worktree under an absolute deadline (SIGINT 30s before it, SIGKILL at it), accounts for every
+  mutant from `mutmut results` with the CI export's total as the denominator (decided ·
+  terminal-unscored · unfinished; any disagreement refuses), writes a run record BEFORE cleanup,
+  and removes exactly that worktree — a failed cleanup prints `RETAINED: <path>` and is never
+  auto-reaped. Selection never comes from a free-form argument (`--suite-args` is refused with a
+  migration note), so the wrapper and mutmut cannot run different pytest configurations. The
+  origin repo's earlier gate (Cheliped commit `2fb23811`, rewriting the now-deprecated
+  `paths_to_mutate`/`tests_dir`) is the prior art; what generalised is the orchestration, what
+  stayed downstream is that repo's test-discovery conventions.
 
 ## 5. UX journeys — `@pytest.mark.ux` — interface-agnostic
 A UX journey drives the REAL interface a user touches and asserts the user-visible outcome + the persisted
@@ -1279,7 +1296,8 @@ manual policy means he could forget and lose the backstop. So, proactively and w
   skip the checkpoint when another session or a subagent holds the tree mid-operation; exclude tool
   transients (mutation-tool source copies, generated `mutants/` dirs, lockfile churn); tag wip
   commits with a session id so concurrent sessions stop absorbing each other's work. Better still,
-  run slow tree-mutating passes (mutation testing) in an isolated worktree so their transients never
+  run slow tree-mutating passes (mutation testing) in an isolated worktree (`mutation_run.py` does this
+  by construction — one detached worktree per run) so their transients never
   touch the main tree at all. A REVERT-BASED targeted-mutant script (one that `git checkout`s to
   restore source) gates on `with_snapshot.py preflight` — it refuses over uncommitted work instead
   of checkout-clobbering it (§4).

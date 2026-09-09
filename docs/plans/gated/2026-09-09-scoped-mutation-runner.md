@@ -267,7 +267,11 @@ D6. Standing prompt step 3b.
 | shared artifacts | D2/D2b/D6 | `reset_plan --shared` | rows appear |
 | brief vocabulary | D7 | calibration oracle (unchanged) | ledger row; regex untouched |
 
-## Tripwire deliverable list (filled at completion)
+## Tripwire deliverable list — FILLED AT COMPLETION (2026-09-09)
+Tripwire: 10/10 BUILT + WIRED + ACTIVATED + EXERCISED. Weaker truth: the REAL-mutmut rows are
+EXERCISED locally (mutmut 3.6.0 present) and reported UNMEASURED in CI by design; RUNNING in a
+downstream repo is NOT claimed. Per-phase targeted-mutant scores: D0 7/7 · D1+D3-reader 7/7 ·
+D3-writer+D4 7/7 · D2 6/7 (+1 equivalent, recorded) · D5+D6 7/7 (plus the two Phase 4 re-measures, 9/9 in the same run) · D8 4/4.
 | deliverable | BUILT | WIRED | ACTIVATED | EXERCISED |
 |---|---|---|---|---|
 | D0 extractions | with_snapshot/gate_runner/run_bounded/host_contract | callers switched | — | suites green; byte-identical preflight; real-child timing |

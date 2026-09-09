@@ -40,8 +40,12 @@ check across one). Steps:
    clobbers uncommitted work.
 2. **PREFLIGHT BEFORE THE EXPENSIVE PASS — seconds, not the 40 minutes you'd then discard.**
    **Checks (b) and (c) are MECHANICAL — run the pass through
-   `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/mutation_run.py" --scope <module> --suite-args "<pytest
-   args>" --max-minutes N` and they cannot be skipped, because running the pass IS running them.**
+   `python3 "$CLAUDE_PROJECT_DIR/.claude/bin/mutation_run.py" --scope <scope-name> --max-minutes N`
+   and they cannot be skipped, because running the pass IS running them.** `<scope-name>` is an
+   entry in `.tdd-playbook/mutation-scopes.json` — the repo's mutation roster (exact sources,
+   pytest selectors, cost line); no mapping → refused with a scaffold to copy; `--suite-args` is
+   refused with a migration note. The tree must be LITERALLY clean (commit the kill test, then
+   re-measure). The runner does both halves in a disposable worktree and writes a run record.
    It refuses a RED baseline, refuses zero-or-unknown collection, and refuses a scope whose
    projection (mutants x the MEASURED baseline) exceeds the budget — before any mutant exists.
    Pass `--expected-mutants` (the under-500 target) so the projection is COMPUTED rather than
@@ -51,7 +55,8 @@ check across one). Steps:
    default, mutmut does not, so a mutmut gate rewrites the DISPOSABLE worktree's config (source
    paths + test directory) per run and never the real one. If the baseline dominates a
    single-module run, the GATE is misconfigured — fix the gate, do not blame the module or defer
-   the measurement. A module no test reaches keeps the whole folder and the gate says so.
+   the measurement. A module no test reaches keeps the whole folder and the gate says so — or,
+   with an explicit mapping, the runner refuses and names the roster gap.
    pytest + mutmut only; another stack is refused rather than guessed. (a) and (d) remain YOURS:
    in order, refusing on any failure: (a) roster integrity — no DUPLICATE `paths_to_mutate` entries
    (a duplicate makes mutmut 3.6 abort after stats collection and names the cause nowhere), every

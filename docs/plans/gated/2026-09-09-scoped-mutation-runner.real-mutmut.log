@@ -1,0 +1,236 @@
+# v1.52.0 local real-mutmut proof — the accepted non-dogfood boundary
+run_id: 055ad1225fa64b0abeced6e484a6b913
+date: 2026-09-09T16:28:03Z
+head: df91a50080203d22f827ffd6a71bde79f82f2076 (runner code last changed at df91a50; working tree differs only in release bookkeeping: CHANGELOG, version stamps, vendored copies, rendered reference)
+host: Darwin 24.6.0 arm64, Python 3.14.3
+mutmut: Version: 3.6.0 at /opt/homebrew/lib/python3.14/site-packages/mutmut
+command: python3 plugins/tdd-playbook/tests/test_mutation_preflight.py
+---- full output follows ----
+mutation_run: REFUSED — refusing `--collect-only` inside mutmut's pytest_add_cli_args: it collects without executing, so the baseline would prove nothing and the measured time would make any scope look affordable
+mutation_run: REFUSED — scope 'outside': 'tests/test_calc.py' is outside mutmut's source_paths ['app'] — mutmut would never mutate it, and a scope check by substring would have let it through
+mutation_run: REFUSED — refusing before the expensive pass: 5000 mutants x 0.0s measured baseline projects ~1258671 minutes, over the 1-minute budget. Raise --max-minutes, shrink mutmut's configured scope (setup.cfg [mutmut] source_paths / only_mutate — this wrapper leaves that config as it finds it), or speed the suite — but know the number first
+mutation_run preflight calibration
+
+[test_collection_parse_fails_closed]
+  ok   - parses pytest's collected line
+  ok   - parses the deselected variant
+  ok   - PLANTED: no collection line at all -> None (unknown), not 0 and not a guess
+  ok   - PLANTED: unittest output is NOT parsed as pytest (scope is stated, not guessed)
+  ok   - zero collected is a real zero, distinct from unknown
+
+[test_refuses_args_under_which_nothing_executes]
+  ok   - PLANTED: non-executing args refused: 'tests/ --collect-only'
+  ok   - PLANTED: non-executing args refused: '--co tests/'
+  ok   - legitimate pytest args allowed: 'tests/ -q'
+  ok   - legitimate pytest args allowed: "-k 'not slow' tests/unit"
+  ok   - legitimate pytest args allowed: 'tests/test_a.py::test_b'
+  ok   - legitimate pytest args allowed: 'tests/test_lam.py::test_p[<lambda>0]'
+  ok   - quoted -k survives shlex instead of being shredded by .split()
+
+[test_projection_refuses_before_the_expensive_pass]
+  ok   - PLANTED: an unaffordable pass is REFUSED before starting
+  ok   - ...and the refusal names the projection, not just 'too long'
+  ok   - an affordable pass proceeds
+  ok   - projection scales with the MEASURED baseline (the run-#3 fix)
+
+[test_preflight_refuses_red_baseline_and_empty_collection]
+  ok   - green baseline that actually EXECUTED passes
+  ok   - PLANTED: all-SKIPPED suite is refused (green, collected, executed nothing)
+  ok   - ...and the refusal says ZERO passed rather than reporting green
+  ok   - PLANTED: collected but NO outcome summary -> UNKNOWN, refused
+  ok   - PLANTED: RED baseline is refused
+  ok   - ...and cites the plant ONLY when tests actually failed
+  ok   - PLANTED: a USAGE error is not reported as a red baseline
+  ok   - ...and the real pytest output is included, not discarded
+  ok   - ...and it does NOT falsely cite the plant
+  ok   - PLANTED: zero collected is refused (vacuous killing suite)
+  ok   - PLANTED: unknown collection FAILS CLOSED
+  ok   - ...and says UNKNOWN rather than claiming zero
+
+[test_cli_is_the_real_seam]
+  ok   - CLI runs and documents itself
+  ok   - non-executing args inside pytest_add_cli_args are refused BEFORE any baseline runs
+  ok   - CLI REQUIRES an explicit budget rather than inventing one
+
+[test_main_actually_invokes_mutmut]
+mutation_run: scope calc: 1 source(s) ['app/calc.py'] → 1 selector(s) ['tests/test_calc.py'] · cost: 'c'
+mutation_run: disposable worktree /private/var/folders/k6/3yn6m01j7_q1qhw59mqw9t580000gn/T/tmpun0vljn_/.git/tdd-playbook/mutation-worktrees/20260909T162804Z-calc-36159 (detached at bb7ded950b2b)
+mutation_run: worktree config (setup.cfg): only_mutate=['app/calc.py'] selection=['tests/test_calc.py'] pytest_add_cli_args=[] · inserted only_mutate; inserted pytest_add_cli_args_test_selection; read back through mutmut: OK · real config untouched (sha256 b7d39ae24cd4)
+mutation_run: baseline GREEN — 5 collected, 0.0s measured (share of budget 0%)
+mutation_run: projection SKIPPED (no --expected-mutants) — unmeasured, not assumed affordable; the 30-minute hard bound still applies
+mutation_run: invoking mutmut run in the worktree (only_mutate=['app/calc.py'])
+mutmut done
+mutation_run: record written (mutation-runs/20260909T162804Z-calc-36159/index.json)
+mutation_run: worktree removed
+  ok   - main() exits 0 on a clean pass
+  ok   - main() ACTUALLY INVOKES mutmut (not a print)
+  ok   - the invoked argv is mutmut 3.x's REAL shape (no 2.x flags)
+  ok   - the baseline ran the MAPPED selection (not the whole tree)
+  ok   - PLANTED: a scope outside mutmut's source_paths is REFUSED
+  ok   - ...and mutmut was never reached
+mutation_run: scope calc: 1 source(s) ['app/calc.py'] → 1 selector(s) ['tests/test_calc.py'] · cost: 'c'
+mutation_run: disposable worktree /private/var/folders/k6/3yn6m01j7_q1qhw59mqw9t580000gn/T/tmpun0vljn_/.git/tdd-playbook/mutation-worktrees/20260909T162804Z-calc-36159 (detached at bb7ded950b2b)
+mutation_run: worktree config (setup.cfg): only_mutate=['app/calc.py'] selection=['tests/test_calc.py'] pytest_add_cli_args=[] · inserted only_mutate; inserted pytest_add_cli_args_test_selection; read back through mutmut: OK · real config untouched (sha256 b7d39ae24cd4)
+mutation_run: baseline GREEN — 5 collected, 0.0s measured (share of budget 0%)
+mutation_run: record written (mutation-runs/20260909T162804Z-calc-36159/index.json)
+mutation_run: worktree removed
+  ok   - an unaffordable projection REFUSES before invoking mutmut
+  ok   - ...and mutmut was never reached
+
+[test_against_REAL_mutmut_not_a_mock]
+  ok   - REAL: unconfigured mutmut is REFUSED, not invoked
+  ok   - ...and the refusal hands over the exact fix
+  ok   - REAL: configured scope is read from mutmut's own loader
+  ok   - REAL: our argv shape is accepted by the installed mutmut
+  ok   - REAL: mutmut actually ran to completion
+  ok   - REAL: it reports mutation results (a killed mutant), not just a clean exit
+
+[test_wrapper_does_not_claim_scoped]
+  ok   - CLI description says the run is SCOPED via the mapping and names both halves
+  ok   - CLI description no longer claims the wrapper does not narrow
+  ok   - projection refusal no longer advises 'narrow --scope'
+  ok   - projection refusal names remedies the wrapper can act on
+
+[test_run_bounded_deadline_grace_and_cwd_with_real_children]
+  ok   - run_bounded: cwd is honoured
+  ok   - run_bounded: a prompt child is not marked timed out
+  ok   - graceful child: SIGINT at deadline-grace, child exits with its own code
+  ok   - graceful child: returned well before the deadline (SIGINT at ~2s, not at 4s+2s)
+  ok   - graceful child: output captured up to the interrupt
+  ok   - stubborn child: SIGKILL at the absolute deadline, not deadline+grace
+  ok   - run_bounded: elapsed seconds are reported
+
+[test_effective_config_comes_from_mutmut_itself]
+  ok   - pyproject [tool.mutmut] WINS over setup.cfg (mutmut's precedence, not ours)
+  ok   - pytest_add_cli_args is READ (D4 must replay it)
+  ok   - setup.cfg is the fallback and is named as the file
+  ok   - legacy tests_dir is surfaced separately, because mutmut APPENDS it to the selection (Q4)
+  ok   - tox.ini-only is REFUSED BY NAME (mutmut never reads it)
+  ok   - unconfigured repo is refused with the exact fix
+  ok   - the old cwd-bound reader with the tox.ini branch is GONE
+
+[test_scope_mapping_is_the_roster]
+  ok   - a valid scope resolves to exact tracked files + selectors + cost
+  ok   - mapping sha256 and counts travel with the scope (anti-narrowing record)
+  ok   - a glob that reaches a do_not_mutate file is refused (mutmut would silently generate zero)
+  ok   - unknown scope name is refused LISTING the names
+  ok   - PLANTED sources substring of a source path are refused
+  ok   - PLANTED sources parent traversal are refused
+  ok   - PLANTED sources absolute path are refused
+  ok   - PLANTED sources outside mutmut's source_paths are refused
+  ok   - PLANTED sources glob matching no tracked file are refused
+  ok   - PLANTED sources empty sources are refused
+  ok   - PLANTED tracked file whose path contains the source dir NAME but is outside it is refused
+  ok   - PLANTED entry with empty tests is refused
+  ok   - PLANTED entry with missing cost line is refused
+  ok   - PLANTED entry with blank cost line is refused
+  ok   - PLANTED duplicate scope name is refused (JSON last-wins would hide it)
+  ok   - missing mapping is refused WITH a scaffold to copy (never written)
+  ok   - a selector collecting zero tests is reported as a ROSTER gap, by wording
+  ok   - collect_selection counts the mapped tests with pytest_add_cli_args replayed
+
+[test_narrow_config_rewrites_a_copy_and_reads_back]
+  ok   - setup.cfg copy: only_mutate is the scope's sources (read back through mutmut)
+  ok   - setup.cfg copy: selection is the scope's tests and legacy tests_dir no longer widens it
+  ok   - setup.cfg copy: do_not_mutate and pytest_add_cli_args preserved
+  ok   - the REAL config is untouched (sha256 equal)
+  ok   - the report names the file, the keys set, and the neutralised tests_dir
+  ok   - pyproject copy: absent keys are INSERTED under [tool.mutmut], not appended to another table
+  ok   - pyproject copy: paths_to_mutate stays as the deprecated root; other tables untouched
+  ok   - multi-line array for a rewritten key is REFUSED (no general TOML writer)
+  ok   - ...with a concrete migration instruction naming the key and the one-line form
+  ok   - ...and the legacy paths_to_mutate + tests_dir list shape is named as unsupported too
+  ok   - the real pyproject is untouched after a refusal
+  ok   - PLANTED: a rewrite that mutmut does not read back as narrowed is REFUSED
+
+[test_baseline_replays_pytest_add_cli_args_and_names_domination]
+  ok   - baseline argv = python -m pytest + pytest_add_cli_args + mapped selectors, in that order
+  ok   - PLANTED: --collect-only inside pytest_add_cli_args is refused (it defeats the baseline)
+  ok   - ordinary add args pass
+  ok   - a baseline over a fifth of the budget is NAMED as the gate's misconfiguration, not the module's
+  ok   - a proportionate baseline is not flagged
+  ok   - the share is reported as a number (for the record and the /mutate line)
+
+[test_suite_args_is_a_migration_refusal]
+  ok   - any --suite-args value is refused with the migration instruction
+  ok   - an empty --suite-args is not an error (the flag merely exists this release)
+  ok   - CLI: --suite-args refuses BEFORE any baseline or config read, by message
+
+[test_literal_clean_and_disposable_worktree_lifecycle]
+  ok   - identity comes from host_contract.resolve_repository (root, common dir, state dir, head)
+  ok   - a clean committed tree passes the literal-clean check
+  ok   - PLANTED untracked conftest.py (not a test_*.py, not under a selector) is REFUSED — literal clean
+  ok   - PLANTED dirty tracked file is REFUSED naming it
+  ok   - worktree lives under <common>/tdd-playbook/mutation-worktrees/<run_id>
+  ok   - worktree is detached at the exact HEAD
+  ok   - provenance marker carries run_id, scope, head, started
+  ok   - the per-run lock is HELD for the run's life (another process cannot take it)
+  ok   - a leftover/duplicate path is REFUSED by name, never reused, naming the recovery
+  ok   - remove() deletes exactly that worktree and its registration
+  ok   - cleanup failure raises with the RETAINED path and the manual command
+  ok   - cleanup failure carries git's own reason as the detail
+
+[test_repo_lock_and_stale_worktrees]
+  ok   - repo lock file lives at <state>/mutation.lock
+  ok   - a second invocation REFUSES immediately, naming the holder's scope
+  ok   - marker-bearing + lock-free is STALE
+  ok   - marker-bearing + lock HELD by a real process is LIVE, not stale
+  ok   - a dir without our marker is FOREIGN: named, never touched
+  ok   - default output LISTS stale worktrees with the exact manual command, deleting nothing
+  ok   - --reap-stale removes exactly the stale set
+  ok   - a retained forensic path is listed separately and excluded from reaping
+  ok   - reap_stale leaves the retained path
+
+[test_reset_plan_shared_scope_knows_the_mutation_artifacts]
+  ok   - reset --shared plans mutation-worktrees
+  ok   - reset --shared plans mutation-runs
+  ok   - reset --shared plans mutation.lock
+
+[test_main_runs_both_halves_in_the_worktree_for_real]
+  ok   - REAL: a scoped run completes green
+  ok   - REAL: the first lines name the scope, the worktree, and the narrowed config
+  ok   - REAL: the baseline ran the mapped selection with pytest_add_cli_args replayed (2 tests collected)
+  ok   - REAL: the real config is untouched
+  ok   - REAL: no worktree is left behind and none is registered
+  ok   - REAL: mutmut reported mutation results for the narrowed module only
+
+[test_full_mutant_accounting_from_one_source]
+  ok   - decided = killed + survived
+  ok   - terminal-unscored counts each status by name
+  ok   - unfinished keeps interrupted-mid-check and not-yet-checked APART (mutmut distinguishes them)
+  ok   - every row is in exactly one bucket
+  ok   - PROPERTY: 200 random multisets partition exactly (sum == rows, counts by status exact)
+  ok   - PLANTED unknown status is REFUSED, not bucketed
+  ok   - PLANTED duplicate mutant name is REFUSED before any total (one dup can hide one missing)
+  ok   - agreeing export: denominator and emitted fields reconcile
+  ok   - PLANTED missing export REFUSES with both numbers
+  ok   - PLANTED malformed export (no total) REFUSES with both numbers
+  ok   - PLANTED total disagrees (one row missing) REFUSES with both numbers
+  ok   - PLANTED an emitted field disagrees REFUSES with both numbers
+  ok   - the export's omitted statuses (not_checked, type check) are NOT compared — they are the known residual
+  ok   - PARTIAL line: kill rate over DECIDED, unscored, unfinished split, NON-AUTHORIZING
+  ok   - a COMPLETE run with unscored == 0 certifies (no refusal text)
+  ok   - a COMPLETE run with unscored > 0 refuses to certify (existing SS4a rule, now mechanical)
+
+[test_run_record_is_written_before_cleanup_and_shares_retention]
+  ok   - an in-progress stub names the holder while the lock is held
+  ok   - the stub is gone once the lock is released
+  ok   - record path is <state>/mutation-runs/<run_id>/index.json
+  ok   - record is private (0600) and carries run_id + written_at
+  ok   - retention keeps the newest 20 records (shared prune_dir, own lock)
+  ok   - the retention lock lives in the records dir, not gate-runs
+  ok   - latest_record() returns the newest record for the doctor line
+  ok   - unwritable records dir -> RecordProblem naming the path
+
+[test_real_run_record_and_partial_on_timeout]
+  ok   - REAL complete run: exit 0 and a record with exit_reason=complete
+  ok   - REAL complete run: buckets reconcile (decided + unscored + unfinished == total, unfinished == 0)
+  ok   - REAL complete run: record carries scope, sources, mapping sha, head, baseline share, config file, read-back note
+  ok   - REAL complete run: stdout carries the score line with raw counts
+  ok   - REAL cut-off run: exit 1 with the PARTIAL / NON-AUTHORIZING line
+  ok   - REAL cut-off run: the record still exists with exit_reason=timeout and unfinished > 0
+  ok   - REAL cut-off run: buckets still reconcile with the CI export's total
+  ok   - REAL cut-off run: no worktree left behind
+
+164 passed, 0 failed
+exit: 0

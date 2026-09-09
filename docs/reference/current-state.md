@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `15524dcfcc0008ea7c5d6320157c7aaa7d6801a3f6f666ff9745b1cf9b67318f`
 - `docs/architecture/host-parity.json` — `c17cb95cd8ca1b7af0d77c80913b374e0bfdc868f3eeb88fbec87864a9bb141f`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `8b0f9d44c17eebe95de66614ecec8b13f5e9853a972ef5eba65264aea4a50638`
+- `capabilities.json` — `13681f8c5b6806f2a03e3a2f4eb6c71cb8088bd8cfc5c9b5131c4e75c99acfa4`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
 - `plugins/tdd-playbook/hooks/scripts/_common.py` — `4b9a9b79d265154156e1ce663934eaf982c63e9ac65964ce871fbbe2046eba26`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -77,7 +77,7 @@
 
 ## Capability registry
 
-- Registered capabilities: 36. Owned dated integration-debt entries: 69.
+- Registered capabilities: 36. Owned dated integration-debt entries: 70.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -143,8 +143,9 @@
 - `holdout-control-validation/dev-calibration-validate-item-reuse` — The PUBLIC dev corpus likely has the same disease (controls approved without a verifier run)… (owner `david`, expires `2026-11-15`)
 - `holdout-control-validation/holdout-corpus-remediation-sweep` — THE D4 LIVE OUTCOME (tripwire-auditor 2026-08-16… (owner `david`, expires `2026-09-30`)
 - `holdout-control-validation/population-snapshot-consumers` — integration-adversary ISLAND2 + arch-F7 (2026-08-16)… (owner `david`, expires `2026-11-15`)
-- `mutation-preflight` — CODEX PARITY, stated not assumed… (owner `david`, expires `2026-11-15`)
-- `mutation-preflight/scoped-baseline-and-partial-measurement` — SS4b DOGFOOD GAP - A DESIGN DECISION, NOT A BACKLOG ITEM (opened 2026-09-09 v1.51.0… (owner `david`, expires `2026-10-31`)
+- `mutation-preflight` — RE-SCOPED v1.52.0 (2026-09-09)… (owner `david`, expires `2026-11-15`)
+- `mutation-preflight/mutation-scopes-acknowledged-sha` — ANTI-NARROWING, cheap form shipped (v1.52.0)… (owner `david`, expires `2026-11-15`)
+- `mutation-preflight/projection-from-observed-count` — KNOB DEBT (v1.52.0, architecture-adversary F7)… (owner `david`, expires `2026-11-15`)
 - `intent-drift-review` — MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it… (owner `david`, expires `2026-11-30`)
 - `escape-ledger/escape-report-verdict-redesign` — REDESIGN THE VERDICT, OR DELETE IT (opened 2026-08-31, one day after the instrument shipped)… (owner `David`, expires `2026-09-30`)
 

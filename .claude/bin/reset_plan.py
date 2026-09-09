@@ -169,6 +169,13 @@ def plan(root, scopes=("repo",), repo=None, force=False):
             if os.path.isdir(gr):
                 rows.append(_row("shared", "dir", gr,
                                  "{} gate run(s) · {}".format(len(os.listdir(gr)), why)))
+            # v1.52.0: the scoped mutation runner's common-dir artifacts (else --shared reports
+            # clean while leaving worktrees, the repo lock and run records forever)
+            for name, kind in (("mutation-worktrees", "dir"), ("mutation-runs", "dir"), ("mutation.lock", "file")):
+                p = os.path.join(state, name)
+                if os.path.exists(p):
+                    extra = " · {} entr(ies)".format(len(os.listdir(p))) if kind == "dir" else ""
+                    rows.append(_row("shared", kind, p, "mutation runner state{} · {}".format(extra, why)))
 
     if "machine" in scopes:
         store = os.environ.get("TDD_PLAYBOOK_DELIBERATION_DIR") or \

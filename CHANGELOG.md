@@ -1,3 +1,102 @@
+## 1.52.0 — 2026-09-09
+
+**§4b has a reference implementation.** `bin/mutation_run.py` now narrows BOTH halves of a
+mutation run — the mutants to a scope's sources and the baseline to the scope's tests — inside
+one disposable detached worktree, driven by a checked-in scope mapping, with strict lifecycle
+and full mutant accounting on timeout. Plan: `docs/plans/gated/2026-09-09-scoped-mutation-runner.md`
+(three adversaries on the draft, then David's amendments as binding decisions Q2–Q7). Built in six
+red-first phases, each with its own targeted-mutant score recorded below; the broad mutation pass
+over this repo remains UNMEASURED by the accepted non-dogfood boundary (no mutmut config here).
+
+- **D0 extractions, so reuse is real.** `with_snapshot.dirty_tracked(root)` / `untracked(root)`
+  (root-parameterised; `cmd_preflight` calls the first, output byte-identical);
+  `gate_runner.RunStore(subdir=)` + a lifted `prune_dir(root, keep, lock_name, protect)`;
+  `run_bounded(argv, deadline_s, cwd=, grace_s=)` — SIGINT to the process group at
+  `deadline − 30s`, SIGKILL at the deadline, never deadline + grace, returning `timed_out` and
+  `elapsed_s` instead of throwing the evidence away; identity from
+  `host_contract.resolve_repository`, never `gate_runner.REPO`. Lifecycle tests drive REAL
+  children (the injected `run` hook bypasses the Popen path). Targeted mutants: 7/7 killed.
+- **D1 the mapping IS the roster.** `--scope <name>` selects an entry in
+  `.tdd-playbook/mutation-scopes.json` (`sources`, `tests`, `cost`). Sources are validated by
+  REALPATH CONTAINMENT against mutmut's parsed `source_paths` — replacing the substring check
+  (`args.scope not in configured`) that let `--scope b` pass against `plugins/tdd-playbook/bin`
+  — plus tracked-file globs, `do_not_mutate` exclusion, duplicate names (JSON is last-wins),
+  `..`/absolute paths, a size cap, and a scaffold printed (never written) when the file is
+  missing. A selector collecting zero tests is refused with the roster-gap wording. Targeted
+  mutants: 7/7 after two survivor-driven kill tests (a tracked path that merely CONTAINS the
+  source dir's name; a present-but-blank cost line).
+- **D3 config adapter: ask mutmut, rewrite a copy, read back.** The effective config comes from
+  `mutmut.configuration.Config` run in the worktree (pyproject `[tool.mutmut]` wins outright,
+  else `setup.cfg`; a `tox.ini`-only repo is refused by name — mutmut never reads it, and the
+  old reader listed setup.cfg first and consulted tox.ini). The copy's file is rewritten
+  line-anchored (Q4): `only_mutate` and `pytest_add_cli_args_test_selection` set or inserted,
+  legacy `tests_dir` neutralised (mutmut appends it to the selection), `paths_to_mutate` left as
+  the deprecated root, `do_not_mutate`/`pytest_add_cli_args` preserved; unsupported shapes
+  (multi-line arrays, inline tables, the legacy list shape) are refused with a migration
+  instruction; the result is READ BACK through mutmut and the real file's sha256 is asserted
+  unchanged. `mutmut_config_scope` is deleted. Targeted mutants: 7/7 after one survivor-driven
+  kill test (a planted reader that reports the rewrite did not take).
+- **D4 baseline parity (Q2).** The wrapper's baseline is the mapped selectors plus mutmut's own
+  `pytest_add_cli_args`, REPLAYED — the same selection and the same non-selection options
+  mutmut will use. `--suite-args` is deprecated outright: any value is refused with a migration
+  note; removed next release. `--collect-only` inside `pytest_add_cli_args` refuses. A baseline
+  over a fifth of the budget prints `BASELINE DOMINATES … the GATE is misconfigured, not the
+  module` as a named diagnosis.
+- **D2 lifecycle (Q5, Q6).** Literal clean: ANY dirty tracked or non-ignored untracked file
+  refuses ("commit the kill test, then re-measure"). One detached worktree per run under
+  `<git-common>/tdd-playbook/mutation-worktrees/<run_id>` with a provenance marker and a per-run
+  flock held for the run's life — liveness is the lock, never a pid. Repo-wide advisory lock
+  (`mutation.lock`) taken BEFORE listing or reaping stale worktrees; a second invocation refuses
+  naming the holder. Stale = ours + lock free: LISTED by default with the exact removal command,
+  deleted only under `--reap-stale`; a `RETAINED:` forensic path is never auto-reaped; foreign
+  dirs are named and left. Cleanup removes exactly that worktree; failure is nonzero with the
+  retained path as the last line. `reset_plan --shared` now plans the three artifacts. Targeted
+  mutants: 6/7 after two survivor-driven kill tests; the seventh (`--detach` dropped when
+  checking out a raw sha) is EQUIVALENT — git detaches on any commit-ish that is not a branch —
+  recorded here, not chased.
+- **D5 accounting (Q3, Q7).** After the pass, complete or cut off, `mutmut results --all=true`
+  is the ONE per-mutant source (bare `--all` errors — click option without `is_flag`, probed);
+  duplicate names refuse before any total; every mutant lands in exactly one of decided ·
+  terminal-unscored · unfinished (interrupted mid-check and not-yet-checked kept APART — mutmut
+  distinguishes them); `mutmut export-cicd-stats`'s `total` is the denominator (it counts every
+  generated mutant; its per-status fields omit `not_checked` and `caught_by_type_check`, the
+  known residual, never compared). A missing, malformed or disagreeing export REFUSES. A cut-off
+  run prints `PARTIAL — kill rate k/decided …  — NON-AUTHORIZING`, the survivor list, exit 1.
+  A complete run with unscored > 0 refuses to certify. Property test over 200 random multisets.
+  Targeted mutants: 7/7 (plus the two Phase 4 re-measures, 9/9 in the same run).
+- **D6 run record with a code consumer.** `<git-common>/tdd-playbook/mutation-runs/<run_id>/
+  index.json` written BEFORE cleanup on every path (complete, timeout, refused), 0600, atomic,
+  retention through the shared `prune_dir` (keep 20, own lock), an in-progress stub while the
+  repo lock is held. Read by `install_into_repo.py --doctor` (D8: `mutation scopes: N entries |
+  MISSING …` and `last mutation run: …`). Registered as an `emits` row, not debt. Targeted
+  mutants (doctor): 4/4.
+- **D7 doctrine and consumers.** SKILL §4b's worked example now names this runner as the
+  reference implementation and the "does not yet narrow" sentence is gone; the approved
+  amendment — with an explicit mapping, refuse and name the roster gap — is in §4b, the brief and
+  `/mutate`; both invoke `--scope <scope-name>` from the mapping; the brief keeps `killed +
+  survived < generated` verbatim (the `unmeasured-not-certified` oracle anchors on it) with the
+  three-bucket restatement beside it (ledger row `L-20260909-01`, predicted no change on the 8
+  mutation-runner scenarios; regexes untouched); `with_snapshot begin/verify` rescoped to passes
+  outside the runner; `CLAUDE.md` standing refresh prompt gains step 3b (seed the mapping);
+  registry `mutation-preflight` re-summarised, `surfaces: [local, codex]`, six `exercised_by`
+  tests, the `scoped-baseline-and-partial-measurement` debt CLOSED, the Codex-parity debt
+  re-scoped (mechanism reachable via refusal + doctor, undocumented on Codex), and the two
+  accepted debts opened: `mutation-scopes-acknowledged-sha` and `projection-from-observed-count`
+  (both 2026-11-15). The 1.51.2 pin that forbade the word "scoped" is retired with the reason
+  inline; the compact-runner test's `--suite-args` uses are gone.
+- **Generalised vs left downstream (constraint 5).** Generalised: disposable worktree handling,
+  the checked-in scope contract, setup.cfg/pyproject adapters, identical baseline/mutmut
+  selection, bounded process handling, full mutant accounting, fail-closed cleanup and run
+  records. Left downstream: any repo's test-discovery conventions (star-import shims, AST
+  reachability inference), dirty/untracked-tree replication, equivalence and informational
+  survivor policies, function-name/module-key workarounds, private result-file parsing.
+- **Local real-mutmut proof (the accepted non-dogfood boundary).** Complete log preserved at `docs/plans/gated/2026-09-09-scoped-mutation-runner.real-mutmut.log` — run_id `055ad1225fa64b0abeced6e484a6b913`, 2026-09-09T16:28:03Z, HEAD `df91a50` (the last commit touching the runner), command `python3 plugins/tdd-playbook/tests/test_mutation_preflight.py`, mutmut 3.6.0 at `/opt/homebrew/lib/python3.14/site-packages/mutmut`, Python 3.14.3 on Darwin arm64: `164 passed, 0 failed`, 0 UNMEASURED — every REAL row (config read-back, tox.ini refusal, precedence, end-to-end scoped run, complete record, cut-off PARTIAL record) executed against the installed tool. CI reports those rows UNMEASURED by design; RUNNING in a downstream repo is not claimed.
+- **Process record.** A TEST-LOCK on the two runner suites was found active during D7 (not taken
+  by this session); the lock guard blocked a heredoc writer targeting non-test files, the block
+  was recorded via `guard_note`, and the lock released with a journaled `phase` reason (phases
+  1–5 green and committed). Per-phase mutation was run in throwaway worktrees, detached, while
+  the next phase was written — the §4 cadence this release exists to make cheap.
+
 ## 1.51.2 — 2026-09-09
 
 **The wrapper stops advising a remedy it cannot perform.** Codex's source-verification of

@@ -86,11 +86,35 @@ def _atomic_private(path: str, text: str) -> None:
             os.unlink(tmp)
 
 
+def prune_dir(root: str, keep: int, lock_name: str = ".prune.lock", protect: str = "") -> None:
+    """Keep the newest `keep` finished run directories (those carrying index.json) under `root`,
+    never touching `protect` (the live run). Serialised on `<root>/<lock_name>`. Lifted out of
+    RunStore (v1.52.0 D0) so the mutation runner's records share this CODE, not a copy."""
+    keep = max(1, int(keep))
+    lock_path = os.path.join(root, lock_name)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "r+") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        entries = []
+        for name in os.listdir(root):
+            path = os.path.join(root, name)
+            if (path != protect and os.path.isdir(path) and
+                    not os.path.islink(path) and
+                    os.path.isfile(os.path.join(path, "index.json"))):
+                entries.append((os.stat(path).st_mtime_ns, path))
+        remove_count = max(0, len(entries) + (1 if protect else 0) - keep)
+        for _mtime, path in sorted(entries)[:remove_count]:
+            if os.path.realpath(path).startswith(os.path.realpath(root) + os.sep):
+                shutil.rmtree(path)
+
+
 class RunStore:
-    def __init__(self, common_dir: str, run_id: str, keep: int = 20):
+    def __init__(self, common_dir: str, run_id: str, keep: int = 20, subdir: str = "gate-runs"):
         if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", run_id) or run_id in (".", ".."):
             raise ValueError("run id must be a single safe path component")
-        self.root = os.path.join(os.path.realpath(common_dir), "tdd-playbook", "gate-runs")
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", subdir) or subdir in (".", ".."):
+            raise ValueError("subdir must be a single safe path component")
+        self.root = os.path.join(os.path.realpath(common_dir), "tdd-playbook", subdir)
         os.makedirs(self.root, mode=0o700, exist_ok=True)
         os.chmod(self.root, 0o700)
         self.path = os.path.join(self.root, run_id)
@@ -121,21 +145,7 @@ class RunStore:
         self.prune()
 
     def prune(self) -> None:
-        lock_path = os.path.join(self.root, ".prune.lock")
-        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
-        with os.fdopen(fd, "r+") as lock:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-            entries = []
-            for name in os.listdir(self.root):
-                path = os.path.join(self.root, name)
-                if (path != self.path and os.path.isdir(path) and
-                        not os.path.islink(path) and
-                        os.path.isfile(os.path.join(path, "index.json"))):
-                    entries.append((os.stat(path).st_mtime_ns, path))
-            remove_count = max(0, len(entries) + 1 - self.keep)
-            for _mtime, path in sorted(entries)[:remove_count]:
-                if os.path.realpath(path).startswith(os.path.realpath(self.root) + os.sep):
-                    shutil.rmtree(path)
+        prune_dir(self.root, self.keep, ".prune.lock", protect=self.path)
 
 
 def _git_text(*args: str) -> str:
