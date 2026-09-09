@@ -209,10 +209,14 @@ def test_main_actually_invokes_mutmut():
     root = tempfile.mkdtemp()
     with open(os.path.join(root, "setup.cfg"), "w") as fh:
         fh.write("[mutmut]\nsource_paths=app/\n")
+    # the config READER is injected (a stdlib-only CI has no mutmut to ask); the reader's own
+    # seam is driven against the real tool in test_effective_config_comes_from_mutmut_itself
+    reader = lambda cwd: m.EffectiveConfig(config_file="setup.cfg", source_paths=["app/"])
     cwd = os.getcwd()
     try:
         os.chdir(root)
-        rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec)
+        rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec,
+                    config_reader=reader)
         check("main() exits 0 on a clean pass", rc == 0, rc)
         check("main() ACTUALLY INVOKES mutmut (not a print)",
               any(a and a[0] == "mutmut" for a in seen), seen)
@@ -223,14 +227,16 @@ def test_main_actually_invokes_mutmut():
         # a scope that disagrees with mutmut's config is refused: mutating a different tree
         # than the one asked about is a score about the wrong code
         seen.clear()
-        rc = m.main(["--scope", "other/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec)
+        rc = m.main(["--scope", "other/", "--suite-args", "tests/", "--max-minutes", "30"], run=rec,
+                    config_reader=reader)
         check("PLANTED: --scope disagreeing with mutmut's config is REFUSED", rc == 1, rc)
         check("...and mutmut was never reached", not any(a and a[0] == "mutmut" for a in seen), seen)
 
         # the projection is WIRED, not merely unit-tested
         seen.clear()
         rc = m.main(["--scope", "app/", "--suite-args", "tests/", "--max-minutes", "1",
-                     "--expected-mutants", "5000", "--factor", "1000000"], run=rec)
+                     "--expected-mutants", "5000", "--factor", "1000000"], run=rec,
+                    config_reader=reader)
         check("an unaffordable projection REFUSES before invoking mutmut", rc == 1, rc)
         check("...and mutmut was never reached",
               not any(a and a[0] == "mutmut" for a in seen), seen)
@@ -251,7 +257,7 @@ def test_against_REAL_mutmut_not_a_mock():
         unmeasured("real-mutmut seam (argv shape, config contract, end-to-end run)",
                    "mutmut is not installed here; this suite is stdlib-only and CI installs "
                    "nothing. The seam IS exercised wherever mutmut exists — run this locally "
-                   "before trusting a change to mutmut_argv/mutmut_config_scope")
+                   "before trusting a change to mutmut_argv/effective_mutmut_config")
         return
 
     root = tempfile.mkdtemp()
@@ -268,17 +274,22 @@ def test_against_REAL_mutmut_not_a_mock():
 
     # 1. NO config -> refuse, naming the fix. This is the real first-run failure: with no
     #    [mutmut] section even `mutmut --version` dies "Could not figure out where the code is".
-    scope, problem = m.mutmut_config_scope(root)
-    check("REAL: unconfigured mutmut is REFUSED, not invoked", scope is None and problem)
-    check("...and the refusal hands over the exact fix",
-          problem and "source_paths" in problem, problem)
+    #    (v1.52.0: the reader is now mutmut's OWN loader — `effective_mutmut_config` — the old
+    #    cwd-bound `mutmut_config_scope` with its tox.ini branch is deleted.)
+    try:
+        m.effective_mutmut_config(root)
+    except m.ConfigProblem as exc:
+        check("REAL: unconfigured mutmut is REFUSED, not invoked", True)
+        check("...and the refusal hands over the exact fix", "source_paths" in str(exc), str(exc))
+    else:
+        check("REAL: unconfigured mutmut is REFUSED, not invoked", False, "no refusal")
 
-    # 2. configured -> the scope comes from config, because 3.x has no flag for it
+    # 2. configured -> the scope comes from mutmut's own config, because 3.x has no flag for it
     with open(os.path.join(root, "setup.cfg"), "w") as fh:
         fh.write("[mutmut]\nsource_paths=app/\n")
-    scope, problem = m.mutmut_config_scope(root)
-    check("REAL: configured scope is read from mutmut's own config",
-          scope == "app/" and problem is None, (scope, problem))
+    cfg = m.effective_mutmut_config(root)
+    check("REAL: configured scope is read from mutmut's own loader",
+          cfg.source_paths == ["app"] and cfg.config_file == "setup.cfg", vars(cfg))
 
     # 3. the argv we build is one the REAL binary accepts (2.x flags would fail here)
     argv = m.mutmut_argv(max_children=2)

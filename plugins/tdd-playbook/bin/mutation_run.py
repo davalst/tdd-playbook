@@ -44,6 +44,7 @@ findings are load-bearing and each is now a test:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shlex
@@ -207,34 +208,229 @@ def baseline(suite_argv, run=None, timeout=None):
     return True, "", seconds, collected
 
 
-def mutmut_config_scope(root="."):
-    """(scope, problem) — what mutmut will ACTUALLY mutate, read from its own config.
+class ConfigProblem(Exception):
+    """mutmut's effective configuration cannot be learned or is not one this wrapper will rewrite."""
 
-    mutmut 3.x takes NO --paths-to-mutate/--runner flags; those are 2.x. Scope lives in
-    `setup.cfg [mutmut] source_paths` (`paths_to_mutate` is accepted but deprecated). Verified
-    against the installed binary: with no config, even `mutmut --version` dies with
-    "Could not figure out where the code to mutate is."
 
-    The first draft of this file constructed 2.x flags and proved them against an INJECTED
-    mock, which accepted anything. Real mutmut rejects them. That is H9 — a double supplying a
-    seam production lacks — so this reads the real config instead of asserting a CLI shape."""
-    import configparser
-    for name in ("setup.cfg", "tox.ini"):
-        path = os.path.join(root, name)
-        if not os.path.isfile(path):
-            continue
-        parser = configparser.ConfigParser()
-        try:
-            parser.read(path)
-        except configparser.Error as exc:
-            return None, f"{name} is unparseable: {exc}"
-        if parser.has_section("mutmut"):
-            for key in ("source_paths", "paths_to_mutate"):
-                if parser.has_option("mutmut", key):
-                    return parser.get("mutmut", key).strip(), None
-    return None, ("mutmut is NOT CONFIGURED — it takes no --paths-to-mutate flag (that is 2.x) "
-                  "and cannot guess. Add to setup.cfg:\n\n    [mutmut]\n    source_paths=<dir>\n\n"
-                  "Refusing rather than invoking a tool that will die on its own config")
+class ScopeError(Exception):
+    """The scope mapping is missing, malformed, or names something that is not a fact."""
+
+
+class EffectiveConfig:
+    """What mutmut will ACTUALLY use, learned from mutmut's own loader in `cwd` (v1.52.0 D3).
+
+    Never re-implements precedence: pyproject `[tool.mutmut]` wins outright, else setup.cfg
+    (`mutmut/configuration.py:19-45`); tox.ini is never read by mutmut and is refused by name.
+    `legacy_tests_dir` is surfaced separately because mutmut APPENDS it to the selection
+    (`configuration.py:105-110`) — leaving it in a rewritten copy silently widens the baseline."""
+    def __init__(self, **kw):
+        self.config_file = kw["config_file"]
+        self.source_paths = list(kw["source_paths"])
+        self.only_mutate = list(kw.get("only_mutate", []))
+        self.do_not_mutate = list(kw.get("do_not_mutate", []))
+        self.pytest_add_cli_args = list(kw.get("pytest_add_cli_args", []))
+        self.selection = list(kw.get("selection", []))
+        self.legacy_tests_dir = list(kw.get("legacy_tests_dir", []))
+
+
+_EFFECTIVE_CONFIG_PROBE = r"""
+import json, os, sys
+out = {"config_file": None, "tox_ini_has_mutmut": False, "legacy_tests_dir": []}
+try:
+    import tomllib
+except ImportError:
+    tomllib = None
+try:
+    if os.path.exists("pyproject.toml") and tomllib is not None:
+        with open("pyproject.toml", "rb") as fh:
+            data = tomllib.load(fh)
+        table = data.get("tool", {}).get("mutmut")
+        if table is not None:
+            out["config_file"] = "pyproject.toml"
+            td = table.get("tests_dir", [])
+            out["legacy_tests_dir"] = [td] if isinstance(td, str) else list(td)
+    if out["config_file"] is None:
+        import configparser
+        cp = configparser.ConfigParser(); cp.read("setup.cfg")
+        if cp.has_section("mutmut"):
+            out["config_file"] = "setup.cfg"
+            if cp.has_option("mutmut", "tests_dir"):
+                raw = cp.get("mutmut", "tests_dir")
+                out["legacy_tests_dir"] = [x for x in raw.split("\n") if x] if "\n" in raw else [raw]
+        cp2 = configparser.ConfigParser(); cp2.read("tox.ini")
+        out["tox_ini_has_mutmut"] = cp2.has_section("mutmut")
+except Exception as exc:
+    out["probe_error"] = repr(exc)
+try:
+    import warnings
+    warnings.simplefilter("ignore")
+    from mutmut.configuration import Config
+    Config.ensure_loaded(); c = Config.get()
+    out.update(source_paths=[str(p) for p in c.source_paths], only_mutate=list(c.only_mutate),
+               do_not_mutate=list(c.do_not_mutate), pytest_add_cli_args=list(c.pytest_add_cli_args),
+               selection=list(c.pytest_add_cli_args_test_selection))
+except ImportError as exc:
+    out["mutmut_error"] = "import: " + str(exc)
+except FileNotFoundError as exc:
+    out["mutmut_error"] = "unconfigured: " + str(exc)
+except Exception as exc:
+    out["mutmut_error"] = "load: " + repr(exc)
+print(json.dumps(out))
+"""
+
+
+def effective_mutmut_config(cwd, python=None):
+    """Ask mutmut (in `cwd`, with `python`) what it will use. Raises ConfigProblem with the exact
+    remedy; never guesses and never reads a file mutmut would not."""
+    proc = subprocess.run([python or sys.executable, "-c", _EFFECTIVE_CONFIG_PROBE], cwd=cwd,
+                          capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
+    try:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        raise ConfigProblem("could not read mutmut's effective config in {}: {}".format(
+            cwd, (proc.stdout + proc.stderr)[-400:]))
+    if "mutmut_error" in data and data["mutmut_error"].startswith("import:"):
+        raise ConfigProblem("mutmut is not importable by {} ({}) — install it in that interpreter "
+                            "or pass the one that has it".format(python or sys.executable, data["mutmut_error"]))
+    if data.get("config_file") is None:
+        if data.get("tox_ini_has_mutmut"):
+            raise ConfigProblem("mutmut config found ONLY in tox.ini — mutmut never reads tox.ini "
+                                "(configuration.py reads pyproject.toml [tool.mutmut], then "
+                                "setup.cfg [mutmut]); move the section to one of those")
+        raise ConfigProblem("mutmut is NOT CONFIGURED in {} — add to setup.cfg:\n\n    [mutmut]\n"
+                            "    source_paths=<dir>\n\n(or a [tool.mutmut] table in pyproject.toml); "
+                            "refusing rather than invoking a tool that will die on its own config".format(cwd))
+    if "mutmut_error" in data:
+        raise ConfigProblem("mutmut refused its own config in {}: {}".format(cwd, data["mutmut_error"]))
+    return EffectiveConfig(**{k: data[k] for k in ("config_file", "source_paths", "only_mutate",
+                                                   "do_not_mutate", "pytest_add_cli_args",
+                                                   "selection", "legacy_tests_dir")})
+
+
+SCOPES_REL = os.path.join(".tdd-playbook", "mutation-scopes.json")
+SCOPES_MAX_BYTES = 256 * 1024
+_SCAFFOLD = """{
+  "<scope-name>": {
+    "sources": ["pkg/module.py", "pkg/sub/*"],
+    "tests":   ["tests/test_module.py", "tests/test_other.py::TestThing"],
+    "cost":    "a survivor here costs <the irreversible/security/money consequence>"
+  }
+}"""
+
+
+def _no_dup_keys(pairs):
+    seen = set(); out = {}
+    for k, v in pairs:
+        if k in seen:
+            raise ScopeError("duplicate scope name {!r} in {} — JSON is last-wins and would hide "
+                             "one of them".format(k, SCOPES_REL))
+        seen.add(k); out[k] = v
+    return out
+
+
+def load_scopes(root):
+    """The repo's machine-readable mutation roster (v1.52.0 D1). Missing → refuse with a scaffold
+    to copy (never written for you); duplicate names → refuse; over the size cap → refuse."""
+    path = os.path.join(root, SCOPES_REL)
+    if not os.path.isfile(path):
+        raise ScopeError("no scope mapping at {} — create it (tracked) from this scaffold:\n{}\n"
+                         "The mapping IS the mutation roster: exact sources, pytest selectors, and "
+                         "the §4 cost line per entry.".format(SCOPES_REL, _SCAFFOLD))
+    if os.path.getsize(path) > SCOPES_MAX_BYTES:
+        raise ScopeError("{} exceeds {} bytes — a roster, not a database".format(SCOPES_REL, SCOPES_MAX_BYTES))
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    try:
+        scopes = json.loads(raw.decode("utf-8"), object_pairs_hook=_no_dup_keys)
+    except ValueError as exc:
+        raise ScopeError("{} is not valid JSON: {}".format(SCOPES_REL, exc))
+    if not isinstance(scopes, dict) or not scopes:
+        raise ScopeError("{} must be a non-empty object of scope entries".format(SCOPES_REL))
+    return scopes
+
+
+class Scope:
+    def __init__(self, name, sources, tests, cost, mapping_sha256):
+        self.name = name; self.sources = sources; self.tests = tests; self.cost = cost
+        self.mapping_sha256 = mapping_sha256
+        self.source_count = len(sources); self.test_count = len(tests)
+
+
+def _tracked_files(root):
+    proc = subprocess.run(["git", "-C", root, "ls-files", "-z"], capture_output=True, text=True, timeout=60)
+    if proc.returncode != 0:
+        raise ScopeError("git ls-files failed in {}: {}".format(root, proc.stderr.strip()))
+    return [p for p in proc.stdout.split("\0") if p]
+
+
+def _glob_match(pattern, path):
+    import fnmatch
+    return fnmatch.fnmatchcase(path, pattern)
+
+
+def resolve_scope(root, name, cfg):
+    """Turn a mapping entry into FACTS: exact tracked files inside mutmut's parsed source_paths
+    (realpath containment — never substring, the `--scope b` class), not excluded by
+    do_not_mutate, with ≥1 selector and a cost line."""
+    import hashlib
+    scopes = load_scopes(root)
+    if name not in scopes:
+        raise ScopeError("unknown scope {!r}; the mapping defines: {}".format(name, ", ".join(sorted(scopes))))
+    entry = scopes[name]
+    for key in ("sources", "tests", "cost"):
+        if key not in entry:
+            raise ScopeError("scope {!r} lacks {!r} (every entry needs sources, tests, cost)".format(name, key))
+    if not isinstance(entry["sources"], list) or not entry["sources"]:
+        raise ScopeError("scope {!r}: 'sources' must be a non-empty list — an empty scope is a vacuous run".format(name))
+    if not isinstance(entry["tests"], list) or not entry["tests"]:
+        raise ScopeError("scope {!r}: 'tests' must be a non-empty list of pytest selectors".format(name))
+    if not isinstance(entry["cost"], str) or not entry["cost"].strip():
+        raise ScopeError("scope {!r}: 'cost' must state what a survivor here costs (§4 roster rule)".format(name))
+    real_root = os.path.realpath(root)
+    roots = [os.path.realpath(os.path.join(real_root, sp)) for sp in cfg.source_paths]
+    tracked = _tracked_files(root)
+    files = []
+    for pat in entry["sources"]:
+        if not isinstance(pat, str) or os.path.isabs(pat) or ".." in pat.split("/"):
+            raise ScopeError("scope {!r}: source {!r} must be a relative path or glob without '..'".format(name, pat))
+        hits = [t for t in tracked if _glob_match(pat, t)] if any(c in pat for c in "*?[") else ([pat] if pat in tracked else [])
+        if not hits:
+            raise ScopeError("scope {!r}: source {!r} matches no TRACKED file".format(name, pat))
+        for hit in hits:
+            rp = os.path.realpath(os.path.join(real_root, hit))
+            if not any(rp == r or rp.startswith(r + os.sep) for r in roots):
+                raise ScopeError("scope {!r}: {!r} is outside mutmut's source_paths {} — mutmut would "
+                                 "never mutate it, and a scope check by substring would have let it "
+                                 "through".format(name, hit, cfg.source_paths))
+            if any(_glob_match(d, hit) for d in cfg.do_not_mutate):
+                raise ScopeError("scope {!r}: {!r} is excluded by do_not_mutate {} — mutmut would "
+                                 "silently generate zero mutants for it".format(name, hit, cfg.do_not_mutate))
+            if hit not in files:
+                files.append(hit)
+    for sel in entry["tests"]:
+        if not isinstance(sel, str) or os.path.isabs(sel) or ".." in sel.split("/"):
+            raise ScopeError("scope {!r}: test selector {!r} must be relative without '..'".format(name, sel))
+    with open(os.path.join(root, SCOPES_REL), "rb") as fh:
+        digest = hashlib.sha256(fh.read()).hexdigest()
+    return Scope(name, files, list(entry["tests"]), entry["cost"], digest)
+
+
+def collect_selection(cwd, tests, add_args, python=None):
+    """(count, problem): how many tests the mapped selectors collect in `cwd`, with mutmut's
+    pytest_add_cli_args replayed. Zero is the §4b ROSTER GAP, named as such."""
+    argv = [python or sys.executable, "-m", "pytest", "--collect-only"] + list(add_args) + list(tests)
+    proc = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
+    text = proc.stdout + proc.stderr
+    n = parse_collected(text)
+    # a node id naming a test that does not exist is pytest "ERROR: not found" (exit 4), which is
+    # the same fact as collecting zero: no test reaches the mapped sources
+    not_found = proc.returncode == 4 and "not found" in text
+    if not not_found and (proc.returncode not in (0, 5) or n is None):
+        return 0, ("could not collect {} in {} (pytest exit {}): {}".format(tests, cwd, proc.returncode, text[-300:]))
+    if not_found or n == 0:
+        return 0, ("could not narrow: no test reaches the mapped selection {} — a ROSTER gap, not a "
+                   "gate defect; write the test that reaches these sources, or fix the selector".format(tests))
+    return n, None
 
 
 def mutmut_argv(max_children=None):
@@ -247,7 +443,7 @@ def mutmut_argv(max_children=None):
     return argv
 
 
-def main(argv=None, run=None):
+def main(argv=None, run=None, config_reader=None):
     parser = argparse.ArgumentParser(
         prog="mutation_run.py",
         description=("Run a mutation pass with its preflight ON the execution path. --scope is CHECKED "
@@ -296,18 +492,21 @@ def main(argv=None, run=None):
     if args.dry_run:
         return 0
 
-    configured, problem = mutmut_config_scope()
-    if problem:
-        print("mutation_run: REFUSED — " + problem, file=sys.stderr)
+    try:
+        cfg = (config_reader or effective_mutmut_config)(os.getcwd())
+    except ConfigProblem as exc:
+        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
         return 1
-    if args.scope not in configured:
-        print(f"mutation_run: REFUSED — --scope {args.scope!r} is not what mutmut will mutate; its config "
-              f"says {configured!r}. Mutating a different tree than the one you asked about is a score "
-              "about the wrong code, which is worse than no score."
-              , file=sys.stderr)
+    roots = [os.path.realpath(sp) for sp in cfg.source_paths]
+    asked = os.path.realpath(args.scope)
+    if not any(asked == r or asked.startswith(r + os.sep) for r in roots):
+        print(f"mutation_run: REFUSED — --scope {args.scope!r} is not inside what mutmut will mutate; its "
+              f"config ({cfg.config_file}) says source_paths={cfg.source_paths!r}. Mutating a different tree "
+              "than the one you asked about is a score about the wrong code, which is worse than no score.",
+              file=sys.stderr)
         return 1
     mut = mutmut_argv(args.max_children)
-    print("mutation_run: invoking " + " ".join(mut) + f" (scope from config: {configured})")
+    print("mutation_run: invoking " + " ".join(mut) + f" (scope from {cfg.config_file}: {cfg.source_paths})")
     try:
         proc = run_bounded(mut, args.max_minutes * 60, run=run)
     except subprocess.TimeoutExpired:      # only the injected hook can still raise this
