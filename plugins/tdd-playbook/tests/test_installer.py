@@ -270,6 +270,18 @@ def test_doctor_reports_mutation_scopes_and_last_run():
             cmd_line = next(ln for ln in out.splitlines() if "mutation scopes:" in ln)
             check("doctor's suggested command is shell-safe when pasted (no <placeholder>)",
                   "<" not in cmd_line and ">" not in cmd_line and "--scope SCOPE_NAME" in cmd_line, cmd_line)
+            # v1.52.2: a repo with a virtualenv must be told to run the runner THROUGH it — the
+            # origin repo's first real run used Homebrew's python3 and every mutant went unfinished
+            check("without a .venv the suggested interpreter is python3", "python3 .claude/bin/mutation_run.py" in cmd_line, cmd_line)
+            os.makedirs(os.path.join(target, ".venv", "bin"))
+            with open(os.path.join(target, ".venv", "bin", "python"), "w") as fh:
+                fh.write("#!/bin/sh\n")
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                mod.main(["--doctor", target])
+            venv_line = next(ln for ln in buf.getvalue().splitlines() if "mutation scopes:" in ln)
+            check("with a .venv the suggested command runs the runner through .venv/bin/python",
+                  ".venv/bin/python .claude/bin/mutation_run.py" in venv_line and "python3 .claude" not in venv_line, venv_line)
             os.makedirs(os.path.join(target, ".tdd-playbook"))
             with open(os.path.join(target, ".tdd-playbook", "mutation-scopes.json"), "w") as fh:
                 json.dump({"a": {"sources": ["x.py"], "tests": ["t/"], "cost": "c"},

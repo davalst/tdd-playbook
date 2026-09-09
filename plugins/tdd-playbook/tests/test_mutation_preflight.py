@@ -1049,6 +1049,19 @@ def test_real_run_record_and_partial_on_timeout():
     check("REAL cut-off run: no worktree left behind", not os.listdir(os.path.join(m.repo_identity(slow)["state_dir"], "mutation-worktrees")))
 
 
+def test_mutmut_runs_through_the_same_interpreter():
+    """v1.52.2: the origin repo's first real scoped run (2026-09-09) generated 290 mutants for one
+    module — the narrowing worked — and then EVERY mutant ended unfinished: `mutmut_argv` launched
+    the bare `mutmut` from PATH (Homebrew's, outside the repo's .venv), whose pytest could not
+    import the project's dependencies. The runner refused honestly, but the cause is ours: the
+    config probe, the collection, the baseline and the accounting already use sys.executable;
+    the pass itself must too, or four steps run in one environment and the fifth in another."""
+    m = load()
+    argv = m.mutmut_argv(max_children=2)
+    check("mutmut is launched as `<sys.executable> -m mutmut run …`, never a bare PATH lookup",
+          argv[:4] == [sys.executable, "-m", "mutmut", "run"] and "--max-children" in argv, argv)
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
@@ -1068,7 +1081,8 @@ def main():
                test_main_runs_both_halves_in_the_worktree_for_real,
                test_full_mutant_accounting_from_one_source,
                test_run_record_is_written_before_cleanup_and_shares_retention,
-               test_real_run_record_and_partial_on_timeout):
+               test_real_run_record_and_partial_on_timeout,
+               test_mutmut_runs_through_the_same_interpreter):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
