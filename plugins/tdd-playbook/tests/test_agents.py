@@ -1464,6 +1464,75 @@ def test_means_line_and_prior_art_sweep():
           and "negative claim" in skill.split("Prior art:")[1][:600].lower(), None)
 
 
+def test_v150_per_phase_mutation():
+    """§4 amendment (2026-09-09): mutation is per-phase, scoped, and non-deferrable.
+
+    Origin: cheliped 2026-09-07 to 09 — thirteen deferred per-phase runs became a three-day
+    full-roster sweep that stopped development. The v1.9 rule ("EACH PHASE is a feature for
+    gating") was already in §4 and was walked past thirteen times, because "unmeasured, later"
+    still counted as a phase status and the full critical-module pass still sat on the
+    development path at feature completion. The pins keep the concrete rules — a phase is not
+    done until its score is recorded; a run is SCOPED to what the phase changed with a named
+    mutant/time budget; arid mutants are filtered up front; full-roster sweeps live at
+    release milestones only; a survivor is a mechanical red; the score retires tests that kill
+    nothing — from being paraphrased back to the abstraction that already failed."""
+    with open(SKILL) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §4: 'unmeasured, later' is not a phase status",
+         "is not a phase status"),
+        ("SKILL §4: a phase is not done until its own mutation score is recorded",
+         "not done until its own mutation run has completed"),
+        ("SKILL §4: runs are scoped to the functions the phase changed",
+         "the functions the phase changed"),
+        ("SKILL §4: a named mutant budget (under 500 mutants)", "under 500 mutants"),
+        ("SKILL §4: run detached right after the push while the next phase starts",
+         "run detached right after the push"),
+        ("SKILL §4: arid mutants are filtered UP FRONT", "Filter arid mutants up front"),
+        ("SKILL §4: full-roster sweeps only at release milestones",
+         "release milestones"),
+        ("SKILL §4: never on the development path", "never on the development path"),
+        ("SKILL §4: a survivor is a mechanical red", "A survivor is a mechanical red"),
+        ("SKILL §4: proven by re-measuring, never by narrative",
+         "proven by re-measuring, never by narrative"),
+        ("SKILL §4: a test file that kills nothing is window dressing",
+         "kills nothing is window dressing"),
+        ("SKILL §4: the cheliped origin is cited", "cheliped 2026-09-07"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+    # The old cadence sentence must be GONE, not merely contradicted further down.
+    check("SKILL §4: the superseded 'full pass stays at feature completion' sentence is removed",
+          "full critical-module pass stays at" not in text, None)
+
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        cmd = fh.read()
+    check("/mutate: per-phase, non-deferrable framing", "phase" in cmd and "non-deferrable" in cmd)
+    check("/mutate: arid filter named up front", "arid" in cmd)
+    check("/mutate: names the mutant budget and the runner flag that enforces the time budget",
+          "500" in cmd and "--expected-mutants" in cmd and "--max-minutes" in cmd)
+
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        agent = fh.read()
+    fm = frontmatter(agent)
+    check("mutation-runner: description says phase boundary, not only feature completion",
+          "phase" in fm["description"].lower(), fm["description"])
+    check("mutation-runner: arid filter is a named step", "arid" in agent)
+
+
+def test_v150_planted_fixtures():
+    """The v1.50 pins must be able to FAIL — doctrine paraphrased back to the abstraction."""
+    paraphrased = ("Run mutation at every phase boundary; full pass at feature completion. "
+                   "Triage survivors and add tests.\n")
+    check("planted: deferral-as-status paraphrase is detected",
+          "is not a phase status" not in paraphrased and "under 500 mutants" not in paraphrased)
+    check("planted: narrative-proof paraphrase is detected",
+          "proven by re-measuring, never by narrative" not in paraphrased)
+    intact = ("A phase is not done until its own mutation run has completed and the score is "
+              "recorded; \"unmeasured, later\" is not a phase status.\n")
+    check("planted: intact non-deferrable rule passes",
+          "is not a phase status" in intact and "not done until its own mutation run has completed" in intact)
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1484,7 +1553,8 @@ def main():
                test_skill_frontmatter_is_valid_yaml_to_a_real_parser,
                test_record_output_block_is_generated_not_copied,
                test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures,
-               test_means_line_and_prior_art_sweep,):
+               test_means_line_and_prior_art_sweep,
+               test_v150_per_phase_mutation, test_v150_planted_fixtures,):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
