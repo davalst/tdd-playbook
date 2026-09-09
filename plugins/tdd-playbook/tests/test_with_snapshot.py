@@ -42,6 +42,44 @@ def make_repo(d):
     git("commit", "-qm", "init")
 
 
+def test_d0_extractions():
+    """v1.52.0 D0: the clean-tree rule becomes two importable, root-parameterised functions
+    (`dirty_tracked(root)`, `untracked(root)`) so the mutation runner can REUSE them instead of
+    copying the porcelain filter; `cmd_preflight` keeps calling the first (output unchanged —
+    the existing preflight checks above are the byte-identity pin)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("with_snapshot", BIN)
+    ws = importlib.util.module_from_spec(spec); spec.loader.exec_module(ws)
+    with tempfile.TemporaryDirectory() as d:
+        make_repo(d)
+        git = lambda *a: subprocess.run(["git", *a], cwd=d, capture_output=True, text=True)
+        git("add", "-A"); git("commit", "-q", "-m", "init")
+        check("dirty_tracked: clean committed tree -> []", ws.dirty_tracked(d) == [], ws.dirty_tracked(d))
+        check("untracked: clean tree -> []", ws.untracked(d) == [], ws.untracked(d))
+        with open(os.path.join(d, "mod.py"), "a") as fh:
+            fh.write("# edit\n")
+        check("dirty_tracked: modified tracked file is named", ws.dirty_tracked(d) == ["mod.py"], ws.dirty_tracked(d))
+        check("untracked: a tracked modification is NOT untracked", ws.untracked(d) == [], ws.untracked(d))
+        git("checkout", "--", "mod.py")
+        os.makedirs(os.path.join(d, "tests"))
+        with open(os.path.join(d, "tests", "conftest.py"), "w") as fh:
+            fh.write("x = 1\n")
+        with open(os.path.join(d, ".gitignore"), "w") as fh:
+            fh.write("ignored.txt\n")
+        with open(os.path.join(d, "ignored.txt"), "w") as fh:
+            fh.write("x")
+        git("add", ".gitignore"); git("commit", "-q", "-m", "ignore")
+        check("untracked: non-ignored untracked file (nested conftest) is named, ignored file is not",
+              ws.untracked(d) == ["tests/conftest.py"], ws.untracked(d))
+        check("dirty_tracked: untracked files do not count as dirty", ws.dirty_tracked(d) == [], ws.dirty_tracked(d))
+        # root-parameterised: works from a DIFFERENT cwd (the runner is never cwd-bound)
+        cwd_before = os.getcwd(); os.chdir(tempfile.gettempdir())
+        try:
+            check("both take an explicit root, not the cwd", ws.untracked(d) == ["tests/conftest.py"], ws.untracked(d))
+        finally:
+            os.chdir(cwd_before)
+
+
 def main():
     print("with_snapshot calibration")
 
@@ -138,6 +176,7 @@ def main():
         check("non-repo exits 2", p.returncode == 2 and "not a git repository" in p.stderr,
               (p.returncode, p.stderr))
 
+    test_d0_extractions()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
     sys.exit(1 if _results["fail"] else 0)
 

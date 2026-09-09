@@ -328,6 +328,43 @@ def test_failure_digest_names_the_failed_checks():
         td.cleanup()
 
 
+def test_run_store_subdir_and_prune_dir_are_shared_code():
+    """v1.52.0 D0: the mutation runner's run records live beside gate runs under the common dir
+    and must share the retention CODE, not a copy — `RunStore(subdir=...)` and a lifted
+    `prune_dir(root, keep, lock_name)`. The default subdir keeps gate-runs byte-for-byte."""
+    gr = _load("gate_runner")
+    td, root = _repo()
+    try:
+        common = os.path.join(root, ".git")
+        default = gr.RunStore(common, "g1", keep=5)
+        check("RunStore default subdir is still gate-runs",
+              default.root.endswith(os.path.join("tdd-playbook", "gate-runs")), default.root)
+        mr = gr.RunStore(common, "m1", keep=2, subdir="mutation-runs")
+        check("RunStore(subdir=) roots under <common>/tdd-playbook/<subdir>",
+              mr.root.endswith(os.path.join("tdd-playbook", "mutation-runs")) and os.path.isdir(mr.path), mr.root)
+        check("subdir is a single safe path component", True)
+        for bad in ("../x", "a/b", "", "."):
+            try:
+                gr.RunStore(common, "m2", keep=2, subdir=bad)
+            except ValueError:
+                continue
+            check("PLANTED unsafe subdir {!r} is refused".format(bad), False)
+        # prune_dir: oldest index-bearing dirs beyond keep are removed, under a named lock
+        for i, name in enumerate(("a", "b", "c", "d")):
+            d = os.path.join(mr.root, name); os.mkdir(d)
+            with open(os.path.join(d, "index.json"), "w") as fh:
+                fh.write("{}")
+            os.utime(d, (1000 + i, 1000 + i))
+        gr.prune_dir(mr.root, keep=2, lock_name=".prune.lock", protect=mr.path)
+        left = sorted(n for n in os.listdir(mr.root) if os.path.isdir(os.path.join(mr.root, n)))
+        check("prune_dir keeps the newest `keep` finished runs plus the protected live one",
+              left == ["c", "d", "m1"], left)
+        check("prune_dir wrote its lock in the pruned root",
+              os.path.isfile(os.path.join(mr.root, ".prune.lock")))
+    finally:
+        td.cleanup()
+
+
 def main():
     print("shared gate resolver/runner calibration")
     for fn in (test_full_plan_discovers_live_roster,
@@ -339,7 +376,8 @@ def main():
                test_retention_never_prunes_an_active_concurrent_run,
                test_compact_count_parser_supports_repository_result_form,
                test_compact_runner_preserves_suite_directory_seam,
-               test_failure_digest_names_the_failed_checks):
+               test_failure_digest_names_the_failed_checks,
+               test_run_store_subdir_and_prune_dir_are_shared_code):
         try:
             fn()
         except Exception as exc:

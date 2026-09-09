@@ -320,6 +320,50 @@ def test_wrapper_does_not_claim_scoped():
                                       or "config" in why.lower()), why)
 
 
+def test_run_bounded_deadline_grace_and_cwd_with_real_children():
+    """v1.52.0 D0 / Q3: `run_bounded(argv, deadline_s, cwd=, grace_s=)` — SIGINT to the group at
+    deadline-grace, SIGKILL at the deadline, never deadline+grace; `cwd` honoured (mutmut's
+    config discovery is cwd-relative). Driven by REAL children: the injected `run` hook returns
+    before the Popen path, so a hook-driven test of this exercises nothing."""
+    import tempfile, textwrap, time as _t
+    m = load()
+    d = tempfile.mkdtemp()
+    # cwd is honoured
+    p = m.run_bounded([sys.executable, "-c", "import os;print(os.getcwd())"], 10, cwd=d, grace_s=1)
+    check("run_bounded: cwd is honoured", os.path.realpath(p.stdout.strip()) == os.path.realpath(d), p.stdout)
+    check("run_bounded: a prompt child is not marked timed out", getattr(p, "timed_out", None) is False, vars(p))
+    graceful = os.path.join(d, "graceful.py")
+    with open(graceful, "w") as fh:
+        fh.write(textwrap.dedent("""
+            import signal, sys, time
+            signal.signal(signal.SIGINT, lambda *_: sys.exit(3))
+            print("started", flush=True)
+            time.sleep(60)
+        """))
+    t0 = _t.monotonic()
+    p = m.run_bounded([sys.executable, graceful], 4, cwd=d, grace_s=2)
+    el = _t.monotonic() - t0
+    check("graceful child: SIGINT at deadline-grace, child exits with its own code",
+          p.returncode == 3 and p.timed_out is True, (p.returncode, getattr(p, "timed_out", None)))
+    check("graceful child: returned well before the deadline (SIGINT at ~2s, not at 4s+2s)",
+          1.5 <= el < 4.0, el)
+    check("graceful child: output captured up to the interrupt", "started" in (p.stdout or ""), p.stdout)
+    stubborn = os.path.join(d, "stubborn.py")
+    with open(stubborn, "w") as fh:
+        fh.write(textwrap.dedent("""
+            import signal, time
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            print("started", flush=True)
+            time.sleep(60)
+        """))
+    t0 = _t.monotonic()
+    p = m.run_bounded([sys.executable, stubborn], 4, cwd=d, grace_s=2)
+    el = _t.monotonic() - t0
+    check("stubborn child: SIGKILL at the absolute deadline, not deadline+grace",
+          p.timed_out is True and p.returncode < 0 and 3.5 <= el < 6.0, (p.returncode, el))
+    check("run_bounded: elapsed seconds are reported", isinstance(getattr(p, "elapsed_s", None), float), vars(p))
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
@@ -327,7 +371,8 @@ def main():
                test_preflight_refuses_red_baseline_and_empty_collection,
                test_cli_is_the_real_seam, test_main_actually_invokes_mutmut,
                test_against_REAL_mutmut_not_a_mock,
-               test_wrapper_does_not_claim_scoped):
+               test_wrapper_does_not_claim_scoped,
+               test_run_bounded_deadline_grace_and_cwd_with_real_children):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
