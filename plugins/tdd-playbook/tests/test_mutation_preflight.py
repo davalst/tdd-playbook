@@ -796,10 +796,22 @@ def test_repo_lock_and_stale_worktrees():
     ident = m.repo_identity(root)
     with m.repo_lock(ident, scope_name="calc", run_id="holder") as lock:
         check("repo lock file lives at <state>/mutation.lock", lock.path == os.path.join(ident["state_dir"], "mutation.lock"))
-        probe = subprocess.run([sys.executable, BIN, "--scope", "calc", "--max-minutes", "5"],
-                               cwd=root, capture_output=True, text=True, timeout=60)
+        # In-process second invocation with an injected reader: a stdlib-only CI has no mutmut,
+        # and the CLI reads mutmut's config BEFORE it reaches the lock — so a subprocess probe
+        # there refused for the wrong reason (CI run on 02ea642, 2026-09-09). flock is per open
+        # file description, so a second LOCK_NB on a fresh fd fails even in the same process.
+        import io, contextlib
+        reader = lambda cwd, python=None: m.EffectiveConfig(config_file="setup.cfg", source_paths=["app"])
+        rec = lambda argv, **kw: subprocess.CompletedProcess(argv, 0, "collected 2 items\n2 passed in 1s\n", "")
+        err = io.StringIO(); cwd0 = os.getcwd()
+        try:
+            os.chdir(root)
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                rc2 = m.main(["--scope", "calc", "--max-minutes", "5"], run=rec, config_reader=reader)
+        finally:
+            os.chdir(cwd0)
         check("a second invocation REFUSES immediately, naming the holder's scope",
-              probe.returncode == 1 and "another mutation run" in probe.stderr and "calc" in probe.stderr, probe.stderr[:300])
+              rc2 == 1 and "another mutation run" in err.getvalue() and "calc" in err.getvalue(), err.getvalue()[:300])
     # stale vs live vs foreign
     stale = m.Worktree.create(ident, run_id="stale-1", scope_name="calc"); stale.release_lock()
     live = m.Worktree.create(ident, run_id="live-1", scope_name="calc"); live.release_lock()
