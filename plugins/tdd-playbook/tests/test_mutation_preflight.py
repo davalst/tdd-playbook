@@ -503,8 +503,24 @@ def test_scope_mapping_is_the_roster():
             check("PLANTED sources {} are refused".format(label), True)
         else:
             check("PLANTED sources {} are refused".format(label), False, bad_sources)
+    # SURVIVOR-DRIVEN (Phase 2 targeted mutants, 2026-09-09): a containment check weakened toward
+    # substring survived because every planted source was refused EARLIER (untracked); this
+    # tracked file's path CONTAINS the source dir's name and sits outside it.
+    r2b = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                        scopes={"x": {"sources": ["tests/app_helpers.py"], "tests": ["tests/"], "cost": "c"}},
+                        extra_files=[("tests/app_helpers.py", "X = 1\n")])
+    try:
+        m.resolve_scope(r2b, "x", m.effective_mutmut_config(r2b))
+    except m.ScopeError as exc:
+        check("PLANTED tracked file whose path contains the source dir NAME but is outside it is refused",
+              "outside" in str(exc), str(exc))
+    else:
+        check("PLANTED tracked file whose path contains the source dir NAME but is outside it is refused", False)
     for bad_entry, label in ([{"sources": ["app/calc.py"], "tests": [], "cost": "c"}, "empty tests"],
-                             [{"sources": ["app/calc.py"], "tests": ["tests/"]}, "missing cost line"]):
+                             [{"sources": ["app/calc.py"], "tests": ["tests/"]}, "missing cost line"],
+                             # SURVIVOR-DRIVEN: the blank-cost branch was reachable only past the
+                             # missing-key check; a present-but-blank cost must refuse on its own
+                             [{"sources": ["app/calc.py"], "tests": ["tests/"], "cost": "   "}, "blank cost line"]):
         r3 = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n", scopes={"x": bad_entry})
         try:
             m.resolve_scope(r3, "x", m.effective_mutmut_config(r3))
