@@ -271,6 +271,57 @@ def test_compact_runner_preserves_suite_directory_seam():
               (bad.returncode, bad.stdout, bad.stderr))
 
 
+def test_failure_digest_names_the_failed_checks():
+    """A gate that is red once and cannot say why (2026-09-09, run 18d8943b: test_hooks exit 1,
+    373 lines, digest fail_signals=0). Two defects, both verified in source: the digest counted
+    only lines STARTING with FAIL while every plugin suite prints '  FAIL - <name>' indented; and
+    the redacted tail helper existed and was never emitted anywhere, so on failure the operator
+    saw a hash. The fix persists and prints the failure-marked lines ONLY - redacted, bounded -
+    which is what the existing store test already planted ('FAIL url ...really-secret...')."""
+    gr = _load("gate_runner")
+    raw = ("suite header\n  ok   - a check that passed\n"
+           "  FAIL - capture: sha present in event  (None, None)\n"
+           "  ok   - another\nFAIL unindented form\n"
+           "  FAIL - token leak  Authorization: Bearer secret-token-value\n"
+           "309 passed, 3 failed\n")
+    digest = json.loads(gr._sanitized_diagnostic(raw))
+    check("digest: counts INDENTED '  FAIL - ' markers (planted: 2 indented + 1 unindented)",
+          digest["fail_signals"] == 3, digest)
+    check("digest: counts indented '  ok   - ' as pass signals", digest["pass_signals"] == 2, digest)
+    check("digest: persists the failed check NAMES",
+          any("capture: sha present in event" in ln for ln in digest.get("failed_lines", [])), digest)
+    check("digest: a failed line is REDACTED before it is persisted",
+          all("secret-token-value" not in ln for ln in digest.get("failed_lines", []))
+          and any("<redacted>" in ln for ln in digest.get("failed_lines", [])), digest)
+    check("digest: non-failure lines never reach the digest",
+          not any("a check that passed" in ln or "suite header" in ln
+                  for ln in digest.get("failed_lines", [])), digest)
+    # bounded: a pathological suite cannot turn the store into a transcript
+    flood = "".join("  FAIL - c{}  {}\n".format(i, "x" * 5000) for i in range(500))
+    big = json.loads(gr._sanitized_diagnostic(flood))
+    check("digest: failed_lines are CAPPED in count", len(big.get("failed_lines", [])) <= gr.FAILED_LINES_MAX,
+          len(big.get("failed_lines", [])))
+    check("digest: each persisted line is TRUNCATED",
+          all(len(ln) <= gr.FAILED_LINE_CHARS for ln in big.get("failed_lines", [])),
+          max((len(ln) for ln in big.get("failed_lines", [])), default=0))
+    check("digest: the cap is recorded so a reader knows lines were dropped",
+          big.get("failed_lines_total") == 500, big.get("failed_lines_total"))
+    # the console path: the operator must see the names at failure time, not a hash alone
+    text = gr._failure_diagnostics(raw)
+    check("console: failure diagnostics NAME the failed checks",
+          "capture: sha present in event" in text and "secret-token-value" not in text, text)
+    # the store: the same bounded, redacted lines land in the private log
+    td, root = _repo()
+    try:
+        store = gr.RunStore(os.path.join(root, ".git"), "run-x", keep=5)
+        store.write_stage("s", raw)
+        body = open(os.path.join(store.path, "s.log")).read()
+        check("store: the failed check name is readable after the run",
+              "capture: sha present in event" in body and "secret-token-value" not in body, body)
+    finally:
+        td.cleanup()
+
+
 def main():
     print("shared gate resolver/runner calibration")
     for fn in (test_full_plan_discovers_live_roster,
@@ -281,7 +332,8 @@ def main():
                test_private_run_store_redacts_and_separates_concurrent_runs,
                test_retention_never_prunes_an_active_concurrent_run,
                test_compact_count_parser_supports_repository_result_form,
-               test_compact_runner_preserves_suite_directory_seam):
+               test_compact_runner_preserves_suite_directory_seam,
+               test_failure_digest_names_the_failed_checks):
         try:
             fn()
         except Exception as exc:
