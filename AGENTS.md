@@ -127,6 +127,12 @@ mechanisms.
    If the registry already exists: run `validate` (fix violations) and `doctor`, and put the
    dark-feature inventory in your report.
 
+3b. SEED THE MUTATION SCOPES (v1.52.0): if this repo has no `.tdd-playbook/mutation-scopes.json`,
+   create it from the existing mutation roster — one entry per critical module: exact source
+   files (or globs), the pytest selectors that reach them, and the §4 cost line — then validate
+   each with `python3 .claude/bin/mutation_run.py --dry-run --scope <name> --max-minutes 5`.
+   The mapping IS the roster; `--doctor` reports it MISSING until it exists.
+
 4. CALIBRATION STALENESS CHECK (before deleting the temp clone): read
    <clone>/docs/calibration/history.md. If it is missing or its last entry is >14 days old,
    FLAG IT PROMINENTLY in your report: "the verification gates just vendored here have
