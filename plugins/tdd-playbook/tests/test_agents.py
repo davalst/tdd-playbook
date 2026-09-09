@@ -1533,6 +1533,75 @@ def test_v150_planted_fixtures():
           "is not a phase status" in intact and "not done until its own mutation run has completed" in intact)
 
 
+def test_v151_scoped_run_cost():
+    """§4b (2026-09-09): the run must be scoped to what it measures — the COST of the run is
+    part of the gate's design.
+
+    Origin: a downstream repo's per-module gate paid a 20-plus-minute fixed cost per run —
+    every rostered mutant generated and every rostered test run before the first mutant was
+    applied — invisible inside batch sweeps, then most of each run once mutation moved to one
+    module per phase. The pins keep the two halves (mutants AND baseline scoped), the
+    tool-specific fact that mutmut does not scope by default, the disposable-worktree rule,
+    the budget, the unreached-module disposition, and the checklist line, in generic voice."""
+    with open(SKILL) as fh:
+        text = fh.read()
+    check("SKILL §4b: subsection exists", "## 4b. The run must be scoped to what it measures" in text)
+    for label, needle in [
+        ("SKILL §4b: both halves required (mutants and baseline)", "Both halves are required"),
+        ("SKILL §4b: the baseline runs only the tests that reach those modules",
+         "only the tests that reach those modules"),
+        ("SKILL §4b: fixed cost named as unrelated to the module under measurement",
+         "nothing to do with the module under measurement"),
+        ("SKILL §4b: PIT and Stryker scope by default; mutmut does not",
+         "PIT and Stryker scope both by default"),
+        ("SKILL §4b: rewrite the DISPOSABLE worktree's mutmut config", "disposable worktree"),
+        ("SKILL §4b: never rewrite the real project config", "Never rewrite the real"),
+        ("SKILL §4b: budget 15 to 30 minutes in the background", "15 to 30 minutes"),
+        ("SKILL §4b: a baseline that dominates means the GATE is misconfigured",
+         "the GATE is misconfigured"),
+        ("SKILL §4b: do not blame the module, do not defer", "do not defer the measurement"),
+        ("SKILL §4b: unreached module keeps the whole test folder and says so",
+         "keeps the whole test folder"),
+        ("SKILL §4b: the abort reads as a roster gap, not a gate defect",
+         "roster gap it is"),
+        ("SKILL §4b: timeout sized from the measured rate", "from the measured rate"),
+        ("SKILL §4b: a timeout prints its partial measurement before refusing",
+         "partial measurement before any refusal"),
+        ("SKILL §4b: origin commit cited as a worked example", "2fb23811"),
+        ("SKILL §4a checklist: run time is part of a gate's design",
+         "A gate's RUN TIME is part of its design"),
+        ("SKILL §4a checklist: measure the fixed cost of an empty or one-module run",
+         "fixed cost of an empty or one-module run"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+    # Generic voice: the downstream repo's private vocabulary must not leak into doctrine.
+    sect = text.split("## 4b. The run must be scoped to what it measures", 1)[1].split("\n## ", 1)[0]
+    for word in ("shim", "star-import", "star import"):
+        check("SKILL §4b: no downstream-specific lingo ({!r})".format(word),
+              word not in sect.lower(), None)
+
+    with open(os.path.join(COMMANDS, "mutate.md")) as fh:
+        cmd = fh.read()
+    check("/mutate: scopes the baseline, not only the mutants", "baseline" in cmd and "4b" in cmd)
+    with open(os.path.join(AGENTS, "mutation-runner.md")) as fh:
+        agent = fh.read()
+    check("mutation-runner: a baseline that dominates is a gate misconfiguration",
+          "GATE is misconfigured" in agent)
+    check("mutation-runner: mutmut scope rewrite happens in a disposable worktree only",
+          "disposable worktree" in agent)
+
+
+def test_v151_planted_fixtures():
+    """The v1.51 pins must be able to FAIL — a section that scopes mutants but not the baseline."""
+    half = ("## 4b. The run must be scoped to what it measures\nMutate only the modules the phase "
+            "touched; the tool's default test run is fine.\n## 5.")
+    check("planted: mutants-only scoping is detected as missing the baseline half",
+          "Both halves are required" not in half and "only the tests that reach those modules" not in half)
+    leaked = "## 4b. The run must be scoped to what it measures\nrun only the shims\n## 5."
+    sect = leaked.split("## 4b. The run must be scoped to what it measures", 1)[1].split("\n## ", 1)[0]
+    check("planted: downstream lingo leak is detected", "shim" in sect.lower())
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1554,7 +1623,8 @@ def main():
                test_record_output_block_is_generated_not_copied,
                test_v146_cheliped_audit_doctrine, test_v146_planted_fixtures,
                test_means_line_and_prior_art_sweep,
-               test_v150_per_phase_mutation, test_v150_planted_fixtures,):
+               test_v150_per_phase_mutation, test_v150_planted_fixtures,
+               test_v151_scoped_run_cost, test_v151_planted_fixtures,):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
