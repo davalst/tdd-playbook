@@ -335,19 +335,23 @@ def doctor(target: str) -> int:
     # v1.52.0 D8: the scoped mutation runner REFUSES without a scope mapping, and the refusal
     # is otherwise the only place that says so — the doctor is the health surface.
     scopes_path = os.path.join(target, ".tdd-playbook", "mutation-scopes.json")
+    # v1.52.2: the runner must run THROUGH the repo's environment (mutmut + the project's deps in
+    # one interpreter); a repo with a .venv is told so in the command it will paste
+    venv_py = os.path.join(target, ".venv", "bin", "python")
+    py = ".venv/bin/python" if os.path.isfile(venv_py) else "python3"
     if os.path.isfile(scopes_path):
         try:
             with open(scopes_path) as fh:
                 entries = json.load(fh)
             print(f"mutation scopes: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} in "
-                  f".tdd-playbook/mutation-scopes.json (validate one: python3 .claude/bin/mutation_run.py "
+                  f".tdd-playbook/mutation-scopes.json (validate one: {py} .claude/bin/mutation_run.py "
                   f"--dry-run --scope SCOPE_NAME --max-minutes 5)")
         except ValueError as exc:
             print(f"MUTATION SCOPES UNREADABLE: .tdd-playbook/mutation-scopes.json — {exc}")
             rc = 1
     else:
         print("mutation scopes: MISSING — .tdd-playbook/mutation-scopes.json is the mutation roster the "
-              "scoped runner requires; run `python3 .claude/bin/mutation_run.py --dry-run --scope SCOPE_NAME "
+              f"scoped runner requires; run `{py} .claude/bin/mutation_run.py --dry-run --scope SCOPE_NAME "
               "--max-minutes 5` and copy the scaffold it prints (SCOPE_NAME = any name; the refusal "
               "prints the scaffold)")
     try:

@@ -1,3 +1,22 @@
+## 1.52.2 — 2026-09-09
+
+**The pass runs through the same interpreter as everything else.** The origin repo's first real
+scoped run after re-vendoring proved the narrowing (mutmut generated 290 mutants for the one
+module in scope, down from tens of thousands) and then every mutant ended unfinished: the runner
+launched the bare `mutmut` from PATH — Homebrew's copy, outside the repo's `.venv` — while the
+config probe, the collection, the baseline and the accounting all ran under the `.venv` python
+the operator had invoked. The runner refused to certify, exited 1 and wrote the record, which is
+the correct behaviour for the wrong reason. Now `mutmut_argv` is `<sys.executable> -m mutmut run`,
+so all five steps share one environment; the doctor's suggested command names `.venv/bin/python`
+when the target has a virtualenv (and `python3` otherwise); the standing refresh prompt's step 3b
+says the same. Pinned by `test_mutation_preflight.py::test_mutmut_runs_through_the_same_interpreter`
+and two doctor checks in `test_installer.py` (red at e5be5d2). `AGENTS.md` re-rendered.
+
+Also from that refresh, for the record: the reconciling installer dropped the origin repo's OWN
+Stop hook because it lives inside the playbook-owned `.claude/hooks/scripts/` namespace — the
+documented behaviour (`_is_plugin_group`), not a defect; the entry was restored by hand and the
+script should move out of that directory.
+
 ## 1.52.1 — 2026-09-09
 
 **The doctor's next step must survive being pasted.** Minutes after 1.52.0 was tagged, the

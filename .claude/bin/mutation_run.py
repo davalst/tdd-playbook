@@ -1063,10 +1063,14 @@ def latest_record(ident):
 
 
 def mutmut_argv(max_children=None):
-    """The REAL mutmut 3.x contract, verified against the installed binary: `mutmut run`, with
-    scope and runner coming from config. Accepted flags are --all/--max-children/--rootdir/
+    """The REAL mutmut 3.x contract, verified against the installed binary: `python -m mutmut run`,
+    with scope and runner coming from config. Accepted flags are --all/--max-children/--rootdir/
     --show-killed/--tb; anything else is a 2.x memory."""
-    argv = ["mutmut", "run"]
+    # v1.52.2: THROUGH the interpreter, never a bare PATH lookup. The origin repo's first real
+    # scoped run (2026-09-09) launched Homebrew's `mutmut` from PATH while the config probe, the
+    # collection, the baseline and the accounting all ran under the repo's .venv python — 290
+    # mutants generated (the narrowing worked), every one of them unfinished.
+    argv = [sys.executable, "-m", "mutmut", "run"]
     if max_children:
         argv += ["--max-children", str(max_children)]
     return argv
