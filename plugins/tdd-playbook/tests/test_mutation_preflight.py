@@ -667,6 +667,185 @@ def test_suite_args_is_a_migration_refusal():
           proc.returncode == 1 and "mutation-scopes.json" in proc.stderr, (proc.returncode, proc.stderr[:200]))
 
 
+def _hold_lock_in_child(lock_path, seconds=30):
+    """A REAL child process holding an exclusive flock on `lock_path` — liveness is the FACT
+    that the lock is held, never a pid (F5)."""
+    import textwrap
+    code = textwrap.dedent("""
+        import fcntl, sys, time
+        fh = open(sys.argv[1], "a+")
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        print("held", flush=True)
+        time.sleep(float(sys.argv[2]))
+    """)
+    p = subprocess.Popen([sys.executable, "-c", code, lock_path, str(seconds)],
+                         stdout=subprocess.PIPE, text=True)
+    assert p.stdout.readline().strip() == "held"
+    return p
+
+
+def test_literal_clean_and_disposable_worktree_lifecycle():
+    """v1.52.0 D2 (Q5 literal clean, Q6 lock-first): refuse on ANY dirty tracked or non-ignored
+    untracked file; one uniquely named detached worktree per run under the common dir; a
+    provenance marker; a per-run flock as the liveness fact; remove exactly that worktree;
+    a leftover path is never reused; cleanup failure names the retained path."""
+    import shutil, json as _json
+    m = load()
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                         scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"}})
+    ident = m.repo_identity(root)
+    check("identity comes from host_contract.resolve_repository (root, common dir, state dir, head)",
+          ident["root"] == os.path.realpath(root) and ident["state_dir"].endswith("tdd-playbook") and len(ident["head"]) == 40, ident)
+    check("a clean committed tree passes the literal-clean check", m.check_clean(root) is None)
+    with open(os.path.join(root, "tests", "conftest.py"), "w") as fh:
+        fh.write("x = 1\n")
+    why = m.check_clean(root)
+    check("PLANTED untracked conftest.py (not a test_*.py, not under a selector) is REFUSED — literal clean",
+          why and "tests/conftest.py" in why and "commit the kill test" in why.lower(), why)
+    os.unlink(os.path.join(root, "tests", "conftest.py"))
+    with open(os.path.join(root, "app", "calc.py"), "a") as fh:
+        fh.write("# edit\n")
+    why = m.check_clean(root)
+    check("PLANTED dirty tracked file is REFUSED naming it", why and "app/calc.py" in why, why)
+    subprocess.run(["git", "-C", root, "checkout", "--", "app/calc.py"], check=True)
+
+    wt = m.Worktree.create(ident, run_id="run-a", scope_name="calc")
+    try:
+        check("worktree lives under <common>/tdd-playbook/mutation-worktrees/<run_id>",
+              wt.path == os.path.join(ident["state_dir"], "mutation-worktrees", "run-a") and os.path.isdir(wt.path), wt.path)
+        head_in_wt = subprocess.run(["git", "-C", wt.path, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        check("worktree is detached at the exact HEAD", head_in_wt == ident["head"] and
+              subprocess.run(["git", "-C", wt.path, "symbolic-ref", "-q", "HEAD"], capture_output=True).returncode != 0)
+        marker = _json.load(open(os.path.join(wt.path, ".tdd-playbook-mutation-run.json")))
+        check("provenance marker carries run_id, scope, head, started",
+              marker["run_id"] == "run-a" and marker["scope"] == "calc" and marker["head"] == ident["head"] and "started" in marker, marker)
+        probe = subprocess.run([sys.executable, "-c",
+                                "import fcntl,sys; fh=open(sys.argv[1],'a+');\n"
+                                "try:\n fcntl.flock(fh.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB); print('free')\n"
+                                "except OSError: print('held')", wt.lock_path], capture_output=True, text=True)
+        check("the per-run lock is HELD for the run's life (another process cannot take it)",
+              probe.stdout.strip() == "held", probe.stdout)
+        try:
+            m.Worktree.create(ident, run_id="run-a", scope_name="calc")
+        except m.WorktreeProblem as exc:
+            check("a leftover/duplicate path is REFUSED by name, never reused", "run-a" in str(exc), str(exc))
+        else:
+            check("a leftover/duplicate path is REFUSED by name, never reused", False)
+    finally:
+        wt.remove()
+    check("remove() deletes exactly that worktree and its registration",
+          not os.path.exists(wt.path) and "run-a" not in subprocess.run(["git", "-C", root, "worktree", "list"], capture_output=True, text=True).stdout)
+    # cleanup failure: an injected failing remover -> CleanupFailed carrying the retained path
+    wt2 = m.Worktree.create(ident, run_id="run-b", scope_name="calc")
+    try:
+        wt2.remove(runner=lambda argv: subprocess.CompletedProcess(argv, 1, "", "simulated: busy"))
+    except m.CleanupFailed as exc:
+        check("cleanup failure raises with the RETAINED path and the manual command",
+              exc.path == wt2.path and "git worktree remove --force" in m.retained_line(exc.path) and exc.path in m.retained_line(exc.path), str(exc))
+    else:
+        check("cleanup failure raises with the RETAINED path", False)
+    wt2.remove()
+
+
+def test_repo_lock_and_stale_worktrees():
+    """v1.52.0 D2b + Q6: one run per repository, enforced with an advisory lock acquired BEFORE
+    listing or reaping; stale = marker-bearing AND lock-free; listing is the default, deletion
+    only under --reap-stale; a live child's worktree is never touched; foreign dirs are named
+    and left; a retained forensic path is never auto-deleted."""
+    import shutil, json as _json
+    m = load()
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                         scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"}})
+    ident = m.repo_identity(root)
+    with m.repo_lock(ident, scope_name="calc", run_id="holder") as lock:
+        check("repo lock file lives at <state>/mutation.lock", lock.path == os.path.join(ident["state_dir"], "mutation.lock"))
+        probe = subprocess.run([sys.executable, BIN, "--scope", "calc", "--max-minutes", "5"],
+                               cwd=root, capture_output=True, text=True, timeout=60)
+        check("a second invocation REFUSES immediately, naming the holder's scope",
+              probe.returncode == 1 and "another mutation run" in probe.stderr and "calc" in probe.stderr, probe.stderr[:300])
+    # stale vs live vs foreign
+    stale = m.Worktree.create(ident, run_id="stale-1", scope_name="calc"); stale.release_lock()
+    live = m.Worktree.create(ident, run_id="live-1", scope_name="calc"); live.release_lock()
+    child = _hold_lock_in_child(live.lock_path)
+    foreign = os.path.join(ident["state_dir"], "mutation-worktrees", "not-ours"); os.makedirs(foreign)
+    try:
+        report = m.list_stale(ident)
+        check("marker-bearing + lock-free is STALE", [w.run_id for w in report.stale] == ["stale-1"], vars(report))
+        check("marker-bearing + lock HELD by a real process is LIVE, not stale", [w.run_id for w in report.live] == ["live-1"], vars(report))
+        check("a dir without our marker is FOREIGN: named, never touched", report.foreign == [foreign], vars(report))
+        text = m.stale_lines(report)
+        check("default output LISTS stale worktrees with the exact manual command, deleting nothing",
+              "stale-1" in text and "git worktree remove --force" in text and os.path.isdir(stale.path), text)
+        reaped = m.reap_stale(ident, report)
+        check("--reap-stale removes exactly the stale set", reaped == [stale.path] and not os.path.exists(stale.path)
+              and os.path.isdir(live.path) and os.path.isdir(foreign), reaped)
+        # a RETAINED forensic path is marked and never auto-reaped
+        kept = m.Worktree.create(ident, run_id="kept-1", scope_name="calc"); kept.release_lock()
+        m.mark_retained(kept.path, "simulated cleanup failure")
+        report2 = m.list_stale(ident)
+        check("a retained forensic path is listed separately and excluded from reaping",
+              [w.run_id for w in report2.retained] == ["kept-1"] and not any(w.run_id == "kept-1" for w in report2.stale), vars(report2))
+        check("reap_stale leaves the retained path", m.reap_stale(ident, report2) == [] and os.path.isdir(kept.path))
+        kept.remove(force=True)
+    finally:
+        child.kill(); child.wait()
+        for w in (live,):
+            try:
+                w.remove(force=True)
+            except Exception:
+                pass
+        shutil.rmtree(foreign, ignore_errors=True)
+
+
+def test_reset_plan_shared_scope_knows_the_mutation_artifacts():
+    """v1.52.0 D2 reverse sweep: reset_plan --shared must plan the three new common-dir
+    artifacts, else --shared reports clean while leaving them forever."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("reset_plan", os.path.join(os.path.dirname(BIN), "reset_plan.py"))
+    rp = importlib.util.module_from_spec(spec); spec.loader.exec_module(rp)
+    m = load()
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n")
+    ident = m.repo_identity(root)
+    for rel in ("mutation-worktrees", "mutation-runs"):
+        os.makedirs(os.path.join(ident["state_dir"], rel), exist_ok=True)
+    with open(os.path.join(ident["state_dir"], "mutation.lock"), "w") as fh:
+        fh.write("")
+    paths = {t["path"] for t in rp.plan(root, scopes=["shared"])}
+    for rel in ("mutation-worktrees", "mutation-runs", "mutation.lock"):
+        check("reset --shared plans {}".format(rel), os.path.join(ident["state_dir"], rel) in paths, sorted(paths))
+
+
+def test_main_runs_both_halves_in_the_worktree_for_real():
+    """v1.52.0 Phase 4 wiring, driven END TO END against the REAL mutmut: mapping -> literal
+    clean -> repo lock -> worktree at HEAD -> narrowed copy config -> baseline in the worktree
+    with pytest_add_cli_args -> mutmut in the worktree -> cleanup. The real config is untouched
+    and no worktree is left behind."""
+    import shutil, hashlib
+    m = load()
+    if shutil.which("mutmut") is None:
+        unmeasured("end-to-end scoped run against real mutmut", "mutmut is not installed here")
+        return
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\npytest_add_cli_args=-p\n    no:cacheprovider\n",
+                         scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"}})
+    before = hashlib.sha256(open(os.path.join(root, "setup.cfg"), "rb").read()).hexdigest()
+    proc = subprocess.run([sys.executable, BIN, "--scope", "calc", "--max-minutes", "10"],
+                          cwd=root, capture_output=True, text=True, timeout=900)
+    out = proc.stdout + proc.stderr
+    check("REAL: a scoped run completes green", proc.returncode == 0, out[-600:])
+    check("REAL: the first lines name the scope, the worktree, and the narrowed config",
+          "scope calc:" in out and "mutation-worktrees" in out and "only_mutate=['app/calc.py']" in out, out[:800])
+    check("REAL: the baseline ran the mapped selection with pytest_add_cli_args replayed (2 tests collected)",
+          "2 collected" in out, out[:800])
+    check("REAL: the real config is untouched",
+          hashlib.sha256(open(os.path.join(root, "setup.cfg"), "rb").read()).hexdigest() == before)
+    ident = m.repo_identity(root)
+    left = os.listdir(os.path.join(ident["state_dir"], "mutation-worktrees")) if os.path.isdir(os.path.join(ident["state_dir"], "mutation-worktrees")) else []
+    check("REAL: no worktree is left behind and none is registered",
+          left == [] and "mutation-worktrees" not in subprocess.run(["git", "-C", root, "worktree", "list"], capture_output=True, text=True).stdout, left)
+    check("REAL: mutmut reported mutation results for the narrowed module only",
+          "app/calc.py" in out and "app/fmt.py" not in out, out[-600:])
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
@@ -679,7 +858,11 @@ def main():
                test_effective_config_comes_from_mutmut_itself, test_scope_mapping_is_the_roster,
                test_narrow_config_rewrites_a_copy_and_reads_back,
                test_baseline_replays_pytest_add_cli_args_and_names_domination,
-               test_suite_args_is_a_migration_refusal):
+               test_suite_args_is_a_migration_refusal,
+               test_literal_clean_and_disposable_worktree_lifecycle,
+               test_repo_lock_and_stale_worktrees,
+               test_reset_plan_shared_scope_knows_the_mutation_artifacts,
+               test_main_runs_both_halves_in_the_worktree_for_real):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
