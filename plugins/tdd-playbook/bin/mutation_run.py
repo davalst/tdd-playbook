@@ -44,6 +44,8 @@ findings are load-bearing and each is now a test:
 from __future__ import annotations
 
 import argparse
+import shutil
+import contextlib
 import json
 import os
 import re
@@ -167,17 +169,20 @@ def _signal_group(proc, sig):
             pass
 
 
-def baseline(suite_argv, run=None, timeout=None):
-    """(ok, why, seconds, collected) — green AND actually executed."""
+def baseline(suite_argv, run=None, timeout=None, cwd=None):
+    """(ok, why, seconds, collected) — green AND actually executed, in `cwd` (the worktree)."""
     started = time.time()
     try:
-        proc = run_bounded(suite_argv, timeout, run=run)
+        proc = run_bounded(suite_argv, timeout, run=run, cwd=cwd)
     except subprocess.TimeoutExpired:
         return False, (f"baseline exceeded its {timeout}s bound — UNMEASURED, never assumed green "
                        "(child process group killed)"), time.time() - started, None
     except (OSError, ValueError) as exc:
         return False, f"baseline suite could not be run: {exc}", 0.0, None
     seconds = time.time() - started
+    if getattr(proc, "timed_out", False):
+        return False, (f"baseline exceeded its {timeout}s bound — UNMEASURED, never assumed green "
+                       "(SIGINT then SIGKILL to the child process group)"), seconds, None
     text = (proc.stdout or "") + (proc.stderr or "")
     tail = text.strip()[-1200:]
     if proc.returncode != 0:
@@ -543,7 +548,7 @@ def _rewrite_pyproject(text, sources, tests):
     return "\n".join(out) + "\n", notes
 
 
-def narrow_config(copy_dir, cfg, scope, real_dir=None, python=None):
+def narrow_config(copy_dir, cfg, scope, real_dir=None, python=None, reader=None):
     """Rewrite the mutmut config IN THE COPY (`copy_dir`) so mutmut mutates only `scope.sources`
     and its stats pass runs only `scope.tests`; then READ BACK through mutmut and assert both
     took and legacy tests_dir no longer widens the selection. The real file (in `real_dir`, or
@@ -560,7 +565,7 @@ def narrow_config(copy_dir, cfg, scope, real_dir=None, python=None):
         new_text, notes = _rewrite_pyproject(text, scope.sources, scope.tests)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(new_text)
-    after = effective_mutmut_config(copy_dir, python=python)
+    after = (reader or effective_mutmut_config)(copy_dir, python=python)
     if after.only_mutate != list(scope.sources) or after.selection != list(scope.tests) or after.legacy_tests_dir:
         raise ConfigProblem("read-back through mutmut does not match the narrowed scope: only_mutate={} "
                             "selection={} legacy_tests_dir={} (wanted {} / {} / []). The rewrite did not "
@@ -618,6 +623,258 @@ def suite_args_migration(value):
             "in the next release.".format(value))
 
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+
+def repo_identity(root):
+    """Canonical repository identity — root, common git dir, state dir, HEAD — from
+    host_contract.resolve_repository, the one owner of that answer (never gate_runner.REPO,
+    which is derived from a file location and wrong in a vendored .claude/bin/)."""
+    import host_contract
+    try:
+        return host_contract.resolve_repository(root)
+    except Exception as exc:
+        raise WorktreeProblem("not a Git checkout ({}): {}".format(root, exc))
+
+
+def check_clean(root):
+    """Q5, LITERAL: any dirty tracked file or any non-ignored untracked file refuses the run.
+    Returns None when clean, else the refusal text naming the files."""
+    import with_snapshot
+    dirty = with_snapshot.dirty_tracked(root)
+    untr = with_snapshot.untracked(root)
+    if not dirty and not untr:
+        return None
+    lines = ["the tree is not clean — a mutation run measures a COMMITTED phase boundary; commit the "
+             "kill test, then re-measure (a new test that is not committed is absent from the HEAD "
+             "checkout and the survivor would report SURVIVED with a clean exit):"]
+    lines += ["  - modified (tracked): " + p for p in dirty]
+    lines += ["  - untracked (not ignored): " + p for p in untr]
+    return "\n".join(lines)
+
+
+class WorktreeProblem(Exception):
+    """The disposable worktree cannot be created or the repository is not usable."""
+
+
+class CleanupFailed(Exception):
+    def __init__(self, path, detail):
+        super().__init__("cleanup failed for {}: {}".format(path, detail))
+        self.path = path; self.detail = detail
+
+
+class LockHeld(Exception):
+    """Another mutation run holds the repository lock."""
+
+
+def retained_line(path):
+    return "RETAINED: {} — remove with: git worktree remove --force {}".format(path, path)
+
+
+MARKER_NAME = ".tdd-playbook-mutation-run.json"
+LOCK_NAME = ".tdd-playbook-mutation-run.lock"
+RETAINED_NAME = ".tdd-playbook-retained.json"
+WORKTREES_DIR = "mutation-worktrees"
+RUNS_DIR = "mutation-runs"
+REPO_LOCK = "mutation.lock"
+
+
+def _git_run(root, *args, runner=None):
+    argv = ["git", "-C", root] + list(args)
+    if runner is not None:
+        return runner(argv)
+    return subprocess.run(argv, capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
+
+
+def _try_flock(path):
+    """(fh or None): a non-blocking exclusive flock on `path`; the FACT of liveness."""
+    import fcntl
+    fh = open(path, "a+")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    return fh
+
+
+class Worktree:
+    """One disposable, detached worktree per invocation under <common>/tdd-playbook/mutation-worktrees/<run_id>."""
+    def __init__(self, ident, run_id, path):
+        self.ident = ident; self.run_id = run_id; self.path = path
+        self.lock_path = os.path.join(path, LOCK_NAME)
+        self._lock_fh = None
+
+    @classmethod
+    def create(cls, ident, run_id, scope_name):
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", run_id):
+            raise WorktreeProblem("run id must be a single safe path component")
+        base = os.path.join(ident["state_dir"], WORKTREES_DIR)
+        os.makedirs(base, mode=0o700, exist_ok=True)
+        path = os.path.join(base, run_id)
+        if os.path.exists(path):
+            raise WorktreeProblem("worktree path already exists: {} — a leftover from a crashed run is "
+                                  "never reused; inspect it, then `git worktree remove --force {}` "
+                                  "(or run with --reap-stale if its lock is free)".format(path, path))
+        if not ident.get("head"):
+            raise WorktreeProblem("repository has no HEAD commit to check out")
+        proc = _git_run(ident["root"], "worktree", "add", "--detach", path, ident["head"])
+        if proc.returncode != 0 or not os.path.isdir(path):
+            raise WorktreeProblem("git worktree add failed for {}: {}".format(path, (proc.stdout + proc.stderr).strip()[-300:]))
+        wt = cls(ident, run_id, path)
+        with open(os.path.join(path, MARKER_NAME), "w") as fh:
+            json.dump({"run_id": run_id, "scope": scope_name, "head": ident["head"],
+                       "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "pid": os.getpid()},
+                      fh, indent=1, sort_keys=True)
+        wt._lock_fh = _try_flock(wt.lock_path)
+        if wt._lock_fh is None:
+            raise WorktreeProblem("could not take the per-run lock at {}".format(wt.lock_path))
+        return wt
+
+    def release_lock(self):
+        if self._lock_fh is not None:
+            import fcntl
+            try:
+                fcntl.flock(self._lock_fh.fileno(), fcntl.LOCK_UN)
+            finally:
+                self._lock_fh.close(); self._lock_fh = None
+
+    def remove(self, runner=None, force=False):
+        """Remove EXACTLY this worktree (never a global prune). Raises CleanupFailed with the
+        retained path when git cannot, so the operator inspects rather than loses it."""
+        self.release_lock()
+        proc = _git_run(self.ident["root"], "worktree", "remove", "--force", self.path, runner=runner)
+        if proc.returncode != 0:
+            raise CleanupFailed(self.path, (proc.stdout + proc.stderr).strip()[-300:] or "git worktree remove failed")
+        if os.path.exists(self.path):
+            if force:
+                shutil.rmtree(self.path, ignore_errors=True)
+            if os.path.exists(self.path):
+                raise CleanupFailed(self.path, "directory still present after git worktree remove")
+
+
+def mark_retained(path, reason):
+    """A forensic path: listed separately, never auto-reaped (Q6)."""
+    with open(os.path.join(path, RETAINED_NAME), "w") as fh:
+        json.dump({"reason": reason, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, fh, indent=1)
+
+
+class _LockHandle:
+    def __init__(self, path):
+        self.path = path
+
+
+@contextlib.contextmanager
+def repo_lock(ident, scope_name, run_id):
+    """One mutation run per repository (D2b): non-blocking flock on <state>/mutation.lock,
+    acquired BEFORE listing or reaping stale worktrees so setup cannot race cleanup (Q6).
+    While held, <state>/mutation-runs/in-progress.json names the holder for the refusal."""
+    state = ident["state_dir"]
+    os.makedirs(state, mode=0o700, exist_ok=True)
+    lock_path = os.path.join(state, REPO_LOCK)
+    fh = _try_flock(lock_path)
+    stub = os.path.join(state, RUNS_DIR, "in-progress.json")
+    if fh is None:
+        holder = ""
+        try:
+            with open(stub) as sfh:
+                info = json.load(sfh)
+            holder = " (scope {!r}, run {}, started {}, pid {})".format(
+                info.get("scope"), info.get("run_id"), info.get("started"), info.get("pid"))
+        except (OSError, ValueError):
+            pass
+        raise LockHeld("another mutation run holds {}{} — one run per repository at a time; wait for it "
+                       "or, if it is dead, remove the lock file and run again".format(lock_path, holder))
+    os.makedirs(os.path.dirname(stub), mode=0o700, exist_ok=True)
+    try:
+        import host_contract
+        host_contract._atomic_json(stub, {"scope": scope_name, "run_id": run_id, "pid": os.getpid(),
+                                          "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+        yield _LockHandle(lock_path)
+    finally:
+        try:
+            os.unlink(stub)
+        except OSError:
+            pass
+        import fcntl
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            fh.close()
+
+
+class _WT:
+    def __init__(self, run_id, path, marker):
+        self.run_id = run_id; self.path = path; self.marker = marker
+
+
+class StaleReport:
+    def __init__(self):
+        self.stale = []; self.live = []; self.foreign = []; self.retained = []
+
+
+def list_stale(ident):
+    """Classify every entry under mutation-worktrees/: ours + lock free = STALE; ours + lock held
+    = LIVE; retained marker = RETAINED (never reaped); no marker = FOREIGN (named, left alone).
+    Call under repo_lock."""
+    report = StaleReport()
+    base = os.path.join(ident["state_dir"], WORKTREES_DIR)
+    if not os.path.isdir(base):
+        return report
+    for name in sorted(os.listdir(base)):
+        path = os.path.join(base, name)
+        if not os.path.isdir(path) or os.path.islink(path):
+            continue
+        marker_path = os.path.join(path, MARKER_NAME)
+        if not os.path.isfile(marker_path):
+            report.foreign.append(path); continue
+        try:
+            with open(marker_path) as fh:
+                marker = json.load(fh)
+        except (OSError, ValueError):
+            marker = {}
+        entry = _WT(marker.get("run_id", name), path, marker)
+        if os.path.isfile(os.path.join(path, RETAINED_NAME)):
+            report.retained.append(entry); continue
+        fh = _try_flock(os.path.join(path, LOCK_NAME))
+        if fh is None:
+            report.live.append(entry)
+        else:
+            import fcntl
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN); fh.close()
+            report.stale.append(entry)
+    return report
+
+
+def stale_lines(report):
+    lines = []
+    for w in report.stale:
+        lines.append("stale worktree (ours, lock free): {} — {}".format(
+            w.path, retained_line(w.path).split(" — ", 1)[1]) + "  [--reap-stale removes it]")
+    for w in report.live:
+        lines.append("live worktree (lock held by a running pass): {} — left alone".format(w.path))
+    for w in report.retained:
+        lines.append("RETAINED forensic worktree: {} — never auto-removed; inspect, then "
+                     "git worktree remove --force {}".format(w.path, w.path))
+    for p in report.foreign:
+        lines.append("foreign directory (no marker of ours): {} — left alone".format(p))
+    return "\n".join(lines)
+
+
+def reap_stale(ident, report):
+    """Remove exactly the STALE set (ours, marker-bearing, lock free). Never retained, live or foreign."""
+    removed = []
+    for w in report.stale:
+        proc = _git_run(ident["root"], "worktree", "remove", "--force", w.path)
+        if os.path.exists(w.path):
+            shutil.rmtree(w.path, ignore_errors=True)
+        if not os.path.exists(w.path):
+            removed.append(w.path)
+    return removed
+
+
 def mutmut_argv(max_children=None):
     """The REAL mutmut 3.x contract, verified against the installed binary: `mutmut run`, with
     scope and runner coming from config. Accepted flags are --all/--max-children/--rootdir/
@@ -631,13 +888,12 @@ def mutmut_argv(max_children=None):
 def main(argv=None, run=None, config_reader=None):
     parser = argparse.ArgumentParser(
         prog="mutation_run.py",
-        description=("Run a mutation pass with its preflight ON the execution path. --scope is CHECKED "
-                     "against mutmut's configured source scope; it does NOT narrow the run (SS4b "
-                     "narrowing is the downstream gate's job until the mutation-preflight debt is paid). "
-                     "pytest + mutmut ONLY; other stacks are refused, never guessed. Covers "
-                     "SKILL §4's collection and green-baseline checks; roster integrity and "
-                     "tracer attribution remain the operator's."))
-    parser.add_argument("--scope", required=True)
+        description=("Run a SCOPED mutation pass (SS4b): both halves narrowed per run — the mutants to the "
+                     "scope's sources and the baseline to the scope's tests — inside a disposable "
+                     "detached worktree, with the preflight ON the execution path. --scope names an entry "
+                     "in the repo-owned .tdd-playbook/mutation-scopes.json (the mutation roster). "
+                     "pytest + mutmut ONLY; other stacks are refused, never guessed."))
+    parser.add_argument("--scope", required=True, help="scope name from .tdd-playbook/mutation-scopes.json")
     parser.add_argument("--suite-args", default="",
                         help="DEPRECATED (v1.52.0): selection comes from the scope mapping, options from "
                              "mutmut's pytest_add_cli_args; any value is refused with the migration note")
@@ -648,7 +904,9 @@ def main(argv=None, run=None, config_reader=None):
                         help="enables the projection; without it the hard bound still applies")
     parser.add_argument("--factor", type=float, default=1.0)
     parser.add_argument("--max-children", type=int, default=None)
-    parser.add_argument("--dry-run", action="store_true", help="preflight only")
+    parser.add_argument("--dry-run", action="store_true", help="validate everything (mapping, config, worktree, baseline) and stop")
+    parser.add_argument("--reap-stale", action="store_true",
+                        help="remove OUR marker-bearing worktrees whose per-run lock is free (default: list only)")
     args = parser.parse_args(argv)
 
     problem = suite_args_migration(args.suite_args)
@@ -660,8 +918,14 @@ def main(argv=None, run=None, config_reader=None):
               "out at 1800s having measured nothing.", file=sys.stderr)
         return 1
 
+    root = os.getcwd()
     try:
-        cfg = (config_reader or effective_mutmut_config)(os.getcwd())
+        ident = repo_identity(root)
+    except WorktreeProblem as exc:
+        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
+        return 1
+    try:
+        cfg = (config_reader or effective_mutmut_config)(root)
     except ConfigProblem as exc:
         print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
         return 1
@@ -669,16 +933,77 @@ def main(argv=None, run=None, config_reader=None):
     if problem:
         print("mutation_run: REFUSED — " + problem, file=sys.stderr)
         return 1
-    bound = args.baseline_timeout or max(60, (args.max_minutes * 60) // 5)
-    # Phase 3 (v1.52.0): the baseline replays mutmut's pytest_add_cli_args; the mapped SELECTION
-    # joins in Phase 4 together with the disposable worktree.
-    suite_argv = [sys.executable, "-m", "pytest"] + list(cfg.pytest_add_cli_args)
-    ok, why, seconds, collected = baseline(suite_argv, run=run, timeout=bound)
-    if not ok:
-        print(f"mutation_run: REFUSED — {why}", file=sys.stderr)
+    try:
+        scope = resolve_scope(ident["root"], args.scope, cfg)
+    except ScopeError as exc:
+        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
         return 1
-    print(f"mutation_run: baseline GREEN — {collected} collected, {seconds:.1f}s measured "
-          f"(share of budget {baseline_share(seconds, args.max_minutes):.0%})")
+    print("mutation_run: scope {}: {} source(s) {} → {} selector(s) {} · cost: {!r}".format(
+        scope.name, scope.source_count, scope.sources, scope.test_count, scope.tests, scope.cost))
+    unclean = check_clean(ident["root"])
+    if unclean:
+        print("mutation_run: REFUSED — " + unclean, file=sys.stderr)
+        return 1
+
+    run_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + scope.name[:24] + "-" + str(os.getpid())
+    try:
+        with repo_lock(ident, scope.name, run_id):
+            report = list_stale(ident)
+            listing = stale_lines(report)
+            if listing:
+                print("mutation_run: " + listing.replace("\n", "\nmutation_run: "))
+            if args.reap_stale:
+                for path in reap_stale(ident, report):
+                    print("mutation_run: reaped stale worktree " + path)
+            try:
+                wt = Worktree.create(ident, run_id, scope.name)
+            except WorktreeProblem as exc:
+                print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
+                return 1
+            print("mutation_run: disposable worktree {} (detached at {})".format(wt.path, ident["head"][:12]))
+            rc = 1
+            try:
+                rc = _run_in_worktree(args, ident, cfg, scope, wt, run=run, config_reader=config_reader)
+            finally:
+                try:
+                    wt.remove()
+                    print("mutation_run: worktree removed")
+                except CleanupFailed as exc:
+                    mark_retained(exc.path, exc.detail)
+                    print("mutation_run: cleanup FAILED ({}); the worktree is retained for inspection".format(exc.detail), file=sys.stderr)
+                    print(retained_line(exc.path), file=sys.stderr)
+                    rc = 1
+            return rc
+    except LockHeld as exc:
+        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
+        return 1
+
+
+def _run_in_worktree(args, ident, cfg, scope, wt, run=None, config_reader=None):
+    """Both halves, inside the worktree: narrow the copy's config (read back), count the mapped
+    selection, run the baseline with pytest_add_cli_args replayed, project, then mutmut."""
+    try:
+        rep = narrow_config(wt.path, cfg, scope, real_dir=ident["root"], reader=config_reader)
+    except ConfigProblem as exc:
+        print("mutation_run: REFUSED — " + str(exc), file=sys.stderr)
+        return 1
+    print("mutation_run: worktree config ({}): only_mutate={!r} selection={!r} pytest_add_cli_args={!r} · {} · "
+          "real config untouched (sha256 {})".format(rep.config_file, scope.sources, scope.tests,
+                                                     cfg.pytest_add_cli_args, "; ".join(rep.notes), rep.real_sha256[:12]))
+    if run is None:
+        n, problem = collect_selection(wt.path, scope.tests, cfg.pytest_add_cli_args)
+        if problem:
+            print("mutation_run: REFUSED — " + problem, file=sys.stderr)
+            return 1
+        print("mutation_run: {} test(s) collected by the mapped selection".format(n))
+
+    bound = args.baseline_timeout or max(60, (args.max_minutes * 60) // 5)
+    ok, why, seconds, collected = baseline(baseline_argv(cfg, scope), run=run, timeout=bound, cwd=wt.path)
+    if not ok:
+        print("mutation_run: REFUSED — " + why, file=sys.stderr)
+        return 1
+    print("mutation_run: baseline GREEN — {} collected, {:.1f}s measured (share of budget {:.0%})".format(
+        collected, seconds, baseline_share(seconds, args.max_minutes)))
     dominates = baseline_dominates(seconds, args.max_minutes)
     if dominates:
         print("mutation_run: " + dominates)
@@ -690,35 +1015,26 @@ def main(argv=None, run=None, config_reader=None):
             return 1
     else:
         print("mutation_run: projection SKIPPED (no --expected-mutants) — unmeasured, not "
-              f"assumed affordable; the {args.max_minutes}-minute hard bound still applies")
+              "assumed affordable; the {}-minute hard bound still applies".format(args.max_minutes))
     if args.dry_run:
+        print("mutation_run: --dry-run — everything validated, mutmut not invoked")
         return 0
 
-    roots = [os.path.realpath(sp) for sp in cfg.source_paths]
-    asked = os.path.realpath(args.scope)
-    if not any(asked == r or asked.startswith(r + os.sep) for r in roots):
-        print(f"mutation_run: REFUSED — --scope {args.scope!r} is not inside what mutmut will mutate; its "
-              f"config ({cfg.config_file}) says source_paths={cfg.source_paths!r}. Mutating a different tree "
-              "than the one you asked about is a score about the wrong code, which is worse than no score.",
-              file=sys.stderr)
-        return 1
     mut = mutmut_argv(args.max_children)
-    print("mutation_run: invoking " + " ".join(mut) + f" (scope from {cfg.config_file}: {cfg.source_paths})")
+    print("mutation_run: invoking " + " ".join(mut) + " in the worktree (only_mutate={!r})".format(scope.sources))
     try:
-        proc = run_bounded(mut, args.max_minutes * 60, run=run)
+        proc = run_bounded(mut, args.max_minutes * 60, run=run, cwd=wt.path)
     except subprocess.TimeoutExpired:      # only the injected hook can still raise this
-        print(f"mutation_run: mutation pass exceeded {args.max_minutes} minutes — UNMEASURED; process group "
-              "killed, no orphans", file=sys.stderr)
+        print("mutation_run: mutation pass exceeded {} minutes — UNMEASURED".format(args.max_minutes), file=sys.stderr)
         return 1
     except OSError as exc:
-        print(f"mutation_run: mutmut could not be run ({exc}) — refusing rather than reporting a "
-              "score nothing produced", file=sys.stderr)
+        print("mutation_run: mutmut could not be run ({}) — refusing rather than reporting a "
+              "score nothing produced".format(exc), file=sys.stderr)
         return 1
     sys.stdout.write(proc.stdout or "")
     if getattr(proc, "timed_out", False):
-        print(f"mutation_run: mutation pass exceeded {args.max_minutes} minutes — UNMEASURED; "
-              f"SIGINT then SIGKILL to the process group, no orphans ({proc.elapsed_s:.0f}s)",
-              file=sys.stderr)
+        print("mutation_run: mutation pass exceeded {} minutes — UNMEASURED; SIGINT then SIGKILL to the "
+              "process group, no orphans ({:.0f}s)".format(args.max_minutes, proc.elapsed_s), file=sys.stderr)
         return 1
     return proc.returncode
 

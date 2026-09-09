@@ -213,16 +213,23 @@ def test_main_actually_invokes_mutmut():
         out = "collected 5 items\n5 passed in 1s\n" if seen_pytest else "mutmut done\n"
         return subprocess.CompletedProcess(argv, 0, out, "")
 
-    root = tempfile.mkdtemp()
-    with open(os.path.join(root, "setup.cfg"), "w") as fh:
-        fh.write("[mutmut]\nsource_paths=app/\n")
-    # the config READER is injected (a stdlib-only CI has no mutmut to ask); the reader's own
-    # seam is driven against the real tool in test_effective_config_comes_from_mutmut_itself
-    reader = lambda cwd: m.EffectiveConfig(config_file="setup.cfg", source_paths=["app/"])
+    # v1.52.0: main() needs a committed repo with a scope mapping (the roster) — the same
+    # conditions production requires. The config READER is injected (a stdlib-only CI has no
+    # mutmut to ask): it answers the base config at the repo root and the NARROWED config inside
+    # the disposable worktree, which is what a real read-back returns; the reader's own seam is
+    # driven against the real tool in test_effective_config_comes_from_mutmut_itself.
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                         scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"},
+                                 "outside": {"sources": ["tests/test_calc.py"], "tests": ["tests/"], "cost": "c"}})
+    def reader(cwd, python=None):
+        narrowed = "mutation-worktrees" in cwd
+        return m.EffectiveConfig(config_file="setup.cfg", source_paths=["app"],
+                                 only_mutate=["app/calc.py"] if narrowed else [],
+                                 selection=["tests/test_calc.py"] if narrowed else [])
     cwd = os.getcwd()
     try:
         os.chdir(root)
-        rc = m.main(["--scope", "app/", "--max-minutes", "30"], run=rec,
+        rc = m.main(["--scope", "calc", "--max-minutes", "30"], run=rec,
                     config_reader=reader)
         check("main() exits 0 on a clean pass", rc == 0, rc)
         check("main() ACTUALLY INVOKES mutmut (not a print)",
@@ -230,18 +237,20 @@ def test_main_actually_invokes_mutmut():
         check("the invoked argv is mutmut 3.x's REAL shape (no 2.x flags)",
               all("--paths-to-mutate" not in a and "--runner" not in a
                   for a in seen if a and a[0] == "mutmut"), seen)
+        check("the baseline ran the MAPPED selection (not the whole tree)",
+              any(a and "pytest" in " ".join(a) and a[-1] == "tests/test_calc.py" for a in seen), seen)
 
-        # a scope that disagrees with mutmut's config is refused: mutating a different tree
-        # than the one asked about is a score about the wrong code
+        # a scope outside what mutmut will mutate is refused: mutating a different tree than
+        # the one asked about is a score about the wrong code
         seen.clear()
-        rc = m.main(["--scope", "other/", "--max-minutes", "30"], run=rec,
+        rc = m.main(["--scope", "outside", "--max-minutes", "30"], run=rec,
                     config_reader=reader)
-        check("PLANTED: --scope disagreeing with mutmut's config is REFUSED", rc == 1, rc)
+        check("PLANTED: a scope outside mutmut's source_paths is REFUSED", rc == 1, rc)
         check("...and mutmut was never reached", not any(a and a[0] == "mutmut" for a in seen), seen)
 
         # the projection is WIRED, not merely unit-tested
         seen.clear()
-        rc = m.main(["--scope", "app/", "--max-minutes", "1",
+        rc = m.main(["--scope", "calc", "--max-minutes", "1",
                      "--expected-mutants", "5000", "--factor", "1000000"], run=rec,
                     config_reader=reader)
         check("an unaffordable projection REFUSES before invoking mutmut", rc == 1, rc)
@@ -327,9 +336,14 @@ def test_wrapper_does_not_claim_scoped():
         except SystemExit:
             pass
     help_text = buf.getvalue()
-    check("CLI description does not say 'scoped'", "scoped mutation pass" not in help_text, help_text[:200])
-    check("CLI description says what --scope actually does (check, not narrow)",
-          "not narrow" in help_text or "does NOT narrow" in help_text, help_text[:300])
+    # CONTRACT FLIP, v1.52.0: the wrapper now DOES narrow both halves (SS4b landed), so the
+    # 1.51.2 pin that forbade the word "scoped" is retired; the description must say what --scope
+    # selects (a mapping entry) and that both halves are narrowed.
+    check("CLI description says the run is SCOPED via the mapping and names both halves",
+          "SCOPED" in help_text and "mutation-scopes.json" in help_text and "both halves" in help_text,
+          help_text[:400])
+    check("CLI description no longer claims the wrapper does not narrow",
+          "does NOT narrow" not in help_text and "not narrow" not in help_text, help_text[:400])
     why = m.projection_problem(10000, 2.0, 5) or ""
     check("projection refusal no longer advises 'narrow --scope'", "narrow --scope" not in why
           and "narrow\n" not in why and "narrow " not in why, why)
