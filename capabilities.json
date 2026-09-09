@@ -1572,14 +1572,15 @@
     },
     {
       "id": "mutation-preflight",
-      "summary": "PREFLIGHT WRAPPER around mutmut: refuses a red baseline, zero-or-unknown collection, an unaffordable projection, and a --scope that is not within the CONFIGURED source scope - before any mutant exists. It does NOT narrow the run to the requested scope: mutmut mutates every configured source path and runs the whole configured test directory, and the baseline runs BEFORE the scope check. SS4b-scoped (mutants AND baseline narrowed per run, in a disposable worktree) is what downstream gates must build on top until the debt below is paid or assigned.",
+      "summary": "SS4b REFERENCE IMPLEMENTATION (v1.52.0): a SCOPED mutation pass with its preflight on the execution path. --scope selects an entry in the repo-owned .tdd-playbook/mutation-scopes.json (the mutation roster). Both halves are narrowed per run inside one disposable detached worktree: mutmut's copy config is rewritten (only_mutate + pytest_add_cli_args_test_selection, legacy tests_dir neutralised, pytest_add_cli_args preserved and replayed into the baseline) and read back through mutmut. Literal-clean tree, repo-wide advisory lock, absolute deadline with a graceful SIGINT, full mutant accounting (decided / terminal-unscored / unfinished, CI export as denominator, disagreement refuses), run record written before cleanup, exact-worktree removal with a RETAINED path on failure, stale worktrees listed by default and reaped only under --reap-stale.",
       "user_facing": false,
       "surfaces": [
-        "local"
+        "local",
+        "codex"
       ],
       "activation": {
         "default": "on",
-        "switch": "python3 <plugin>/bin/mutation_run.py --scope <module> --suite-args \"<pytest args>\" --max-minutes N; it IS the documented path for /mutate step 2 (b)+(c). What it does not do (SS4b narrowing) is stated in the summary, not implied by the word 'scoped'."
+        "switch": "python3 <plugin>/bin/mutation_run.py --scope <scope-name> --max-minutes N (scope names come from .tdd-playbook/mutation-scopes.json; --dry-run validates everything and stops); it IS the documented path for /mutate step 2 (b)+(c), so there is nothing to turn on. The deprecated free-form suite-args flag is refused with a migration note (v1.52.0, removed next release)."
       },
       "wired_by": [
         "plugins/tdd-playbook/commands/mutate.md",
@@ -1587,22 +1588,41 @@
       ],
       "exercised_by": [
         "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_main_actually_invokes_mutmut",
-        "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_preflight_refuses_red_baseline_and_empty_collection"
+        "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_preflight_refuses_red_baseline_and_empty_collection",
+        "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_main_runs_both_halves_in_the_worktree_for_real",
+        "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_full_mutant_accounting_from_one_source",
+        "plugins/tdd-playbook/tests/test_mutation_preflight.py::test_real_run_record_and_partial_on_timeout",
+        "plugins/tdd-playbook/tests/test_installer.py::test_doctor_reports_mutation_scopes_and_last_run"
       ],
       "liveness": {
         "probe": "gate-run frequency IS the probe, stated rather than assumed: bin/mutation_run.py is a force_full path and tests/test_mutation_preflight.py runs on every gate, so a wrapper that stopped refusing fails the next push. What the gate CANNOT see is whether an operator invoked mutmut directly instead — that is the residual, and it is why the command and brief name this as the path rather than merely recommending it."
       },
       "integration_debt": [
         {
-          "what": "CODEX PARITY, stated not assumed: bin/ ships to Codex (CODEX_COPY_TREES), so mutation_run.py is directly runnable there — but BOTH of its documented consumers (commands/mutate.md, agents/mutation-runner.md) are Claude-only by the deliberate 2026-08-07 decision that Codex-shaped commands/agents are undiscoverable and become integration islands. So on Codex the mechanism exists with nothing pointing at it, which is the dark-by-default shape this registry exists to surface. Done = a native Codex consumer names it (adapters/codex), or a recorded decision that Codex operators reach it through the vendored bin/ path and why that is sufficient.",
+          "what": "RE-SCOPED v1.52.0 (2026-09-09): the runner is host-neutral (bin/ ships to Codex) and now REQUIRES .tdd-playbook/mutation-scopes.json, whose only documentation is the Claude-only /mutate command and mutation-runner brief plus the runner's own refusal scaffold and --doctor line. So on Codex the mechanism is reachable (refusal text + doctor) but undocumented — a narrower gap than before, stated. | CODEX PARITY, stated not assumed: bin/ ships to Codex (CODEX_COPY_TREES), so mutation_run.py is directly runnable there — but BOTH of its documented consumers (commands/mutate.md, agents/mutation-runner.md) are Claude-only by the deliberate 2026-08-07 decision that Codex-shaped commands/agents are undiscoverable and become integration islands. So on Codex the mechanism exists with nothing pointing at it, which is the dark-by-default shape this registry exists to surface. Done = a native Codex consumer names it (adapters/codex), or a recorded decision that Codex operators reach it through the vendored bin/ path and why that is sufficient.",
           "owner": "david",
           "expires": "2026-11-15"
         },
         {
-          "id": "scoped-baseline-and-partial-measurement",
-          "what": "SS4b DOGFOOD GAP - A DESIGN DECISION, NOT A BACKLOG ITEM (opened 2026-09-09 v1.51.0; reframed v1.51.1 after a Codex review). The wording is now narrowed (summary + docstring say what the wrapper does NOT do), so the repo no longer claims SS4b compliance. What remains is an unmade decision with two legitimate outcomes, and the questions a plan must answer before implementing: (1) how the baseline and the mutmut invocation BOTH run inside the disposable worktree; (2) whether --scope/--suite-args become the source/test mapping or new flags are needed, and who supplies the test-to-module mapping the playbook cannot infer generically; (3) worktree creation, cleanup, dirty state, and concurrent runs; (4) how a partial result on timeout distinguishes completed / still-running / unmeasured mutants (killed+survived counts alone violate the accounting rule); (5) the downstream origin's implementation (its commit 2fb23811) as prior art, with what generalises and what is repo-specific. DONE = (a) a SS0 plan in docs/plans/gated/ answering 1-5, implemented red-first in its own release; or (b) a recorded decision that the wrapper stays preflight-only and downstream gates own worktree scoping, with SS4b's worked-example line rewritten to say so. Priority argument (Codex, accepted): this gap undermines adoption of the release's central doctrine, so it outranks diagnostic polish; that is why it is a decision surfaced to the owner rather than a deferral.",
+          "id": "mutation-scopes-acknowledged-sha",
+          "what": "ANTI-NARROWING, cheap form shipped (v1.52.0): each run record carries the mapping's sha256 and per-scope source/test counts, so a shrink is visible in the next record's diff. The stronger form — an acknowledged_sha the gate refuses without, the shape gate-manifest.json / gate_plan.py:43 already uses for the suite roster — is NOT built. DONE = build it red-first against a planted narrowing diff, or record the decision that record-visible counts are sufficient for a roster a human edits in a diff.",
           "owner": "david",
-          "expires": "2026-10-31"
+          "expires": "2026-11-15"
+        },
+        {
+          "id": "projection-from-observed-count",
+          "what": "KNOB DEBT (v1.52.0, architecture-adversary F7): --expected-mutants and --factor remain because mutmut generates mutants INSIDE `run` (no separate generate step to count first), so the projection is keyed on the operator's guess. DONE = after the narrowed run's generation the OBSERVED count replaces the guess (or refuses a pass whose observed count exceeds the guess by more than the factor), red-first; or a recorded decision that with per-run narrowing (<500 mutants by design) the guess is harmless and the flags are documented as optional.",
+          "owner": "david",
+          "expires": "2026-11-15"
+        }
+      ],
+      "emits": [
+        {
+          "topic": "mutation run record (<git-common>/tdd-playbook/mutation-runs/<run_id>/index.json)",
+          "consumers": [
+            "scripts/install_into_repo.py --doctor (last mutation run line, reads latest_record)",
+            "David, reading the doctor line and the record after a refused or partial run"
+          ]
         }
       ]
     },

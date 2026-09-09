@@ -1642,8 +1642,11 @@ def test_v152_scoped_runner_doctrine_and_consumers():
         ("CLAUDE.md standing prompt: step 3b seeds the mapping", claude_md, "3b. SEED THE MUTATION SCOPES"),
     ]:
         if needle is None:
-            run_line = brief[brief.index("RUN THE PASS THROUGH"):brief.index("RUN THE PASS THROUGH") + 400]
-            check(label, "--suite-args" not in run_line, run_line[:200])
+            # the INVOCATION itself (the bold command up to its closing `.**`), not the prose
+            # after it, which legitimately names the deprecated flag's migration note
+            start = brief.index("RUN THE PASS THROUGH")
+            run_line = brief[start:brief.index("`.**", start)]
+            check(label, "--suite-args" not in run_line and "--scope <scope-name>" in run_line, run_line[:200])
         else:
             check(label, needle in text, "needle {!r} missing".format(needle))
     check("SKILL SS4b: the 'does not yet narrow' sentence is GONE", "does not yet narrow" not in skill)

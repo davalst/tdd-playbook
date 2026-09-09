@@ -332,6 +332,37 @@ def doctor(target: str) -> int:
     # repo darkens the guard layer everywhere, silently. The heartbeat (written by the
     # UserPromptSubmit hook) is the liveness signal; commits that postdate it mean work
     # happened while no guard fired.
+    # v1.52.0 D8: the scoped mutation runner REFUSES without a scope mapping, and the refusal
+    # is otherwise the only place that says so — the doctor is the health surface.
+    scopes_path = os.path.join(target, ".tdd-playbook", "mutation-scopes.json")
+    if os.path.isfile(scopes_path):
+        try:
+            with open(scopes_path) as fh:
+                entries = json.load(fh)
+            print(f"mutation scopes: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} in "
+                  f".tdd-playbook/mutation-scopes.json (validate one: python3 .claude/bin/mutation_run.py "
+                  f"--dry-run --scope <name> --max-minutes 5)")
+        except ValueError as exc:
+            print(f"MUTATION SCOPES UNREADABLE: .tdd-playbook/mutation-scopes.json — {exc}")
+            rc = 1
+    else:
+        print("mutation scopes: MISSING — .tdd-playbook/mutation-scopes.json is the mutation roster the "
+              "scoped runner requires; run `python3 .claude/bin/mutation_run.py --dry-run --scope <name> "
+              "--max-minutes 5` and copy the scaffold it prints")
+    try:
+        sys.path.insert(0, os.path.join(PLUGIN, "bin"))
+        import mutation_run as _mr
+        last = _mr.latest_record(_mr.repo_identity(target))
+    except Exception:
+        last = None
+    if last:
+        b = last.get("buckets") or {}
+        print("last mutation run: {} · {} · {} · killed {}/{} decided · unfinished {}".format(
+            last.get("scope"), last.get("written_at"), last.get("exit_reason"),
+            b.get("killed", "?"), b.get("decided", "?"), b.get("unfinished", "?")))
+    else:
+        print("last mutation run: none recorded under this repo's git common dir")
+
     sys.path.insert(0, os.path.join(PLUGIN, "hooks", "scripts"))
     from _common import guards_dark
     status, detail = guards_dark(target)
