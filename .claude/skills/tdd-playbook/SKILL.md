@@ -489,18 +489,36 @@ process; it cannot, and the attempts are the documented time sink.
   the gated list until their survivors die. A whole-file floor either flatters the debt or lets the
   debt dilute the new floor — function-scoped gating keeps the strong floor undiluted and the debt
   visible.
+- **Filter arid mutants up front, so the score measures behaviour, not prose:** log lines,
+  message wording, audit-payload field names, retry counters and similar non-behavioural sites
+  are excluded from the SCOPE before the run, not triaged out of the survivor list after it
+  (the role-based string classing below is the same rule applied per survivor; this is the
+  cheaper, earlier form). Arid ≠ equivalent: an arid mutant is killable but proves nothing, so
+  it is left ungenerated; the exclusion still ships with the negative test and the excluded-share
+  audit every filter carries, because a filter that quietly grows is doing the tests' work.
 
 **Run & discover — cadence is a discovery tool, not just a checkpoint.**
-- **Diff-scoped on PRs; full pass at feature completion — and EACH PHASE is a feature for gating.**
-  A multi-phase program runs the gate at every phase boundary, not once at the end. Deferring
-  doesn't cost mutant count (8 new modules generate ~2,000 either way); it costs a systematic
-  weak-test habit compounding across every module built before the first measurement (observed: one
-  ranges-not-values habit → 8 modules at 52.5%; measured at phase 3, phases 4–7 write differently).
-  The full critical-module pass stays at
-  feature completion, but substantive changes to critical modules get a DIFF-SCOPED run in review
-  (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a handful of
-  survivors surfaced on the changed lines, Google-style. A repo-wide score is NOT a KPI (noise,
-  arid code); per-module floors on critical code are the gate.
+- **Mutation is PER-PHASE, SCOPED, and NON-DEFERRABLE — EACH PHASE is a feature for gating.**
+  A phase is not done until its own mutation run has completed and the score is recorded;
+  "unmeasured, later" is not a phase status. Scope each run to the functions the phase changed
+  (aim for under 500 mutants and 20–30 minutes; `mutation_run.py --expected-mutants N
+  --max-minutes M` refuses a projection over budget before a mutant exists), and
+  run detached right after the push while the next phase starts — the score lands while the
+  next phase is being written, which is when it can still change how that phase is written. Deferring doesn't
+  cost mutant count (8 new modules generate ~2,000 either way); it costs a systematic weak-test
+  habit compounding across every module built before the first measurement (observed: one
+  ranges-not-values habit → 8 modules at 52.5%; measured at phase 3, phases 4–7 write
+  differently). And deferral compounds into a WALL: on cheliped 2026-09-07 to 09, thirteen
+  deferred per-phase runs became a three-day full-roster sweep that stopped development — the
+  per-phase rule above was already written and was walked past thirteen times because
+  "later" still counted as a status. The DIFF-SCOPED form is the same rule at review time
+  (Stryker `--incremental`/`--since`, pitest history files, mutmut on changed files) — a
+  handful of survivors surfaced on the changed lines, Google-style.
+- **Full-roster sweeps happen ONLY at release milestones, spread across idle time in batches,
+  never on the development path.** A full pass VERIFIES the accumulated per-phase scores; it is
+  not how a score gets made, and a sweep that blocks the next phase is the wall above, scheduled
+  on purpose. A repo-wide score is NOT a KPI (noise, arid code); per-module floors on critical
+  code are the gate.
 - **The per-module discovery loop — full passes VERIFY, they don't DISCOVER.** To RAISE a score,
   iterate one module at a time: run ONE module → READ the actual survivor lines → write kills →
   re-run that module → repeat until it clears the floor → next module → full pass only at the end.
@@ -525,6 +543,14 @@ process; it cannot, and the attempts are the documented time sink.
 **Triage survivors — real vs equivalent.**
 - **Surviving mutants = weak/missing tests.** Triage survivors on critical paths first; add the test that
   kills each. Aim ~80%+ EFFECTIVE mutation score on critical modules.
+- **A survivor is a mechanical red.** A test written to kill it is legitimate red-first after the
+  fact: the mutant IS the failing case, and the kill is proven by re-measuring, never by narrative
+  — "this test would catch that" is a claim, the re-run is the evidence (§12). Record the
+  before/after score with the kill.
+- **Use the score as the instrument for OLD tests.** A test file that
+  kills nothing is window dressing: retire it or replace it with survivor-driven tests, one
+  module per idle sitting. The
+  survivor list says what is weak; a green file with zero kills says only that it runs.
 - **Equivalent mutants are real and UN-KILLABLE — don't chase them (that's performative gaming).** On
   DB/SQL-heavy code, tools (e.g. mutmut, no toggle to disable string mutation) case-mutate SQL keywords +
   dict/`Row` subscript keys, which SQL/SQLite treat identically — these survive forever. Exclude them with

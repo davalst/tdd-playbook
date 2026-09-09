@@ -5,6 +5,14 @@ argument-hint: <critical module(s) to mutation-test>
 
 Run a **mutation-testing pass** (Playbook §4) on the CRITICAL modules: $ARGUMENTS
 
+**Cadence (§4, non-deferrable): this runs at EVERY phase boundary, scoped to what the phase
+changed.** A phase is not done until its own run has completed and the score is recorded —
+"unmeasured, later" is not a phase status. Scope to the functions the phase touched (aim
+for under 500 mutants, 20–30 minutes) and run it DETACHED right after the push while the
+next phase starts. Full-roster sweeps are for release milestones only, in idle-time batches,
+never on the development path (origin: cheliped 2026-09-07 to 09 — thirteen deferred
+per-phase runs became a three-day sweep that stopped development).
+
 This is the ungameable check that tests actually catch bugs (100% coverage can assert
 nothing) — within a seam: the score is blind where test and code share the same wrong belief
 about a caller's contract (§4 "What mutation score does not cover"; §1's seam rule is the
@@ -18,6 +26,9 @@ check across one). Steps:
    a scope matching zero generated mutants OR a RED baseline / zero mutants run / a discarded tool
    exit code all fail loudly ("cannot measure — refusing a vacuous pass"), never green (0 survivors
    ≠ pass, generated > 0 ≠ measured — a discarded exit code is a discarded truth).
+   **Filter ARID mutants up front** — log lines, message wording, audit-payload field names,
+   retry counters — so the scope measures behaviour, not prose; arid ≠ equivalent (killable but
+   proves nothing), and the exclusion still ships its negative test + excluded-share audit.
    **Reviewing a diff rather than finishing a feature? Run DIFF-SCOPED** (Stryker
    `--incremental`/`--since origin/main`, pitest history, mutmut on the changed files) and
    surface survivors on the changed lines only. **For a concern-critical change** (auth,
@@ -33,6 +44,8 @@ check across one). Steps:
    args>" --max-minutes N` and they cannot be skipped, because running the pass IS running them.**
    It refuses a RED baseline, refuses zero-or-unknown collection, and refuses a scope whose
    projection (mutants x the MEASURED baseline) exceeds the budget — before any mutant exists.
+   Pass `--expected-mutants` (the under-500 target) so the projection is COMPUTED rather than
+   skipped, and size `--max-minutes` to the 20–30 minute per-phase budget.
    pytest + mutmut only; another stack is refused rather than guessed. (a) and (d) remain YOURS:
    in order, refusing on any failure: (a) roster integrity — no DUPLICATE `paths_to_mutate` entries
    (a duplicate makes mutmut 3.6 abort after stats collection and names the cause nowhere), every
@@ -64,7 +77,11 @@ check across one). Steps:
    are real — kill them; operator-facing display prose is informational — never resolve it by
    pinning the prose verbatim in a test. Informational = changes INSIDE the string literal
    only: logic mutants on a display line and mutants inside f-string `{expressions}` are CODE,
-   stay real/blocking. For REAL survivors, write the test that kills each.
+   stay real/blocking. For REAL survivors, write the test that kills each — a survivor is a
+   mechanical red, and the kill is proven by RE-MEASURING (score before/after), never by
+   narrative. Use the score as the instrument for OLD tests too: a file that kills nothing is
+   window dressing — retire it or replace it with survivor-driven tests, one module per idle
+   sitting.
 4. Report **raw %**, **effective % (killed / non-equivalent)**, and the count excluded —
    transparently. Aim ~80%+ effective on critical modules. If this repo has a mutation
    floor/gate, ensure it still passes and never lower it.

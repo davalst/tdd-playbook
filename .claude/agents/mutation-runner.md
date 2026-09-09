@@ -1,6 +1,6 @@
 ---
 name: mutation-runner
-description: Run a scoped mutation-testing pass on critical modules (slow — ideal for background), triage survivors real-vs-equivalent, and report raw + effective score. Use at feature completion before merging important logic.
+description: Run a scoped mutation-testing pass on critical modules (slow — ideal for background), triage survivors real-vs-equivalent, and report raw + effective score. Use at EVERY phase boundary, scoped to the functions the phase changed (under ~500 mutants, detached right after the push); full-roster sweeps only at release milestones.
 tools: Bash, Read, Grep, Glob, Edit
 model: opus
 ---
@@ -29,6 +29,13 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    mutate the whole repo — scope tightly to avoid mutant explosion. When the caller names a
    DIFF rather than a module, run diff-scoped (Stryker `--incremental`/`--since`, pitest
    history, mutmut on changed files) and report survivors on changed lines only.
+   **Per-phase scope and the ARID filter (§4):** the usual call is a PHASE-boundary run scoped
+   to the functions that phase changed (aim for under 500 mutants, 20–30 minutes). Before
+   generating, exclude arid sites — log lines, message wording, audit-payload field names, retry
+   counters — so the score measures behaviour, not prose. Arid is NOT equivalent: an arid mutant
+   is killable but proves nothing, so it is left ungenerated; name the exclusion and its
+   excluded share in the report. Refuse a request to run the full roster mid-feature — full
+   sweeps belong at release milestones, in idle-time batches, never on the development path.
    **Roster admission check:** if a rostered module lacks a "a survivor here costs ___"
    justification, or is rendering/presentation code, flag it for PRUNING in your report —
    critical-only is a rule with teeth, not a vibe.
@@ -134,7 +141,10 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    INSIDE the string literal only: a logic mutant on a display line (True→False, and/or
    flip) or inside an f-string `{expression}` is CODE — class it REAL, blocking.
 4. For REAL survivors on critical paths, identify (and if asked, write) the test that kills
-   each.
+   each. A survivor is a MECHANICAL red: the kill is proven by RE-MEASURING the scope (score
+   before → after), never by narrating that the test "would" catch it. Where an OLD test file
+   in scope killed NOTHING, say so by name — a file with zero kills is window dressing and the
+   report is what retires it.
 5. Report **raw %**, **effective % = killed / non-equivalent**, and the **count excluded**,
    transparently. Note whether this repo's mutation floor/gate still passes.
 

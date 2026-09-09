@@ -1,3 +1,43 @@
+## 1.50.0 — 2026-09-09
+
+**§4 amendment: mutation is per-phase, scoped, and non-deferrable.** Doctrine only, no new
+tool. Origin: cheliped 2026-09-07 to 09, where thirteen deferred per-phase runs became a
+three-day full-roster sweep that stopped development. The per-phase rule ("EACH PHASE is a
+feature for gating", v1.9) was already in §4 and was walked past thirteen times — because
+"unmeasured, later" still counted as a phase status, and because the same paragraph kept the
+full critical-module pass on the development path at feature completion. Both halves fixed.
+
+- **A phase is not done until its own mutation run has completed and the score is recorded.**
+  "Unmeasured, later" is not a phase status. Scope each run to the functions the phase changed
+  (aim for under 500 mutants, 20–30 minutes; `mutation_run.py --expected-mutants N
+  --max-minutes M` is the mechanical fit — the projection refuses an over-budget scope before a
+  mutant exists) and run it detached right after the push while the next phase starts.
+- **Full-roster sweeps happen only at release milestones**, spread across idle time in batches,
+  never on the development path. The sentence "the full critical-module pass stays at feature
+  completion" is REMOVED, not contradicted further down — the pin asserts its absence.
+- **Filter arid mutants up front** (log lines, message wording, audit-payload field names,
+  retry counters) so the score measures behaviour, not prose. Arid ≠ equivalent: killable but
+  proves nothing, so left ungenerated; the exclusion still carries the negative test and the
+  excluded-share audit every filter does.
+- **A survivor is a mechanical red.** A test written to kill it is legitimate red-first after
+  the fact, proven by re-measuring, never by narrative.
+- **The score is the instrument for old tests.** A file that kills nothing is window dressing:
+  retired or replaced by survivor-driven tests, one module per idle sitting.
+- Surfaces: SKILL.md §4 (cadence bullet rewritten, arid-filter bullet added to scope,
+  mechanical-red + instrument bullets added to triage), `/mutate` (cadence block, arid step,
+  runner flags named, re-measure rule), `mutation-runner` (description now says phase
+  boundary; per-phase scope + arid filter step; refuses a mid-feature full roster; names
+  zero-kill files in its report). Pinned by `test_agents.py::test_v150_per_phase_mutation`
+  (18 needles, RED first at 55a219f) with a planted paraphrase fixture. Vendored `.claude/`
+  and `.agents/` copies refreshed.
+- **Registry: the paid `proxy-assert-on-own-prose` debt is CLOSED.** It was paid 2026-08-31
+  (CHANGELOG 1.48.0, all three legs verified in-tree here: SKILL.md §1 text/product rule,
+  `test_verify_verdict.py` re.subn count + no-op check, the recorded no-blanket-stripping
+  decision) but left in `capabilities.json` with a `paid: true` field that no code reads, so
+  its 2026-09-06 expiry turned the blessed gate red on the first sweep of this release.
+  Removed, as every earlier paid debt was; the honest note is that an unread field looked like
+  a closure and was not — the registry has no "paid" state, deletion IS the closure.
+
 ## 1.49.0 — 2026-09-06
 
 **The Tripwire reminder fired on the playbook's own workflow, and nobody it addressed could
