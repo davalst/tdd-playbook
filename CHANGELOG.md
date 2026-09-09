@@ -1,3 +1,47 @@
+## 1.51.0 — 2026-09-09
+
+**§4b — the run must be scoped to what it measures.** A new subsection, requested as a follow-up
+to 1.50.0's per-phase rule, about the COST of the mutation run itself. Doctrine plus one recorded
+dogfood gap; no new tool.
+
+- **Scope BOTH halves: the mutants and the baseline.** A per-phase run mutates only the modules
+  the phase touched, and the tool's first test-mapping pass (mutmut "stats"; PIT and Stryker have
+  their own names for it) runs only the tests that reach those modules. Generating every rostered
+  mutant and running the whole test tree before the first mutant is applied is a fixed cost that
+  has nothing to do with the module under measurement. It is amortised inside batch sweeps and
+  becomes most of each run the moment mutation moves to one module per phase — which is exactly
+  where 1.50.0 moved it. Origin: a downstream repo measured 20-plus minutes of fixed cost per run
+  on the first day of per-phase runs (2026-09-09).
+- **Tools differ, and the rule names the difference.** PIT and Stryker scope both by default.
+  mutmut does not, so a mutmut gate rewrites the configuration of the DISPOSABLE worktree it runs
+  in — source paths and test directory both narrowed per run — and never the real project file.
+  Written generically: whatever the tool consults to decide what to mutate and which tests to
+  run, the gate narrows it per run, in a copy, and leaves the original untouched.
+- **Budget and diagnosis.** A single-module run completes in roughly 15 to 30 minutes in the
+  background. If the baseline dominates, the GATE is misconfigured: do not blame the module, do
+  not defer the measurement. A module no test reaches keeps the whole test folder and the gate
+  says so, so the tool's "no test covers any mutant" abort reads as the roster gap it is.
+- **§4a checklist line:** a gate's RUN TIME is part of its design — measure the fixed cost of an
+  empty or one-module run and scope the gate before scaling the work to it.
+- **Worked example cited**, not copied: the origin repo's per-run config rewrite (commit
+  `2fb23811`). The doctrine text carries no downstream-specific vocabulary, and the pin
+  (`test_v151_scoped_run_cost`, 20 needles, RED at f631563) fails if any leaks in.
+- **Dogfood gap recorded as dated debt** (`mutation-preflight`, expires 2026-10-31): this
+  playbook's own `bin/mutation_run.py` reads the mutmut config and refuses a scope mismatch, but
+  does not narrow the config per run and prints no partial measurement on timeout. §4b's
+  worked-example line says so in the doctrine rather than implying the runner already complies.
+- `/mutate` and `mutation-runner` carry the baseline-scoping step and the
+  baseline-dominates-means-gate-misconfigured finding. The 22-section pin moves to 23 with the
+  reason inline.
+- **One unexplained local gate red, recorded rather than retried into green.** The hooks
+  suite exited 1 once, in a run twice its normal length, with the same line count as a pass:
+  one check flipped. It passed in the gate runs before and after, three direct loops, and an
+  exact mirror of the gate's invocation. The gate's digest could not name the check — it
+  persists counts only, and its FAIL pattern misses the suites' own indented marker, so a real
+  failure reads as zero failures (verified in source). Dated debt on `independent-gate-rerun`
+  (expires 2026-10-15) carries the falsification path and the hypothesis; the release ships on
+  a subsequent full green with that straggler stated, per the one-sweep rule.
+
 ## 1.50.0 — 2026-09-09
 
 **§4 amendment: mutation is per-phase, scoped, and non-deferrable.** Doctrine only, no new

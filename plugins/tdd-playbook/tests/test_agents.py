@@ -1339,8 +1339,10 @@ def test_v146_cheliped_audit_doctrine():
           "backstop\n  is WEAKER here than for the value trap" in text
           or "is WEAKER here than for the value trap" in text)
     # Amendments are amendments: no new top-level section was opened for any of them.
-    check("SKILL: still 22 top-level sections (amended, not appended)",
-          len([ln for ln in text.splitlines() if ln.startswith("## ")]) == 22,
+    # 22 -> 23 on 2026-09-09: SS4b ("the run must be scoped to what it measures") was an
+    # explicitly REQUESTED new subsection (v1.51.0), not an amendment that drifted into one.
+    check("SKILL: still 23 top-level sections (amended, not appended; SS4b requested 2026-09-09)",
+          len([ln for ln in text.splitlines() if ln.startswith("## ")]) == 23,
           len([ln for ln in text.splitlines() if ln.startswith("## ")]))
 
 
@@ -1575,7 +1577,8 @@ def test_v151_scoped_run_cost():
     ]:
         check(label, needle in text, "needle {!r} missing".format(needle))
     # Generic voice: the downstream repo's private vocabulary must not leak into doctrine.
-    sect = text.split("## 4b. The run must be scoped to what it measures", 1)[1].split("\n## ", 1)[0]
+    hdr = "## 4b. The run must be scoped to what it measures"
+    sect = text.split(hdr, 1)[1].split("\n## ", 1)[0] if hdr in text else ""
     for word in ("shim", "star-import", "star import"):
         check("SKILL §4b: no downstream-specific lingo ({!r})".format(word),
               word not in sect.lower(), None)

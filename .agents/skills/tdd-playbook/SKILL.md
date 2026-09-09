@@ -656,6 +656,10 @@ nothing. These are the documented false-green modes — each has bitten a real g
   Project it — `mutants x measured baseline x safety` — and refuse an unaffordable scope BEFORE
   starting, naming the number. `bin/mutation_run.py` does this; a constant you last tuned against
   a smaller suite is a guess wearing a unit.
+- **A gate's RUN TIME is part of its design.** Measure the
+  fixed cost of an empty or one-module run; if it exceeds a few minutes, scope the gate before scaling the work to it (§4b). A fixed
+  cost is paid on every run regardless of what the run measures, so it is the one number that
+  gets WORSE as runs get smaller and more frequent — exactly the direction §4 pushes.
 - **When the surviving mutants are ALREADY KNOWN, hand-plant them.** Re-running a full pass to
   re-observe survivors you have already identified buys the same evidence for two hours instead
   of seconds. Apply them directly, run the killing tests, and label the broad pass UNMEASURED if
@@ -697,6 +701,56 @@ nothing. These are the documented false-green modes — each has bitten a real g
   rule is this same defect from the CONSUMER's side; this is the rule for the guard's AUTHOR, and it
   is only cheap at design time — after the guard ships, its silence is indistinguishable from
   compliance.
+
+## 4b. The run must be scoped to what it measures
+§4 says a phase runs its own scoped mutation pass; §4a says the gate must be honest about what
+it measured. This section is about what the run COSTS — because a run whose cost is dominated
+by work unrelated to its subject will be deferred, and §4 says deferral is not a status.
+
+- **Scope BOTH halves: the mutants AND the baseline.** A per-phase mutation run mutates ONLY the
+  modules the phase touched, and its baseline — the tool's first pass that maps tests to
+  mutants (mutmut calls it "stats"; PIT and Stryker do the same thing under other names) — runs
+  only the tests that reach those modules. Both halves are required. Generating every rostered
+  mutant and running every rostered test before the first mutant is applied is a fixed cost per
+  run that has nothing to do with the module under measurement. It hides inside multi-module
+  batch sweeps, where it is amortised, and becomes MOST of each run the moment mutation moves to
+  one module per phase (origin: a downstream repo measured 20-plus minutes of fixed cost per run
+  — tens of thousands of mutants generated and the whole test tree run — before the first mutant
+  of the one module it had asked about; found on the first day of per-phase runs, 2026-09-09).
+- **Know which tools scope by default; configure the ones that do not.** PIT and Stryker scope both by default
+  (mutants and baseline). mutmut does not: it generates for every configured source path and
+  runs the whole configured test directory. So a mutmut-based gate must rewrite the
+  configuration of the disposable worktree it runs in — source paths listing only the requested
+  modules, the test directory listing only the test files that reach them, using the same
+  test-to-module mapping the repo's roster test already relies on (§4a's "a roster entry with
+  no gate invocation is a comment" is that mapping read the other way). Never rewrite the real
+  project configuration: the rewrite is a property of ONE run, not of the repo, and a scoped
+  config left behind in the working tree silently narrows every later run. The general rule for
+  any tool: whatever the tool consults to decide WHAT to mutate and WHICH tests to run, the gate
+  must narrow it per run, in a copy, and leave the original untouched.
+- **Budget: a single-module run completes in roughly 15 to 30 minutes in the background.** If
+  the baseline dominates the run, the GATE is misconfigured —
+  do not blame the module, and do not defer the measurement. The two failure modes look alike from the outside (a slow run) and
+  have opposite fixes: a module with genuinely many mutants is scoped by FUNCTION (§4's
+  two-tier policy); a run whose time goes to unrelated tests is fixed in the gate, once, for
+  every future run.
+- **A module no test reaches keeps the whole test folder in the baseline — and the gate SAYS
+  SO.** Narrowing to zero tests would be the vacuity guard's own failure (§4a). Instead the gate
+  reports that it could not narrow, so the tool's "no test covers any mutant" abort reads as the
+  roster gap it is — a module on the roster with nothing exercising it — rather than as a gate
+  defect. Fixing that gap is writing tests, not tuning the gate.
+- **The existing rules stand beside this one, not under it:** the timeout is
+  sized from the measured rate and re-sized whenever the baseline changes (§4a); a timeout prints its
+  partial measurement before any refusal, because a killed run that measured half the mutants has
+  evidence and a bare UNMEASURED throws it away; one scoped run per phase; never a
+  programme-end sweep on the development path; and the score is NON-DEFERRABLE — a phase is not
+  done until its own scoped score is recorded (§4).
+- **Worked example.** The origin repo's gate rewrites its worktree's mutmut config per run
+  (Cheliped commit `2fb23811`: `scope_mutmut_config` in `cheliped/verify/mutation_runner.py`,
+  pinned by `tests/test_mutation_gate_scoped_warmup.py`). This playbook's own
+  `bin/mutation_run.py` reads the config and REFUSES a scope mismatch; it does not yet narrow
+  the config or print a partial measurement on timeout — recorded as dated debt on the
+  `mutation-preflight` capability rather than claimed.
 
 ## 5. UX journeys — `@pytest.mark.ux` — interface-agnostic
 A UX journey drives the REAL interface a user touches and asserts the user-visible outcome + the persisted

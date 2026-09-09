@@ -46,6 +46,12 @@ check across one). Steps:
    projection (mutants x the MEASURED baseline) exceeds the budget — before any mutant exists.
    Pass `--expected-mutants` (the under-500 target) so the projection is COMPUTED rather than
    skipped, and size `--max-minutes` to the 20–30 minute per-phase budget.
+   **Scope BOTH halves (§4b):** the mutants AND the baseline. The tool's first pass (mutmut
+   "stats") must run only the tests that reach the requested modules — PIT/Stryker do this by
+   default, mutmut does not, so a mutmut gate rewrites the DISPOSABLE worktree's config (source
+   paths + test directory) per run and never the real one. If the baseline dominates a
+   single-module run, the GATE is misconfigured — fix the gate, do not blame the module or defer
+   the measurement. A module no test reaches keeps the whole folder and the gate says so.
    pytest + mutmut only; another stack is refused rather than guessed. (a) and (d) remain YOURS:
    in order, refusing on any failure: (a) roster integrity — no DUPLICATE `paths_to_mutate` entries
    (a duplicate makes mutmut 3.6 abort after stats collection and names the cause nowhere), every

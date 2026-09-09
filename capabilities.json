@@ -1167,6 +1167,12 @@
           "what": "NO HEARTBEAT, and gate-run frequency CANNOT be its own probe (2026-08-18 review). The five sibling entries from the same 2026-08-13 anti-dark sweep were closed by naming a real reading; this one cannot be, and saying so is the point. The named death is 'GitHub Actions disabled or the workflow broken' — the watcher and the watched are the same system, so citing the gate would be gate-by-proxy. Release step 4 treats a MISSING check as stop, which covers release moments; nothing watches between them. Done = a reading OUTSIDE the gate (a scheduled `gh run list` assertion, or a doctor line that fails when the newest main commit has no completed run), or a recorded decision that release-moment coverage is sufficient and why.",
           "owner": "david",
           "expires": "2026-11-15"
+        },
+        {
+          "id": "gate-digest-cannot-name-a-flipped-check",
+          "what": "ONE UNEXPLAINED RED, RECORDED NOT RETRIED-INTO-GREEN (2026-09-09, v1.51.0 release). Local blessed-gate run 18d8943b: test_hooks exit 1 after 29.9s; the same suite passed in the run before (gate3), the run after (ce1c5942, 310 checks, 13.2s), three direct loops (13-14s each) and a mirror of the gate's exact subprocess.run shape. The failing output had the SAME 373 lines as a passing run, so no traceback: exactly one check flipped, in a run twice its normal duration. WHICH check is unknowable after the fact because gate_runner's RunStore persists only counts (225 bytes) - AND its digest counts lines that START with 'FAIL', while every plugin suite prints '  FAIL - <name>' indented, so fail_signals read 0 on a real failure (verified: gate_runner.py:47 vs test_hooks.py check()). The diagnostic cannot even count the failures of the suites it was built for. HYPOTHESIS, unverified: capture.py._git_info's 5s git timeouts degrade to (None, None) under load via a bare except, flipping any check that asserts repo/sha in a capture event. FALSIFY by running test_hooks under induced CPU/IO load and reading the flipped check name. DONE = (a) the digest persists the NAMES of failed checks (suite-authored strings after the '  FAIL - ' marker, not arbitrary subprocess text, so the no-text-on-disk property survives) and matches the indented marker, red-first against a planted failing suite; AND (b) the flake is either reproduced-and-fixed or 30 days of gate runs show no repeat, stated in the entry. A gate that is red once and cannot say why is the honor-system seam SS4a exists to close.",
+          "owner": "david",
+          "expires": "2026-10-15"
         }
       ],
       "notes": "Born 2026-08-09 with the CIVerd retirement (v1.32.0). Registered so that deleting the repo's only independent re-execution is a visible, gate-failing act rather than a quiet one.",
@@ -1591,6 +1597,12 @@
           "what": "CODEX PARITY, stated not assumed: bin/ ships to Codex (CODEX_COPY_TREES), so mutation_run.py is directly runnable there — but BOTH of its documented consumers (commands/mutate.md, agents/mutation-runner.md) are Claude-only by the deliberate 2026-08-07 decision that Codex-shaped commands/agents are undiscoverable and become integration islands. So on Codex the mechanism exists with nothing pointing at it, which is the dark-by-default shape this registry exists to surface. Done = a native Codex consumer names it (adapters/codex), or a recorded decision that Codex operators reach it through the vendored bin/ path and why that is sufficient.",
           "owner": "david",
           "expires": "2026-11-15"
+        },
+        {
+          "id": "scoped-baseline-and-partial-measurement",
+          "what": "SS4b DOGFOOD GAP, stated not claimed (opened 2026-09-09, v1.51.0). Doctrine now says a mutmut gate rewrites the DISPOSABLE worktree's config so both halves are scoped — source paths = requested modules, test directory = the tests that reach them — and that a timeout prints its PARTIAL measurement before any refusal. bin/mutation_run.py does neither: mutmut_config_scope READS setup.cfg and REFUSES a --scope mismatch (honest, but the fixed cost SS4b names is paid in full), and run_bounded's timeout path prints UNMEASURED and returns 1 with no partial. The downstream origin repo has both (its commit 2fb23811). DONE = (a) mutation_run.py narrows a copied config per run in a worktree and leaves the original untouched, red-first against a planted unscoped config, AND prints killed/survived-so-far on timeout; or (b) a recorded decision that the playbook's runner stays a preflight-only wrapper and downstream gates own scoping, with SS4b's worked-example line rewritten to say so.",
+          "owner": "david",
+          "expires": "2026-10-31"
         }
       ]
     },

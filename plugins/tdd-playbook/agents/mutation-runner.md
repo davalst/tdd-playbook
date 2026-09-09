@@ -78,6 +78,15 @@ tree; a bare `git checkout` does not — that gap is what preflight guards.)
    because the baseline had grown and the timeout had not. Both conditions were already written
    in three places, and reached for in none; §10's rule is that a gate which relies on being
    remembered is the honor-system seam.
+   **Scope the BASELINE, not only the mutants (§4b).** Before the pass, confirm the tool's
+   first test-mapping run is limited to the tests that reach the requested modules. PIT and
+   Stryker do this by default; mutmut generates for every configured source path and runs the
+   whole configured test directory, so a mutmut gate must rewrite the config in a
+   disposable worktree (source paths = requested modules, test directory = the tests that reach them) and
+   never the real project file. Report the baseline's share of the run: if the baseline dominates
+   a single-module run, the GATE is misconfigured — say so as the finding, do not blame the module
+   and do not defer the measurement. A module no test reaches keeps the whole folder; report the
+   "no test covers any mutant" abort as a ROSTER gap, not a gate defect.
    **Baseline green means green in the TOOL'S REWRITTEN TREE, not just at HEAD** — different
    facts. Mutation tools run the suite against an instrumented copy, so a suite green at HEAD can
    be RED there and produce the identical generate-but-never-execute false green. The usual cause
