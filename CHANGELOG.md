@@ -1,3 +1,25 @@
+## 1.51.2 — 2026-09-09
+
+**The wrapper stops advising a remedy it cannot perform.** Codex's source-verification of
+1.51.1 found two survivors of the wording pass: the CLI description still said "Run a scoped
+mutation pass", and the projection refusal still advised "narrow `--scope`" — a flag that
+CHECKS the configured scope and narrows nothing. Both corrected; the refusal now names the
+levers that exist (`--max-minutes`, mutmut's own `source_paths` / `only_mutate`, a faster
+suite) and says the wrapper leaves the config as it finds it. Pinned by
+`test_mutation_preflight.py::test_wrapper_does_not_claim_scoped` (red at 3010626).
+
+**Owner decision recorded:** a planned v1.52.0 reference implementation of §4b narrowing in
+`mutation_run.py`, under five constraints (one disposable worktree for both baseline and
+mutmut; a checked-in scope mapping selected by `--scope`, never `--suite-args`; strict
+lifecycle with an advisory lock and fail-closed cleanup; partial evidence on timeout reported
+with full mutant accounting and never certified; generalise orchestration, not any downstream
+repo's conventions). The mutmut facts behind it were verified against the installed 3.6.0:
+`paths_to_mutate` and `tests_dir` are deprecated in favour of `source_paths` and
+`pytest_add_cli_args_test_selection`; `only_mutate` takes globs; `export-cicd-stats` writes
+killed / survived / total / no_tests / skipped / suspicious / timeout / interrupted / segfault;
+`results --all` prints per-mutant status including `not checked`. The plan lands in
+`docs/plans/gated/` as the next commit series.
+
 ## 1.51.1 — 2026-09-09
 
 **The gate can say why it is red, and the runner stops claiming it is scoped.** Both from a

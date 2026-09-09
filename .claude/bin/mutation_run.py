@@ -110,8 +110,9 @@ def projection_problem(mutants, baseline_seconds, max_minutes, factor=1.0):
     projected = (mutants * baseline_seconds * factor) / 60.0
     if projected > max_minutes:
         return (f"refusing before the expensive pass: {mutants} mutants x {baseline_seconds:.1f}s measured baseline "
-                f"projects ~{round(projected)} minutes, over the {max_minutes}-minute budget. Raise --max-minutes, narrow "
-                "--scope, or speed the suite — but know the number first"
+                f"projects ~{round(projected)} minutes, over the {max_minutes}-minute budget. Raise --max-minutes, "
+                "shrink mutmut's configured scope (setup.cfg [mutmut] source_paths / only_mutate — this "
+                "wrapper leaves that config as it finds it), or speed the suite — but know the number first"
                 )
     return None
 
@@ -222,7 +223,9 @@ def mutmut_argv(max_children=None):
 def main(argv=None, run=None):
     parser = argparse.ArgumentParser(
         prog="mutation_run.py",
-        description=("Run a scoped mutation pass with its preflight ON the execution path. "
+        description=("Run a mutation pass with its preflight ON the execution path. --scope is CHECKED "
+                     "against mutmut's configured source scope; it does NOT narrow the run (SS4b "
+                     "narrowing is the downstream gate's job until the mutation-preflight debt is paid). "
                      "pytest + mutmut ONLY; other stacks are refused, never guessed. Covers "
                      "SKILL §4's collection and green-baseline checks; roster integrity and "
                      "tracer attribution remain the operator's."))
