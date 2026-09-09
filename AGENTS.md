@@ -130,7 +130,8 @@ mechanisms.
 3b. SEED THE MUTATION SCOPES (v1.52.0): if this repo has no `.tdd-playbook/mutation-scopes.json`,
    create it from the existing mutation roster — one entry per critical module: exact source
    files (or globs), the pytest selectors that reach them, and the §4 cost line — then validate
-   each with `python3 .claude/bin/mutation_run.py --dry-run --scope <name> --max-minutes 5`.
+   each with `python3 .claude/bin/mutation_run.py --dry-run --scope SCOPE_NAME --max-minutes 5`
+   (a real name from the file; angle-bracket placeholders are read by zsh as redirects).
    The mapping IS the roster; `--doctor` reports it MISSING until it exists.
 
 4. CALIBRATION STALENESS CHECK (before deleting the temp clone): read

@@ -341,14 +341,15 @@ def doctor(target: str) -> int:
                 entries = json.load(fh)
             print(f"mutation scopes: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'} in "
                   f".tdd-playbook/mutation-scopes.json (validate one: python3 .claude/bin/mutation_run.py "
-                  f"--dry-run --scope <name> --max-minutes 5)")
+                  f"--dry-run --scope SCOPE_NAME --max-minutes 5)")
         except ValueError as exc:
             print(f"MUTATION SCOPES UNREADABLE: .tdd-playbook/mutation-scopes.json — {exc}")
             rc = 1
     else:
         print("mutation scopes: MISSING — .tdd-playbook/mutation-scopes.json is the mutation roster the "
-              "scoped runner requires; run `python3 .claude/bin/mutation_run.py --dry-run --scope <name> "
-              "--max-minutes 5` and copy the scaffold it prints")
+              "scoped runner requires; run `python3 .claude/bin/mutation_run.py --dry-run --scope SCOPE_NAME "
+              "--max-minutes 5` and copy the scaffold it prints (SCOPE_NAME = any name; the refusal "
+              "prints the scaffold)")
     try:
         sys.path.insert(0, os.path.join(PLUGIN, "bin"))
         import mutation_run as _mr

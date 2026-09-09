@@ -1,3 +1,14 @@
+## 1.52.1 — 2026-09-09
+
+**The doctor's next step must survive being pasted.** Minutes after 1.52.0 was tagged, the
+doctor's `mutation scopes: MISSING — run python3 .claude/bin/mutation_run.py --dry-run --scope
+<name> …` line was pasted verbatim into zsh, which read `<name>` as an input redirection and
+answered "no such file or directory: name" — an adoption message whose next step fails when
+copied (S40). The placeholder is now `SCOPE_NAME` in the doctor's two lines and in the standing
+refresh prompt's step 3b; pinned by `test_installer.py` (no angle brackets in a printed
+command; red at 94990c1). Prose surfaces (SKILL, brief, `/mutate`) keep `<scope-name>` inside
+backticks, where an agent substitutes it. `AGENTS.md` re-rendered from `CLAUDE.md`.
+
 ## 1.52.0 — 2026-09-09
 
 **§4b has a reference implementation.** `bin/mutation_run.py` now narrows BOTH halves of a
