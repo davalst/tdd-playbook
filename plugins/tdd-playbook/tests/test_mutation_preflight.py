@@ -877,6 +877,157 @@ def test_main_runs_both_halves_in_the_worktree_for_real():
           "app/calc.py" in out and "app/fmt.py" not in out, out[-600:])
 
 
+def test_full_mutant_accounting_from_one_source():
+    """v1.52.0 D5 (Q7): `mutmut results --all=true` is the ONE per-mutant source; every mutant
+    lands in exactly one of decided / terminal-unscored / unfinished; duplicates are rejected
+    BEFORE totals; the CI export's `total` is the DENOMINATOR (it counts every generated mutant)
+    and a missing, malformed or disagreeing export REFUSES — never prints and continues."""
+    import random
+    m = load()
+    vocab = ["killed", "survived", "no tests", "skipped", "suspicious", "timeout", "segfault",
+             "caught by type check", "check was interrupted by user", "not checked"]
+    text = "\n".join("    app.calc.x__mutmut_{}: {}".format(i, st) for i, st in enumerate(
+        ["killed", "killed", "survived", "no tests", "timeout", "check was interrupted by user", "not checked", "not checked"]))
+    b = m.classify_results(text)
+    check("decided = killed + survived", b.killed == 2 and b.survived == 1 and b.decided == 3, vars(b))
+    check("terminal-unscored counts each status by name", b.unscored == {"no tests": 1, "timeout": 1} and b.unscored_total == 2, vars(b))
+    check("unfinished keeps interrupted-mid-check and not-yet-checked APART (mutmut distinguishes them)",
+          b.interrupted == 1 and b.not_checked == 2 and b.unfinished == 3, vars(b))
+    check("every row is in exactly one bucket", b.rows == 8 and b.decided + b.unscored_total + b.unfinished == 8, vars(b))
+    # property: any multiset over the vocabulary partitions; unknown raises; duplicate raises
+    rng = random.Random(1152)
+    ok = True
+    for _ in range(200):
+        statuses = [rng.choice(vocab) for _ in range(rng.randint(0, 40))]
+        t = "\n".join("    m{}: {}".format(i, s) for i, s in enumerate(statuses))
+        bb = m.classify_results(t)
+        ok &= (bb.rows == len(statuses) == bb.decided + bb.unscored_total + bb.unfinished)
+        ok &= bb.killed == statuses.count("killed") and bb.not_checked == statuses.count("not checked")
+    check("PROPERTY: 200 random multisets partition exactly (sum == rows, counts by status exact)", ok)
+    try:
+        m.classify_results("    m1: killed\n    m2: exploded\n")
+    except m.AccountingProblem as exc:
+        check("PLANTED unknown status is REFUSED, not bucketed", "exploded" in str(exc), str(exc))
+    else:
+        check("PLANTED unknown status is REFUSED, not bucketed", False)
+    try:
+        m.classify_results("    m1: killed\n    m1: survived\n")
+    except m.AccountingProblem as exc:
+        check("PLANTED duplicate mutant name is REFUSED before any total (one dup can hide one missing)",
+              "duplicate" in str(exc).lower() and "m1" in str(exc), str(exc))
+    else:
+        check("PLANTED duplicate mutant name is REFUSED before any total", False)
+    # denominator + cross-check (Q7 fail-closed)
+    good = {"killed": 2, "survived": 1, "total": 8, "no_tests": 1, "skipped": 0, "suspicious": 0,
+            "timeout": 1, "check_was_interrupted_by_user": 1, "segfault": 0}
+    check("agreeing export: denominator and emitted fields reconcile", m.reconcile(b, good) is None, m.reconcile(b, good))
+    for bad, label in ((None, "missing export"), ({"killed": 2}, "malformed export (no total)"),
+                       (dict(good, total=9), "total disagrees (one row missing)"),
+                       (dict(good, survived=2), "an emitted field disagrees")):
+        why = m.reconcile(b, bad)
+        check("PLANTED {} REFUSES with both numbers".format(label), why is not None and ("8" in why or "total" in why.lower()), why)
+    check("the export's omitted statuses (not_checked, type check) are NOT compared — they are the known residual",
+          m.reconcile(b, dict(good)) is None)
+    line = m.partial_line(b)
+    check("PARTIAL line: kill rate over DECIDED, unscored, unfinished split, NON-AUTHORIZING",
+          line.startswith("PARTIAL") and "2/3" in line and "67%" in line and "2 unscored" in line
+          and "3 unfinished at cutoff (1 interrupted mid-check, 2 not yet checked)" in line and "NON-AUTHORIZING" in line, line)
+    full = m.classify_results("    m1: killed\n    m2: survived\n")
+    check("a COMPLETE run with unscored == 0 certifies (no refusal text)", m.certify_problem(full) is None)
+    part = m.classify_results("    m1: killed\n    m2: segfault\n")
+    check("a COMPLETE run with unscored > 0 refuses to certify (existing SS4a rule, now mechanical)",
+          m.certify_problem(part) and "segfault" in m.certify_problem(part), m.certify_problem(part))
+
+
+def test_run_record_is_written_before_cleanup_and_shares_retention():
+    """v1.52.0 D6: <common>/tdd-playbook/mutation-runs/<run_id>/index.json, 0600, atomic,
+    written BEFORE the worktree is removed, retention via the SAME prune_dir as gate runs
+    (keep 20, own lock), an in-progress stub while the repo lock is held; an unwritable
+    records dir still reports and exits nonzero naming the record failure."""
+    import json as _json, stat as _stat
+    m = load()
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                         scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"}})
+    ident = m.repo_identity(root)
+    with m.repo_lock(ident, scope_name="calc", run_id="r1"):
+        stub = os.path.join(ident["state_dir"], "mutation-runs", "in-progress.json")
+        check("an in-progress stub names the holder while the lock is held", os.path.isfile(stub) and _json.load(open(stub))["scope"] == "calc")
+        path = m.write_record(ident, "r1", {"scope": "calc", "exit_reason": "complete", "buckets": {"killed": 1}})
+    check("the stub is gone once the lock is released", not os.path.exists(stub))
+    check("record path is <state>/mutation-runs/<run_id>/index.json",
+          path == os.path.join(ident["state_dir"], "mutation-runs", "r1", "index.json") and os.path.isfile(path), path)
+    check("record is private (0600) and carries run_id + written_at", _stat.S_IMODE(os.stat(path).st_mode) == 0o600
+          and _json.load(open(path))["run_id"] == "r1" and "written_at" in _json.load(open(path)))
+    for i in range(25):
+        m.write_record(ident, "old-{:02d}".format(i), {"scope": "calc"})
+    left = sorted(n for n in os.listdir(os.path.join(ident["state_dir"], "mutation-runs")) if os.path.isdir(os.path.join(ident["state_dir"], "mutation-runs", n)))
+    check("retention keeps the newest 20 records (shared prune_dir, own lock)", len(left) == 20 and "old-24" in left and "r1" not in left, left)
+    check("the retention lock lives in the records dir, not gate-runs",
+          os.path.isfile(os.path.join(ident["state_dir"], "mutation-runs", ".prune.lock")))
+    latest = m.latest_record(ident)
+    check("latest_record() returns the newest record for the doctor line", latest and latest["run_id"] == "old-24", latest)
+    # ordering: record BEFORE cleanup, and an unwritable dir is a named nonzero, not a silent skip
+    runs = os.path.join(ident["state_dir"], "mutation-runs")
+    os.chmod(runs, 0o500)
+    try:
+        try:
+            m.write_record(ident, "r2", {"scope": "calc"})
+        except m.RecordProblem as exc:
+            check("unwritable records dir -> RecordProblem naming the path", "mutation-runs" in str(exc), str(exc))
+        else:
+            check("unwritable records dir -> RecordProblem naming the path", False)
+    finally:
+        os.chmod(runs, 0o700)
+
+
+def test_real_run_record_and_partial_on_timeout():
+    """v1.52.0 D5+D6 END TO END against real mutmut: a complete run leaves a record whose
+    buckets reconcile with the CI export; a run cut off at the deadline prints the PARTIAL
+    line, exits 1, and STILL leaves a record with unfinished > 0 — evidence is never thrown
+    away, and never certified."""
+    import shutil, json as _json, textwrap
+    m = load()
+    if shutil.which("mutmut") is None:
+        unmeasured("real record + real PARTIAL", "mutmut is not installed here")
+        return
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                         scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "c"}})
+    proc = subprocess.run([sys.executable, BIN, "--scope", "calc", "--max-minutes", "10"],
+                          cwd=root, capture_output=True, text=True, timeout=900)
+    ident = m.repo_identity(root)
+    rec = m.latest_record(ident)
+    check("REAL complete run: exit 0 and a record with exit_reason=complete", proc.returncode == 0 and rec and rec["exit_reason"] == "complete", (proc.returncode, rec))
+    b = rec["buckets"] if rec else {}
+    check("REAL complete run: buckets reconcile (decided + unscored + unfinished == total, unfinished == 0)",
+          rec and b["decided"] + b["unscored_total"] + b["unfinished"] == b["total"] and b["unfinished"] == 0 and b["total"] > 0, b)
+    check("REAL complete run: record carries scope, sources, mapping sha, head, baseline share, config file, read-back note",
+          rec and rec["scope"] == "calc" and rec["sources"] == ["app/calc.py"] and len(rec["mapping_sha256"]) == 64
+          and rec["head"] == ident["head"] and "baseline_share" in rec and rec["config_file"] == "setup.cfg", rec)
+    check("REAL complete run: stdout carries the score line with raw counts", "killed" in proc.stdout and "survived" in proc.stdout, proc.stdout[-400:])
+    # a SLOW module: each mutant costs seconds, the budget is one minute, so the deadline cuts it
+    slow = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                         scopes={"slow": {"sources": ["app/slow.py"], "tests": ["tests/test_slow.py"], "cost": "c"}},
+                         extra_files=[("app/slow.py", "\n".join("def f{0}(a, b):\n    return a + b + {0}\n".format(i) for i in range(12))),
+                                      ("tests/test_slow.py", textwrap.dedent("""
+                                          import time
+                                          from app import slow
+                                          def test_all():
+                                              time.sleep(2.5)
+                                              for i in range(12):
+                                                  assert getattr(slow, 'f%d' % i)(1, 2) == 3 + i
+                                      """))])
+    proc = subprocess.run([sys.executable, BIN, "--scope", "slow", "--max-minutes", "1"],
+                          cwd=slow, capture_output=True, text=True, timeout=900)
+    out = proc.stdout + proc.stderr
+    rec = m.latest_record(m.repo_identity(slow))
+    check("REAL cut-off run: exit 1 with the PARTIAL / NON-AUTHORIZING line", proc.returncode == 1 and "PARTIAL" in out and "NON-AUTHORIZING" in out, out[-700:])
+    check("REAL cut-off run: the record still exists with exit_reason=timeout and unfinished > 0",
+          rec and rec["exit_reason"] == "timeout" and rec["buckets"]["unfinished"] > 0, rec)
+    check("REAL cut-off run: buckets still reconcile with the CI export's total",
+          rec and rec["buckets"]["decided"] + rec["buckets"]["unscored_total"] + rec["buckets"]["unfinished"] == rec["buckets"]["total"], rec and rec["buckets"])
+    check("REAL cut-off run: no worktree left behind", not os.listdir(os.path.join(m.repo_identity(slow)["state_dir"], "mutation-worktrees")))
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
@@ -893,7 +1044,10 @@ def main():
                test_literal_clean_and_disposable_worktree_lifecycle,
                test_repo_lock_and_stale_worktrees,
                test_reset_plan_shared_scope_knows_the_mutation_artifacts,
-               test_main_runs_both_halves_in_the_worktree_for_real):
+               test_main_runs_both_halves_in_the_worktree_for_real,
+               test_full_mutant_accounting_from_one_source,
+               test_run_record_is_written_before_cleanup_and_shares_retention,
+               test_real_run_record_and_partial_on_timeout):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
