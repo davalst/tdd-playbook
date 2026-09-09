@@ -103,6 +103,9 @@ def main():
     test_doctor()
     test_doctor_reports_mutation_scopes_and_last_run()
     test_doctor_classifies_overrides_against_each_guards_default()
+    test_reconcile_keeps_a_users_own_script_inside_the_namespace()
+    test_no_hooks_mode_for_plugin_enabled_repos()
+    test_doctor_flags_a_dead_hook_registration()
     test_codex_install_preserves_user_config()
     test_vendoring_containment()
     test_vendored_skill_equality()
@@ -116,6 +119,115 @@ def main():
 
     print("\n{} passed, {} failed".format(_r["pass"], _r["fail"]))
     sys.exit(1 if _r["fail"] else 0)
+
+
+def _settings_with(target, hooks):
+    cdir = os.path.join(target, ".claude"); os.makedirs(cdir, exist_ok=True)
+    with open(os.path.join(cdir, "settings.json"), "w") as fh:
+        json.dump({"hooks": hooks}, fh)
+    return cdir
+
+
+def test_reconcile_keeps_a_users_own_script_inside_the_namespace():
+    """v1.52.3 — the origin repo's own Stop hook lives in .claude/hooks/scripts/ and was dropped by
+    TWO refreshes in one day (2026-09-09). "Documented behaviour" was the wrong verdict: a group is
+    OURS only when every command names a script the playbook ships now or wrote before (the
+    previous manifest) — a script we never shipped is the user's, wherever it sits."""
+    print("\n[reconcile: user's own script inside the plugin namespace]")
+    mod = load_installer()
+    with tempfile.TemporaryDirectory() as target:
+        own = {"matcher": "", "hooks": [{"type": "command",
+               "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/my_recorder.py\""}]}
+        stale = {"matcher": "Edit", "hooks": [{"type": "command",
+                 "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/removed_guard.py\""}]}
+        cdir = _settings_with(target, {"Stop": [own], "PreToolUse": [stale]})
+        os.makedirs(os.path.join(cdir, "hooks", "scripts"), exist_ok=True)
+        for name in ("my_recorder.py", "removed_guard.py"):
+            with open(os.path.join(cdir, "hooks", "scripts", name), "w") as fh:
+                fh.write("# script\n")
+        # a previous manifest that claims removed_guard.py (we wrote it once) but NOT my_recorder.py
+        with open(os.path.join(cdir, ".tdd-playbook-manifest.json"), "w") as fh:
+            json.dump({"schema_version": 1, "host": "claude",
+                       "files": [".claude/hooks/scripts/removed_guard.py", ".claude/bin/tdd_lock.py"]}, fh)
+        mod.main([target])
+        with open(os.path.join(cdir, "settings.json")) as fh:
+            cmds = flat_commands(json.load(fh))
+        check("a script the playbook never shipped SURVIVES reconcile even inside hooks/scripts/",
+              any("my_recorder.py" in c for c in cmds), cmds)
+        check("a script the playbook wrote before and no longer ships is still pruned",
+              not any("removed_guard.py" in c for c in cmds), cmds)
+        check("the user's own script file is never deleted by the manifest prune",
+              os.path.isfile(os.path.join(cdir, "hooks", "scripts", "my_recorder.py")))
+        mod.main([target])
+        with open(os.path.join(cdir, "settings.json")) as fh:
+            again = flat_commands(json.load(fh))
+        check("...and survives a second refresh (idempotent)", sum("my_recorder.py" in c for c in again) == 1, again)
+
+
+def test_no_hooks_mode_for_plugin_enabled_repos():
+    """v1.52.3 — a repo that runs the playbook as a user-scope PLUGIN and deliberately keeps no
+    vendored hook groups (the origin repo, 2026-09-06) had all six groups put back by a refresh:
+    double firing, re-created by the tool that documents it as debt. `--no-hooks` vendors the
+    machinery and leaves hook groups OUT, records the mode in the manifest, and later plain
+    refreshes honour it; `--hooks` flips it back."""
+    print("\n[--no-hooks mode]")
+    mod = load_installer()
+    with tempfile.TemporaryDirectory() as target:
+        custom = {"matcher": "Bash", "hooks": [{"type": "command", "command": "./scripts/my-own-hook.sh"}]}
+        cdir = _settings_with(target, {"PreToolUse": [custom]})
+        rc = mod.main(["--no-hooks", target])
+        with open(os.path.join(cdir, "settings.json")) as fh:
+            cmds = flat_commands(json.load(fh))
+        check("--no-hooks installs clean and merges NO playbook hook group",
+              rc == 0 and not any("/.claude/hooks/scripts/" in c for c in cmds), cmds)
+        check("--no-hooks keeps the user's own hook", any("my-own-hook.sh" in c for c in cmds), cmds)
+        check("--no-hooks still vendors the machinery", os.path.isfile(os.path.join(cdir, "bin", "mutation_run.py")))
+        with open(os.path.join(cdir, ".tdd-playbook-manifest.json")) as fh:
+            check("the mode is RECORDED in the manifest", json.load(fh).get("hooks_mode") == "none")
+        mod.main([target])
+        with open(os.path.join(cdir, "settings.json")) as fh:
+            cmds = flat_commands(json.load(fh))
+        check("a later plain refresh HONOURS the recorded mode (no groups sneak back)",
+              not any("/.claude/hooks/scripts/" in c for c in cmds), cmds)
+        mod.main(["--hooks", target])
+        with open(os.path.join(cdir, "settings.json")) as fh:
+            cmds = flat_commands(json.load(fh))
+        check("--hooks flips it back and merges the groups", any("lock_guard.py" in c for c in cmds), cmds)
+        buf = io.StringIO()
+        os.environ["TDD_PLAYBOOK_PLUGIN_CACHE"] = tempfile.mkdtemp()
+        try:
+            mod.main(["--no-hooks", target])
+            with contextlib.redirect_stdout(buf):
+                mod.main(["--doctor", target])
+        finally:
+            os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
+        check("the doctor reports the hooks mode", "vendored hooks: none" in buf.getvalue(), buf.getvalue())
+
+
+def test_doctor_flags_a_dead_hook_registration():
+    """v1.52.3 — a hook registered in settings whose script no longer exists on disk fires nothing
+    and warns nobody (the origin repo's adopted exit-code guard after a manifest prune, 2026-09-09)."""
+    print("\n[doctor: dead hook registration]")
+    mod = load_installer()
+    with tempfile.TemporaryDirectory() as target, tempfile.TemporaryDirectory() as cache:
+        os.environ["TDD_PLAYBOOK_PLUGIN_CACHE"] = cache
+        try:
+            mod.main([target])
+            cdir = os.path.join(target, ".claude")
+            with open(os.path.join(cdir, "settings.json")) as fh:
+                settings = json.load(fh)
+            settings["hooks"].setdefault("Stop", []).append({"matcher": "", "hooks": [{"type": "command",
+                "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/gone_forever.py\""}]})
+            with open(os.path.join(cdir, "settings.json"), "w") as fh:
+                json.dump(settings, fh)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = mod.main(["--doctor", target])
+            out = buf.getvalue()
+            check("doctor names a registration whose script is missing, and fails",
+                  "DEAD HOOK REGISTRATION" in out and "gone_forever.py" in out and rc == 1, out)
+        finally:
+            os.environ.pop("TDD_PLAYBOOK_PLUGIN_CACHE", None)
 
 
 def test_codex_install_preserves_user_config():
