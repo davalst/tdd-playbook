@@ -364,6 +364,168 @@ def test_run_bounded_deadline_grace_and_cwd_with_real_children():
     check("run_bounded: elapsed seconds are reported", isinstance(getattr(p, "elapsed_s", None), float), vars(p))
 
 
+def _fixture_repo(pyproject=None, setup_cfg=None, tox_ini=None, scopes=None, extra_files=()):
+    """A committed fixture repo: app/calc.py + tests/test_calc.py, optional mutmut configs and
+    an optional .tdd-playbook/mutation-scopes.json. Returns its root."""
+    import tempfile, textwrap, json
+    root = tempfile.mkdtemp()
+    os.makedirs(os.path.join(root, "app")); os.makedirs(os.path.join(root, "tests"))
+    with open(os.path.join(root, "app", "calc.py"), "w") as fh:
+        fh.write("def add(a, b):\n    return a + b\n\n\ndef sub(a, b):\n    return a - b\n")
+    with open(os.path.join(root, "app", "fmt.py"), "w") as fh:
+        fh.write("def show(x):\n    return str(x)\n")
+    with open(os.path.join(root, "tests", "test_calc.py"), "w") as fh:
+        fh.write(textwrap.dedent("""
+            from app.calc import add, sub
+            def test_add():
+                assert add(2, 2) == 4
+            def test_sub():
+                assert sub(3, 1) == 2
+        """))
+    with open(os.path.join(root, "tests", "test_fmt.py"), "w") as fh:
+        fh.write("from app.fmt import show\ndef test_show():\n    assert show(1) == '1'\n")
+    if pyproject is not None:
+        with open(os.path.join(root, "pyproject.toml"), "w") as fh:
+            fh.write(pyproject)
+    if setup_cfg is not None:
+        with open(os.path.join(root, "setup.cfg"), "w") as fh:
+            fh.write(setup_cfg)
+    if tox_ini is not None:
+        with open(os.path.join(root, "tox.ini"), "w") as fh:
+            fh.write(tox_ini)
+    if scopes is not None:
+        os.makedirs(os.path.join(root, ".tdd-playbook"))
+        with open(os.path.join(root, ".tdd-playbook", "mutation-scopes.json"), "w") as fh:
+            fh.write(scopes if isinstance(scopes, str) else json.dumps(scopes, indent=1))
+    for rel, body in extra_files:
+        os.makedirs(os.path.dirname(os.path.join(root, rel)), exist_ok=True)
+        with open(os.path.join(root, rel), "w") as fh:
+            fh.write(body)
+    for a in (["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"],
+              ["add", "-A"], ["commit", "-q", "-m", "init"]):
+        subprocess.run(["git", "-C", root] + a, capture_output=True, text=True, check=True)
+    return root
+
+
+def test_effective_config_comes_from_mutmut_itself():
+    """v1.52.0 D3 reader: the effective mutmut config is learned FROM MUTMUT (its own loader,
+    cwd=repo), never re-implemented. Motivating defects (architecture + integration adversaries,
+    2026-09-09): the old reader (`mutmut_config_scope`, rev 60bee33) listed setup.cfg before
+    pyproject — the reverse of mutmut's precedence — and consulted tox.ini, which mutmut never
+    reads; inert while read-only, lethal once the reader writes."""
+    import shutil
+    m = load()
+    if shutil.which("mutmut") is None:
+        unmeasured("effective-config seam (mutmut loader, precedence, tox.ini refusal)",
+                   "mutmut is not installed here")
+        return
+    both = _fixture_repo(pyproject='[tool.mutmut]\nsource_paths = ["app"]\npytest_add_cli_args = ["-p", "no:cacheprovider"]\n',
+                         setup_cfg="[mutmut]\nsource_paths=WRONG\n")
+    cfg = m.effective_mutmut_config(both)
+    check("pyproject [tool.mutmut] WINS over setup.cfg (mutmut's precedence, not ours)",
+          cfg.config_file == "pyproject.toml" and cfg.source_paths == ["app"], vars(cfg))
+    check("pytest_add_cli_args is READ (D4 must replay it)",
+          cfg.pytest_add_cli_args == ["-p", "no:cacheprovider"], cfg.pytest_add_cli_args)
+    cfg_only = m.effective_mutmut_config(_fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\ntests_dir=tests/\n"))
+    check("setup.cfg is the fallback and is named as the file", cfg_only.config_file == "setup.cfg", vars(cfg_only))
+    check("legacy tests_dir is surfaced separately, because mutmut APPENDS it to the selection (Q4)",
+          cfg_only.legacy_tests_dir == ["tests/"] and "tests/" in cfg_only.selection, vars(cfg_only))
+    try:
+        m.effective_mutmut_config(_fixture_repo(tox_ini="[mutmut]\nsource_paths=app\n"))
+    except m.ConfigProblem as exc:
+        check("tox.ini-only is REFUSED BY NAME (mutmut never reads it)", "tox.ini" in str(exc), str(exc))
+    else:
+        check("tox.ini-only is REFUSED BY NAME (mutmut never reads it)", False, "no refusal")
+    try:
+        m.effective_mutmut_config(_fixture_repo())
+    except m.ConfigProblem as exc:
+        check("unconfigured repo is refused with the exact fix", "source_paths" in str(exc), str(exc))
+    else:
+        check("unconfigured repo is refused with the exact fix", False, "no refusal")
+    check("the old cwd-bound reader with the tox.ini branch is GONE",
+          not hasattr(m, "mutmut_config_scope"), dir(m))
+
+
+def test_scope_mapping_is_the_roster():
+    """v1.52.0 D1: `.tdd-playbook/mutation-scopes.json` selects exact sources + pytest selectors
+    + a cost line; validated as FACTS (realpath containment against mutmut's parsed
+    source_paths, globs against tracked files), never by substring — the `--scope b` replay is
+    the motivating artifact (rev 60bee33, mutation_run.py:276 `args.scope not in configured`)."""
+    import shutil, json
+    m = load()
+    if shutil.which("mutmut") is None:
+        unmeasured("scope mapping against the real effective config", "mutmut is not installed here")
+        return
+    good = {"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py"], "cost": "a survivor here costs money"},
+            "all": {"sources": ["app/*"], "tests": ["tests/"], "cost": "everything"}}
+    root = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\ndo_not_mutate=app/fmt.py\n", scopes=good)
+    cfg = m.effective_mutmut_config(root)
+    sc = m.resolve_scope(root, "calc", cfg)
+    check("a valid scope resolves to exact tracked files + selectors + cost",
+          sc.sources == ["app/calc.py"] and sc.tests == ["tests/test_calc.py"] and sc.cost.startswith("a survivor"), vars(sc))
+    check("mapping sha256 and counts travel with the scope (anti-narrowing record)",
+          len(sc.mapping_sha256) == 64 and sc.source_count == 1, vars(sc))
+    try:
+        m.resolve_scope(root, "all", cfg)
+    except m.ScopeError as exc:
+        check("a glob that reaches a do_not_mutate file is refused (mutmut would silently generate zero)",
+              "do_not_mutate" in str(exc) and "app/fmt.py" in str(exc), str(exc))
+    else:
+        check("a glob that reaches a do_not_mutate file is refused", False)
+    try:
+        m.resolve_scope(root, "nope", cfg)
+    except m.ScopeError as exc:
+        check("unknown scope name is refused LISTING the names", "calc" in str(exc) and "all" in str(exc), str(exc))
+    else:
+        check("unknown scope name is refused LISTING the names", False)
+    # PLANTED: the substring class — 'b' is inside 'app' but is not a path under source_paths
+    for bad_sources, label in ([["b"], "substring of a source path"], [["../app/calc.py"], "parent traversal"],
+                               [[os.path.join(root, "app", "calc.py")], "absolute path"],
+                               [["tests/test_calc.py"], "outside mutmut's source_paths"],
+                               [["app/nothing*"], "glob matching no tracked file"], [[], "empty sources"]):
+        r2 = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                           scopes={"x": {"sources": bad_sources, "tests": ["tests/"], "cost": "c"}})
+        try:
+            m.resolve_scope(r2, "x", m.effective_mutmut_config(r2))
+        except m.ScopeError:
+            check("PLANTED sources {} are refused".format(label), True)
+        else:
+            check("PLANTED sources {} are refused".format(label), False, bad_sources)
+    for bad_entry, label in ([{"sources": ["app/calc.py"], "tests": [], "cost": "c"}, "empty tests"],
+                             [{"sources": ["app/calc.py"], "tests": ["tests/"]}, "missing cost line"]):
+        r3 = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n", scopes={"x": bad_entry})
+        try:
+            m.resolve_scope(r3, "x", m.effective_mutmut_config(r3))
+        except m.ScopeError:
+            check("PLANTED entry with {} is refused".format(label), True)
+        else:
+            check("PLANTED entry with {} is refused".format(label), False)
+    # duplicate keys: json.loads is last-wins and silent — the loader must refuse
+    r4 = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                       scopes='{"x": {"sources": ["app/calc.py"], "tests": ["tests/"], "cost": "c"},\n "x": {"sources": ["app/fmt.py"], "tests": ["tests/"], "cost": "c"}}')
+    try:
+        m.load_scopes(r4)
+    except m.ScopeError as exc:
+        check("PLANTED duplicate scope name is refused (JSON last-wins would hide it)", "duplicate" in str(exc).lower(), str(exc))
+    else:
+        check("PLANTED duplicate scope name is refused", False)
+    try:
+        m.load_scopes(_fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n"))
+    except m.ScopeError as exc:
+        check("missing mapping is refused WITH a scaffold to copy (never written)",
+              "mutation-scopes.json" in str(exc) and '"sources"' in str(exc) and '"cost"' in str(exc), str(exc))
+    else:
+        check("missing mapping is refused WITH a scaffold", False)
+    # roster gap: the selector collects nothing -> the §4b amended wording, not a whole-folder fallback
+    r5 = _fixture_repo(setup_cfg="[mutmut]\nsource_paths=app\n",
+                       scopes={"calc": {"sources": ["app/calc.py"], "tests": ["tests/test_calc.py::test_nothing"], "cost": "c"}})
+    n, problem = m.collect_selection(r5, ["tests/test_calc.py::test_nothing"], [])
+    check("a selector collecting zero tests is reported as a ROSTER gap, by wording",
+          n == 0 and problem and "roster gap" in problem.lower() and "not a gate defect" in problem.lower(), (n, problem))
+    n, problem = m.collect_selection(r5, ["tests/test_calc.py"], ["-p", "no:cacheprovider"])
+    check("collect_selection counts the mapped tests with pytest_add_cli_args replayed", n == 2 and problem is None, (n, problem))
+
+
 def main():
     print("mutation_run preflight calibration")
     for fn in (test_collection_parse_fails_closed, test_refuses_args_under_which_nothing_executes,
@@ -372,7 +534,8 @@ def main():
                test_cli_is_the_real_seam, test_main_actually_invokes_mutmut,
                test_against_REAL_mutmut_not_a_mock,
                test_wrapper_does_not_claim_scoped,
-               test_run_bounded_deadline_grace_and_cwd_with_real_children):
+               test_run_bounded_deadline_grace_and_cwd_with_real_children,
+               test_effective_config_comes_from_mutmut_itself, test_scope_mapping_is_the_roster):
         print("\n[{}]".format(fn.__name__))
         fn()
     tail = (", {} UNMEASURED".format(_r["unmeasured"]) if _r["unmeasured"] else "")
