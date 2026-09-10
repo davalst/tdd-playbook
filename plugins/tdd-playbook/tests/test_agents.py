@@ -99,6 +99,14 @@ AGENT_CONTRACTS = {
                                         r"Verdict:\s*OBSERVABLE"]),
     "adoption-adversary": (False, [r"Recommendation:", r"Verdict:\s*STRANDED",
                                    r"Verdict:\s*LANDS"]),
+    # v1.53.0 (§0a elicitation): the producer ASKS and never answers. Its verdict pair
+    # mirrors edge-case-adversary's `Coverage: ADEQUATE|GAPS` EXACTLY, including that
+    # agent's anti-padding norm — an empty pack called SPECIFIED is a measured outcome,
+    # not a missed opportunity. HOUSE contract, never scenario-invented: the paired
+    # calibration oracles anchor on these lines, and a producer that can end without one
+    # can hedge its way out of ever saying "this request is fine".
+    "producer": (False, [r"Recommendation:", r"Verdict:\s*SPECIFIED",
+                         r"Verdict:\s*UNDERSPECIFIED"]),
     # v1.39 (trustworthy-holdout-controls D2): the control-quality judge. ADVISORY by
     # doctrine (k/k + human y/n bound to the manifest hash); its verdict lines are HOUSE
     # contracts — the frozen §13 corpus fixtures anchor on them.
@@ -601,7 +609,12 @@ def test_verifier_model_pins():
               "security-adversary", "test-quality-adversary",
               "observability-adversary", "adoption-adversary",
               # v1.39: the control-quality judge is a judgment verifier — pinned
-              "control-quality-adversary"}
+              "control-quality-adversary",
+              # v1.53.0: the producer is judgment all the way down — deciding which
+              # unknowns would CHANGE the build, and proposing a falsifiable answer to
+              # each, is the same call the other adversaries make. A cheap producer fails
+              # in the expensive direction: it pads.
+              "producer"}
     INHERIT = {"red-first-verifier", "planted-error-probe", "ux-probe-calibrator"}
     # COMPLETENESS GUARD (v1.34.0, adversary re-review finding 6): before this assertion,
     # the loop below iterated a hand-list with no tie to the real directory, so a NEW
@@ -1671,6 +1684,144 @@ def test_v152_scoped_runner_doctrine_and_consumers():
           "killed + survived < generated" in brief)
 
 
+def test_v153_producer_doctrine():
+    """v1.53.0 §0a elicitation — the producer (17th roster member) and its doctrine.
+
+    Origin: Hyper-tau-bench (TNS, 2026-09) — six autonomous coding-agent setups, none passing
+    more than 25% of tasks; on some tasks 20-25 requirements were discoverable ONLY by asking
+    and the agents asked no more than four, then produced working code against a spec they had
+    INVENTED. The failure is structural, not laziness: when ONE agent both asks the questions
+    and answers them, the question set collapses to the ANSWER set. §0 already required the
+    right thing (SKILL.md: 'name the confusion as a question for David'); what was missing was
+    the MECHANISM, and today §0 asks the PLANNER to produce its own questions, which is exactly
+    the collapse. These pins keep the counter-rules — and the two anti-padding controls, which
+    are the half that decays first — from being paraphrased back out."""
+    skill = os.path.join(ROOT, "skills", "tdd-playbook", "SKILL.md")
+    with open(skill) as fh:
+        text = fh.read()
+    for label, needle in [
+        ("SKILL §0a: section exists between §0 and §1", "## 0a. Elicitation"),
+        ("SKILL §0a: the collapse rule, verbatim",
+         "the question set collapses to the answer set"),
+        ("SKILL §0a: ask/answer split stated as the structural fix",
+         "must not be the party who can quietly soften it"),
+        ("SKILL §0a: every question carries a PROPOSED ANSWER", "PROPOSED ANSWER"),
+        ("SKILL §0a: stopping rule is decision-change, not uncertainty",
+         "would not change what you build"),
+        ("SKILL §0a: lenses bounded, count never", "Bound the LENSES, never the COUNT"),
+        ("SKILL §0a: an EMPTY pack is a correct outcome",
+         "EMPTY pack is a correct outcome"),
+        ("SKILL §0a: round 2 is response-driven", "RESPONSE-DRIVEN"),
+        ("SKILL §0a: the three round-2 triggers name the NON-ANSWER", "NON-ANSWER"),
+        ("SKILL §0a: dropping a question needs a journaled reason", "JOURNALED REASON"),
+        ("SKILL §0a: trigger inherits §0's threshold (Q1, no second table)",
+         "inherits §0's ceremony threshold"),
+        ("SKILL §0a: producer never answers/plans/writes",
+         "never answers, never plans, never writes"),
+        ("SKILL §0: spec integrity points at §0a (the consumer edit)", "§0a"),
+    ]:
+        check(label, needle in text, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(AGENTS, "producer.md")) as fh:
+        agent = fh.read()
+    fm = frontmatter(agent) or {}
+    # Q2, settled with David 2026-09-10: read-only, no WebSearch. Letting the producer SEARCH
+    # is letting it ANSWER — the exact collapse §0a exists to prevent — and §5a/§5b hygiene
+    # excludes web search from an agent's action space. Asserted MECHANICALLY because a tool
+    # list is the one part of a brief that silently changes what the agent can do.
+    check("producer: read-only tool set (no WebSearch — Q2)",
+          set(tools_of(fm)) == {"Read", "Grep", "Glob"}, tools_of(fm))
+    for label, needle in [
+        ("producer: asks, never answers", "never answer"),
+        ("producer: proposed answer per question", "PROPOSED ANSWER"),
+        ("producer: stopping rule is decision-change",
+         "would not change what you build"),
+        ("producer: anti-padding norm (mirrors Coverage: ADEQUATE)",
+         "Do not invent questions to look useful"),
+        ("producer: lens Pre-mortem", "Pre-mortem"),
+        ("producer: lens First Principles", "First Principles"),
+        ("producer: lens Inversion", "Inversion"),
+        ("producer: lens Red Team vs Blue Team", "Red Team vs Blue Team"),
+        ("producer: lens Socratic", "Socratic"),
+        ("producer: lens Constraint Removal", "Constraint Removal"),
+        ("producer: lens Stakeholder Mapping", "Stakeholder Mapping"),
+        ("producer: lens Analogical Reasoning", "Analogical Reasoning"),
+        ("producer: a lens MAY return nothing", "MAY return nothing"),
+        ("producer: a contradicted proposed answer is a FINDING, not suppressed",
+         "CONTRADICTED"),
+        ("producer: pack is bounded with truncation stated in-band", "truncat"),
+    ]:
+        check(label, needle in agent, "needle {!r} missing".format(needle))
+
+    with open(os.path.join(COMMANDS, "producer.md")) as fh:
+        cmd = fh.read()
+    for label, needle in [
+        ("/producer: names its consumer (the plan's Spec integrity block)",
+         "Spec integrity"),
+        ("/producer: dispatches the producer agent", "producer"),
+        ("/producer: inherits §0's threshold, invents no second one",
+         "inherits §0's ceremony threshold"),
+        ("/producer: a late pack (plan already exists) says so", "late"),
+        ("/producer: round 2 semantics on re-invocation", "Round 2"),
+        ("/producer: empty pack is a real answer", "SPECIFIED"),
+    ]:
+        check(label, needle in cmd, "needle {!r} missing".format(needle))
+
+    # THE CONSUMER EDIT — §0's emits->named-consumer answered at FIELD granularity. Without
+    # this the producer is an emitter with no reader, which is the island the plan would
+    # otherwise be: the pack would be generated and nothing would ever cite it.
+    with open(os.path.join(COMMANDS, "tdd-plan.md")) as fh:
+        plan_cmd = fh.read()
+    check("/tdd-plan: Spec integrity consumes the §0a question pack",
+          "/producer" in plan_cmd and "question pack" in plan_cmd)
+
+    scen = os.path.join(os.path.dirname(os.path.dirname(ROOT)),
+                        "calibration", "scenarios.json")
+    if os.path.isfile(scen):
+        with open(scen) as fh:
+            ids = [s["id"] for s in json.load(fh)["scenarios"]]
+        check("calibration: producer plant scenario present",
+              "producer-invented-spec" in ids, ids)
+        # The control is the LOAD-BEARING one (P5). This repo's own history records a
+        # verifier at recall 8/10 with FP 10/10, and the diagnosis found the FP number was
+        # substantially measuring CONTROL-AUTHORING quality. An agent with no independent
+        # oracle always finds something; a producer that never returns SPECIFIED is theater,
+        # and this scenario is what proves it either way.
+        check("calibration: producer CONTROL scenario present (the anti-padding oracle)",
+              "control-producer-specified" in ids, ids)
+
+
+def test_v153_planted_fixtures():
+    """The v1.53 pins must be able to FAIL — doctrine stripped of §0a's counter-rules, and a
+    producer brief that has quietly become an ANSWERER, must both be detected."""
+    stripped = ("A planning section that tells the planner to state its assumptions and ask "
+                "about anything unclear. Nothing about who asks versus who answers.\n")
+    check("planted: missing collapse rule detected",
+          "the question set collapses to the answer set" not in stripped)
+    check("planted: missing lens/count bound detected",
+          "Bound the LENSES, never the COUNT" not in stripped)
+    check("planted: missing empty-pack-is-correct detected",
+          "EMPTY pack is a correct outcome" not in stripped)
+    intact = ("When one agent asks and answers, the question set collapses to the answer set; "
+              "the party who must satisfy a spec must not be the party who can quietly soften "
+              "it. Bound the LENSES, never the COUNT. An EMPTY pack is a correct outcome.\n")
+    check("planted: intact §0a doctrine passes the same needles",
+          all(n in intact for n in ("the question set collapses to the answer set",
+                                    "must not be the party who can quietly soften it",
+                                    "Bound the LENSES, never the COUNT",
+                                    "EMPTY pack is a correct outcome")))
+    # The tool-set assertion must be able to fail: a producer that gained WebSearch is the
+    # silent way the ask/answer split dies, because a searching producer starts ANSWERING.
+    searching = ("---\nname: producer\ndescription: x\n"
+                 "tools: Read, Grep, Glob, WebSearch\nmodel: opus\n---\nbody\n")
+    check("planted: a producer that gained WebSearch is detected",
+          set(tools_of(frontmatter(searching))) != {"Read", "Grep", "Glob"})
+    readonly = ("---\nname: producer\ndescription: x\n"
+                "tools: Read, Grep, Glob\nmodel: opus\n---\nbody\n")
+    check("planted: the read-only producer passes the same assertion",
+          set(tools_of(frontmatter(readonly))) == {"Read", "Grep", "Glob"})
+
+
 def main():
     print("Agent/command structural calibration")
     for fn in (test_agents, test_commands, test_planted_fixtures, test_v16_doctrine,
@@ -1694,7 +1845,8 @@ def main():
                test_means_line_and_prior_art_sweep,
                test_v150_per_phase_mutation, test_v150_planted_fixtures,
                test_v151_scoped_run_cost, test_v151_planted_fixtures,
-               test_v152_scoped_runner_doctrine_and_consumers,):
+               test_v152_scoped_runner_doctrine_and_consumers,
+               test_v153_producer_doctrine, test_v153_planted_fixtures,):
         print("\n[{}]".format(fn.__name__))
         fn()
     print("\n{} passed, {} failed".format(_results["pass"], _results["fail"]))
