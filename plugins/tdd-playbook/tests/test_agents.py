@@ -1763,14 +1763,14 @@ def test_v153_producer_doctrine():
     with open(os.path.join(COMMANDS, "spec-producer.md")) as fh:
         cmd = fh.read()
     for label, needle in [
-        ("/producer: names its consumer (the plan's Spec integrity block)",
+        ("/spec-producer: names its consumer (the plan's Spec integrity block)",
          "Spec integrity"),
-        ("/producer: dispatches the producer agent", "producer"),
-        ("/producer: inherits §0's threshold, invents no second one",
+        ("/spec-producer: dispatches the spec-producer agent", "spec-producer"),
+        ("/spec-producer: inherits §0's threshold, invents no second one",
          "inherits §0's ceremony threshold"),
-        ("/producer: a late pack (plan already exists) says so", "late"),
-        ("/producer: round 2 semantics on re-invocation", "Round 2"),
-        ("/producer: empty pack is a real answer", "SPECIFIED"),
+        ("/spec-producer: a late pack (plan already exists) says so", "late"),
+        ("/spec-producer: round 2 semantics on re-invocation", "Round 2"),
+        ("/spec-producer: empty pack is a real answer", "SPECIFIED"),
     ]:
         check(label, needle in cmd, "needle {!r} missing".format(needle))
 

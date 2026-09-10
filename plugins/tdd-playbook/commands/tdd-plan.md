@@ -27,7 +27,7 @@ follows (never pick silently); if a materially simpler approach would satisfy th
 so; anything genuinely unclear becomes a question for review, not something planned around.
 
 **This block is where the §0a question pack lands, and it is the pack's only consumer.** If
-`/producer` was run, every question it raised is answered HERE — as a stated assumption, as a
+`/spec-producer` was run, every question it raised is answered HERE — as a stated assumption, as a
 resolved decision citing who decided, or as an open question carried forward with the spec-producer's
 proposed answer attached. A question dropped without a journaled reason is how a spec softens:
 in the finished plan a dropped question and an answered one look identical. If `/spec-producer` was

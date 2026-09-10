@@ -65,6 +65,20 @@ the agent nor §0a itself — the one surface where this release's own thesis pr
 failure. Recorded as dated debt, and flagged: it expires 2026-09-30, twenty days from now, as a
 deliberate known-RED this change makes slightly larger.
 
+**The agent was HAND-RUN before shipping, and it found something.** The plan's Tripwire said in
+writing that "the agent file exists at this sha and `test_agents.py` is green" is EXERCISED but is
+NOT "the producer surfaced a real missing requirement", and named a hand-run against one real
+request as what closes that gap. It was nearly shipped as debt instead; the `intent-adversary`
+caught that and it was corrected. The pack is committed at
+`docs/plans/gated/2026-09-10-producer-reverse-sweep-questions.md` — 11 questions,
+`Verdict: UNDERSPECIFIED`, run against the reverse-sweep request this release itself deferred.
+Its Q3 is a real collision nobody had noticed and it narrows that future work before it starts:
+`commands/debug.md:8-9`'s HARD GATE — "no theorizing before a reproduction loop exists" —
+textually forbids what a pre-loop question pack does, since a `spec-producer` dispatch reads code
+to build questions before the loop exists. So `/debug` is likely a written DECLINE, not a wiring
+target. Verified independently of the agent that raised it. One run is n=1 and says nothing about
+the padding rate, which is this role's real failure mode; that stays open as dated debt.
+
 All three corrections came from the mandatory plan adversaries (`architecture-adversary` F1/F2/F4,
 `integration-adversary` findings 2 and 5), were verified against source before adoption, and the
 `integration-adversary`'s top finding — that `calibration/ledger.py`'s anti-backfill window closes

@@ -9,7 +9,7 @@
 - `docs/architecture/host-parity-policy.json` — `bd015026df8af83b759a3a5ef887188671b00d3aff2c1b0e8a5b8af74b753107`
 - `docs/architecture/host-parity.json` — `d7b062cba4652799c9106c562feb9fcee707c64aa62f95df7f2384dcc5d915a0`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `fb9671b570c843d29920eae2323b9dc44a43b5f780d6dfa83973ae2dd36bfa1e`
+- `capabilities.json` — `2190867db18fd9f44324835865a6bd83fbffc336dedece57f518337d0d4a04ce`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
 - `plugins/tdd-playbook/hooks/scripts/_common.py` — `4b9a9b79d265154156e1ce663934eaf982c63e9ac65964ce871fbbe2046eba26`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -150,7 +150,7 @@
 - `escape-ledger/escape-report-verdict-redesign` — REDESIGN THE VERDICT, OR DELETE IT (opened 2026-08-31, one day after the instrument shipped)… (owner `David`, expires `2026-09-30`)
 - `spec-elicitation/producer-drop-disposal-unjournaled` — THE SPLIT IS ENFORCED AT GENERATION, NOT AT DISPOSAL — the honest gap in v1.53.0, registered here because §0 forbids dis… (owner `david`, expires `2026-12-31`)
 - `spec-elicitation/producer-reverse-sweep-debug-audit` — REVERSE SWEEP, deferred with a trigger rather than to prose (§0)… (owner `david`, expires `2026-12-31`)
-- `spec-elicitation/producer-yield-on-real-requests` — MEASURE THE PACK'S YIELD ON REAL REQUESTS, or narrow it… (owner `david`, expires `2026-12-31`)
+- `spec-elicitation/producer-yield-on-real-requests` — FIRST DATA POINT RECORDED 2026-09-10, at ship, so this debt starts with n=1 rather than n=0… (owner `david`, expires `2026-12-31`)
 - `spec-elicitation/producer-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
 
 ## Adversarial review records
