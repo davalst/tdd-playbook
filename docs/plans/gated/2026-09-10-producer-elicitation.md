@@ -54,6 +54,14 @@ satisfy a spec must not be the party who can quietly soften it.**
   carries the collapse this plan exists to prevent.
 - What is NOT covered by any of the above, as far as four searches can establish (which cannot
   prove a negative): the ask/answer SPLIT enforced at runtime, and the pack being LOCKED.
+  **BUILD-TIME CORRECTION, 2026-09-10:** the second half of that sentence claims as novel
+  something no deliverable P1–P6 builds. Nothing here LOCKS a pack. What v1.53.0 actually
+  ships is the split enforced at GENERATION — a separate asker that cannot build — plus a
+  committed pack artifact that makes a dropped question diffable. The disposal half (the
+  planner's unrecorded veto over which questions reach the plan) is a KNOWN OPEN GAP, carried
+  as the dated `producer-drop-disposal-unjournaled` debt with the existing `tdd_lock` journal
+  named as its mechanism. Raised by the architecture-adversary at plan review; the claim is
+  corrected rather than quietly dropped, because a novelty claim is a claim (§12).
 
 **Assumption stated:** the producer is a playbook component, not a Cheliped one. It guides
 whichever agent is planning — Claude Code, Codex, or Cheli — like every other roster member.
@@ -89,6 +97,22 @@ drift is invisible because the plan is internally coherent. The cost is silent.
 
 ---
 
+## BUILD-TIME DECISION — the agent is named `spec-producer`, not `producer`
+
+Raised by the architecture-adversary at plan review (L1) and decided by David 2026-09-10.
+All 16 existing agents are role-suffixed (10 × `-adversary`, plus `-verifier`, `-runner`,
+`-probe`, `-calibrator`, `-auditor`); a bare `producer` would be the only exception, and the
+word already carries two other meanings in this repo — the §6c flow-table column
+(`flow · producer · consumer · liveness test`) and host-parity's field for an asset's SOURCE
+file, which would have rendered as `"producer": {"claude": {"producer": ".../producer.md"}}`.
+56 files already contain the bare word, in a repo whose §0 workflow is grep-first. Nothing was
+functionally broken by the original name — the objection is discoverability, and it is
+permanent after the tag. `elicitation-adversary` was rejected as a lie: every `-adversary`
+REFUTES an existing artifact, and this one GATHERS, which is the single thing that makes it
+different. `spec-producer` also matches the capability id already registered
+(`spec-elicitation`). Every P2–P6 reference below reads `producer`; the built artifacts read
+`spec-producer`.
+
 ## P1 · §0a — the doctrine section
 
 **What:** A new `## 0a. Elicitation — the question pack before the plan` in `SKILL.md`, placed
@@ -120,7 +144,7 @@ that refine a parent.
 
 **Unenforceable (prose):** doctrine text is not mechanically testable beyond P4's contract.
 
-## P2 · `agents/producer.md`
+## P2 · `agents/spec-producer.md` (RENAMED — see below)
 
 **What:** The 17th roster member. Reads a request plus the repo, returns a QUESTION PACK.
 Never answers, never plans, never writes.
@@ -155,9 +179,9 @@ nothing.
 - a proposed answer CONTRADICTED by source → that is a finding, surfaced not suppressed
 - pack exceeds render budget → bounded, with the truncation stated in-band
 
-## P3 · `commands/producer.md`
+## P3 · `commands/spec-producer.md` (RENAMED — see below)
 
-**What:** `/producer <request>` — runs the agent, renders the pack, and states that its output
+**What:** `/spec-producer <request>` — runs the agent, renders the pack, and states that its output
 belongs in the next `/tdd-plan`'s Spec integrity section.
 
 **Edge cases:** invoked with no request; invoked after a plan already exists (it should say the
@@ -165,7 +189,7 @@ pack is late and why that matters); invoked twice (round 2 semantics).
 
 ## P4 · `tests/test_agents.py` — the contract entry
 
-**What:** `"producer": (False, [r"Recommendation:", r"Verdict:\s*SPECIFIED",
+**What:** `"spec-producer": (False, [r"Recommendation:", r"Verdict:\s*SPECIFIED",
 r"Verdict:\s*UNDERSPECIFIED"])`. `may_hold_Edit=False`.
 
 **Property test:** every agent in `agents/` has an entry; every entry names an agent that
@@ -174,7 +198,7 @@ alongside, since a roster member with no contract entry is the darkness class §
 
 ## P5 · `calibration/scenarios.json` — PAIRED scenarios
 
-**What:** At least two entries with `"agent": "producer"`:
+**What:** At least two entries with `"agent": "spec-producer"`:
 1. **The plant** — a request with a deliberately absent, load-bearing requirement. Oracle: the
    pack must surface it. Verdict `UNDERSPECIFIED`.
 2. **The control** — a genuinely complete request. Oracle: `Verdict: SPECIFIED`, empty pack.
@@ -204,8 +228,23 @@ uninteresting reasons.
 - **Emits → named consumer:** the pack is read by `/tdd-plan`'s **Spec integrity** section —
   `commands/tdd-plan.md:15-18` is the block that must be edited to cite it. Without that edit
   the producer is an emitter with no consumer, which is the island this plan would otherwise be.
-- **Surface parity:** it is a plugin agent, so Claude Code, Codex (via the adapter) and Cheli
-  (via the ccbridge) all get it from the one install. No per-surface work in THIS repo.
+- **Surface parity — CORRECTED AT BUILD TIME, 2026-09-10. The claim below was FALSE and the
+  tree refutes it; it is kept struck-through rather than deleted, because §0's bar is
+  "divergence stated, not discovered" and this plan stated the inverse of the divergence.**
+  ~~it is a plugin agent, so Claude Code, Codex (via the adapter) and Cheli (via the ccbridge)
+  all get it from the one install. No per-surface work in THIS repo.~~
+  The truth: **Claude only.** `scripts/install_into_repo.py`'s `CODEX_COPY_TREES` carries
+  `adapters` and `bin` — no `commands`, no `agents`, no `skills` — and
+  `docs/architecture/host-parity-policy.json` defaults codex `agents` and `commands` to
+  `status: unavailable` under the standing `codex-command-agent-discovery` debt. So a Codex
+  install gets neither the agent, nor the command, nor §0a itself (skills/ is not a host-parity
+  family — the pre-existing `codex-skill-surface-absent` debt). That is the one surface where
+  this plan's own thesis predicts its own failure: doctrine without the mechanism is exactly
+  what §0a argues does not work. Recorded as the dated `producer-codex-unavailable` debt on
+  `spec-elicitation`, and flagged to David because that debt expires 2026-09-30 — twenty days
+  after this ships — as a DELIBERATE known-RED that this change makes slightly larger.
+  Cheli/ccbridge: **UNVERIFIED** — no ccbridge wiring was found in this repo, so the original
+  claim about it was unsupported in both directions and is withdrawn rather than restated.
 - **Reverse sweep:** `/tdd-plan` should invoke it (P3 + the `commands/tdd-plan.md` edit).
   `/debug` and `/integration-audit` also begin from an under-specified ask — candidates for a
   later pass, listed here as dated debt (owner: David, expiry 2026-12-31) rather than scoped in.

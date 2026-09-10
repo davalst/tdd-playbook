@@ -571,6 +571,38 @@
       ],
       "max_turns": 14,
       "control_for": "intent-narrowed-by-review"
+    },
+    {
+      "id": "producer-invented-spec",
+      "agent": "spec-producer",
+      "plant": "A request that READS complete and is not. Load-bearing requirements are absent, not contradictory, so nothing in the text looks wrong \u2014 which is the point: the benchmark failure was agents producing working code against a spec they had invented, never agents noticing a contradiction and guessing. At minimum the pack must surface WHO may perform the deletion (the request says 'a user') and WHAT happens to the data \u2014 the two answers that change the schema and the authorization path. Verdict must be UNDERSPECIFIED.",
+      "edits": [],
+      "task": "Produce the \u00a70a question pack for this request, exactly as written, and end with your contract lines.\n\nTHE REQUEST, VERBATIM: \"Add a way for a user to delete their account from the settings page. It should ask them to confirm first, and afterwards send them a confirmation email. Please have it done this sprint.\"\n\nYou have no repository to read for this request \u2014 treat it as greenfield, run the lenses anyway, and note that source-answerable questions are absent.",
+      "must_match": [
+        "Verdict:\\s*UNDERSPECIFIED",
+        "Recommendation:",
+        "(?is)delet|retain|purge|anonym",
+        "(?is)who|permission|authoriz|admin"
+      ],
+      "must_not_match": [
+        "Verdict:\\s*SPECIFIED"
+      ],
+      "max_turns": 14
+    },
+    {
+      "id": "control-producer-specified",
+      "agent": "spec-producer",
+      "plant": "CLEAN CONTROL, and the load-bearing one. This repo's own history records a verifier at recall 8/10 with FP 10/10, and the diagnosis found the FP number was substantially measuring CONTROL-AUTHORING quality \u2014 so this request is deliberately LONG and detailed rather than trivially short: a one-line request is complete for uninteresting reasons and would prove nothing. Every answer a plan needs is stated: actor, authorization, boundary values, the failure path, the persisted effect, the surface, and the explicit non-goals. A producer that cannot return SPECIFIED here is theater \u2014 an agent with no independent oracle always finds something, and that is this role's specific failure mode. Flagging this would make the producer noise on every well-written request.",
+      "edits": [],
+      "task": "Produce the \u00a70a question pack for this request, exactly as written, and end with your contract lines.\n\nTHE REQUEST, VERBATIM: \"Add a `--max-age-days N` flag to the existing `prune-logs` CLI command. Behaviour: delete every file directly inside the configured log directory whose mtime is strictly older than N days from the moment the command starts; do not recurse into subdirectories; do not follow symlinks. N must be an integer >= 1; N=0 or negative or non-integer exits 2 with the message 'max-age-days must be an integer >= 1' and deletes nothing. If the flag is omitted the command behaves exactly as it does today (no age filtering) \u2014 this is additive and no existing invocation changes. A file that cannot be deleted (permissions, in use) is logged at WARNING with its path and the run continues; the exit code stays 0 as long as at least one deletion was attempted. Print a final line 'pruned <n> of <m> files' to stdout. Only the CLI gets this \u2014 no config-file key, no environment variable, no API. Explicit non-goals: no dry-run mode, no recursion, no compression, no changes to what the command already deletes without the flag. Anyone who can already run prune-logs can use the flag; it introduces no new permission.\"\n\nYou have no repository to read for this request \u2014 treat it as greenfield, run the lenses anyway, and note that source-answerable questions are absent.",
+      "must_match": [
+        "Verdict:\\s*SPECIFIED"
+      ],
+      "must_not_match": [
+        "Verdict:\\s*UNDERSPECIFIED"
+      ],
+      "max_turns": 14,
+      "control_for": "producer-invented-spec"
     }
   ]
 }

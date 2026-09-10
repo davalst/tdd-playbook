@@ -17,7 +17,13 @@ unavailable or unmeasured, never rounded up. It ships:
 - **Enforcement hooks** — four block by default (test weakening, the TEST-LOCK, snapshot
   re-approval, release tags); five more are opt-in; and `fixture_guard` warns by default
   when an expected answer in a test-data file is rewritten. See **Hook controls** below.
-- **Scaffolding commands** — `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade` `/readable`.
+- **Scaffolding commands** — `/spec-producer` `/tdd-plan` `/debug` `/tripwire` `/integration-audit` `/edge` `/mutate` `/probe` `/claims` `/grade` `/readable`.
+- **The elicitation agent** — `spec-producer` (v1.53.0), the roster's only GATHERING member: the
+  other sixteen review something that already exists, this one reads a REQUEST before the
+  plan and returns a question pack — the load-bearing things nobody has said, each with a
+  proposed falsifiable answer to refute. It exists because an agent that both asks and answers
+  asks only what it is already willing to resolve (SKILL §0a); it cannot build, and holds no
+  search tool, because searching is answering.
 - **Verification agents** — independent/adversarial checkers: `red-first-verifier`,
   `tripwire-auditor`, `claims-verifier`, `mutation-runner`, `planted-error-probe`,
   `edge-case-adversary`, `integration-adversary`, `architecture-adversary`,

@@ -199,9 +199,107 @@ rigorously verifies what the PLAN says; a wrong reading of the request here pass
   exactly the checks that would constrain the agent. The tripwire-auditor audits each
   disposal: `Parking: LEGITIMATE` or `Parking: DARK` — dark parking blocks.
 - **If something is genuinely unclear, name the confusion as a question for David** — don't plan
-  around it. Plan review is the cheap place to be wrong; §4 is the expensive place.
+  around it. Plan review is the cheap place to be wrong; §4 is the expensive place. **This is
+  the requirement §0a supplies the MECHANISM for**, and the two halves are not the same thing:
+  asking the PLANNER to name its own confusions is asking the party that must answer to decide
+  what counts as a question, which is the collapse §0a exists to break. Where a §0a pack was
+  produced, its unresolved questions land HERE, in this block, with the producer's proposed
+  answers — that is the pack's named consumer, and a pack nobody cites is an emitter with no
+  reader.
 This reviewed plan is the SINGLE upstream spec for the unit/edge/property tests, UX journeys, and the
 Tripwire. Default to a one-liner for small work; don't make David review ceremony he didn't ask for.
+
+## 0a. Elicitation — the question pack before the plan
+§0 tells the planner to state its assumptions and name its confusions. That is the right
+requirement pointed at the wrong party, and the measurement says so: on tasks where 20–25
+requirements were discoverable ONLY by asking, six autonomous coding-agent setups asked no more
+than four apiece, then produced working code against a spec they had invented (Hyper-τ-bench,
+TNS 2026-09; none of the six passed more than 25% of tasks). Separately, ONE sentence proposing a
+different architecture moved a task from 31% to 67% — the leverage is in the question, not the
+typing.
+
+The failure is not laziness and it is not fixable by instruction. **When ONE agent both asks the
+questions and answers them, the question set collapses to the answer set** — it asks what it is
+already willing to resolve, feels no incompleteness at four, and starts building. A model has no
+felt sense of a thin picture; four answers cohere as neatly as twenty-five. So "ask more
+questions" cannot be the fix: that instruction has been in §0 all along, and the benchmark is the
+evidence that it does not move an agent that both asks and answers.
+
+The fix is structural, and it is the same one TEST-LOCK makes for tests: **the party who must
+satisfy a spec must not be the party who can quietly soften it.** A separate reader — the
+`spec-producer` agent, via `/spec-producer` — generates the pack BEFORE the §0 plan, and the pack feeds
+§0's Spec integrity block.
+- **The spec-producer ASKS. It never answers, never plans, never writes.** The moment it starts
+  resolving its own questions it is the planner again, and the collapse is back. This is also
+  why it holds no search tool: a producer that can look something up starts ANSWERING, and the
+  external prior-art search already has an owner in §0 — the planner.
+- **Every question carries the spec-producer's PROPOSED ANSWER and its reasoning.** A proposition
+  invites refutation; an open field invites a shrug — and a human who cannot read the code can
+  still say "no, not that." It is also the ANTI-PADDING filter, and this is the load-bearing
+  half: you cannot propose a specific, falsifiable answer to a question you invented to hit a
+  quota. A question whose proposed answer is vague is a question that should not have been asked.
+- **The stopping rule is DECISION CHANGE, not uncertainty.** Drop any question whose answer
+  **would not change what you build**, however uncertain it is. Not "where is uncertainty high"
+  but "where would different answers produce different plans" — the Expected-Information-Gain
+  formulation, and the reason a long
+  list of things nobody happens to know is not a question pack. High uncertainty alone does not
+  make a question informative; different answers leading to markedly different builds does.
+- **Bound the LENSES, never the COUNT.** A quota manufactures questions; a lens checklist that
+  may return "nothing here" does not. **This is §2's design, one stage earlier** — §2 walks a
+  built deliverable through a checklist of failure categories, any of which may legitimately
+  return nothing, and carries the same anti-quota clause ("the COUNT is derived from real
+  failure modes... NOT a quota to pad"). §0a walks a REQUEST through a checklist of unsaid
+  things under the identical rule. Two checklists, one discipline, deliberately stated so
+  SKILL does not carry two lens vocabularies that look unrelated.
+  The seeded lenses (from BMAD-METHOD, MIT): Pre-mortem, First Principles, Inversion, Red Team
+  vs Blue Team, Socratic, Constraint Removal, Stakeholder Mapping, Analogical Reasoning. Note
+  what was NOT borrowed: BMAD points those lenses at the AI's OWN OUTPUT, which is
+  self-directed and carries the very collapse this section exists to prevent. Here they are
+  pointed at the REQUEST, by a reader who cannot answer. And note what the lens list does NOT
+  do: it is scaffolding, not the anti-padding control. The controls are the PROPOSED-ANSWER
+  requirement and the paired SPECIFIED control scenario, and both work with zero lenses —
+  "did you run eight lenses" is trivially satisfiable in a way "would a different answer change
+  the build" is not. Seed the list from this repo's own failure vocabulary as it grows; a
+  frozen imported taxonomy is a static gate (§13).
+- **An EMPTY pack is a correct outcome.** `Verdict: SPECIFIED` on a genuinely well-specified
+  request is a measured result, exactly as `Coverage: ADEQUATE` is for the edge-case-adversary —
+  and it is measured only because a paired clean CONTROL exists to measure it (§5b). An agent
+  with no independent oracle always finds something; a producer that never returns SPECIFIED is
+  theater, and it trains the padding it was built to prevent. Without the control, this bullet
+  is a wish.
+- **Round 2 is RESPONSE-DRIVEN, never a second sweep.** Three triggers, each read off the
+  answers you got: the **NON-ANSWER** (answered without evidence, restated, or "it depends"),
+  the **CONTRADICTION**, and the **SURPRISE**. Round-1 questions are never replaced; growth is
+  fine. Two rounds by default — a third needs a reason, because a pack that keeps growing is
+  the interview replacing the build.
+- **Dropping a question requires a JOURNALED REASON** — the `/tdd-unlock` discipline applied to
+  questions. A question silently dropped and a question answered look identical in the plan that
+  follows, which is exactly how the spec softens; the journal is what tells them apart. **State
+  the weaker truth about this bullet, because §0 forbids prose deferral forty lines above it:
+  today this is PROSE, and the split is therefore enforced at GENERATION only.** A separate
+  asker fixes who writes the questions; the planner still decides which of them reach Spec
+  integrity, and nothing yet records a drop — so the collapse re-enters at DISPOSAL, unrecorded.
+  Two things make that a stated gap rather than a hidden one: the pack is a committed ARTIFACT
+  (below), so a dropped question is at least diffable against the plan that followed; and the
+  mechanical form — journalling a drop through the same seam `/tdd-unlock` already writes and
+  `/grade` already reads — is registered as dated integration debt on `spec-elicitation`, not
+  left to intention.
+- **The trigger is §0's, not a new one: §0a inherits §0's ceremony threshold exactly.** It fires
+  when a §0 plan is warranted — feature / multi-deliverable / risky / ambiguous work — and is
+  skipped wherever §0 is skipped, "autocomplete" included. A second threshold can disagree with
+  the first, and elicitation rent on a one-line change is precisely the tax the silent-until-it-
+  has-something-to-say posture refuses.
+- **Greenfield / repo-less work still runs the lenses** — only the source-answerable questions
+  are absent, and a request with no code behind it is usually the one carrying the most invented
+  spec, not the least.
+- **The pack is an ARTIFACT, not a chat message.** It lands at
+  `docs/plans/gated/YYYY-MM-DD-<slug>-questions.md` beside the plan it feeds, under the same
+  permanent-dated-slug rule, and the plan cites it by path. This is the same lesson this repo
+  already paid for on plans themselves — a spec in a scrollback is not a spec, it is a memory —
+  and it is what makes a dropped question diffable instead of invisible.
+This section is doctrine; what is mechanically checked is the spec-producer's forced contract, its
+read-only tool set, its verbatim-or-refuse input contract, and the paired plant/control that
+measure whether it both catches a missing requirement and stays quiet on a complete one.
 
 ## 1. The TDD loop
 - Author tests from the spec, run RED, then implement to green. **Never weaken/delete a test to pass.**

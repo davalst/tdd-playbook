@@ -1,3 +1,75 @@
+## 1.53.0 — 2026-09-10
+
+**§0a Elicitation — the party who must satisfy a spec must not be the party who can quietly
+soften it.** The Playbook gains its 17th roster member and its first GATHERING one: `spec-producer`
+reads a REQUEST before the plan exists and returns a question pack. Every other agent reviews
+an artifact that already exists; none of them asks what nobody said.
+
+Origin, Hyper-τ-bench (TNS, 2026-09): six autonomous coding-agent setups, none passing more than
+25% of tasks. On some tasks 20–25 requirements were discoverable ONLY by asking; the agents asked
+no more than four apiece and produced working code against a spec they had invented. Separately,
+one sentence proposing a different architecture moved a task from 31% to 67%.
+
+**The failure is structural, which is why the fix is not wording.** When ONE agent both asks the
+questions and answers them, the question set collapses to the ANSWER set — it asks what it is
+already willing to resolve, feels no incompleteness at four, and starts building. The requirement
+already existed at `SKILL.md`'s "name the confusion as a question for David"; what was missing was
+the MECHANISM, and §0 asked the PLANNER to produce its own questions, which is exactly the
+collapse. §0a is the missing half of a rule §0 already stated, not a foreign import. The prior-art
+sweep was re-run independently before building and confirmed ZERO hits across all 16 agents and 12
+commands.
+
+- **`agents/spec-producer.md`** — read-only (`Read, Grep, Glob`), `model: opus`. It asks and never
+  answers, never plans, never writes. It holds NO search tool by decision, not omission: a
+  spec-producer that can look something up starts answering, and §0 already puts the external
+  prior-art search on the planner. It REFUSES a paraphrase and requires the requester's verbatim
+  words — the clause `intent-adversary` already carries, for the same reason, since `/spec-producer` is
+  invoked BY the planning agent. Forced contract: `Verdict: SPECIFIED` / `Verdict: UNDERSPECIFIED
+  — <n> load-bearing questions`, plus `Recommendation:`, mirroring `edge-case-adversary`'s
+  `Coverage: ADEQUATE|GAPS` including its anti-padding norm.
+- **Every question carries a PROPOSED, falsifiable answer.** A proposition invites refutation; an
+  open field invites a shrug — and it is the anti-padding filter, because you cannot propose a
+  specific falsifiable answer to a question invented to hit a quota.
+- **The stopping rule is DECISION CHANGE, not uncertainty.** Drop any question whose answer would
+  not change what you build. High uncertainty alone does not make a question informative.
+- **Bound the LENSES, never the COUNT** — §2's design one stage earlier, and stated as such so
+  SKILL does not carry two lens vocabularies that look unrelated. The lenses are scaffolding; the
+  anti-padding controls are the proposed-answer requirement and the paired control scenario, and
+  both work with zero lenses.
+- **An EMPTY pack is a correct outcome**, measured by a paired clean CONTROL
+  (`control-producer-specified`) deliberately authored LONG rather than trivially short — this
+  repo's own history records a verifier at recall 8/10 with FP 10/10 where the FP number was
+  substantially measuring CONTROL-AUTHORING quality. A spec-producer that never returns SPECIFIED is
+  theater.
+- **The pack is an ARTIFACT**, landing at `docs/plans/gated/YYYY-MM-DD-<slug>-questions.md` beside
+  the plan it feeds. A spec in a scrollback is not a spec, it is a memory — this repo measured
+  that on plans and paid for it.
+- **`/spec-producer`, and `/tdd-plan` DISPATCHES it before drafting.** The consumer edge is a dispatch,
+  not a citation: a pack consulted after the plan is drafted arrives as an objection to finished
+  work. `/tdd-plan`'s Spec integrity block is the pack's only consumer and says so; a skipped pack
+  is stated in one line, never silent.
+- **The trigger is §0's own, inherited deliberately** (David, Q1): §0a fires when a §0 plan is
+  warranted and is skipped wherever §0 is skipped, "autocomplete" included. No second ceremony
+  table, because a second table can disagree with the first.
+- New capability `spec-elicitation`; inventory row **S43** ("Did anyone ask what this was supposed
+  to do?"); host parity 40/80 → 42/84; SKILL top-level sections 23 → 24.
+
+**Three things this release does NOT do, stated because a novelty claim is a claim.** The plan's
+prior-art section claimed "the pack being LOCKED" as novel; nothing here locks a pack, and that
+claim is corrected in the landed plan rather than quietly dropped. The split is enforced at
+GENERATION only — the planner still holds an unrecorded veto over which questions reach the plan,
+carried as the dated `producer-drop-disposal-unjournaled` debt naming `tdd_lock`'s existing
+journal as its mechanism. And the plan's surface-parity answer was FALSE: this is **Claude only**.
+`CODEX_COPY_TREES` carries no `commands`, `agents` or `skills`, so a Codex install gets neither
+the agent nor §0a itself — the one surface where this release's own thesis predicts its own
+failure. Recorded as dated debt, and flagged: it expires 2026-09-30, twenty days from now, as a
+deliberate known-RED this change makes slightly larger.
+
+All three corrections came from the mandatory plan adversaries (`architecture-adversary` F1/F2/F4,
+`integration-adversary` findings 2 and 5), were verified against source before adoption, and the
+`integration-adversary`'s top finding — that `calibration/ledger.py`'s anti-backfill window closes
+at the green commit — was acted on while it was still open (`L-20260910-01`, `-02`).
+
 ## 1.52.3 — 2026-09-09
 
 **The refresh must not undo a downstream repo's decisions.** Reported by the origin repo's

@@ -10,12 +10,30 @@ Follow the TDD Playbook §0. FIRST, discover this repo's own testing conventions
 `docs/TESTING*`, the test config + markers) and state which you'll layer on top of the
 universal floor — or "none found".
 
+**Then, BEFORE drafting anything — the §0a question pack.** Dispatch `/spec-producer` (or the
+`spec-producer` agent directly) with the requester's words VERBATIM, and read what comes back before
+you write a deliverable. This is a DISPATCH, not a citation: if you draft first and consult the
+pack afterwards, you have already chosen the spec, and the questions arrive as objections to
+work you have done rather than as shape for work nobody has started. Skip it only where §0
+itself would be skipped — §0a inherits that threshold and adds no second one — and if you skip
+it, say so in one line in Spec integrity. `Verdict: SPECIFIED` with an empty pack is a real,
+common answer; proceed straight to the plan and record that it was asked.
+
 Then output a terse, SCANNABLE plan (plain chat, not a file).
 
 Open with **Spec integrity** (once per plan, before the deliverables — §0): assumptions stated
 explicitly; if the request supports multiple readings, present them and say which one the plan
 follows (never pick silently); if a materially simpler approach would satisfy the request, say
 so; anything genuinely unclear becomes a question for review, not something planned around.
+
+**This block is where the §0a question pack lands, and it is the pack's only consumer.** If
+`/producer` was run, every question it raised is answered HERE — as a stated assumption, as a
+resolved decision citing who decided, or as an open question carried forward with the spec-producer's
+proposed answer attached. A question dropped without a journaled reason is how a spec softens:
+in the finished plan a dropped question and an answered one look identical. If `/spec-producer` was
+NOT run and this is feature / multi-deliverable / risky / ambiguous work, say so in one line —
+the questions you are about to write are the ones you were already willing to answer, which is
+the collapse §0a names, and the reader deserves to know which kind of spec integrity this is.
 
 Per deliverable:
 - **What** — one line of plain-English behavior (happy path).

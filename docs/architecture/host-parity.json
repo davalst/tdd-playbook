@@ -222,6 +222,23 @@
           "status": "unavailable"
         }
       },
+      "spec-producer": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin agent discovery",
+          "binding": "file:.claude/agents/spec-producer.md",
+          "installed_target": ".claude/agents/spec-producer.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/agents/spec-producer.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/agents/spec-producer.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
       "test-quality-adversary": {
         "claude": {
           "activation_prerequisite": "Claude project/plugin agent discovery",
@@ -407,6 +424,23 @@
           "debt_ref": "test-lock/codex-command-agent-discovery",
           "expires": "2026-09-30",
           "installed_target": ".codex/tdd-playbook/commands/readable.md",
+          "owner": "david",
+          "status": "unavailable"
+        }
+      },
+      "spec-producer": {
+        "claude": {
+          "activation_prerequisite": "Claude project/plugin command discovery",
+          "binding": "file:.claude/commands/spec-producer.md",
+          "installed_target": ".claude/commands/spec-producer.md",
+          "liveness_test": "plugins/tdd-playbook/tests/test_host_parity.py::test_installed_host_activation",
+          "producer": "plugins/tdd-playbook/commands/spec-producer.md",
+          "status": "supported"
+        },
+        "codex": {
+          "debt_ref": "test-lock/codex-command-agent-discovery",
+          "expires": "2026-09-30",
+          "installed_target": ".codex/tdd-playbook/commands/spec-producer.md",
           "owner": "david",
           "status": "unavailable"
         }
@@ -690,6 +724,6 @@
     }
   },
   "generated": true,
-  "inventory_sha256": "7de85aeb754c9d79cf61648a9ad2e359c1a3ca8b4c9b35bd20de06e25198cbd3",
+  "inventory_sha256": "0881a8ccbab55008824bd3600dd0d5bb96f981fd70fbe959f3b93df74b99516a",
   "schema_version": 2
 }

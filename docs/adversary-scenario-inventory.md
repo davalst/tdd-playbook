@@ -110,11 +110,12 @@ role-costume failure.
 | S40 | Does the error message tell them what to do next? | product | agent | adoption-adversary | new | — |
 | S41 | Does anything tell us whether it got used? | product | facts | adoption-adversary | write-only | dark-inventory |
 | S42 | Is what shipped what was asked for? | product | agent | tripwire-auditor | new | — |
+| S43 | Did anyone ask what this was supposed to do? | product | agent | spec-producer | new | — |
 
-**Distribution (stated so the shape of the blind spot is visible, §12):** 26 of 42 are
+**Distribution (stated so the shape of the blind spot is visible, §12):** 26 of 43 are
 `facts` or `both` — mechanically narrowable, therefore cheap to check on every change. The
-16 `agent` rows cluster in operations and product, which is the expected shape: those are
-the rows where the failure is about *consequences* rather than about code. 41 of 42 rows
+17 `agent` rows cluster in operations and product, which is the expected shape: those are
+the rows where the failure is about *consequences* rather than about code. 42 of 43 rows
 route to a real, dispatchable agent; **S14 keeps an honest dash** — "the suite got slow
 enough that people skip it" is measured by `gate_yield`, not judged by an agent, and one
 honest dash beats ten decorative routes. A `Facts` dash on a `facts`-Evidence row means

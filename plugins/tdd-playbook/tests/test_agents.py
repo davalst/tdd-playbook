@@ -99,13 +99,13 @@ AGENT_CONTRACTS = {
                                         r"Verdict:\s*OBSERVABLE"]),
     "adoption-adversary": (False, [r"Recommendation:", r"Verdict:\s*STRANDED",
                                    r"Verdict:\s*LANDS"]),
-    # v1.53.0 (§0a elicitation): the producer ASKS and never answers. Its verdict pair
+    # v1.53.0 (§0a elicitation): the spec-producer ASKS and never answers. Its verdict pair
     # mirrors edge-case-adversary's `Coverage: ADEQUATE|GAPS` EXACTLY, including that
     # agent's anti-padding norm — an empty pack called SPECIFIED is a measured outcome,
     # not a missed opportunity. HOUSE contract, never scenario-invented: the paired
     # calibration oracles anchor on these lines, and a producer that can end without one
     # can hedge its way out of ever saying "this request is fine".
-    "producer": (False, [r"Recommendation:", r"Verdict:\s*SPECIFIED",
+    "spec-producer": (False, [r"Recommendation:", r"Verdict:\s*SPECIFIED",
                          r"Verdict:\s*UNDERSPECIFIED"]),
     # v1.39 (trustworthy-holdout-controls D2): the control-quality judge. ADVISORY by
     # doctrine (k/k + human y/n bound to the manifest hash); its verdict lines are HOUSE
@@ -610,11 +610,11 @@ def test_verifier_model_pins():
               "observability-adversary", "adoption-adversary",
               # v1.39: the control-quality judge is a judgment verifier — pinned
               "control-quality-adversary",
-              # v1.53.0: the producer is judgment all the way down — deciding which
+              # v1.53.0: the spec-producer is judgment all the way down — deciding which
               # unknowns would CHANGE the build, and proposing a falsifiable answer to
               # each, is the same call the other adversaries make. A cheap producer fails
               # in the expensive direction: it pads.
-              "producer"}
+              "spec-producer"}
     INHERIT = {"red-first-verifier", "planted-error-probe", "ux-probe-calibrator"}
     # COMPLETENESS GUARD (v1.34.0, adversary re-review finding 6): before this assertion,
     # the loop below iterated a hand-list with no tie to the real directory, so a NEW
@@ -1354,8 +1354,15 @@ def test_v146_cheliped_audit_doctrine():
     # Amendments are amendments: no new top-level section was opened for any of them.
     # 22 -> 23 on 2026-09-09: SS4b ("the run must be scoped to what it measures") was an
     # explicitly REQUESTED new subsection (v1.51.0), not an amendment that drifted into one.
-    check("SKILL: still 23 top-level sections (amended, not appended; SS4b requested 2026-09-09)",
-          len([ln for ln in text.splitlines() if ln.startswith("## ")]) == 23,
+    # 23 -> 24 on 2026-09-10: SS0a ("elicitation - the question pack before the plan"), the
+    # same case and the same disposal - an explicitly requested subsection in an APPROVED
+    # plan (docs/plans/gated/2026-09-10-producer-elicitation.md), placed between SS0 and SS1
+    # on the SS4a/SS5a/SS6a/SS6b/SS6c pattern of a sub-section that refines its parent. The
+    # count stays EXACT either way: this pin's job is to make the increment conscious and
+    # journaled, not to forbid it, and loosening it to >= would retire the only thing
+    # stopping an amendment from quietly becoming a fourteenth top-level section.
+    check("SKILL: still 24 top-level sections (amended, not appended; SS0a requested 2026-09-10)",
+          len([ln for ln in text.splitlines() if ln.startswith("## ")]) == 24,
           len([ln for ln in text.splitlines() if ln.startswith("## ")]))
 
 
@@ -1685,7 +1692,7 @@ def test_v152_scoped_runner_doctrine_and_consumers():
 
 
 def test_v153_producer_doctrine():
-    """v1.53.0 §0a elicitation — the producer (17th roster member) and its doctrine.
+    """v1.53.0 §0a elicitation — the spec-producer (17th roster member) and its doctrine.
 
     Origin: Hyper-tau-bench (TNS, 2026-09) — six autonomous coding-agent setups, none passing
     more than 25% of tasks; on some tasks 20-25 requirements were discoverable ONLY by asking
@@ -1722,14 +1729,14 @@ def test_v153_producer_doctrine():
     ]:
         check(label, needle in text, "needle {!r} missing".format(needle))
 
-    with open(os.path.join(AGENTS, "producer.md")) as fh:
+    with open(os.path.join(AGENTS, "spec-producer.md")) as fh:
         agent = fh.read()
     fm = frontmatter(agent) or {}
     # Q2, settled with David 2026-09-10: read-only, no WebSearch. Letting the producer SEARCH
     # is letting it ANSWER — the exact collapse §0a exists to prevent — and §5a/§5b hygiene
     # excludes web search from an agent's action space. Asserted MECHANICALLY because a tool
     # list is the one part of a brief that silently changes what the agent can do.
-    check("producer: read-only tool set (no WebSearch — Q2)",
+    check("spec-producer: read-only tool set (no WebSearch — Q2)",
           set(tools_of(fm)) == {"Read", "Grep", "Glob"}, tools_of(fm))
     for label, needle in [
         ("producer: asks, never answers", "never answer"),
@@ -1753,7 +1760,7 @@ def test_v153_producer_doctrine():
     ]:
         check(label, needle in agent, "needle {!r} missing".format(needle))
 
-    with open(os.path.join(COMMANDS, "producer.md")) as fh:
+    with open(os.path.join(COMMANDS, "spec-producer.md")) as fh:
         cmd = fh.read()
     for label, needle in [
         ("/producer: names its consumer (the plan's Spec integrity block)",
@@ -1773,21 +1780,31 @@ def test_v153_producer_doctrine():
     with open(os.path.join(COMMANDS, "tdd-plan.md")) as fh:
         plan_cmd = fh.read()
     check("/tdd-plan: Spec integrity consumes the §0a question pack",
-          "/producer" in plan_cmd and "question pack" in plan_cmd)
+          "/spec-producer" in plan_cmd and "question pack" in plan_cmd)
+    # A CITATION IS NOT A DISPATCH (integration-adversary, 2026-09-10). The check above is
+    # satisfied by the sentence "if a pack exists, fold it in here" — the H11 shape, where the
+    # consumer holds a reference to something nothing causes to exist. §0's emits->consumer
+    # rule is answered only if the producing side is actually triggered, so pin the dispatch
+    # and the ORDER separately: a pack consulted after the plan is drafted arrives as an
+    # objection to finished work, which is the cost §0a exists to avoid.
+    check("/tdd-plan: DISPATCHES the spec-producer, and does so BEFORE drafting",
+          "Dispatch `/spec-producer`" in plan_cmd and "BEFORE drafting" in plan_cmd)
+    check("/tdd-plan: a skipped pack is stated, not silent",
+          "if you skip" in plan_cmd)
 
     scen = os.path.join(os.path.dirname(os.path.dirname(ROOT)),
                         "calibration", "scenarios.json")
     if os.path.isfile(scen):
         with open(scen) as fh:
             ids = [s["id"] for s in json.load(fh)["scenarios"]]
-        check("calibration: producer plant scenario present",
+        check("calibration: spec-producer plant scenario present",
               "producer-invented-spec" in ids, ids)
         # The control is the LOAD-BEARING one (P5). This repo's own history records a
         # verifier at recall 8/10 with FP 10/10, and the diagnosis found the FP number was
         # substantially measuring CONTROL-AUTHORING quality. An agent with no independent
         # oracle always finds something; a producer that never returns SPECIFIED is theater,
         # and this scenario is what proves it either way.
-        check("calibration: producer CONTROL scenario present (the anti-padding oracle)",
+        check("calibration: spec-producer CONTROL scenario present (the anti-padding oracle)",
               "control-producer-specified" in ids, ids)
 
 
@@ -1810,15 +1827,15 @@ def test_v153_planted_fixtures():
                                     "must not be the party who can quietly soften it",
                                     "Bound the LENSES, never the COUNT",
                                     "EMPTY pack is a correct outcome")))
-    # The tool-set assertion must be able to fail: a producer that gained WebSearch is the
+    # The tool-set assertion must be able to fail: a spec-producer that gained WebSearch is the
     # silent way the ask/answer split dies, because a searching producer starts ANSWERING.
-    searching = ("---\nname: producer\ndescription: x\n"
+    searching = ("---\nname: spec-producer\ndescription: x\n"
                  "tools: Read, Grep, Glob, WebSearch\nmodel: opus\n---\nbody\n")
-    check("planted: a producer that gained WebSearch is detected",
+    check("planted: a spec-producer that gained WebSearch is detected",
           set(tools_of(frontmatter(searching))) != {"Read", "Grep", "Glob"})
-    readonly = ("---\nname: producer\ndescription: x\n"
+    readonly = ("---\nname: spec-producer\ndescription: x\n"
                 "tools: Read, Grep, Glob\nmodel: opus\n---\nbody\n")
-    check("planted: the read-only producer passes the same assertion",
+    check("planted: the read-only spec-producer passes the same assertion",
           set(tools_of(frontmatter(readonly))) == {"Read", "Grep", "Glob"})
 
 

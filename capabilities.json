@@ -1738,6 +1738,75 @@
           ]
         }
       ]
+    },
+    {
+      "id": "spec-elicitation",
+      "summary": "spec-producer / /spec-producer + SKILL §0a — the roster's only GATHERING member; the other 16 all review an artifact that already exists. It reads a request BEFORE the §0 plan and returns a QUESTION PACK: the load-bearing things nobody has said, each with a PROPOSED falsifiable answer to refute. Origin, Hyper-tau-bench (TNS 2026-09): on tasks carrying 20-25 ask-only requirements, six autonomous agent setups asked no more than four apiece and built working code against a spec they had INVENTED. The fix is structural, not an instruction — when one agent both asks and answers, the question set collapses to the ANSWER set — so the asker cannot build and holds no search tool (searching is answering). Stopping rule is DECISION CHANGE, never uncertainty; the LENSES are bounded and the COUNT never is; an empty pack (Verdict: SPECIFIED) is a correct, measured outcome.",
+      "user_facing": true,
+      "surfaces": [
+        "local"
+      ],
+      "activation": {
+        "default": "on",
+        "switch": "/spec-producer, and named in commands/tdd-plan.md's Spec integrity block as the pack's consumer. No flag — an agent is on whenever it is dispatched. The TRIGGER is §0's own ceremony threshold, inherited deliberately rather than duplicated (David, 2026-09-10, Q1): a second threshold can disagree with the first."
+      },
+      "wired_by": [
+        "plugins/tdd-playbook/agents/spec-producer.md",
+        "plugins/tdd-playbook/commands/spec-producer.md",
+        "plugins/tdd-playbook/skills/tdd-playbook/SKILL.md (§0a; §0 spec-integrity bullet points at it)",
+        "plugins/tdd-playbook/commands/tdd-plan.md (Spec integrity — the pack's NAMED consumer)",
+        "docs/architecture/host-parity.json (claude supported; codex unavailable under debt)"
+      ],
+      "exercised_by": [
+        "plugins/tdd-playbook/tests/test_agents.py (contract lines, opus pin, read-only tool set, §0a needles)",
+        "plugins/tdd-playbook/tests/test_agents.py::test_v153_planted_fixtures",
+        "calibration/scenarios.json::producer-invented-spec",
+        "calibration/scenarios.json::control-producer-specified"
+      ],
+      "emits": [
+        {
+          "topic": "spec.question_pack",
+          "consumers": [
+            "plugins/tdd-playbook/commands/tdd-plan.md — the Spec integrity block, which states that every question the producer raised is answered THERE as a stated assumption, a resolved decision, or an open question carried forward with its proposed answer",
+            "calibration/run_calibration.py oracle() must_match anchors on Verdict: SPECIFIED|UNDERSPECIFIED",
+            {
+              "ref": "human",
+              "kind": "human"
+            }
+          ]
+        }
+      ],
+      "liveness": {
+        "max_quiet_days": 120,
+        "probe": "Two readings, because this agent has two deaths and only one is loud. LOADING: the brief must parse as YAML for the real host — pinned by test_agents.py (the v1.42.0 dark-skill shape: an unquoted ': ' in a description). FIRING: calibration recall on producer-invented-spec WITH control-producer-specified staying SPECIFIED. Recall alone is worthless here and the control is the load-bearing half — an agent with no independent oracle always finds something, and padding is this role's specific failure mode."
+      },
+      "integration_debt": [
+        {
+          "id": "producer-drop-disposal-unjournaled",
+          "what": "THE SPLIT IS ENFORCED AT GENERATION, NOT AT DISPOSAL — the honest gap in v1.53.0, registered here because §0 forbids disposing of it in prose. A separate asker fixes WHO writes the questions; the planner still decides which of them reach the plan's Spec integrity block, and nothing records a DROP. So the collapse §0a exists to break re-enters at disposal, unrecorded, and §0a's only enforcement clause ('dropping a question requires a journaled reason') is today a sentence. Two things narrow it now: the pack is a committed artifact, so a drop is diffable against the plan that followed; and the mechanism already exists one directory away — bin/tdd_lock.py's journal (_journal / journal_path, written to .claude/tdd-lock-journal.jsonl, read by /grade and gate_yield, and integrity-protected by lock_guard). By expiry: journal a question-drop as an event kind through THAT seam with a reason class so /grade counts unjournaled drops the way it counts unlocks — or record the decision that a diffable artifact plus doctrine is sufficient, and why. Raised by the architecture-adversary at plan review (F1), verified against SKILL.md's own H7 prose-deferral prohibition, and NOT scoped into 1.53.0 so the first cut stays one seam wide.",
+          "owner": "david",
+          "expires": "2026-12-31"
+        },
+        {
+          "id": "producer-reverse-sweep-debug-audit",
+          "what": "REVERSE SWEEP, deferred with a trigger rather than to prose (§0). /debug and /integration-audit also begin from an under-specified ask and are the two other commands that should adopt the §0a pack; they were deliberately NOT scoped into v1.53.0 to keep the first cut one seam wide. By expiry: either wire the pack into both (the tdd-plan Spec-integrity edit is the pattern), or record why an elicitation pass does not fit a debugging or auditing entry point — which is a real possibility, since both start from an observed symptom rather than a request, and a symptom is evidence, not a spec.",
+          "owner": "david",
+          "expires": "2026-12-31"
+        },
+        {
+          "id": "producer-yield-on-real-requests",
+          "what": "MEASURE THE PACK'S YIELD ON REAL REQUESTS, or narrow it. Same danger the intent-adversary carries and the same reason: this agent's failure mode is not missing a question, it is PADDING — and a padded pack is worse than none, because it teaches the reader to skim. Two numbers settle it by expiry: how often the producer returns Verdict: SPECIFIED on requests a human judges complete (the control measures this on ONE authored fixture; real requests are the population), and whether any question it raised actually CHANGED a committed plan. If it never returns SPECIFIED in the field, the stopping rule is not being applied and the fix is the brief, not the doctrine.",
+          "owner": "david",
+          "expires": "2026-12-31"
+        },
+        {
+          "id": "producer-codex-unavailable",
+          "what": "CLAUDE-ONLY BY PARITY: agents/spec-producer.md and commands/spec-producer.md are codex-unavailable under the standing codex-command-agent-discovery debt (test-lock capability), so a Codex install gets §0a as DOCTRINE with no mechanism behind it. Stated rather than assumed, because §0a's whole claim is that the instruction without the mechanism does not work — which makes this the one surface where the doctrine predicts its own failure. Resolves when Codex agent discovery lands or the parity disposition is consciously re-dated.",
+          "owner": "david",
+          "expires": "2026-09-30"
+        }
+      ],
+      "notes": "Built 2026-09-10. The §0 prior-art sweep was re-run independently before building and CONFIRMED: `grep -ril 'clarify|clarifying|elicit|ask the user|question pack|underspecif' agents/ commands/` returned ZERO hits across all 16 agents and 12 commands. The requirement already existed at SKILL.md:201 ('name the confusion as a question for David'); what was missing was the MECHANISM, and §0 asked the PLANNER to produce its own questions — the very collapse. So this is the missing half of a rule §0 already stated, not a foreign import. The materially simpler alternative (add 'ask more questions' to §0's wording) was considered and rejected: that instruction has been present all along and the benchmark is the evidence it does not move an agent that both asks and answers."
     }
   ]
 }

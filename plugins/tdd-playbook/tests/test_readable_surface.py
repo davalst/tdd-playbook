@@ -88,12 +88,16 @@ def test_inventory_contract():
     rows = rs.parse_inventory(INVENTORY)
     # vacuity: the count is compared against an INDEPENDENT expectation (the closed Role
     # set implies >= 6 sections; the plan fixes 42), never `>= 0`
-    check("inventory: exactly 42 rows parsed (independent expectation)",
-          len(rows) == 42, len(rows))
+    # 42 -> 43 on 2026-09-10: S43 "Did anyone ask what this was supposed to do?" — the §0a
+    # elicitation row, routed to the new `producer`. Appended, never renumbered, per this
+    # file's own rule. The row was added because the catalogue of what-goes-wrong was
+    # otherwise SILENT about the failure v1.53.0 exists for: a spec nobody was asked for.
+    check("inventory: exactly 43 rows parsed (independent expectation)",
+          len(rows) == 43, len(rows))
     ids = [r["id"] for r in rows]
     check("inventory: IDs unique", len(set(ids)) == len(ids))
-    check("inventory: IDs are S01..S42 with no renumbering",
-          ids == ["S{:02d}".format(i) for i in range(1, 43)], ids[:5])
+    check("inventory: IDs are S01..S43 with no renumbering",
+          ids == ["S{:02d}".format(i) for i in range(1, 44)], ids[:5])
 
     # Route resolves via the roster's ONE owner — and to a host-SUPPORTED asset, not a
     # basename (a filename check is green on a host where the agent is undispatchable)

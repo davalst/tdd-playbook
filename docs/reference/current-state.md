@@ -6,10 +6,10 @@
 
 - `gate-manifest.json` — `ce7b1ccc137c5d64a3a33eda24e995b7e9d8c0d125a0cc6f65a6fbcc19e2da22`
 - `plugins/tdd-playbook/bin/gate_plan.py` — `e51338c374f95617eef22e22b9b99ec27e1f6b23ae1a8db3103523dfe7848fda`
-- `docs/architecture/host-parity-policy.json` — `15524dcfcc0008ea7c5d6320157c7aaa7d6801a3f6f666ff9745b1cf9b67318f`
-- `docs/architecture/host-parity.json` — `c17cb95cd8ca1b7af0d77c80913b374e0bfdc868f3eeb88fbec87864a9bb141f`
+- `docs/architecture/host-parity-policy.json` — `bd015026df8af83b759a3a5ef887188671b00d3aff2c1b0e8a5b8af74b753107`
+- `docs/architecture/host-parity.json` — `d7b062cba4652799c9106c562feb9fcee707c64aa62f95df7f2384dcc5d915a0`
 - `plugins/tdd-playbook/bin/host_parity.py` — `0a1e960323d9b5426d3ec0906f4cabbe61e446489639a4414ed8b220042fadb4`
-- `capabilities.json` — `13681f8c5b6806f2a03e3a2f4eb6c71cb8088bd8cfc5c9b5131c4e75c99acfa4`
+- `capabilities.json` — `fb9671b570c843d29920eae2323b9dc44a43b5f780d6dfa83973ae2dd36bfa1e`
 - `docs/HACK_CATALOG.md` — `1104e37c50a0afd4b5229f6af19b22a801e3cf037144871b7a1b02eb0c024621`
 - `plugins/tdd-playbook/hooks/scripts/_common.py` — `4b9a9b79d265154156e1ce663934eaf982c63e9ac65964ce871fbbe2046eba26`
 - `docs/reviews/2026-08-07-assurance-pipeline-implementation.json` — `5d3649dcb949fa820f87834db896cc69db664e5a82eadd3617cb342fcf03aace`
@@ -70,14 +70,14 @@
 
 ## Host parity
 
-- Canonical assets: 40. Exact host dispositions: 80.
-- Claude: 40 supported, 0 unavailable, 0 debt.
-- Codex: 1 supported, 39 unavailable, 0 debt.
-- Acknowledged inventory digest: `7de85aeb754c9d79cf61648a9ad2e359c1a3ca8b4c9b35bd20de06e25198cbd3`
+- Canonical assets: 42. Exact host dispositions: 84.
+- Claude: 42 supported, 0 unavailable, 0 debt.
+- Codex: 1 supported, 41 unavailable, 0 debt.
+- Acknowledged inventory digest: `0881a8ccbab55008824bd3600dd0d5bb96f981fd70fbe959f3b93df74b99516a`
 
 ## Capability registry
 
-- Registered capabilities: 36. Owned dated integration-debt entries: 70.
+- Registered capabilities: 37. Owned dated integration-debt entries: 74.
 - `integrity-guards` — RETIRED OBSOLETE 2026-08-09 (v1.32.0)… (owner `david`, expires `2026-12-31`)
 - `integrity-guards` — RETIREMENT IS A HYPOTHESIS, NOT A VERDICT (v1.32.0)… (owner `david`, expires `2026-11-15`)
 - `integrity-guards` — BREAK-GLASS USAGE IS UNREAD (v1.32.0)… (owner `david`, expires `2026-10-15`)
@@ -148,6 +148,10 @@
 - `mutation-preflight/projection-from-observed-count` — KNOB DEBT (v1.52.0, architecture-adversary F7)… (owner `david`, expires `2026-11-15`)
 - `intent-drift-review` — MEASURE THE OVER-FIRE RATE ON REAL PLANS, or retire it… (owner `david`, expires `2026-11-30`)
 - `escape-ledger/escape-report-verdict-redesign` — REDESIGN THE VERDICT, OR DELETE IT (opened 2026-08-31, one day after the instrument shipped)… (owner `David`, expires `2026-09-30`)
+- `spec-elicitation/producer-drop-disposal-unjournaled` — THE SPLIT IS ENFORCED AT GENERATION, NOT AT DISPOSAL — the honest gap in v1.53.0, registered here because §0 forbids dis… (owner `david`, expires `2026-12-31`)
+- `spec-elicitation/producer-reverse-sweep-debug-audit` — REVERSE SWEEP, deferred with a trigger rather than to prose (§0)… (owner `david`, expires `2026-12-31`)
+- `spec-elicitation/producer-yield-on-real-requests` — MEASURE THE PACK'S YIELD ON REAL REQUESTS, or narrow it… (owner `david`, expires `2026-12-31`)
+- `spec-elicitation/producer-codex-unavailable` — CLAUDE-ONLY BY PARITY… (owner `david`, expires `2026-09-30`)
 
 ## Adversarial review records
 
@@ -171,6 +175,7 @@ participation: what the 44 indexed records RECORDED — `reviewers` is written b
 - red-first-verifier — not named in any indexed review
 - script-adversary · authors records — 1
 - security-adversary — 5
+- spec-producer — not named in any indexed review
 - test-quality-adversary — 2
 - tripwire-auditor · authors records — 11
 - ux-probe-calibrator — not named in any indexed review
