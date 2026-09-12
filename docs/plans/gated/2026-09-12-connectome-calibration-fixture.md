@@ -40,7 +40,7 @@ this workstream must never be quoted as evidence for the broader claim.
 
 **CORRECTION 1 — a load-bearing claim in the originating pitch was FALSE.** The pitch said the
 harness does not measure false positives. It does: `run_calibration.py:195-199` partitions
-plants from controls and reports recall AND FP; 13 of 31 approved corpus plants are `control-*`;
+plants from controls and reports recall AND FP; 13 of the 30 approved corpus BODIES are `control-*` (17 plants + 13 controls; the 31st file in that directory is README.md, which `load_corpus()` does not read — **CORRECTED R5**);
 `pairing_problems()` (`run_calibration.py:419`) enforces at set level that every
 non-grandfathered plant has a paired clean control. **"FP scoring" is struck from the
 deliverables.**
@@ -66,8 +66,13 @@ NOT vendored downstream — `scripts/install_into_repo.py` contains no reference
 exposure is this repo only, not the repos the plugin installs into.
 
 **Open questions carried to review, each with a proposed answer to refute:**
-1. *Blocking or trend-only?* Proposed: **trend-only, in `PROMOTION_QUARANTINE` from birth**,
-   until three runs of paired plant/control rows exist. Never blocking on the FP side.
+1. *Blocking or trend-only?* **CORRECTED (R4): the proposed answer is UNIMPLEMENTABLE as stated.**
+   `verdict_for` returns `**BLOCKING FAIL**` at `k == 0` BEFORE quarantine is consulted
+   (`:840-851`); quarantine only suppresses the AMBER×2 path. And `main()` increments `failed` for
+   AMBER and INVALID too, returning `1 if failed` (`:1095`, `:1292`). A new-family plant that
+   misses 3/3 on its first live run blocks the run on day one. Trend-only needs a CODE change, not
+   a quarantine entry — that change is now a deliverable (D2.6) or the open question is answered
+   "blocking from birth", which nobody has agreed to.
 2. *Does this re-introduce the retired cadence?* Proposed: **no clock, and the decay-detection
    goal is DROPPED from scope** — it was in the original pitch and it is removed here, because
    "it's fast so it may as well run every release" is exactly how the retired obligation returns.
@@ -111,14 +116,28 @@ the pre-fix sha" is satisfiable with a real sha.
 Doctrine requires naming a materially simpler approach. Here it is not merely simpler, it is
 **already owed and due in three days**, and it addresses the measured root cause.
 
-- **D0.1 — flip the oracle normaliser default.** `normalize_for_oracle` is authored and
-  unit-tested (`run_calibration.py:341-347`; `test_harness.py:3119-3143`) and deliberately not
-  the default. Paying the `ORACLE NORMALISATION PASS` debt (expires **2026-09-15**) is a
-  one-line default flip plus bumping `ORACLE_NORMALIZATION_VERSION` off `"identity-v1"`.
-- **D0.2 — the other three debts on the same capability expire 2026-09-15**: `SUPERSEDE
-  PROSE-ORACLE PLANTS`, `MUTATION-RUNNER CLEAN-RUN DESCRIPTION`, `APPLY_EDITS CREATE
-  capability`. `test_capability_registry.py::test_own_registry` runs with the real date, so the
-  suite REDs on 2026-09-16 whatever this workstream does.
+- **D0.1 — flip the oracle normaliser default. CORRECTED (R6): this is NOT a one-line flip.**
+  `normalize_for_oracle` is authored and unit-tested (`calibration/run_calibration.py:341-347`;
+  `calibration/test_harness.py:3119-3143`) and deliberately not the default. But flipping it,
+  probed in a scratch copy: (i) REDs `test_harness.py:3133-3135`, which asserts the STRICT default
+  by name ("an emphasis-wrapped CORRECT verdict FAILS — the brittleness diagnosed"); (ii) makes
+  `would-pass-normalized` structurally unreachable, because `classify_failure` (`:403-406`)
+  re-scores failing reps WITH the normalizer and reps are already scored with it at `:168`, so
+  `unrescued == real` always — orphaning that label's consumers at `run_calibration.py:1119-1122`,
+  `holdout.py:451`, `holdout.py:1150` and `README.md:108`, with no test going red because the
+  pinning case hand-builds rep dicts and never goes through `run_reps`; (iii) the debt's own text
+  additionally demands a victim-sweep of the dev corpus for newly-rescued `must_not_match`.
+  Minimum honest cost: default flip + version bump + test update + a decision on the diagnose
+  label. The first draft's Tripwire EXERCISED cell for D0.1 was also wrong — it cited tests that
+  pass `normalizer=` EXPLICITLY, which cannot exercise a changed default.
+- **D0.2 — the 2026-09-15 cliff is bigger than the first draft said (CORRECTED R7).** The other
+  three debts on this capability are `SUPERSEDE PROSE-ORACLE PLANTS`, `MUTATION-RUNNER CLEAN-RUN
+  DESCRIPTION` and `APPLY_EDITS CREATE capability`. But **eight** debts expire that day repo-wide
+  (three on dataflow-sweeps, one on gate-surface-ledger), probed:
+  `validate --as-of 2026-09-15` → OK, `--as-of 2026-09-16` → **8 violations, rc=1**. Separately,
+  all six `PROMOTION_QUARANTINE` entries (`run_calibration.py:744-768`) expire the same day and
+  `quarantine_problems` (`:810-814`) feeds `dry_run`'s problems, which the blessed gate runs.
+  Phase 0's real scope is larger than one capability's debts.
 - **D0.3 — the licence decision (BLOCKS all of Phase 2).** FlyWire v783 is CC BY-NC 4.0; this
   repo is Apache-2.0 and public. Three options, each with its cost:
   - *(a) Commit the derived sub-circuit* with a per-directory NOTICE and attribution. Cost: the
@@ -166,13 +185,23 @@ sweep:* none; sibling of `fixture/`, which is untouched. *Activation:* inert unt
 names it; ships with D2.3 so it is not dark.
 
 ### D2.2 — Multi-fixture support (a SCHEMA finding, not a preference)
-**What.** A per-scenario `fixture` key defaulting to `"fixture"`, threaded through
-`validate_scenario` (`:109`), both `shutil.copytree` sites (`:109`, `:319`) and
-`fixture_legibility_problems(fixture_dir=FIXTURE)` (`:669`); `dry_run()` checks EVERY fixture.
+**What.** One scenario-keyed fixture RESOLVER, consumed everywhere a fixture root is read.
+
+**CORRECTED (R3) — the first draft enumerated three readers; the tree has seven across three
+modules,** and the plan's own warning ("discovering it mid-build is how scope doubles") applied to
+itself. The §0a pack made the same undercount, so this is a shared blind spot, not a slip:
+`run_calibration.py:36` (definition), `:109` (validate copytree), `:319` (stage copytree), `:669`
+(legibility default arg), `:699` (`cwd=FIXTURE` for test discovery), **`author_plants.py:27` — a
+SECOND independent module-global**, read at `:88`/`:94` to build the listing shown to the
+plant-authoring model, and **`holdout.py:481`/`:487` — `fixture_tree_sha()`**, whose result becomes
+`eval_contract`'s `fixture_sha256` (`:522`) under the docstring "the manifest pins WHAT the
+verifier was shown". Left unthreaded, the holdout contract pins the TOY fixture's hash for a
+connectome item, silently, with no mismatch possible — the same class as the arch-F1 incident
+`run_calibration.py:29-34` memorialises.
 **Why it is a finding.** `FIXTURE` is a module global (`run_calibration.py:36`) with four
 readers; the proposal is **unrepresentable** without this. Discovering it mid-build is how scope
 doubles.
-**Edge cases.** All 33 scenarios + 31 corpus plants run unchanged with zero edits (corpus files
+**Edge cases.** All 33 scenarios + 30 corpus bodies run unchanged with zero edits (corpus files
 are byte-pinned forever by integrity rule (b) — a scheme needing back-fill is unbuildable);
 unknown fixture name is REFUSED, never silently defaulted; both copy sites changed together or
 validation and execution disagree; the per-fixture sweep reports how many it scanned, zero is a
@@ -189,11 +218,16 @@ preserves behaviour byte-for-byte.
 **Edge cases.** R2 pairing shipped in the same change (no grandfather entry); agent assignment
 (`observability-adversary`, `test-quality-adversary`) is a review question, not the author's
 private choice; **task prompts must not hint** — the demo prompt disclosed the test suite's
-contents and the shipped task must not; once approved, byte-pinned forever, so a wrong plant
-costs a new id; form is **`dev`, registered explicitly** rather than by absence.
+contents and the shipped task must not; once RELEASED, byte-pinned, so a wrong plant costs a new id (**CORRECTED R7**: the pin is
+against `--baseline-rev`, the previous release tag, not the moment of approval — `oracle-changes.md:58-74`
+records three edits that were legal under one baseline and went RED when the window moved); form is **`dev`, registered explicitly** rather than by absence.
 **Integration surface.** *Consumes:* `load_corpus()`, `pairing_problems()`, `plant-forms.md`.
-*Emits → named consumer:* verdict rows in `docs/calibration/history.md`, read by `read_current()`
-recall/FP, `plant_vitality.scenario_streaks`, `power.comparable_blocks`, `ledger.bind_entry`, and
+*Emits → named consumer:* verdict rows in `docs/calibration/history.md`. **CORRECTED (R1):** the
+lead consumer this plan first named, `read_current()`, DOES NOT EXIST — repo-wide grep returns
+only this plan's own two mentions. The real in-run arithmetic is
+`run_calibration.partition_readings` (`:184-205`, called `:1129`/`:1135`), and it reads the
+in-memory results of the current run, never a history row back. The readback accessor
+`history_format.reading_of` (`:219-227`) has no production caller at all. Rows are also read by
 `check_scoreboard_integrity` rule (a). *Surface parity:* Claude host only; the Codex history is
 NOT populated here — stated divergence.
 
@@ -219,11 +253,33 @@ already uses; no new sink.
 ### D2.5 — Population separation (highest-risk item; precedes any reading of D2.3 rows)
 **What.** Connectome-fixture rows must not pool with toy-fixture rows in any recall/FP reading,
 as Codex rows are kept out of the Claude denominator.
-**Edge cases.** Five readers assume one population — `read_current`, `plant_vitality.scenario_streaks`,
-`power.comparable_blocks`, `ledger.bind_entry`, `run_calibration.last_kind` (the AMBER×2 →
-BLOCKING promotion). The 2026-08-15 two-tier plan records that two take no population parameter
-today; adding one is a signature change, not a filter reuse. A cross-population comparator
-corrupts history SILENTLY — own red-first suite, one case per reader.
+**CORRECTED (R2) — the roster was wrong in both directions, and the real problem is harder.**
+Three of the five readers this plan named CANNOT pool, by construction: `plant_vitality.scenario_streaks`
+(`:62-65`, keyed per scenario id), `ledger.bind_entry` (`:289`/`:296`, entry-scoped ids) and
+`run_calibration.last_kind` (`:1067-1071`, per-id lookup). Writing red-first cases for those three
+would test non-problems. The claim that two readers take no population parameter is STALE — that
+work landed: `power.comparable_blocks` takes `want` (`power.py:106-108`) and `last_kind` already
+filters on `run_population` (`run_calibration.py:1060-1065`). Verified by reading both.
+
+**What actually pools, and is named by no deliverable in the first draft:**
+`run_calibration.partition_readings` builds ONE recall/FP pair over every result in the run
+(`:1129-1140`), and `form`/`isolation` come from run-level FLAGS, not from the scenario. Both
+families live in the same `scenarios.json`/`corpus/approved/`, so a default run selects both and
+writes one mixed number. The axes are BLOCK-level (`history_format.py:30-35`); D2.2's `fixture` is
+SCENARIO-level. No block axis can separate a mixed block.
+
+**Revised approach (smallest thing that works):** make `fixture` a RUN-LEVEL selector mirroring
+`--form`, and add it to `POPULATION_AXES` (`history_format.py:66`), `POPULATION_BASELINE` (`:67`),
+the `_RUN_HEADER` optional clause (`:30-35`) and `append_run_block`'s required write keys
+(`:299-300`) — the extension recipe the format owner documents verbatim at `:62-65` ("add the key
++ baseline + the read clause, one line each"). Three lines, zero reader signature changes. A
+per-ROW column is REJECTED: `parse_rows` accepts only 4- or 6-cell rows and `continue`s otherwise
+(`:122-129`), so an added column would make every reader silently blind — the exact failure the
+module documents at `:151-160`.
+
+**Edge cases.** The write-key/axis drift the format owner warns about (a defaulted write key "once
+wrote `form dev` under `--form holdout` for months"); a mixed-selection run must be refused or
+split, never pooled.
 
 ## §6c Flow table
 
@@ -268,6 +324,50 @@ corrupts history SILENTLY — own red-first suite, one case per reader.
 - **D2.5 edits shared history readers**; a mistake corrupts the scoreboard silently.
 - **Overfitting** the corpus to numerical pipelines; mitigated by the 25% cap.
 
+## Review — four adversaries, dispatched on this draft
+
+| Reviewer | Verdict | Top finding |
+|---|---|---|
+| `spec-producer` (§0a) | UNDERSPECIFIED (14) | The cheaper owed fix addresses the measured root cause; sequence it first |
+| `edge-case-adversary` | GAPS (25) | Population axes are per-run-BLOCK; a per-scenario `fixture` cannot separate them |
+| `architecture-adversary` | MIXED (5) | Three `FIXTURE` roots across three modules; D2.2 threads one |
+| `integration-adversary` | ISLANDS (7) | The pooling happens in `partition_readings` + `history_format`, named by no deliverable |
+| `claims-verifier` | 10/14 confirmed, **4 REFUTED** | `read_current()` does not exist; "one-line flip" is false; 30 bodies not 31; `:699` omitted |
+
+**Adopted as corrections R1–R7 above** (each verified against source before adoption, never on the
+reviewer's word): the fictional reader, the stale population-parameter claim, the seven-reader
+`FIXTURE` enumeration, the unimplementable trend-only answer, the corpus count, the true cost of
+D0.1, and the size of the 2026-09-15 cliff.
+
+**Adopted as new deliverables** (to be written out before approval is sought):
+D2.6 trend-only requires a `verdict_for`/`main()` change, not a quarantine entry;
+D2.7 `author_plants.py` must be able to name a fixture, or the family is frozen at two plants
+forever — the static-gate failure `plant_vitality.py:4` names;
+D2.8 `holdout.fixture_tree_sha()` must take the resolved root, or the holdout contract pins the
+wrong tree silently;
+D2.9 path traversal — the `fixture` key is written by a MODEL into `corpus/proposed/`, and
+`"../.."` under a naive join would stage `scenarios.json` and `corpus/approved/` (the answer key)
+into the doer's tree. `../`, absolute paths and symlinks must be REFUSED;
+D2.10 `capabilities.json::calibration-loop` must grow with this feature or `doctor`'s
+dark-inventory zero becomes a lie;
+D2.11 D2.5's red-first cases must land INSIDE `calibration/test_harness.py` — a new file under
+`calibration/` is in no gate roster and would simply never run.
+
+**Rejected, with reason:** `edge-case #14` ("D2.4 is dark on every scheduled path") — refuted by
+`architecture-adversary` and by the manifest: `gate-manifest.json` fixed-stages
+`calibration/test_harness.py`, which calls `rc.dry_run(...)` at `test_harness.py:383` and `:659`,
+so `dry_run`'s problems ARE on the blessed gate path. Two reviewers disagreed; the manifest settles
+it.
+
+**A defect in this plan's own evidence, found by `claims-verifier` and fixed:** the demo's sixth
+test was `check('spike times are ordered per neuron', True)` — a hardcoded pass, i.e. the vacuous
+assertion the Playbook bans. It has been replaced with a real ordering check and proven red-first
+(it fails on a deliberately shuffled copy, passes on all three real outputs). The evidence table's
+"6-check suite" is now six genuine checks.
+
 ## Loop closed
 
-Pending — adversaries dispatched on this draft; result recorded here before approval is sought.
+`Loop closed: yes (integration-adversary — the pooled recall/FP pair in partition_readings, named
+by no deliverable; architecture-adversary — three parallel FIXTURE roots, D2.2 threads one)`.
+`intent-adversary` dispatched last, per commands/tdd-plan.md; its finding is appended below before
+approval is sought.
