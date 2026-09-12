@@ -39,9 +39,9 @@ coding better" — that is the `isolation` axis (`history_format.POPULATION_AXES
 this workstream must never be quoted as evidence for the broader claim.
 
 **CORRECTION 1 — a load-bearing claim in the originating pitch was FALSE.** The pitch said the
-harness does not measure false positives. It does: `run_calibration.py:195-199` partitions
+harness does not measure false positives. It does: `calibration/run_calibration.py:195-199` partitions
 plants from controls and reports recall AND FP; 13 of the 30 approved corpus BODIES are `control-*` (17 plants + 13 controls; the 31st file in that directory is README.md, which `load_corpus()` does not read — **CORRECTED R5**);
-`pairing_problems()` (`run_calibration.py:419`) enforces at set level that every
+`pairing_problems()` (`calibration/run_calibration.py:419`) enforces at set level that every
 non-grandfathered plant has a paired clean control. **"FP scoring" is struck from the
 deliverables.**
 
@@ -119,12 +119,12 @@ Doctrine requires naming a materially simpler approach. Here it is not merely si
 - **D0.1 — flip the oracle normaliser default. CORRECTED (R6): this is NOT a one-line flip.**
   `normalize_for_oracle` is authored and unit-tested (`calibration/run_calibration.py:341-347`;
   `calibration/test_harness.py:3119-3143`) and deliberately not the default. But flipping it,
-  probed in a scratch copy: (i) REDs `test_harness.py:3133-3135`, which asserts the STRICT default
+  probed in a scratch copy: (i) REDs `calibration/test_harness.py:3133-3135`, which asserts the STRICT default
   by name ("an emphasis-wrapped CORRECT verdict FAILS — the brittleness diagnosed"); (ii) makes
   `would-pass-normalized` structurally unreachable, because `classify_failure` (`:403-406`)
   re-scores failing reps WITH the normalizer and reps are already scored with it at `:168`, so
-  `unrescued == real` always — orphaning that label's consumers at `run_calibration.py:1119-1122`,
-  `holdout.py:451`, `holdout.py:1150` and `README.md:108`, with no test going red because the
+  `unrescued == real` always — orphaning that label's consumers at `calibration/run_calibration.py:1119-1122`,
+  `calibration/holdout.py:451`, `calibration/holdout.py:1150` and `README.md:108`, with no test going red because the
   pinning case hand-builds rep dicts and never goes through `run_reps`; (iii) the debt's own text
   additionally demands a victim-sweep of the dev corpus for newly-rescued `must_not_match`.
   Minimum honest cost: default flip + version bump + test update + a decision on the diagnose
@@ -135,7 +135,7 @@ Doctrine requires naming a materially simpler approach. Here it is not merely si
   DESCRIPTION` and `APPLY_EDITS CREATE capability`. But **eight** debts expire that day repo-wide
   (three on dataflow-sweeps, one on gate-surface-ledger), probed:
   `validate --as-of 2026-09-15` → OK, `--as-of 2026-09-16` → **8 violations, rc=1**. Separately,
-  all six `PROMOTION_QUARANTINE` entries (`run_calibration.py:744-768`) expire the same day and
+  all six `PROMOTION_QUARANTINE` entries (`calibration/run_calibration.py:744-768`) expire the same day and
   `quarantine_problems` (`:810-814`) feeds `dry_run`'s problems, which the blessed gate runs.
   Phase 0's real scope is larger than one capability's debts.
 - **D0.3 — the licence decision (BLOCKS all of Phase 2).** FlyWire v783 is CC BY-NC 4.0; this
@@ -161,9 +161,9 @@ start until this reading exists.**
 ## Phase 1 — ledger pre-registration (process, before any effectful diff)
 
 - **D1.1.** `calibration/scenarios.json` and `calibration/corpus/approved/` are `EFFECTFUL`
-  surfaces in `ledger.py:60-74`, where `expect: none` is a lie by construction, and an entry
+  surfaces in `calibration/ledger.py:60-74`, where `expect: none` is a lie by construction, and an entry
   must exist BEFORE the diff. One pre-registered entry per effectful deliverable, predicting
-  MOVEMENT in recall/FP (not significance — `power.py` shows per-entry significance is
+  MOVEMENT in recall/FP (not significance — `calibration/power.py` shows per-entry significance is
   unobtainable at 3 reps).
 
 ## Phase 2 — the fixture family (CONDITIONAL on the Phase 0 gate and D0.3)
@@ -179,7 +179,7 @@ toward the 137 MB shape of `snedea/flybrain`).
 **UX tests.** `--dry-run` reports the new fixture green-unplanted and legibility-clean; a broken
 fixture exits non-zero naming it.
 **Integration surface.** *Consumes:* `stage()`, `dry_run()`. *Emits → named consumer:* the staged
-tree read at `run_calibration.py:319`; the fixture suite read at `run_calibration.py:698-701` —
+tree read at `calibration/run_calibration.py:319`; the fixture suite read at `calibration/run_calibration.py:698-701` —
 existing readers, no new emitter. *Surface parity:* local CLI only, as `fixture/`. *Reverse
 sweep:* none; sibling of `fixture/`, which is untouched. *Activation:* inert until a scenario
 names it; ships with D2.3 so it is not dark.
@@ -190,15 +190,15 @@ names it; ships with D2.3 so it is not dark.
 **CORRECTED (R3) — the first draft enumerated three readers; the tree has seven across three
 modules,** and the plan's own warning ("discovering it mid-build is how scope doubles") applied to
 itself. The §0a pack made the same undercount, so this is a shared blind spot, not a slip:
-`run_calibration.py:36` (definition), `:109` (validate copytree), `:319` (stage copytree), `:669`
-(legibility default arg), `:699` (`cwd=FIXTURE` for test discovery), **`author_plants.py:27` — a
+`calibration/run_calibration.py:36` (definition), `:109` (validate copytree), `:319` (stage copytree), `:669`
+(legibility default arg), `:699` (`cwd=FIXTURE` for test discovery), **`calibration/author_plants.py:27` — a
 SECOND independent module-global**, read at `:88`/`:94` to build the listing shown to the
-plant-authoring model, and **`holdout.py:481`/`:487` — `fixture_tree_sha()`**, whose result becomes
+plant-authoring model, and **`calibration/holdout.py:481`/`:487` — `fixture_tree_sha()`**, whose result becomes
 `eval_contract`'s `fixture_sha256` (`:522`) under the docstring "the manifest pins WHAT the
 verifier was shown". Left unthreaded, the holdout contract pins the TOY fixture's hash for a
 connectome item, silently, with no mismatch possible — the same class as the arch-F1 incident
-`run_calibration.py:29-34` memorialises.
-**Why it is a finding.** `FIXTURE` is a module global (`run_calibration.py:36`) with four
+`calibration/run_calibration.py:29-34` memorialises.
+**Why it is a finding.** `FIXTURE` is a module global (`calibration/run_calibration.py:36`) with four
 readers; the proposal is **unrepresentable** without this. Discovering it mid-build is how scope
 doubles.
 **Edge cases.** All 33 scenarios + 30 corpus bodies run unchanged with zero edits (corpus files
@@ -208,8 +208,8 @@ validation and execution disagree; the per-fixture sweep reports how many it sca
 refusal.
 **Integration surface.** *Consumes:* `validate_scenario` (THE validator, D0). *Emits → named
 consumer:* resolved path read at the two copytree sites. *Surface parity:* shipped scenarios,
-corpus plants and `author_plants.py` proposals all inherit it through the one validator — if
-`author_plants.py` cannot name a fixture, that is a deliverable here. *Activation:* on; default
+corpus plants and `calibration/author_plants.py` proposals all inherit it through the one validator — if
+`calibration/author_plants.py` cannot name a fixture, that is a deliverable here. *Activation:* on; default
 preserves behaviour byte-for-byte.
 
 ### D2.3 — First plant set: 2 plants + 2 paired controls
@@ -219,9 +219,9 @@ preserves behaviour byte-for-byte.
 (`observability-adversary`, `test-quality-adversary`) is a review question, not the author's
 private choice; **task prompts must not hint** — the demo prompt disclosed the test suite's
 contents and the shipped task must not; once RELEASED, byte-pinned, so a wrong plant costs a new id (**CORRECTED R7**: the pin is
-against `--baseline-rev`, the previous release tag, not the moment of approval — `oracle-changes.md:58-74`
+against `--baseline-rev`, the previous release tag, not the moment of approval — `calibration/oracle-changes.md:58-74`
 records three edits that were legal under one baseline and went RED when the window moved); form is **`dev`, registered explicitly** rather than by absence.
-**Integration surface.** *Consumes:* `load_corpus()`, `pairing_problems()`, `plant-forms.md`.
+**Integration surface.** *Consumes:* `load_corpus()`, `pairing_problems()`, `calibration/plant-forms.md`.
 *Emits → named consumer:* verdict rows in `docs/calibration/history.md`. **CORRECTED (R1):** the
 lead consumer this plan first named, `read_current()`, DOES NOT EXIST — repo-wide grep returns
 only this plan's own two mentions. The real in-run arithmetic is
@@ -240,7 +240,7 @@ reference, and the immutability problem the pack raised (Q5: a reference under `
 could never be legitimately updated) does not arise.
 **What it is NOT.** It does not grade agents. Agents are still scored on prose, unchanged. It
 gates CORPUS ADMISSION only — a deterministic check of a stochastic subject would be a flaky
-gate. It is also distinct from `plant_vitality.py`, which asks "do agents still fail this plant"
+gate. It is also distinct from `calibration/plant_vitality.py`, which asks "do agents still fail this plant"
 from scoreboard streaks; this asks "is there a defect here at all", from behaviour.
 **Edge cases.** A plant that changes nothing is refused (no agent could fail it honestly); a
 control that moves the output is refused (it poisons the FP denominator); cost is 2 × 1.35 s and
@@ -258,18 +258,18 @@ Three of the five readers this plan named CANNOT pool, by construction: `plant_v
 (`:62-65`, keyed per scenario id), `ledger.bind_entry` (`:289`/`:296`, entry-scoped ids) and
 `run_calibration.last_kind` (`:1067-1071`, per-id lookup). Writing red-first cases for those three
 would test non-problems. The claim that two readers take no population parameter is STALE — that
-work landed: `power.comparable_blocks` takes `want` (`power.py:106-108`) and `last_kind` already
-filters on `run_population` (`run_calibration.py:1060-1065`). Verified by reading both.
+work landed: `power.comparable_blocks` takes `want` (`calibration/power.py:106-108`) and `last_kind` already
+filters on `run_population` (`calibration/run_calibration.py:1060-1065`). Verified by reading both.
 
 **What actually pools, and is named by no deliverable in the first draft:**
 `run_calibration.partition_readings` builds ONE recall/FP pair over every result in the run
 (`:1129-1140`), and `form`/`isolation` come from run-level FLAGS, not from the scenario. Both
-families live in the same `scenarios.json`/`corpus/approved/`, so a default run selects both and
-writes one mixed number. The axes are BLOCK-level (`history_format.py:30-35`); D2.2's `fixture` is
+families live in the same `calibration/scenarios.json`/`corpus/approved/`, so a default run selects both and
+writes one mixed number. The axes are BLOCK-level (`calibration/history_format.py:30-35`); D2.2's `fixture` is
 SCENARIO-level. No block axis can separate a mixed block.
 
 **Revised approach (smallest thing that works):** make `fixture` a RUN-LEVEL selector mirroring
-`--form`, and add it to `POPULATION_AXES` (`history_format.py:66`), `POPULATION_BASELINE` (`:67`),
+`--form`, and add it to `POPULATION_AXES` (`calibration/history_format.py:66`), `POPULATION_BASELINE` (`:67`),
 the `_RUN_HEADER` optional clause (`:30-35`) and `append_run_block`'s required write keys
 (`:299-300`) — the extension recipe the format owner documents verbatim at `:62-65` ("add the key
 + baseline + the read clause, one line each"). Three lines, zero reader signature changes. A
@@ -285,7 +285,7 @@ split, never pooled.
 
 | flow | producer | consumer | liveness test |
 |---|---|---|---|
-| normalised agent text | D0.1 flip | `oracle()` match loop | existing `test_harness.py:3139-3143` |
+| normalised agent text | D0.1 flip | `oracle()` match loop | existing `calibration/test_harness.py:3139-3143` |
 | ledger entry | D1.1 | `ledger check` at gate | gate red if diff precedes entry |
 | licence decision | D0.3 (human) | D2.1 build start | — prose, see below |
 | staged fixture tree | `stage()` (D2.2) | doer sandbox | per-fixture green + legibility in `--dry-run` |
@@ -305,7 +305,7 @@ split, never pooled.
 
 | # | Deliverable | BUILT | WIRED | ACTIVATED | EXERCISED |
 |---|---|---|---|---|---|
-| D0.1 | normaliser default flip | one-line change + version bump | `oracle()` default | on for all scoring | `test_harness.py:3139-3143` |
+| D0.1 | normaliser default flip | one-line change + version bump | `oracle()` default | on for all scoring | `calibration/test_harness.py:3139-3143` |
 | D1.1 | ledger entries | entries exist | `ledger check` | pre-diff | gate red if missing |
 | D2.1 | connectome fixture | files exist | staged by `stage()` | named by D2.3 | per-fixture `--dry-run` |
 | D2.2 | multi-fixture support | `fixture` key | validator + 2 copy sites | default preserves behaviour | unknown-fixture + default cases |
@@ -341,12 +341,12 @@ D0.1, and the size of the 2026-09-15 cliff.
 
 **Adopted as new deliverables** (to be written out before approval is sought):
 D2.6 trend-only requires a `verdict_for`/`main()` change, not a quarantine entry;
-D2.7 `author_plants.py` must be able to name a fixture, or the family is frozen at two plants
-forever — the static-gate failure `plant_vitality.py:4` names;
+D2.7 `calibration/author_plants.py` must be able to name a fixture, or the family is frozen at two plants
+forever — the static-gate failure `calibration/plant_vitality.py:4` names;
 D2.8 `holdout.fixture_tree_sha()` must take the resolved root, or the holdout contract pins the
 wrong tree silently;
 D2.9 path traversal — the `fixture` key is written by a MODEL into `corpus/proposed/`, and
-`"../.."` under a naive join would stage `scenarios.json` and `corpus/approved/` (the answer key)
+`"../.."` under a naive join would stage `calibration/scenarios.json` and `corpus/approved/` (the answer key)
 into the doer's tree. `../`, absolute paths and symlinks must be REFUSED;
 D2.10 `capabilities.json::calibration-loop` must grow with this feature or `doctor`'s
 dark-inventory zero becomes a lie;
@@ -355,7 +355,7 @@ D2.11 D2.5's red-first cases must land INSIDE `calibration/test_harness.py` — 
 
 **Rejected, with reason:** `edge-case #14` ("D2.4 is dark on every scheduled path") — refuted by
 `architecture-adversary` and by the manifest: `gate-manifest.json` fixed-stages
-`calibration/test_harness.py`, which calls `rc.dry_run(...)` at `test_harness.py:383` and `:659`,
+`calibration/test_harness.py`, which calls `rc.dry_run(...)` at `calibration/test_harness.py:383` and `:659`,
 so `dry_run`'s problems ARE on the blessed gate path. Two reviewers disagreed; the manifest settles
 it.
 
