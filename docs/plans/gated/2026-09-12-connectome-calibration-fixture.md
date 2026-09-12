@@ -78,6 +78,23 @@ exposure is this repo only, not the repos the plugin installs into.
    "it's fast so it may as well run every release" is exactly how the retired obligation returns.
 3. *Corpus mix.* Proposed: **cap this family at 25% of the approved corpus.**
 4. *Licence.* Proposed: see D0.3 — three options, David decides; no code until he does.
+5. **"…and efficient" was DROPPED (R8).** The request's words are "more and more accurate AND
+   efficient". Accuracy is scoped; efficiency appears nowhere in this plan — not measured, not
+   scoped, not even disclaimed. Nobody decided this; it was never enumerated. Proposed answer to
+   refute: efficiency is OUT of scope for this workstream and belongs to `gate_yield.py`'s
+   cost-side measurement, which already exists. That is a guess at what he meant and needs his
+   answer, not mine.
+6. **The axis his words actually named is ALREADY BUILT, and he has not been told (R8).**
+   `--isolation no-playbook` (`calibration/run_calibration.py:912`) runs the agents with the
+   plugin DISABLED, `_isolation_env` (`:552-569`) writes the settings file that disables it, and
+   `:634-640` records the run INVALID if a playbook hook fires anyway — effect, not proxy. That
+   measures "does the Playbook make the work better", which is closer to "assisting AI to code
+   better and better" than anything in this plan. This plan declared that out of scope in a
+   DISCLAIMER (§ Spec integrity) rather than as a question. Stating a narrowing is not asking
+   about it. Proposed answer to refute: the disclaimer stands AND David is told separately that a
+   one-flag run against his actual axis is available today.
+7. **Does a Phase-0-only outcome count as answering the request?** Proposed answer to refute:
+   NO — Phase 0 is owed maintenance; it may precede the answer but it cannot be the answer.
 
 ## Evidence (executed in-session, not estimated)
 
@@ -296,9 +313,17 @@ split, never pooled.
 
 ## Unenforceable deliverables (prose)
 
-- **D3.1 — the shareable explainer.** Plain-language write-up plus technical appendix. Acceptance
-  bar (the requester's, Turn 2): a reader who is not David can follow it end-to-end without a
-  repo checkout. Named as a deliverable because an unowned explainer does not get written.
+- **D3.1 — the shareable explainer. DELIVERED 2026-09-12:**
+  https://claude.ai/code/artifact/138f11c7-218e-46ed-97d1-c5f904b62929 — plain-language
+  walkthrough, the measured evidence, the plan, the review findings, and a spike raster drawn
+  from the real output files. Acceptance bar (the requester's, Turn 2): a reader who is not David
+  can follow it end-to-end without a repo checkout.
+  **`intent-adversary` finding, recorded rather than argued:** at review time this existed
+  nowhere on disk, and it is the ONLY thing the requester asked to RECEIVE rather than to have
+  built — everything else is machinery he asked ABOUT. He corrected the session once already to
+  get it ("Still too technical"). It is now published; it is still not a repo file, and this plan
+  does not make it one. If the URL is not enough, landing a copy under `docs/` is a deliverable,
+  not a preference.
 - **D0.3 — the licence decision.** A human judgment, not a mechanism.
 
 ## Tripwire deliverable list
@@ -317,8 +342,15 @@ split, never pooled.
 ## Risks, stated
 
 - **The premise may not survive Phase 0.** If a non-brittle scorer still shows the verifiers
-  catching everything, this plan's justification weakens rather than strengthens. That is the
-  point of sequencing it second, and stopping there is a cheap, successful outcome.
+  catching everything, this plan's justification weakens rather than strengthens.
+  **CORRECTED (R8), on `intent-adversary`'s finding — the first draft continued "…and stopping
+  there is a cheap, successful outcome." That clause is DELETED.** Phase 0 is entirely
+  pre-existing owed debt that David did not ask about in these three turns. A sentence reserving
+  the right to do that maintenance, never touch FlyWire, and record the workstream as a success
+  is the exact shape of the incident `commands/tdd-plan.md` memorialises: real defects found
+  along the way, substituted for the stated goal, with the substitution declared a win. Whether
+  a Phase-0-only outcome answers the request is now open question 7 — David's to answer, not
+  this plan's to assume.
 - **The licence may kill the FlyWire framing.** Option (c) preserves every calibration property
   and discards the thing the requester actually asked for. Naming that trade is David's call.
 - **D2.5 edits shared history readers**; a mistake corrupts the scoreboard silently.
@@ -369,5 +401,22 @@ assertion the Playbook bans. It has been replaced with a real ordering check and
 
 `Loop closed: yes (integration-adversary — the pooled recall/FP pair in partition_readings, named
 by no deliverable; architecture-adversary — three parallel FIXTURE roots, D2.2 threads one)`.
-`intent-adversary` dispatched last, per commands/tdd-plan.md; its finding is appended below before
-approval is sought.
+**`intent-adversary` — `Verdict: DRIFT (5)`**, dispatched last per `commands/tdd-plan.md`. Its
+requirement table, enumerated from the requester's words rather than this plan's deliverable list:
+
+| requirement (verbatim) | status |
+|---|---|
+| "leverage it" (= the flywire brain 783) | NARROWED — conditional twice; licence branch correctly escalated, the Phase-0 gate branch has no record of him being asked |
+| "train the playbook to become more and more accurate" | DELIVERED as decided — the cadence removal is David's own recorded v1.32.0 decision, not drift |
+| "…and **efficient**" | **DROPPED** — appears nowhere; nobody decided it, it was never enumerated → open question 5 |
+| "assisting AI to code better and better" | NARROWED to verifier recall/FP, stated as a disclaimer rather than asked → open question 6 |
+| "walk me exactly thru how it would actually work… simply" | was DROPPED to an unenforced IOU → now delivered, see D3.1 |
+| "verify your claims before you do it" | DELIVERED, exceeded |
+| "send multiple adversarial agents" | DELIVERED |
+
+It defended the sequencing as legitimate engineering ("the plan answers the feasibility question
+affirmatively with executed evidence, and did not weaken the FlyWire design to get there") while
+naming ONE sentence as genuine drift — the success clause now deleted as R8. It also refused to
+re-litigate the cadence removal, correctly, because that is David's own decision in his own words.
+
+**Adopted in full.** Nothing from this review was rejected.
